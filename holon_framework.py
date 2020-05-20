@@ -33,7 +33,7 @@ clusterobj = NiovaCluster()
 raftconfobj = RaftConfig(server_conf_path)
 
 raftconfobj.export_path()
-raftconfobj.generate_raft_conf(4, "127.0.0.1", 6000, 15000, "/home/manisha/tmp" )
+raftconfobj.generate_raft_conf(4, "127.0.0.1", 6000, 15000, inotify_path )
 
 inotifyobj = InotifyPath(inotify_path, True)
 
