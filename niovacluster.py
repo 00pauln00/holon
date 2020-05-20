@@ -5,60 +5,55 @@ class NiovaCluster:
     inotifyobj = {} # Could be array
     raftserver = [] # Array
     raftclient = [] # Array
-    raftprocess = [] # Array
+    raftserverprocess = [] # Server process Array
+    raftclientprocess = [] # Server process Array
     nserver = 0 # number of server objects created
     nclient = 0 # number of client objects created
     nprocess = 0 # number of processes(server/client) started
 
     '''
-        Method: assign_raft_conf_obj
+        Method: raft_conf_obj_store
         Purpose: store the raft conf object.
         Parameters:
     '''
-    def assign_raft_conf_obj(self, raftconf):
+    def raft_conf_obj_store(self, raftconf):
         self.raftconfobj = raftconf
 
     '''
-        Method: assign_raft_uuid_obj
-        Purpose: store the raft uuid object.
-        Parameters:
-    '''
-    def assign_raft_uuid_obj(self, raftuuid):
-        self.raftuuidobj = raftuuid
-
-    '''
-        Method: assign_inotify_obj
+        Method: inotify_obj_store
         Purpose: store the inotify object.
         Parameters:
     '''
-    def assign_inotify_obj(self, inotify):
+    def inotify_obj_store(self, inotify):
         self.inotifyobj = inotify
 
     '''
-        Method: assign_raftserver_obj
+        Method: raftserver_obj_store
         Purpose: store the raft server object.
         Parameters:
     '''
-    def assign_raftserver_obj(self, raftserver):
+    def raftserver_obj_store(self, raftserver):
         self.raftserver.append(raftserver)
         self.nserver += 1
 
     '''
-        Method: assign_raft_client_obj
+        Method: raft_client_obj_store
         Purpose: store the raft client object.
         Parameters:
     '''
-    def assign_raftclient_obj(self, raftclient):
-        print("Value of nclient")
-        print(self.nclient)
+    def raftclient_obj_store(self, raftclient):
         self.raftclient.append(raftclient)
         self.nclient += 1
 
     '''
-        Method: assign_raft_process_obj
+        Method: raft_process_obj_store
         Purpose: store the raft process object.
         Parameters:
     '''
-    def assign_raftprocess_obj(self, raftprocess):
-        self.raftprocess.append(raftprocess)
+    def raftprocess_obj_store(self, raftprocess):
+        if raftprocess.process_type == "server":
+            self.raftserverprocess.append(raftprocess)
+        else:
+            self.raftclientprocess.append(raftprocess)
+
         self.nprocess += 1

@@ -27,7 +27,6 @@ class RaftConfig:
         print(f"CTL_SVC_DIR:", CTL_SVC_DIR)
 
 
-
     '''
         Method: generate_raft_conf
         Purpose: Create Raft-Conf file for RAFT UUID and PEER UUID
@@ -87,6 +86,7 @@ class RaftConfig:
             client_port +=1
 
             #Append peer uuid into an array
+            print(f"Storing peer uuid: %s" % peer_uuid)
             self.peer_uuid_arr.append(peer_uuid)
 
         # Close the raft conf file.
