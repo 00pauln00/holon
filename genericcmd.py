@@ -11,8 +11,8 @@ class GenericCmds:
     Parameters:
     '''
     def generate_uuid(self):
-
-        p = subprocess.Popen(["/usr/bin/uuid"], stdout=subprocess.PIPE)
+        
+        p = subprocess.Popen(["uuid"], stdout=subprocess.PIPE)
         (stdout, err) = p.communicate()
         
         #remove the newline
