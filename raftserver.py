@@ -24,6 +24,8 @@ class RaftServer:
     '''
     def __init__(self, raftconfobj, peer_index):
         self.peer_index = peer_index
+        print(f"Peer index is: %d" % peer_index)
+        print(f"Length of the array: %d" % len(raftconfobj.peer_uuid_arr))
         self.peer_uuid = raftconfobj.peer_uuid_arr[peer_index]
 
     '''
