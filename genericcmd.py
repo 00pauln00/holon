@@ -25,5 +25,8 @@ class GenericCmds:
     Method: copy file from source to destinaton directory
     '''
     def copy_file(self, src_path, dest_path):
-        #TODO error handling
-        subprocess.Popen(['cp', src_path, dest_path], stdout=subprocess.PIPE)
+        
+        try:
+            subprocess.Popen(['cp', src_path, dest_path], stdout=subprocess.PIPE)
+        except FileNotFoundError:
+            print("File not found!")
