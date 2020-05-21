@@ -5,17 +5,19 @@ from niovacluster import NiovaCluster
 
 try:
     options, args = getopt.getopt(
-            sys.argv[1:], "c:n:i:r:",
-            ["server_conf_path=", "inotify_path=", "init_path=",
-                "recipe="])
+            sys.argv[1:], "s:n:i:p:c:r:",["server_conf_path=", "inotify_path=", "init_path=", "port=", "client_port=", "recipe="])
     for name, value in options:
-        if name in ('-c', '--conf'):
+        if name in ('-s', '--server-conf'):
             server_conf_path = value
         if name in ('-n', '--inotify_path'):
             inotify_path = value
         if name in ('-i', '--init_path'):
             init_path = value
-        if name in ('-r', '--recipe-name'):
+        if name in ('-p', '--port'):
+            port = int(value)
+        if name in ('-c', '--client_port'):
+            client_port = int(value)
+        if name in ('-r', '--recipe_name'):
             recipe_name = value
 
 except getopt.GetoptError:
@@ -25,6 +27,8 @@ except getopt.GetoptError:
 print(f"Server conf path: %s" % server_conf_path)
 print(f"Inotify path %s" % inotify_path)
 print(f"Init directory path: %s" % init_path)
+print(f"Port no:%s" % port)
+print(f"Client Port no:%s" % client_port)
 print(f"Running Recipe: %s" % recipe_name)
 
 # Creare Cluster object
@@ -33,7 +37,7 @@ clusterobj = NiovaCluster()
 raftconfobj = RaftConfig(server_conf_path)
 
 raftconfobj.export_path()
-raftconfobj.generate_raft_conf(4, "127.0.0.1", 6000, 15000, inotify_path )
+raftconfobj.generate_raft_conf(4, "127.0.0.1", port, client_port, inotify_path)
 
 inotifyobj = InotifyPath(inotify_path, True)
 
@@ -60,7 +64,7 @@ while parent != "":
 
     RecipeClass = parentRecipeModule.Recipe
     recipe_arr.append(RecipeClass)
-    parent =  RecipeClass().pre_run()
+    parent = RecipeClass().pre_run()
 
 print("Run the actual recipe from Root to leaf")
 

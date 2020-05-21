@@ -8,7 +8,7 @@ from raftprocess import RaftProcess
 from inotifypath import InotifyPath
 from niovacluster import NiovaCluster
 from ctlrequest import CtlRequest
-from jasonparse import RaftJasonParse
+from jsonparse import RaftJson
 from genericcmd import GenericCmds
 
 class HolonRecipeBase:

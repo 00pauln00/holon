@@ -14,9 +14,9 @@ class RaftClient:
     Parameters: @raft_conf_obj: RaftConfig Object to get raft_uuid.
                 @client_no: Client index.
     '''
-    def __init__(self, raft_conf_obj, client_no):
-        self.raft_uuid = raft_conf_obj.raft_uuid
-        self.client_uuid = raft_conf_obj.client_uuid_arr[client_no]
+    def __init__(self, raftconfobj, client_no):
+        self.raft_uuid = raftconfobj.raft_uuid
+        self.client_uuid = raftconfobj.client_uuid_arr[client_no]
         self.client_no = client_no
 
     '''

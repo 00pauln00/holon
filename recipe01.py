@@ -26,9 +26,9 @@ class Recipe(HolonRecipeBase):
         ctlreqobj = CtlRequest()
 
         '''
-        Create Jason parsing object
+        Create Json parsing object
         '''
-        jasonparseobj = RaftJasonParse()
+        jsonparseobj = RaftJson()
 
         peer_uuid = raftconfobj.get_peer_uuid_for_peerno(0)
         print("Pause and resume the peer: %s" % peer_uuid)
@@ -64,7 +64,7 @@ class Recipe(HolonRecipeBase):
             inotifyobj.copy_cmd_file(peer_uuid, cmd_file_path)
             # Read the output file and get the time
             time_global.sleep(1)
-            time_string = jasonparseobj.jason_parse_and_return_curr_time(out_file_path)
+            time_string = jsonparseobj.json_parse_and_return_curr_time(out_file_path)
             print(f"Time return by parse func: %s" % time_string)
             curr_time = datetime.strptime(time_string,"%H:%M:%S")
             if prev_time >= curr_time:

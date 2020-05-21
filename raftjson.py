@@ -1,8 +1,8 @@
 import os, json, sys
 
-class RaftJasonParse:
+class RaftJson:
 
-    def jason_parse_and_verify_server_idleness(self, server_outfile):
+    def json_parse_and_verify_server_idleness(self, server_outfile):
 
         with open(server_outfile, "r") as read_file:
             data = json.load(read_file)
@@ -11,7 +11,7 @@ class RaftJasonParse:
             if leader_uuid != "":
                 print(f"Error: Leader uuid is set: {leader_uuid}")
                 exit()
-            
+
             server_state = data["raft_root_entry"][0]["state"]
             if server_state != "follower" and server_state != "candidate":
                 print(f"Error: Peer state is not follower: %s" % server_state)
@@ -21,22 +21,22 @@ class RaftJasonParse:
             if commit_idx != -1:
                 print(f"commit-idx is not -1: {commit_idx}")
                 exit()
-                
+
             last_applied = data["raft_root_entry"][0]["last-applied"]
             if last_applied != -1:
                 print(f"last-applied is not -1: {last_applied}")
                 exit()
-                
+
             last_applied_cumulative_crc = data["raft_root_entry"][0]["last-applied-cumulative-crc"]
             if last_applied_cumulative_crc != 0:
                 print(f"last-applied-cumulative-crc is not zero: ${last_applied_cumulative_crc}")
                 exit()
-        
+
         print(f"Idleness of server is successful!!")
 
 
-    def jason_parse_and_verify_client_idleness(self, client_outfile):
-        print(f"Verify clientout JASON file: %s" % client_outfile)
+    def json_parse_and_verify_client_idleness(self, client_outfile):
+        print(f"Verify clientout JSON file: %s" % client_outfile)
         with open(client_outfile, "r") as read_file:
             data = json.load(read_file)
              # Verify "leader-uuid" : ""
@@ -97,9 +97,10 @@ class RaftJasonParse:
 
             print("Idleness of client is successful!!")
 
-    def jason_parse_and_return_curr_time(self, outfile):
+    def json_parse_and_return_curr_time(self, outfile):
         with open(outfile) as f:
             data = json.load(f)
             curr_time_string = data["system_info"]["current_time"]
             time_string = curr_time_string.split()
             return time_string[3]
+
