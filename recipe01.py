@@ -12,7 +12,7 @@ class Recipe(HolonRecipeBase):
     def run(self, clusterobj):
         '''
         Recipe01 purpose is to pasue and resume processes without exiting
-        unexpectedly.
+        unexpectedly. It assumes peer 0  was started by Recip00.
         '''
         print(f"Run Recipe : Recipe01")
 
@@ -60,7 +60,7 @@ class Recipe(HolonRecipeBase):
         prev_time_string = "00:00:00"
         prev_time = datetime.strptime(prev_time_string,"%H:%M:%S")
         for i in range(4):
-            print("Copy the cmd file into input directory of server: %d" % i)
+            print("Copy the cmd file into input directory of server. Itr %d" % i)
             inotifyobj.copy_cmd_file(peer_uuid, cmd_file_path)
             # Read the output file and get the time
             time_global.sleep(1)
