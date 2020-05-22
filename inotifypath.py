@@ -41,9 +41,9 @@ class InotifyPath:
                 directory.
                 @cmd_file_path: Path of the command file to copy.
   '''
-  def copy_cmd_file(self, peer_uuid, cmd_file_path):
+  def copy_cmd_file(self,genericcmdobj, peer_uuid, cmd_file_path):
     input_dir = "%s/%s/input" % (self.inotify_path, peer_uuid)
     try:
-        subprocess.Popen(['cp', cmd_file_path, input_dir],stdout=subprocess.PIPE)
+        genericcmdobj.copy_file(cmd_file_path , input_dir)
     except FileNotFoundError:
         print("File not found!")      

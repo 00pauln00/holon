@@ -25,8 +25,22 @@ class CtlRequest:
             f.write("GET /.*/.*/.*/.*\n")
             f.write("OUTFILE %s\n" % (outfilename))
 
+    '''
+    Method: ctl_req_get_current_time_cmd_create
+    Purpose: Create ctl request command to get the current time.
+    Parameters: @cmd_file_path
+    '''
     def ctl_req_get_current_time_cmd_create(self, cmd_file_path, outfilename):
         with open(cmd_file_path, "w+") as f:
             f.write("GET /system_info/current_time\n")
             f.write("OUTFILE %s\n" % (outfilename))
 
+    '''
+    Method: ctl_req_get_term_cmd_create
+    Purpose: Create ctl request command to get the term value.
+    Parameters: @cmd_file_path
+    '''
+    def ctl_req_get_term_cmd_create(self, cmd_file_path, outfilename):
+        with open(cmd_file_path, "w+") as f:
+            f.write("GET /raft_root_entry/term\n")
+            f.write("OUTFILE %s\n" % (outfilename))

@@ -9,11 +9,20 @@ class Recipe(HolonRecipeBase):
         return self.parent
     
     def run(self, clusterobj):
+        '''
+        Purpose of this recipe is:
+        1. To verify the idleness of the process.
+        2. Verify process can be activated by exiting the idleness.
+        3. Once process is active, verify it's timestamp progresses.
+        '''
+        print(f"Run Recip00")
 
+        '''
+        Extract the objects to be used from clusterobj.
+        '''
         inotifyobj = clusterobj.inotifyobj
         raftconfobj = clusterobj.raftconfobj
         
-        print(f"Run Recip00")
 
         # Create object for generic cmds.
         genericcmdobj = GenericCmds()
@@ -42,15 +51,16 @@ class Recipe(HolonRecipeBase):
         '''
         Create RaftServer object for first server.
         '''
-        raftserverobj = RaftServer(raftconfobj, 0)
+        peerno = 0
+        raftserverobj = RaftServer(raftconfobj, peerno)
 
         '''
         Create Process object for first server
         '''
-        peer_uuid = raftconfobj.get_peer_uuid_for_peerno(0)
+        peer_uuid = raftconfobj.get_peer_uuid_for_peerno(peerno)
 
-        print(f"Starting peer with uuid: %s" % peer_uuid)
-        serverproc = RaftProcess(peer_uuid, "server")
+        print(f"Starting peer %d with uuid: %s" % (peerno, peer_uuid))
+        serverproc = RaftProcess(peer_uuid, peerno, "server")
 
         #Start the server process
         serverproc.start_process(raftconfobj)
@@ -67,7 +77,7 @@ class Recipe(HolonRecipeBase):
         ctlreqobj.ctl_req_get_all_cmd_create(cmd_file_path, outfilename)
 
         print(f"Copy command file into server's input directory %s" % cmd_file_path)
-        inotifyobj.copy_cmd_file(peer_uuid, cmd_file_path)
+        inotifyobj.copy_cmd_file(genericcmdobj , peer_uuid, cmd_file_path)
 
         # Sleep before reading the output file.
         time_global.sleep(1)
@@ -80,66 +90,28 @@ class Recipe(HolonRecipeBase):
         '''
         Create Jason parsing object to parse the JASON output.
         '''
-        jasonparseobj = RaftJasonParse()
+        jsonobj = RaftJson()
 
         # Verify the idleness of the server
-        jasonparseobj.jason_parse_and_verify_server_idleness(get_all_out)
+        jsonobj.json_parse_and_verify_server_idleness(get_all_out)
 
         '''
-        Start one client. Generate UUID and config file for it.
-        '''
-        # TODO check how to pass client port and ip_address dynamically.
-        raftconfobj.generate_client_conf("127.0.0.1", 14001)
-
-        # Create RaftClient object for client 0
-        raftclientobj = RaftClient(raftconfobj, 0)
-        client_uuid = raftconfobj.get_client_uuid_for_clientno(0)
-
-        # Create RaftProcess object for client 0
-        clientproc = RaftProcess(client_uuid, "client")
-
-        print(f"Starting client process with UUID: %s" % client_uuid)
-        clientproc.start_process(raftconfobj)
-
-        # Sleep for 2sec
-        time_global.sleep(2)
-
-        # Copy the cmd file into input directory of the started client.
-        print(f"Copy init cmd file to client's input directory")
-        inotifyobj.copy_cmd_file(client_uuid, cmd_file_path)
-
-        # Sleep before reading the output file.
-        time_global.sleep(1)
-
-        #Read the output file and verify the idleness of the server.
-        get_all_out = "%s/%s/output/%s" % (inotifyobj.inotify_path,
-                                    client_uuid,
-                                    outfilename)
-
-        print(f"Verify the JASON output of the client")
-        # Parse the output and verify client idleness
-        jasonparseobj.jason_parse_and_verify_client_idleness(get_all_out)
-
-        '''
-        Start the server and client by exiting the idlenss
+        Activate the server by exiting the idlenss
         Create cmdfile to exit idleness and copy it into input directory
-        of server and client.
+        of the server.
         '''
         idleness_file_path = "/tmp/exit_idleness.%s" % app_uuid 
         ctlreqobj.ctl_req_init_idleness_create(idleness_file_path, "false")
 
         # Copy it in to input directory of server
-        inotifyobj.copy_cmd_file(peer_uuid, idleness_file_path)
-
-        # Copy it in to input directory of client
-        inotifyobj.copy_cmd_file(client_uuid, idleness_file_path)
+        inotifyobj.copy_cmd_file(genericcmdobj , peer_uuid, idleness_file_path)
 
         # sleep for 2sec
         time_global.sleep(2)
 
-        print(f"Exited Idleness and starting the server and client loops")
+        print(f"Exited Idleness and starting the server loop")
 
-        # Once server and client started, check the timestamp progresses
+        # Once server the started, verify that the timestamp progresses
         curr_time_path = "/tmp/current_time.%s" % app_uuid 
         print(f"curr_time_path: %s" % curr_time_path)
         outfilename = "/curr_time_output.%s" % (app_uuid)
@@ -154,10 +126,10 @@ class Recipe(HolonRecipeBase):
         for i in range(4):
             # Copy the cmd file into input directory of server.
             print(f"Copy cmd file to get current_system_time for iteration: %d" % i)
-            inotifyobj.copy_cmd_file(peer_uuid, curr_time_path)
+            inotifyobj.copy_cmd_file(genericcmdobj , peer_uuid, curr_time_path)
             # Read the output file and get the time
             time_global.sleep(1)
-            time = jasonparseobj.jason_parse_and_return_curr_time(curr_time_out)
+            time = jsonobj.json_parse_and_return_curr_time(curr_time_out)
             timestamp_arr.append(time)
 
         '''
@@ -177,20 +149,13 @@ class Recipe(HolonRecipeBase):
         print("Time progressing!!")
 
         # Store the raftserver object into clusterobj
-        clusterobj.raftserver_obj_store(raftserverobj)
-        # Store the raftclient object
-        clusterobj.raftclient_obj_store(raftclientobj)
+        clusterobj.raftserver_obj_store(raftserverobj, peerno)
         # Store server process object
-        clusterobj.raftprocess_obj_store(serverproc)
-        # Store client process object
-        clusterobj.raftprocess_obj_store(clientproc)
+        clusterobj.raftprocess_obj_store(serverproc, peerno)
 
     def post_run(self, clusterobj):
         print("Post run method")
         #if kill_proc:
         serverproc = clusterobj.raftserverprocess[0]
-        clientproc = clusterobj.raftclientprocess[0]
-        print("kill server and client processes")
+        print("kill server processes")
         serverproc.kill_process()
-        clientproc.kill_process()
-

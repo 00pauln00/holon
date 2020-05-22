@@ -5,7 +5,8 @@ class RaftProcess:
 
     process_type = ''
     process_uuid = ''
-    process = {}
+    process_popen = {}
+    process_idx = 0
     binary_path='/home/pauln/raft-builds/latest/'
 
 
@@ -16,8 +17,9 @@ class RaftProcess:
                             created.
                     @process_type: Type of the process(server or client)
     '''
-    def __init__(self, uuid, process_type):
+    def __init__(self, uuid, process_idx, process_type):
         self.process_uuid = uuid
+        self.process_idx = process_idx
         self.process_type = process_type
         
     '''
@@ -32,11 +34,11 @@ class RaftProcess:
 
         if self.process_type == 'server':
             server_bin_path = "%s/raft-server" % (self.binary_path)
-            self.process = subprocess.Popen([server_bin_path, '-r',
+            self.process_popen = subprocess.Popen([server_bin_path, '-r',
                                 raftconfobj.raft_uuid, '-u', self.process_uuid])
         else:
             client_bin_path = "%s/raft-client" % (self.binary_path)
-            self.process = subprocess.Popen([client_bin_path, '-r',
+            self.process_popen = subprocess.Popen([client_bin_path, '-r',
                                 raftconfobj.raft_uuid, '-u', self.process_uuid])
 
 
@@ -47,7 +49,7 @@ class RaftProcess:
     '''
     def pause_process(self):
         print("pause the process by sending sigstop")
-        self.process.send_signal(signal.SIGSTOP)
+        self.process_popen.send_signal(signal.SIGSTOP)
 
     '''
         Method: resume_process
@@ -56,7 +58,7 @@ class RaftProcess:
     '''
     def resume_process(self):
         print("resume the process by sending sigcont")
-        self.process.send_signal(signal.SIGCONT)
+        self.process_popen.send_signal(signal.SIGCONT)
 
     '''
         Method: kill_process
@@ -65,4 +67,4 @@ class RaftProcess:
     '''
     def kill_process(self):
         print("kill the process by sending sigterm")
-        self.process.send_signal(signal.SIGTERM)
+        self.process_popen.send_signal(signal.SIGTERM)
