@@ -104,3 +104,8 @@ class RaftJson:
             time_string = curr_time_string.split()
             return time_string[3]
 
+    def json_parse_and_return_term_value(self, outfile):
+        with open(outfile) as f:
+            data = json.load(f)
+            term = data["raft_root_entry"][0]["term"]
+            return int(term)
