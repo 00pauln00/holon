@@ -14,11 +14,14 @@ class Recipe(HolonRecipeBase):
         Recipe01 purpose is to pasue and resume processes without exiting
         unexpectedly. It assumes peer 0  was started by Recip00.
         '''
-        print(f"Run Recipe : Recipe01")
+        print(f"=============Run Recipe : Recipe01====================")
 
         serverproc = clusterobj.raftserverprocess[0]
         inotifyobj = clusterobj.inotifyobj
         raftconfobj = clusterobj.raftconfobj
+
+        # Create object for generic cmds.
+        genericcmdobj = GenericCmds()
 
         '''
         Create the object for ctlrequest.
@@ -29,23 +32,20 @@ class Recipe(HolonRecipeBase):
         Create Json parsing object
         '''
         jsonparseobj = RaftJson()
-        
-        '''
-        Create object for generic cmds.
-        '''
-        genericcmdobj = GenericCmds()
 
         peer_uuid = raftconfobj.get_peer_uuid_for_peerno(0)
-        print("Pause and resume the peer: %s" % peer_uuid)
+        print("Pause and resume the peer: %s\n" % peer_uuid)
 
         # Pause and Resume server for n iterations.
         # TODO iteration count should not be hardcoded.
         for i in range(5):
             # pause the process
-            print(f"pausing the process for 2sec")
             serverproc.pause_process()
             time_global.sleep(2)
+            print(f"pausing the process for 2sec and then resume")
             serverproc.resume_process()
+
+        print(f"After resuming process, check process current time proceeds\n")
 
         '''
         After resuming the server process, copy cmd file and
@@ -53,7 +53,6 @@ class Recipe(HolonRecipeBase):
         progressing.
         '''
         cmd_file_path = "/tmp/curr_time_recip01.%s" % os.getpid()
-        print(f"Cmd file path: %s" % cmd_file_path)
         outfile = "/curr_time_output.%s" % os.getpid()
 
         # Create the cmdfile.
@@ -76,6 +75,7 @@ class Recipe(HolonRecipeBase):
                 print("Error: Time is not updating from Recip01")
                 exit()
 
+    print(f"Recipe01: Successful, Pause/Resume does not terminate processes")
 
     def post_run(self, clusterobj):
         print("Post run method: ")

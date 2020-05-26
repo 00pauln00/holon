@@ -24,7 +24,7 @@ class RaftConfig:
     '''
     def export_path(self):
         CTL_SVC_DIR = os.environ['NIOVA_LOCAL_CTL_SVC_DIR'] = self.server_config_path
-        print(f"CTL_SVC_DIR:", CTL_SVC_DIR)
+        print(f"exporting NIOVA_LOCAL_CTL_SVC_DIR=", CTL_SVC_DIR)
 
 
     '''
@@ -49,7 +49,7 @@ class RaftConfig:
         
         # Write RAFT UUID to raft-conf file
         raft_conf_path = "%s/%s.raft" % (self.server_config_path, self.raft_uuid)
-        print(raft_conf_path)
+        print(f"Raft config file path: %s" % raft_conf_path)
         try:
             raft_fd = open(raft_conf_path, "w+")
             raft_fd.write("RAFT %s\n" % (self.raft_uuid))
@@ -70,7 +70,7 @@ class RaftConfig:
 
             #Prepare peer-conf file.
             peer_config_path = "%s/%s.peer" % (self.server_config_path, peer_uuid)
-            print(peer_config_path)
+            print(f"Generating config file for peer at %s " % peer_config_path)
             store_path = "%s/%s.raftdb" % (raft_db_path, peer_uuid)
             try:
                 with open(peer_config_path, 'w+',encoding = 'utf-8') as f2:
@@ -86,7 +86,6 @@ class RaftConfig:
             client_port +=1
 
             #Append peer uuid into an array
-            print(f"Storing peer uuid: %s" % peer_uuid)
             self.peer_uuid_arr.append(peer_uuid)
 
         # Close the raft conf file.
@@ -97,7 +96,6 @@ class RaftConfig:
         Purpose: Get the peer uuid for the peerno from peer_uuid_array
     '''
     def get_peer_uuid_for_peerno(self, peerno):
-        print(f"Peer UUID is %s" % self.peer_uuid_arr[peerno])
         return self.peer_uuid_arr[peerno]
 
 
@@ -136,5 +134,4 @@ class RaftConfig:
         Purpose: Get the client uuid for the client number from client_uuid_array
     '''
     def get_client_uuid_for_clientno(self, clientno):
-        print(f"CLient UUID is %s" % self.client_uuid_arr[clientno])
         return self.client_uuid_arr[clientno]

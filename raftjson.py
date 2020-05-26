@@ -109,3 +109,17 @@ class RaftJson:
             data = json.load(f)
             term = data["raft_root_entry"][0]["term"]
             return int(term)
+
+    def json_parse_and_return_leader_uuid(self, outfile):
+        with open(outfile) as f:
+            data = json.load(f)
+            server_state = data["raft_root_entry"][0]["state"]
+            leader_uuid = data["raft_root_entry"][0]["leader-uuid"]
+            print(f"Server state: %s leader UUID: %s" % (server_state, leader_uuid))
+            if server_state == "leader":
+                peer_uuid = data["raft_root_entry"][0]["peer-uuid"]
+                if peer_uuid != leader_uuid:
+                    print(f"Error! Mismatch between state and leader uuid")
+                    exit()
+
+        return leader_uuid

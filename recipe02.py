@@ -14,7 +14,7 @@ class Recipe(HolonRecipeBase):
         1. To verify the Term value increases in each iteration for the
         raft server.
         '''
-        print(f"Run Recip02")
+        print(f"=================Run Recip02====================\n")
 
         '''
         Extract the objects to be used from clusterobj.
@@ -37,7 +37,6 @@ class Recipe(HolonRecipeBase):
         - Before starting the server, copy the APPLY init command into init directory,
           so that server will not go into start loop and will remain idle.
         '''
-        print(f"Create ctl request object")
         ctlreqobj = CtlRequest()
 
         peerno = 0
@@ -66,9 +65,9 @@ class Recipe(HolonRecipeBase):
         '''
         prev_term = 0
         # TODO Iteration value should be specified by user. 
+        print(f"Copy cmd file to get and verify term value\n")
         for i in range(10):
             # Copy the cmd file into input directory of server.
-            print(f"Copy cmd file to get term value")
             inotifyobj.copy_cmd_file(genericcmdobj, peer_uuid, cmd_file_path)
 
             time_global.sleep(1)
@@ -82,7 +81,7 @@ class Recipe(HolonRecipeBase):
             # Sleep for 2second to allow term to get incremented.
             time_global.sleep(2)
 
-        print("Raft Peer 0's term value increasing!!")
+        print(f"Recipe02 Successful, Raft Peer 0's term value increasing!!\n")
 
     def post_run(self, clusterobj):
         print("Post run method")

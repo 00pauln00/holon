@@ -25,5 +25,4 @@ class RaftClient:
     Parameters:
     '''
     def get_client_uuid(self):
-        print(f"Client UUID is: %s" % (self.client_uuid))
         return self.client_uuid

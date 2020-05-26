@@ -46,7 +46,7 @@ print(f"Init directory path: %s" % init_path)
 print(f"Number of Servers: %s" % npeers)
 print(f"Port no:%s" % port)
 print(f"Client Port no:%s" % client_port)
-print(f"Running Recipe: %s" % recipe_name)
+print(f"Leaf Recipe: %s" % recipe_name)
 
 # Creare Cluster object
 clusterobj = NiovaCluster(npeers)
@@ -55,6 +55,7 @@ raftconfobj = RaftConfig(server_conf_path)
 
 raftconfobj.export_path()
 raftconfobj.generate_raft_conf(npeers, "127.0.0.1", port, client_port, inotify_path)
+print(f"Raft conf and server configs generated")
 
 inotifyobj = InotifyPath(inotify_path, True)
 
@@ -65,9 +66,11 @@ clusterobj.raft_conf_obj_store(raftconfobj)
 clusterobj.inotify_obj_store(inotifyobj)
 
 recipe_arr = []
-print(f"Leaf recipe %s" % recipe_name)
 
-print(f"Iterate over the recipe hierarchy and gather the recipe objects")
+'''
+Iterate over the recipe hierarchy and gather the recipe objects.
+'''
+
 RecipeModule = importlib.import_module(recipe_name)
 print(RecipeModule)
 
@@ -76,6 +79,10 @@ RecipeClass = RecipeModule.Recipe
 recipe_arr.append(RecipeClass)
 parent = RecipeClass().pre_run()
 
+'''
+Call pre_run method of all recipes in the hierarchy to build the recipe
+tree for execution.
+'''
 while parent != "":
     parentRecipeModule = importlib.import_module(parent)
 
@@ -83,13 +90,24 @@ while parent != "":
     recipe_arr.append(RecipeClass)
     parent = RecipeClass().pre_run()
 
-print("Run the actual recipe from Root to leaf")
+print(f"Recipe Hierarchy from Root => Leaf")
+for r in reversed(recipe_arr):
+    print(f"%s=> " % r().name)
 
+
+'''
+Executing recipes from Root to Leaf order.
+'''
 for r in reversed(recipe_arr):
     print(f"Running Recipe %s" % r().name)
     r().run(clusterobj)
 
+'''
+Calling post_run method in the reverse order i.e Leaf to Root for
+cleaning up the files/processes which that specific recipe had created/started.
+'''
 print("Call post_run to cleanup from leaf recipe to root recipe")
+
 for r in recipe_arr:
     print(f"Post Run Recipe: %s" % r().name)
     r().post_run(clusterobj)
