@@ -29,6 +29,11 @@ class Recipe(HolonRecipeBase):
         Create Json parsing object
         '''
         jsonparseobj = RaftJson()
+        
+        '''
+        Create object for generic cmds.
+        '''
+        genericcmdobj = GenericCmds()
 
         peer_uuid = raftconfobj.get_peer_uuid_for_peerno(0)
         print("Pause and resume the peer: %s" % peer_uuid)
@@ -61,7 +66,7 @@ class Recipe(HolonRecipeBase):
         prev_time = datetime.strptime(prev_time_string,"%H:%M:%S")
         for i in range(4):
             print("Copy the cmd file into input directory of server. Itr %d" % i)
-            inotifyobj.copy_cmd_file(peer_uuid, cmd_file_path)
+            inotifyobj.copy_cmd_file(genericcmdobj, peer_uuid, cmd_file_path)
             # Read the output file and get the time
             time_global.sleep(1)
             time_string = jsonparseobj.json_parse_and_return_curr_time(out_file_path)

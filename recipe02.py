@@ -69,7 +69,7 @@ class Recipe(HolonRecipeBase):
         for i in range(10):
             # Copy the cmd file into input directory of server.
             print(f"Copy cmd file to get term value")
-            inotifyobj.copy_cmd_file(peer_uuid, cmd_file_path)
+            inotifyobj.copy_cmd_file(genericcmdobj, peer_uuid, cmd_file_path)
 
             time_global.sleep(1)
             # Send the output value for reading the term value.
