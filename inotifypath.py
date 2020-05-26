@@ -17,10 +17,10 @@ class InotifyPath:
       self.inotify_is_base_path = inotify_is_base_path
       if inotify_is_base_path:
           os.environ['NIOVA_INOTIFY_BASE_PATH'] = inotify_path
-          print("INOTIFY_PATH:", os.environ['NIOVA_INOTIFY_BASE_PATH'])
+          print("exporting NIOVA_INOTIFY_BASE_PATH=", os.environ['NIOVA_INOTIFY_BASE_PATH'])
       else:
           os.environ['NIOVA_INOTIFY_PATH'] = inotify_path
-          print("INOTIFY_PATH:", os.environ['NIOVA_INOTIFY_PATH'])
+          print("exporting NIOVA_INOTIFY_PATH=", os.environ['NIOVA_INOTIFY_PATH'])
 
 
   '''
@@ -31,7 +31,7 @@ class InotifyPath:
   def export_init_path(self, init_path):
       self.inotify_init_path = init_path
       os.environ['NIOVA_CTL_INTERFACE_INIT_PATH'] = init_path
-      print("INOTIFY_INIT_PATH:", os.environ['NIOVA_CTL_INTERFACE_INIT_PATH'])
+      print("exporting NIOVA_CTL_INTERFACE_INIT_PATH=", os.environ['NIOVA_CTL_INTERFACE_INIT_PATH'])
 
 
   '''
@@ -41,9 +41,9 @@ class InotifyPath:
                 directory.
                 @cmd_file_path: Path of the command file to copy.
   '''
-  def copy_cmd_file(self,genericcmdobj, peer_uuid, cmd_file_path):
+  def copy_cmd_file(self, genericcmdobj, peer_uuid, cmd_file_path):
     input_dir = "%s/%s/input" % (self.inotify_path, peer_uuid)
     try:
         genericcmdobj.copy_file(cmd_file_path , input_dir)
     except FileNotFoundError:
-        print("File not found!")      
+        print("File not found!")

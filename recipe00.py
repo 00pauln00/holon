@@ -15,7 +15,7 @@ class Recipe(HolonRecipeBase):
         2. Verify process can be activated by exiting the idleness.
         3. Once process is active, verify it's timestamp progresses.
         '''
-        print(f"Run Recip00")
+        print(f"===========Run Recip00=======================\n")
 
         '''
         Extract the objects to be used from clusterobj.
@@ -38,14 +38,13 @@ class Recipe(HolonRecipeBase):
         - Before starting the server, copy the APPLY init command into init directory,
           so that server will not go into start loop and will remain idle.
         '''
-        print(f"Create ctl request object")
         ctlreqobj = CtlRequest()
 
         # Create Init cmd idleness file
         init_file_path = "/tmp/init_idleness.%s" % app_uuid
         ctlreqobj.ctl_req_init_idleness_create(init_file_path, "true")
         
-        print(f"Copy the init cmd into init dir: %s" % init_file_path)
+        print(f"Copy the init cmd into init dir: %s for idleness\n" % init_file_path)
         genericcmdobj.copy_file(init_file_path, inotifyobj.inotify_init_path)
     
         '''
@@ -88,7 +87,7 @@ class Recipe(HolonRecipeBase):
                                             outfilename)
 
         '''
-        Create Json parsing object to parse the JASON output.
+        Create Jason parsing object to parse the JASON output.
         '''
         jsonobj = RaftJson()
 
@@ -109,9 +108,9 @@ class Recipe(HolonRecipeBase):
         # sleep for 2sec
         time_global.sleep(2)
 
-        print(f"Exited Idleness and starting the server loop")
+        print(f"Exited Idleness and starting the server loop\n")
 
-        # Once the server is started, verify that the timestamp progresses
+        # Once server the started, verify that the timestamp progresses
         curr_time_path = "/tmp/current_time.%s" % app_uuid 
         print(f"curr_time_path: %s" % curr_time_path)
         outfilename = "/curr_time_output.%s" % (app_uuid)
@@ -146,7 +145,7 @@ class Recipe(HolonRecipeBase):
                 print("Error: Time is not updating")
                 exit()
 
-        print("Time progressing!!")
+        print("Recip00 Successful, Time progressing!!")
 
         # Store the raftserver object into clusterobj
         clusterobj.raftserver_obj_store(raftserverobj, peerno)
