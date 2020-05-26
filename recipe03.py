@@ -76,7 +76,7 @@ class Recipe(HolonRecipeBase):
                                     outfilename)
 
         # Get the term valur for Peer0 before pausing it.
-        inotifyobj.copy_cmd_file(peer0_uuid, cmd_file_path)
+        inotifyobj.copy_cmd_file( genericcmdobj, peer0_uuid, cmd_file_path)
         time_global.sleep(1)
         peer0_term = jsonobj.json_parse_and_return_term_value(p0_get_term_out)
 
@@ -94,7 +94,7 @@ class Recipe(HolonRecipeBase):
             Copy the cmd file into Peer 1's input directory.
             And read the output JSON to get the term value.
             '''
-            inotifyobj.copy_cmd_file(peer1_uuid, cmd_file_path)
+            inotifyobj.copy_cmd_file( genericcmdobj, peer1_uuid, cmd_file_path)
             time_global.sleep(1)
             peer1_term = jsonobj.json_parse_and_return_term_value(p1_get_term_out)
             print(f"Term value for peer1: %d" % peer1_term)
@@ -107,7 +107,7 @@ class Recipe(HolonRecipeBase):
             '''
             serverproc0.resume_process()
 
-            inotifyobj.copy_cmd_file(peer0_uuid, cmd_file_path)
+            inotifyobj.copy_cmd_file( genericcmdobj , peer0_uuid, cmd_file_path)
             time_global.sleep(1)
             peer0_term = jsonobj.json_parse_and_return_term_value(p0_get_term_out)
             print(f"Term value of peer0 after resume is: %d" % peer0_term)

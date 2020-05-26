@@ -88,7 +88,7 @@ class Recipe(HolonRecipeBase):
                                             outfilename)
 
         '''
-        Create Jason parsing object to parse the JASON output.
+        Create Json parsing object to parse the JASON output.
         '''
         jsonobj = RaftJson()
 
@@ -111,7 +111,7 @@ class Recipe(HolonRecipeBase):
 
         print(f"Exited Idleness and starting the server loop")
 
-        # Once server the started, verify that the timestamp progresses
+        # Once the server is started, verify that the timestamp progresses
         curr_time_path = "/tmp/current_time.%s" % app_uuid 
         print(f"curr_time_path: %s" % curr_time_path)
         outfilename = "/curr_time_output.%s" % (app_uuid)
