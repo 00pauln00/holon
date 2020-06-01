@@ -7,7 +7,7 @@ from raftclient import RaftClient
 from raftprocess import RaftProcess
 from inotifypath import InotifyPath
 from niovacluster import NiovaCluster
-from ctlrequest import CtlRequest
+from ctlrequest import * 
 from genericcmd import GenericCmds
 
 class HolonRecipeBase:
@@ -16,6 +16,15 @@ class HolonRecipeBase:
     name = ''
     desc = ''
     parent = ''
+
+    '''
+        Method: dry_run
+        Purpose: exec dry run conditions
+        Parameters:
+    '''
+    def dry_run(self, params):
+        self.logger.log(logging.DEBUG, "dry_run!")
+        raise NotImplementedError
 
     '''
         Method: pre_run

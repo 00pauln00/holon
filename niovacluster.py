@@ -1,15 +1,12 @@
 class NiovaCluster:
 
-    raftconfobj = {}
-    raftuuidobj = {}
+    raftnpeers = 0 # Number of servers in the cluster
+    raftconfobj = {} #Raftcong object
     inotifyobj = {} # Could be array
-    raftserver = [] # Array
-    raftclient = [] # Array
-    raftserverprocess = [] # Server process Array
-    raftclientprocess = [] # Server process Array
-    nserver = 0 # number of server objects created
-    nclient = 0 # number of client objects created
-    nprocess = 0 # number of processes(server/client) started
+    raftserver = {} # dictionary to store peer:raftserverobj 
+    raftclient = {} # dictionary to store peer:raftclientobj
+    raftserverprocess = {} # dictionary to store peer:serverprocessobj
+    raftclientprocess = {} # dictionary to store peer:clientprocessobj
 
     '''
         Method: Constructor
@@ -17,12 +14,6 @@ class NiovaCluster:
     '''
     def __init__(self, npeers):
         self.raftnpeers = npeers
-        '''
-        Preallocate the list for servers as per the number of peers in the
-        cluster
-        '''
-        self.raftserver = [None] * npeers
-        self.raftserverprocess = [None] * npeers
 
     '''
         Method: raft_conf_obj_store
@@ -47,16 +38,14 @@ class NiovaCluster:
     '''
     def raftserver_obj_store(self, raftserver, peerno):
         self.raftserver[peerno] = raftserver
-        self.nserver += 1
 
     '''
         Method: raft_client_obj_store
         Purpose: store the raft client object at the clientno index.
         Parameters:
     '''
-    def raftclient_obj_store(self, raftclient):
-        self.raftclient.append(raftclient)
-        self.nclient += 1
+    def raftclient_obj_store(self, raftclient, clientno):
+        self.raftclient[clientno] = raftclient
 
     '''
         Method: raft_process_obj_store
@@ -67,6 +56,4 @@ class NiovaCluster:
         if raftprocess.process_type == "server":
             self.raftserverprocess[index] = raftprocess
         else:
-            self.raftclientprocess.append(raftprocess)
-
-        self.nprocess += 1
+            self.raftclientprocess[index] = raftprocess
