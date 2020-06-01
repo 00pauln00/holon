@@ -1,12 +1,19 @@
 from holonrecipe import *
 
 class Recipe(HolonRecipeBase):
-    name = "Recipe03"
-    desc = "Term catchup."
-    parent = "recipe02"
+    name = "term_catch_up"
+    desc = "Term Catchup Recipe\n"\
+            "1. Assuming peer0 is already running, start peer1\n"\
+            "2. Get term values of peer0 and peer1\n"\
+            "3. Pause peer0 and let peer1 increment it's term value\n"\
+            "4. Resume peer0 and verify its term catches up with peer1 term.\n"
+    parent = "term_ticker"
     recipe_proc_obj_list = []
     recipe_ctl_req_obj_list = []
-    
+
+    def dry_run(self):
+        print(self.desc)
+
     def pre_run(self):
         return self.parent
     
@@ -17,7 +24,7 @@ class Recipe(HolonRecipeBase):
         (num-raft-peers-in-config / 2) are running that the term values of all
         servers quickly converge to the highest value.
         '''
-        print(f"============== Run Recip03 ====================\n")
+        print(f"============== Run Term Catchup Recipe ====================\n")
 
         '''
         Extract the objects to be used from clusterobj.
@@ -61,7 +68,7 @@ class Recipe(HolonRecipeBase):
         self.recipe_ctl_req_obj_list.append(p1_term_ctl)
 
         # Get the term valur for Peer0 before pausing it.
-        p0_term_ctl.ctl_req_create_cmdfile_and_copy(genericcmdobj)
+        ctl_req_create_cmdfile_and_copy(p0_term_ctl)
         
         time_global.sleep(1)
         raft_json_dict = genericcmdobj.raft_json_load(p0_term_ctl.output_fpath)
@@ -74,6 +81,7 @@ class Recipe(HolonRecipeBase):
         '''
         print(f"Pause and resume peer0 in loop and check if its term catches up with peer1")
         pause_time = 3
+        recipe_failed = 0
         # TODO Iteration value should be specified by user. 
         for i in range(5):
 
@@ -86,7 +94,7 @@ class Recipe(HolonRecipeBase):
             Copy the cmd file into Peer 1's input directory.
             And read the output JSON to get the term value.
             '''
-            p1_term_ctl.ctl_req_create_cmdfile_and_copy(genericcmdobj)
+            ctl_req_create_cmdfile_and_copy(p1_term_ctl)
             time_global.sleep(1)
 
             raft_json_dict = genericcmdobj.raft_json_load(p1_term_ctl.output_fpath)
@@ -100,7 +108,7 @@ class Recipe(HolonRecipeBase):
             serverproc0.resume_process()
 
             time_global.sleep(1)
-            p0_term_ctl.ctl_req_create_cmdfile_and_copy(genericcmdobj)
+            ctl_req_create_cmdfile_and_copy(p0_term_ctl)
 
             raft_json_dict = genericcmdobj.raft_json_load(p0_term_ctl.output_fpath)
             peer0_term = raft_json_dict["raft_root_entry"][0]["term"]
@@ -114,16 +122,20 @@ class Recipe(HolonRecipeBase):
             '''
             if peer0_term < peer1_term and ((peer1_term - peer0_term) > pause_time):
                 print(f"Term Catch up failed, peer0 term: %d and peer1 term: %d" % (peer0_term, peer1_term))
-                sys.exit(1)
+                recipe_failed = 1
+                break
 
+        if recipe_failed:
+            print("Term Catchup recipe failed")
+        else:
+            print("Term Catchup recipe Successful, Raft Peer 0 term is catching up with peer 1 term!!\n")
 
-        print("Recipe03 Successful, Raft Peer 0 term is catching up with peer 1 term!!\n")
         # Store server1 process object
         clusterobj.raftprocess_obj_store(serverproc1, 1)
         
 
     def post_run(self, clusterobj):
-        print("Post run method for recipe03")
+        print("Post run method")
         for ctl_obj in self.recipe_ctl_req_obj_list:
             ctl_obj.delete_files()
 
