@@ -1,4 +1,5 @@
 from holonrecipe import *
+import logging
 
 class Recipe(HolonRecipeBase):
     name = "basic_ctl_int"
@@ -17,7 +18,7 @@ class Recipe(HolonRecipeBase):
         return self.parent
     
     def run(self, clusterobj):
-        print(f"===========Run Basic Control Interface=======================\n")
+        logging.warning("===========Run Basic Control Interface=======================\n")
 
         '''
         Extract the objects to be used from clusterobj.
@@ -37,7 +38,7 @@ class Recipe(HolonRecipeBase):
         Generate UUID for the application to be used in the outfilename.
         '''
         app_uuid = genericcmdobj.generate_uuid()
-        print(f"Application UUID generated: %s" % app_uuid)
+        logging.warning("Application UUID generated: %s" % app_uuid)
 
         '''
         - Create ctlrequest object to create command for CTL request
@@ -51,7 +52,7 @@ class Recipe(HolonRecipeBase):
         '''
         Create Process object for first server
         '''
-        print(f"Starting peer %d with uuid: %s" % (peerno, peer_uuid))
+        logging.warning("Starting peer %d with uuid: %s" % (peerno, peer_uuid))
         serverproc = RaftProcess(peer_uuid, peerno, "server")
 
         #Start the server process
@@ -85,31 +86,31 @@ class Recipe(HolonRecipeBase):
         recipe_failed = 0
         leader_uuid = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
         if leader_uuid != "":
-            print(f"Error: Leader uuid is set: %s" % leader_uuid)
+            logging.error("Error: Leader uuid is set: %s" % leader_uuid)
             recipe_failed = 1
 
         commit_idx = raft_json_dict["raft_root_entry"][0]["commit-idx"]
         if commit_idx != -1:
-            print(f"commit-idx is not -1: %s" % commit_idx)
+            logging.error("commit-idx is not -1: %s" % commit_idx)
             recipe_failed = 1
         
         last_applied = raft_json_dict["raft_root_entry"][0]["last-applied"]
         if last_applied != -1:
-            print(f"last-applied is not -1: %s" % {last_applied})
+            logging.error("last-applied is not -1: %s" % {last_applied})
             recipe_failed = 1
 
         last_applied_cumulative_crc = raft_json_dict["raft_root_entry"][0]["last-applied-cumulative-crc"]
         if last_applied_cumulative_crc != 0:
-            print(f"last-applied-cumulative-crc is not zero: %s" % last_applied_cumulative_crc)
+            logging.error("last-applied-cumulative-crc is not zero: %s" % last_applied_cumulative_crc)
             recipe_failed = 1
-        #ignore_timer_events = data["raft_net_info"]["ignore_timer_events"]
+        #ignore_timer_events = raft_json_dict["raft_net_info"]["ignore_timer_events"]
         #if ignore_timer_events != "true":
-        #    print(f"ignore_timer_evernts should be true")
+        #    logging.error("ignore_timer_evernts should be true")
         #    recipe_failed = 1
 
         if recipe_failed:
-            print("Basic control interface recipe Failed")
-            return
+            logging.error("Basic control interface recipe Failed")
+            return recipe_failed
 
         '''
         Activate the server by exiting the idleness
@@ -124,7 +125,7 @@ class Recipe(HolonRecipeBase):
         # sleep for 2sec
         time_global.sleep(2)
 
-        print(f"Exited Idleness and starting the server loop\n")
+        logging.warning("Exited Idleness and starting the server loop\n")
 
         # Once server the started, verify that the timestamp progresses
         curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid, app_uuid)
@@ -142,43 +143,45 @@ class Recipe(HolonRecipeBase):
             time_string = curr_time_string.split()
             time = time_string[3]
 
-            print(f"Time is: %s" % time)
+            logging.warning("Time is: %s" % time)
             timestamp_dict[i] = time
+            time_global.sleep(3)
             # Copy the cmd file into input directory of server.
-            print(f"Copy cmd file to get current_system_time for iteration: %d" % i)
+            logging.warning("Copy cmd file to get current_system_time for iteration: %d" % i)
             ctl_req_create_cmdfile_and_copy(curr_time_ctl)
-            time_global.sleep(2)
 
         '''
         Compare the timestamp stored in the timestamp_arr and verify time
         is progressing.
         '''
         recipe_failed = 0
-        print(f"Compare the timestamp and it should be progressing.")
+        logging.warning("Compare the timestamp and it should be progressing.")
         for i in range(3):
             time1 = timestamp_dict[i]
             time2 = timestamp_dict[i+1]
             prev_time = datetime.strptime(time1,"%H:%M:%S")
             curr_time = datetime.strptime(time2,"%H:%M:%S")
             if prev_time >= curr_time:
-                print("Error: Time is not updating")
+                logging.error("Error: Time is not updating")
                 recipe_failed = 1
                 break
 
         if recipe_failed:
-            print("Basic control interface recipe failed")
+            logging.error("Basic control interface recipe failed")
         else:
-            print("Basic control interface Recipe Successful, Time progressing!!")
+            logging.warning("Basic control interface Recipe Successful, Time progressing!!")
 
         # Store server process object
         clusterobj.raftprocess_obj_store(serverproc, peerno)
 
+        return recipe_failed
+
     def post_run(self, clusterobj):
-        print("Post run method")
+        logging.warning("Post run method")
         # Delete all the input and output files this recipe has written.
         for ctl_obj in self.recipe_ctl_req_obj_list:
             ctl_obj.delete_files()
 
         for proc_obj in self.recipe_proc_obj_list:
-            print("kill server process: %d" % proc_obj.process_idx)
+            logging.warning("kill server process: %d" % proc_obj.process_idx)
             proc_obj.kill_process()

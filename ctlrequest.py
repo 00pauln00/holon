@@ -1,4 +1,4 @@
-import os
+import os, logging
 import subprocess
 from basicio import BasicIO
 from genericcmd import GenericCmds
@@ -19,10 +19,22 @@ def ctl_req_create_cmdfile_and_copy(ctlreqobj):
     tmp_file = "/tmp/%s" % i_base
 
     fd = basicioobj.open_file(tmp_file)
-    basicioobj.write_file(fd, cmd_str)
-    basicioobj.close_file(fd)
+    if fd == None:
+        return -1
 
-    genericcmdobj.move_file(tmp_file, ctlreqobj.input_fpath)
+    rc = basicioobj.write_file(fd, cmd_str)
+    if rc == -1:
+        return rc
+
+    rc = basicioobj.close_file(fd)
+    if rc == -1:
+        return rc
+
+    rc = genericcmdobj.move_file(tmp_file, ctlreqobj.input_fpath)
+    if rc == -1:
+        return rc
+
+    return rc
 
 
 class CtlRequest:
@@ -57,12 +69,12 @@ class CtlRequest:
     def delete_files(self):
         genericcmdobj = GenericCmds()
 
-        print(f"Destroying ctl obj")
+        logging.warning("Destroying ctl obj")
         if os.path.exists(self.input_fpath):
-            print(f"Removing file: %s" % self.input_fpath)
+            logging.warning("Removing file: %s" % self.input_fpath)
             genericcmdobj.remove_file(self.input_fpath)
 
         if os.path.exists(self.output_fpath):
-            print(f"Removing file: %s" % self.output_fpath)
+            logging.warning("Removing file: %s" % self.output_fpath)
             genericcmdobj.remove_file(self.output_fpath)
 

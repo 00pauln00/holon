@@ -1,4 +1,5 @@
 from holonrecipe import *
+import logging
 
 class Recipe(HolonRecipeBase):
     name = "basic_leader_election"
@@ -17,12 +18,7 @@ class Recipe(HolonRecipeBase):
         return self.parent
     
     def run(self, clusterobj):
-        '''
-        Purpose of this recipe is:
-        Invoke and observe a successful leader election with the minimum
-        number of peers per the specified configuration.
-        '''
-        print(f"================ Run Basic Leader election ======================\n")
+        logging.warning("================ Run Basic Leader election ======================\n")
 
         '''
         Extract the objects to be used from clusterobj.
@@ -31,23 +27,25 @@ class Recipe(HolonRecipeBase):
         raftconfobj = clusterobj.raftconfobj
 
         # Number of peers to be started for Recipe04
-        npeer_start = 3
-        peerno = 2
-        peer_uuid_arr = [None] * npeer_start
+        npeer_start = int(raftconfobj.nservers / 2) + 1
+        peer_uuid_arr = {}
+
+        logging.warning("Number of peers needed for leader election: %d" % npeer_start)
 
         for p in range(npeer_start):
             peer_uuid_arr[p] = raftconfobj.get_peer_uuid_for_peerno(p)
 
         '''
-        To start the peer2, create objects for raftserver and raftprocess.
+        peer0 and peer1 is already started by the previous recipes.
+        So start from peer2 till npeer_start for basic leader election
         '''
-        print(f"Starting peer %d with UUID: %s" % (peerno, peer_uuid_arr[peerno]))
-        raftserverobj2 = RaftServer(raftconfobj, peerno)
-        serverproc2 = RaftProcess(peer_uuid_arr[peerno], peerno, "server")
-
-        serverproc2.start_process(raftconfobj)
-        # append the serverproc into recipe process object list
-        self.recipe_proc_obj_list.append(serverproc2)
+        serverproc = {}
+        for p in range(2, npeer_start):
+            logging.warning("Starting peer %d with UUID: %s" % (p, peer_uuid_arr[p]))
+            serverproc[p] = RaftProcess(peer_uuid_arr[p], p, "server")
+            serverproc[p].start_process(raftconfobj)
+            # append the serverproc into recipe process object list
+            self.recipe_proc_obj_list.append(serverproc[p])
 
         time_global.sleep(2)
         '''
@@ -98,7 +96,7 @@ class Recipe(HolonRecipeBase):
                     break
 
             if election_in_progress == 0:
-                print("Leader election successful")
+                logging.warning("Leader election successful")
                 break
 
         
@@ -111,13 +109,13 @@ class Recipe(HolonRecipeBase):
 
             commit_idx[p] = raft_json_dict["raft_root_entry"][0]["commit-idx"]
             if commit_idx[p] != 0:
-                print("Error: Commit idx is not 0 for peer %s" % p)
+                logging.error("Commit idx is not 0 for peer %s" % p)
                 recipe_failed = 1
                 break
 
             last_applied[p] = raft_json_dict["raft_root_entry"][0]["last-applied"]
             if last_applied[p] != 0:
-                print("Error: Last applied is not 0 for peer %s" % p)
+                logging.error("Last applied is not 0 for peer %s" % p)
                 recipe_failed = 1
                 break
 
@@ -129,41 +127,45 @@ class Recipe(HolonRecipeBase):
 
             # Term should be same as newest_entry_term
             if term_values[p] != newest_entry_term[p]:
-                print("Error, term %d is not same as newest-entry-term %d" % (term_values[p], newest_entry_term[p]))
+                loggin.error("term %d is not same as newest-entry-term %d" % (term_values[p], newest_entry_term[p]))
                 recipe_failed = 1
                 break
 
             # last-applied-cumulative-crc should be same as newest-entry-crc
             if cumu_crc[p] != newest_entry_crc[p]:
-                print("Error: last-applied-cumulative-crc %d is not same as newest-entry-crc : %d" % (cumu_crc[p], newest_entry_crc[p]))
+                logging.error("last-applied-cumulative-crc %d is not same as newest-entry-crc : %d" % (cumu_crc[p], newest_entry_crc[p]))
                 recipe_failed = 1
                 break
 
+        if recipe_failed:
+            logging.error("Basic leader election recipe failed")
+            return recipe_failed
         # Make sure leader-uuid is same on all three peers.
-        if not (leader_uuid[0] == leader_uuid[1] and leader_uuid[0] == leader_uuid[2]):
-            print("Error Leader uuid is not same of all peers")
+        elif not (leader_uuid[0] == leader_uuid[1] and leader_uuid[0] == leader_uuid[2]):
+            logging.error("Leader uuid is not same of all peers")
             recipe_failed = 1
         elif not (term_values[0] == term_values[1] and term_values[0] == term_values[2]):
-            print("Error: Term values are not same for all peers")
+            logging.error("Term values are not same for all peers")
             recipe_failed = 1
 
         if recipe_failed:
-            print("Basic Leader election Faileed")
+            logging.error("Basic Leader election recipe Failed")
         else:
-            print("Basic leader election Successful, Leader election successful!!\n")
+            logging.warning("Basic leader election Successful, Leader election successful!!\n")
 
-        # Store the raftserver2 object into clusterobj
-        clusterobj.raftserver_obj_store(raftserverobj2, peerno)
         # Store server2 process object
-        clusterobj.raftprocess_obj_store(serverproc2, peerno)
+        for p in range(2, npeer_start):
+            clusterobj.raftprocess_obj_store(serverproc[p], p)
+
+        return recipe_failed
         
 
     def post_run(self, clusterobj):
-        print("Post run method")
+        logging.warning("Post run method")
         # Delete all the input and output files this recipe has written.
         for ctl_obj in self.recipe_ctl_req_obj_list:
             ctl_obj.delete_files()
 
         for proc_obj in self.recipe_proc_obj_list:
-            print("kill server process: %d" % proc_obj.process_idx)
+            logging.warning("kill server process: %d" % proc_obj.process_idx)
             proc_obj.kill_process()

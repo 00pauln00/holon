@@ -1,4 +1,4 @@
-import os, subprocess, json, time
+import os, subprocess, json, time, logging
 from datetime import datetime
 
 '''
@@ -25,11 +25,12 @@ class GenericCmds:
     Method: copy file from source to destinaton directory
     '''
     def copy_file(self, src_path, dest_path):
-        
         p = subprocess.run(['cp', src_path, dest_path], stdout=subprocess.PIPE)
 
         if p.returncode != 0:
-            print(f"Copy file %s to %s failed with error: %d" % (src_path, dest_path, p.returncode))
+            logging.error("Copy file %s to %s failed with error: %d" % (src_path, dest_path, p.returncode))
+
+        return p.returncode
 
     '''
     Method: Move file from source to destinaton directory
@@ -38,14 +39,18 @@ class GenericCmds:
         
         p = subprocess.run(['mv', src_path, dest_path], stdout=subprocess.PIPE)
         if p.returncode != 0:
-            print(f"Move file %s to %s failed with error: %d" % (src_path, dest_path, p.returncode))
+            logging.error("Move file %s to %s failed with error: %d" % (src_path, dest_path, p.returncode))
+
+        return p.returncode
 
     def remove_file(self, fpath):
+        rc = 0
         try:
-            os.remove(fpath)
+            rc = os.remove(fpath)
         except OSError as e:
-            print(f"File %s remove failed with error: %s" % (fpath, os.strerror(e.errno)))
-            sys.exit()
+            logging.error("File %s remove failed with error: %s" % (fpath, os.strerror(e.errno)))
+            
+        return rc
 
     '''
     method raft_json_load: Lead the JSON file

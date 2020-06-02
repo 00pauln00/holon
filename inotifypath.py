@@ -1,4 +1,4 @@
-import os
+import os, logging
 import subprocess
 
 class InotifyPath:
@@ -17,10 +17,10 @@ class InotifyPath:
         self.inotify_is_base_path = inotify_is_base_path
         if inotify_is_base_path:
             os.environ['NIOVA_INOTIFY_BASE_PATH'] = inotify_path
-            print("exporting NIOVA_INOTIFY_BASE_PATH=", os.environ['NIOVA_INOTIFY_BASE_PATH'])
+            logging.warning("exporting NIOVA_INOTIFY_BASE_PATH=%s", os.environ['NIOVA_INOTIFY_BASE_PATH'])
         else:
             os.environ['NIOVA_INOTIFY_PATH'] = inotify_path
-            print("exporting NIOVA_INOTIFY_PATH=", os.environ['NIOVA_INOTIFY_PATH'])
+            logging.warning("exporting NIOVA_INOTIFY_PATH=%s", os.environ['NIOVA_INOTIFY_PATH'])
 
 
     '''
@@ -31,7 +31,7 @@ class InotifyPath:
     def export_init_path(self, init_path):
         self.inotify_init_path = init_path
         os.environ['NIOVA_CTL_INTERFACE_INIT_PATH'] = init_path
-        print("exporting NIOVA_CTL_INTERFACE_INIT_PATH=", os.environ['NIOVA_CTL_INTERFACE_INIT_PATH'])
+        logging.warning("exporting NIOVA_CTL_INTERFACE_INIT_PATH=%s", os.environ['NIOVA_CTL_INTERFACE_INIT_PATH'])
 
 
     '''

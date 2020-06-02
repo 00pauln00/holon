@@ -1,4 +1,4 @@
-import signal, subprocess
+import signal, subprocess, logging
 from raftconfig import RaftConfig
 class RaftProcess:
 
@@ -28,7 +28,7 @@ class RaftProcess:
                     @uuid: UUID of the server or client.
     '''
     def start_process(self, raftconfobj):
-        print(f"Starting process of type: %s with UUID: %s" % (self.process_type,
+        logging.warning("Starting process of type: %s with UUID: %s" % (self.process_type,
                                 self.process_uuid))
 
         if self.process_type == 'server':
@@ -42,9 +42,9 @@ class RaftProcess:
 
         # Check if child process exited with error
         if self.process_popen.poll() is None:
-            print(f"Raft process started successfully")
+            logging.warning("Raft process started successfully")
         else:
-            print(f"Error: Raft process failed to start")
+            logging.error("Raft process failed to start")
             raise subprocess.SubprocessError(self.process_popen.returncode)
 
     '''
@@ -53,13 +53,14 @@ class RaftProcess:
         Parameters:
     '''
     def pause_process(self):
-        print("pause the process by sending sigstop")
+        logging.warning("pause the process by sending sigstop")
         try:
             self.process_popen.send_signal(signal.SIGSTOP)
         except subprocess.SubprocessError as e:
-            print(f"Failed to send Stop signal with error: %s" % os.stderror(e.errno))
-            sys.exit()
+            logging.error("Failed to send Stop signal with error: %s" % os.stderror(e.errno))
+            return -1
 
+        return 0
 
     '''
         Method: resume_process
@@ -67,12 +68,14 @@ class RaftProcess:
         Parameters:
     '''
     def resume_process(self):
-        print("resume the process by sending sigcont")
+        logging.warning("resume the process by sending sigcont")
         try:
             self.process_popen.send_signal(signal.SIGCONT)
         except subprocess.SubprocessError as e:
-            print(f"Failed to send CONT signal with error: %s" % os.stderror(e.errno))
-            sys.exit()
+            logging.error("Failed to send CONT signal with error: %s" % os.stderror(e.errno))
+            return -1
+
+        return 0
 
     '''
         Method: kill_process
@@ -80,9 +83,11 @@ class RaftProcess:
         Parameters:
     '''
     def kill_process(self):
-        print("kill the process by sending sigterm")
+        logging.warning("kill the process by sending sigterm")
         try:
             self.process_popen.send_signal(signal.SIGTERM)
         except subprocess.SubprocessError as e:
-            print(f"Failed to send kill signal with error: %s" % os.stderror(e.errno))
-            sys.exit()
+            logging.error("Failed to send kill signal with error: %s" % os.stderror(e.errno))
+            return -1
+
+        return 0
