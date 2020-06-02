@@ -1,4 +1,5 @@
 import os, errno, sys
+import logging
 
 '''
 This class will have methods for file IO operations.
@@ -11,11 +12,11 @@ class BasicIO:
     parameters: @file path.
     '''
     def open_file(self, fpath):
+        fd = None
         try:
             fd = open(fpath, "w+")
         except OSError as e:
-            print(f"File (%s) open failed with error: %s" % (fpath, os.strerror(e.errno)))
-            sys.exit()
+            logging.error("File (%s) open failed with error: %s" % (fpath, os.strerror(e.errno)))
 
         return fd
 
@@ -26,11 +27,13 @@ class BasicIO:
                 @buffer: Write this buffer data into file.
     '''
     def write_file(self, fd, buff):
+        nbytes = 1
         try:
-            fd.write(buff)
+            nbytes = fd.write(buff)
         except OSError as e:
-            print(f"File write failed with error: %s" % os.strerror(e.errno))
-            sys.exit()
+            logging.error("File write failed with error: %s" % os.strerror(e.errno))
+
+        return nbytes
 
     '''
     method: create file.
@@ -38,10 +41,10 @@ class BasicIO:
     parameters: @file descriptor.
     '''
     def close_file(self, fd):
+        rc = -1
         try:
-            fd.close()
+            rc = fd.close()
         except OSError as e:
-            print(f"File close failed with error: %s" % os.strerror(e.errno))
-            sys.exit()
+            logging.error("File close failed with error: %s" % os.strerror(e.errno))
 
-
+        return rc

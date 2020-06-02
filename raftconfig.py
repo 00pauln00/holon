@@ -1,4 +1,4 @@
-import os
+import os, logging
 import subprocess
 from basicio import BasicIO
 
@@ -25,7 +25,7 @@ class RaftConfig:
     '''
     def export_path(self):
         CTL_SVC_DIR = os.environ['NIOVA_LOCAL_CTL_SVC_DIR'] = self.server_config_path
-        print(f"exporting NIOVA_LOCAL_CTL_SVC_DIR=", CTL_SVC_DIR)
+        logging.warning("exporting NIOVA_LOCAL_CTL_SVC_DIR=%s", self.server_config_path)
 
 
     '''
@@ -57,7 +57,7 @@ class RaftConfig:
         Raft config file name format would be <RAFT_UUID>.raft
         '''
         raft_conf_path = "%s/%s.raft" % (self.server_config_path, self.raft_uuid)
-        print(f"Raft config file path: %s" % raft_conf_path)
+        logging.warning("Raft config file path: %s" % raft_conf_path)
         # open file:
         raft_fd = basicioobj.open_file(raft_conf_path)
         # write to the file.
@@ -75,7 +75,7 @@ class RaftConfig:
             basicioobj.write_file(raft_fd, "PEER %s\n" % peer_uuid)
 
             peer_config_path = "%s/%s.peer" % (self.server_config_path, peer_uuid)
-            print(f"Generating config file for peer at %s " % peer_config_path)
+            logging.warning("Generating config file for peer at %s " % peer_config_path)
             store_path = "%s/%s.raftdb" % (raft_db_path, peer_uuid)
             conf_buff = "RAFT         %s\nIPADDR       %s\nPORT         %s\nCLIENT_PORT  %s\nSTORE        %s\n" % (self.raft_uuid, ip_address, port, client_port, store_path)
 
@@ -124,7 +124,6 @@ class RaftConfig:
         client config file name format would be <CLIENT_UUID>.raft_client.
         '''
         client_conf_path = "%s/%s.raft_client" % (self.server_config_path, client_uuid)
-        print(client_conf_path)
         cl_fd = basicioobj.open_file(client_conf_path)
         client_buff = "RAFT              %s\nIPADDR            %s\nCLIENT_PORT       %s\n" % (self.raft_uuid, ip_address, client_port)
         # Write the config file
