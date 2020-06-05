@@ -43,12 +43,39 @@ except getopt.GetoptError:
 for name, value in options:
     if name in ('-s', '--server-conf'):
         server_conf_path = value
+        if not os.path.exists(server_conf_path):
+            try:
+                os.makedirs(server_conf_path)
+            except OSError as exc:
+                if exc.errno != errno.EEXIST:
+                    raise
+
     if name in ('-n', '--inotify_path'):
         inotify_path = value
+        if not os.path.exists(inotify_path):
+            try:
+                os.makedirs(inotify_path)
+            except OSError as exc:
+                if exc.errno != errno.EEXIST:
+                    raise
+
     if name in ('-i', '--init_path'):
         init_path = value
+        if not os.path.exists(init_path):
+            try:
+                os.makedirs(init_path)
+            except OSError as exc:
+                if exc.errno != errno.EEXIST:
+                    raise
+
     if name in ('-l', '--log_path'):
         log_file_path = value
+        if not os.path.exists(os.path.dirname(log_file_path)):
+            try:
+                os.makedirs(os.path.dirname(log_file_path))
+            except OSError as exc:
+                if exc.errno != errno.EEXIST:
+                    raise
     if name in ('-o', '--npeers'):
         npeers = int(value)
     if name in ('-p', '--port'):
