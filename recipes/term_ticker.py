@@ -135,7 +135,7 @@ class Recipe(HolonRecipeBase):
         '''
             
         before_restart_term = term
-        print("Term value before Restart of the server is %s" % before_restart_term)
+        logging.warning("Term value before Restart of the server is %s" % before_restart_term)
 
         # Kill the server
         serverproc0.kill_process()

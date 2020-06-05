@@ -159,8 +159,8 @@ recipe_arr = []
 Iterate over the recipe hierarchy and gather the recipe objects.
 '''
 
-recipe_name = ".%s" % recipe_name
-RecipeModule = importlib.import_module(recipe_name, package="recipes")
+recipe = ".%s" % recipe_name
+RecipeModule = importlib.import_module(recipe, package="recipes")
 print(RecipeModule)
 
 RecipeClass = RecipeModule.Recipe
@@ -184,12 +184,14 @@ logging.warning("Recipe Hierarchy from Root => Leaf")
 for r in reversed(recipe_arr):
     logging.warn("%s" % r().name)
 
+'''
+dry_run will only print the ancestors recipe names for the given recipe.
+'''
 if dry_run:
-    logging.warning("Dry Run recipes")
+    print("Ancestors:")
     for r in reversed(recipe_arr):
-        logging.warning("Running Recipe %s" % r().name)
-        r().dry_run()
-
+        if r().name != recipe_name:
+            print(f"%s " % r().name)
     exit()
 
 '''

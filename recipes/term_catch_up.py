@@ -58,11 +58,11 @@ class Recipe(HolonRecipeBase):
         p0_term_ctl = CtlRequest(inotifyobj, "get_term", peer0_uuid, app_uuid)
         p1_term_ctl = CtlRequest(inotifyobj, "get_term", peer1_uuid, app_uuid)
 
-        # append the idle_off_ctl object into recipe's ctl_req list.
+        # append the get_term_ctl object into recipe's ctl_req list.
         self.recipe_ctl_req_obj_list.append(p0_term_ctl)
         self.recipe_ctl_req_obj_list.append(p1_term_ctl)
 
-        # Get the term valur for Peer0 before pausing it.
+        # Get the term value for Peer0 before pausing it.
         ctl_req_create_cmdfile_and_copy(p0_term_ctl)
         
         time_global.sleep(1)
