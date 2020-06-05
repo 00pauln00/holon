@@ -153,9 +153,10 @@ clusterobj = NiovaCluster(npeers)
 genericcmdobj = GenericCmds() 
 raftconfobj = RaftConfig(server_conf_path)
 
-raftconfobj.export_path()
 raftconfobj.generate_raft_conf(genericcmdobj, npeers, "127.0.0.1", port,
                                 client_port, inotify_path)
+
+raftconfobj.export_path()
 logging.warning(f"Raft conf and server configs generated")
 
 inotifyobj = InotifyPath(inotify_path, True)
