@@ -46,6 +46,18 @@ class RaftConfig:
         self.raft_uuid = genericcmdobj.generate_uuid()
 
         '''
+        Generate RAFT_UUID directory inside server_conf_path to make sure
+        conf files for this instance gets created inside unique directory.
+        '''
+
+        self.server_config_path = "%s/%s" % (self.server_config_path, self.raft_uuid)
+        try:
+            os.mkdir(self.server_config_path)
+        except OSError as error:
+            print("Can't create unique directory %s" % self.server_config_path)
+            exit()
+
+        '''
         Prepare raft config file. Its format would be:
         //
         RAFT <RAFT_UUID>
