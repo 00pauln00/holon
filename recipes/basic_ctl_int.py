@@ -105,9 +105,12 @@ class Recipe(HolonRecipeBase):
             recipe_failed = 1
         #ignore_timer_events = raft_json_dict["raft_net_info"]["ignore_timer_events"]
         #if ignore_timer_events != "true":
-        #    logging.error("ignore_timer_evernts should be true")
-        #    recipe_failed = 1
-
+        #  logging.error("ignore_timer_evernts should be true")
+        #  recipe_failed = 1
+        ignore_timer_events = raft_json_dict["raft_net_info"]["ignore_timer_events"]
+        if ignore_timer_events != True:
+            logging.error("ignore_timer_evernts should be true %s" % ignore_timer_events)
+            recipe_failed = 1
         if recipe_failed:
             logging.error("Basic control interface recipe Failed")
             return recipe_failed
