@@ -1,4 +1,4 @@
-import os, sys, importlib, getopt, logging
+import os, sys, importlib, getopt, logging, fnmatch
 from raftconfig import RaftConfig
 from inotifypath import InotifyPath
 from niovacluster import NiovaCluster
@@ -16,6 +16,7 @@ port = 6000
 client_port = 13000
 dry_run = False
 disable_post_run = False
+recipe_name = ""
 
 def Usage():
     print("-s <server config path>\n"
@@ -85,7 +86,14 @@ if client_port >= 65536:
     exit()
 
 if recipe_name == "":
-    print(f"Please pass the recipe name to run")
+    print("Recipe name is not provided......")
+    print("Please select from the list of available recipes:")
+    listOfFiles = os.listdir('./recipes')
+    pattern = "*.py"
+    for files in listOfFiles:
+        if fnmatch.fnmatch(files, pattern):
+            print ("- %s"% files)
+    print(f"Please pass the recipe name as -r <recipe_name>")
     exit()
 
 print(f"Server conf path: %s" % server_conf_path)
@@ -124,7 +132,8 @@ recipe_arr = []
 Iterate over the recipe hierarchy and gather the recipe objects.
 '''
 
-RecipeModule = importlib.import_module(recipe_name)
+recipe_name = ".%s" % recipe_name
+RecipeModule = importlib.import_module(recipe_name, package="recipes")
 print(RecipeModule)
 
 RecipeClass = RecipeModule.Recipe
@@ -137,7 +146,8 @@ Call pre_run method of all recipes in the hierarchy to build the recipe
 tree for execution.
 '''
 while parent != "":
-    parentRecipeModule = importlib.import_module(parent)
+    parent = ".%s" %  parent
+    parentRecipeModule = importlib.import_module(parent, package="recipes")
 
     RecipeClass = parentRecipeModule.Recipe
     recipe_arr.append(RecipeClass)
