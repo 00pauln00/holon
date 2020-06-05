@@ -1,4 +1,4 @@
-import os, sys, importlib, getopt, logging, fnmatch
+import os, sys, importlib, getopt, logging, fnmatch, socket, errno
 from raftconfig import RaftConfig
 from inotifypath import InotifyPath
 from niovacluster import NiovaCluster
@@ -111,6 +111,19 @@ if port >= 65536:
 if client_port >= 65536:
     print(f"Client Port (%d) should be less than 65536" % client_port)
     exit()
+
+# Make sure server port and client port are not in use
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+for p in (port, client_port):
+    try:
+        s.bind(("127.0.0.1", p))
+    except socket.error as e:
+        if e.errno == errno.EADDRINUSE:
+            print(f"Port %d is already in use" % p)
+            exit()
+
+s.close()
 
 if recipe_name == "":
     print("Recipe name is not provided......")
