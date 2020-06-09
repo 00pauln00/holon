@@ -1,9 +1,11 @@
 import os, logging
 import subprocess
 from basicio import BasicIO
+from genericcmd import GenericCmds
 
 class RaftConfig:
 
+    base_dir_path = ''
     server_config_path = ''
     raft_uuid = ''
     peer_uuid_arr = [] # Peer UUID array
@@ -14,9 +16,16 @@ class RaftConfig:
         Constructor:
         Purpose: Initialisation
     '''
-    def __init__(self, server_config_path):
-        self.server_config_path = server_config_path
+    def __init__(self, base_dir_path, raft_uuid, genericcmdobj):
+        self.raft_uuid = raft_uuid
+        '''
+        All the configs will  be inside test_root/raft_uuid/configs
+        '''
+        raft_conf_path = "%s/configs" % base_dir_path
+        genericcmdobj.make_dir(raft_conf_path)
 
+        self.base_dir_path = base_dir_path
+        self.server_config_path = raft_conf_path
 
     '''
         Method: export_path
@@ -39,23 +48,18 @@ class RaftConfig:
                     for all servers.
                 
     '''
-    def generate_raft_conf(self, genericcmdobj, nservers, ip_address, port, client_port, raft_db_path):
+    def generate_raft_conf(self, genericcmdobj, nservers, ip_address, port, client_port):
 
         basicioobj = BasicIO()
-        # Generate RAFT UUID and store it in raftconf object
-        self.raft_uuid = genericcmdobj.generate_uuid()
+        genericcmdobj = GenericCmds()
 
         '''
         Generate RAFT_UUID directory inside server_conf_path to make sure
         conf files for this instance gets created inside unique directory.
         '''
 
-        self.server_config_path = "%s/%s" % (self.server_config_path, self.raft_uuid)
-        try:
-            os.mkdir(self.server_config_path)
-        except OSError as error:
-            print("Can't create unique directory %s" % self.server_config_path)
-            exit()
+        # export the server config path
+        self.export_path()
 
         '''
         Prepare raft config file. Its format would be:
@@ -76,6 +80,13 @@ class RaftConfig:
         basicioobj.write_file(raft_fd, "RAFT %s\n" % (self.raft_uuid))
 
         self.nservers = nservers
+
+        '''
+        Create directory to store raftdb files.
+        The path would be test_root/raft_uuid/raftdb
+        '''
+        raft_db_path = "%s/raftdb" % self.base_dir_path
+        genericcmdobj.make_dir(raft_db_path)
 
         '''
         Prepare config file each peer in the cluster. Peer config file name

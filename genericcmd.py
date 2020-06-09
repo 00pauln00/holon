@@ -65,3 +65,10 @@ class GenericCmds:
 
         return data
 
+    def make_dir(self, dirpath):
+        if not os.path.exists(dirpath):
+            try:
+                os.makedirs(dirpath)
+            except OSError as exc:
+                if exc.errno != errno.EEXIST:
+                    raise

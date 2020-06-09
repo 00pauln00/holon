@@ -30,6 +30,10 @@ def ctl_req_create_cmdfile_and_copy(ctlreqobj):
     if rc == -1:
         return rc
 
+    # Create input_fpath directory if does not exist already.
+    if not os.path.exists(os.path.dirname(ctlreqobj.input_fpath)):
+        genericcmdobj.make_dir(os.path.dirname(ctlreqobj.input_fpath))
+
     rc = genericcmdobj.move_file(tmp_file, ctlreqobj.input_fpath)
     if rc == -1:
         return rc
@@ -49,20 +53,25 @@ class CtlRequest:
     output_fpath = ""
     cmd = ""
 
-    def __init__(self, inotifyobj, cmd, peer_uuid, app_uuid):
+    def __init__(self, inotifyobj, cmd, peer_uuid, app_uuid, shared_init):
 
         self.cmd = cmd
 
         if cmd == "idle_on":
-            self.input_fpath = inotifyobj.prepare_init_path(cmd, app_uuid)
+            self.input_fpath = inotifyobj.prepare_init_path(peer_uuid, cmd,
+                                                            app_uuid,
+                                                            shared_init)
+            # export the init path
+            inotifyobj.export_init_path(peer_uuid, shared_init)
+
         else:
             self.input_fpath = inotifyobj.prepare_input_output_path(peer_uuid,
                                                                     cmd, True,
                                                                     app_uuid)
-            
+
         self.output_fpath = inotifyobj.prepare_input_output_path(peer_uuid,
-                                                                cmd, False,
-                                                                app_uuid)
+                                                                 cmd, False,
+                                                                 app_uuid)
         # Copy the cmd file into input directory
         ctl_req_create_cmdfile_and_copy(self)
 

@@ -68,7 +68,8 @@ class Recipe(HolonRecipeBase):
         get_ctl = [None] * npeer_start
 
         for p in range(npeer_start):
-            get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p], app_uuid)
+            get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
+                                    app_uuid, False)
             self.recipe_ctl_req_obj_list.append(get_ctl[p])
 
 
