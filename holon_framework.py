@@ -22,15 +22,15 @@ def Usage():
           "-o <Number of Servers>\n"
           "-p <Port>\n"
           "-c <Client Port>\n"
-          "-r <Recipe Name>\n"
           "-d <Dry Run recipes>\n"
           "-D <Disable port run on error>\n"
+          "recipe name\n"
           "-h Print Help")
 try:
     options, args = getopt.getopt(
-            sys.argv[1:], "P:o:p:c:r:l:dhD",["dir_path=",
+            sys.argv[1:], "P:o:p:c:l:dhD",["dir_path=",
                         "npeers=",
-                        "port=", "client_port=", "recipe=",
+                        "port=", "client_port=",
                         "log_path=",
                         "dry-run", "disable-post-run", "help"])
 except getopt.GetoptError:
@@ -57,8 +57,6 @@ for name, value in options:
         port = int(value)
     if name in ('-c', '--client_port'):
         client_port = int(value)
-    if name in ('-r', '--recipe_name'):
-        recipe_name = value
     if name in ('-d', "--dry-run"):
         dry_run = True
     if name in ('-D', "--disable-post-run"):
@@ -92,15 +90,29 @@ for p in (port, client_port):
 
 s.close()
 
-if recipe_name == "":
-    print("Recipe name is not provided......")
-    print("Please select from the list of available recipes:")
-    listOfFiles = os.listdir('./recipes')
-    pattern = "*.py"
-    for files in listOfFiles:
-        if fnmatch.fnmatch(files, pattern):
-            print ("- %s"% files)
-    print(f"Please pass the recipe name as -r <recipe_name>")
+recipe_name = sys.argv[len(sys.argv) -1]
+
+#print("Recipe name is: %s" % recipe_name)
+#if recipe_name == "":
+#    print("Recipe name is not provided......")
+#    print("Please select from the list of available recipes:")
+listOfFiles = os.listdir('./recipes')
+pattern = "*.py"
+rec_name = []
+valid_recipe = 0
+for files in listOfFiles:
+    if fnmatch.fnmatch(files, pattern):
+        x = files.split(".py")
+        rec_name.append(x[0])
+        if x[0] == recipe_name:
+            valid_recipe = 1
+            break
+
+if valid_recipe == 0:
+    print("Error: Invalid recipe name passed")
+    print("Select from valid recipes:")
+    for r in rec_name:
+        print(r)
     exit()
 
 print(f"Holon Directory path: %s" % dir_path)
