@@ -44,10 +44,11 @@ class Recipe(HolonRecipeBase):
         Will verify parameters from server JSON output to check term value. 
         '''
         get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid,
-                                    False)
-
-        # append the curr_time_ctl object into recipe's ctl_req list.
-        self.recipe_ctl_req_obj_list.append(get_all_ctl)
+                                    False, self.recipe_ctl_req_obj_list).Apply()
+        if get_all_ctl.Error() != 0:
+            logging.error("Failed to create ctl req object error: %d" % get_all_ctl.error)
+            logging.error("Basic control interface recipe Failed")
+            return get_all_ctl.Error()
 
         '''
         Run the loop to copy the command file for getting the term value

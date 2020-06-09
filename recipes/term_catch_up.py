@@ -56,16 +56,21 @@ class Recipe(HolonRecipeBase):
         - Create ctlrequest object to create command for CTL request
         '''
         p0_term_ctl = CtlRequest(inotifyobj, "get_term", peer0_uuid, app_uuid,
-                                    False)
-        p1_term_ctl = CtlRequest(inotifyobj, "get_term", peer1_uuid, app_uuid,
-                                    False)
+                                    False, self.recipe_ctl_req_obj_list).Apply()
+        if p0_term_ctl.Error() != 0:
+            logging.error("Failed to create ctl req object error: %d" % p0_term_ctl.Error())
+            logging.error("Term catch up recipe Failed")
+            return p0_term_ctl.Error()
 
-        # append the get_term_ctl object into recipe's ctl_req list.
-        self.recipe_ctl_req_obj_list.append(p0_term_ctl)
-        self.recipe_ctl_req_obj_list.append(p1_term_ctl)
+        p1_term_ctl = CtlRequest(inotifyobj, "get_term", peer1_uuid, app_uuid,
+                                    False, self.recipe_ctl_req_obj_list).Apply()
+        if p1_term_ctl.Error() != 0:
+            logging.error("Failed to create ctl req object error: %d" % p1_term_ctl.Error())
+            logging.error("Term catch up recipe Failed")
+            return p1_term_ctl.Error()
 
         # Get the term value for Peer0 before pausing it.
-        ctl_req_create_cmdfile_and_copy(p0_term_ctl)
+        p0_term_ctl.Apply()
         
         time_global.sleep(1)
         raft_json_dict = genericcmdobj.raft_json_load(p0_term_ctl.output_fpath)
@@ -91,7 +96,7 @@ class Recipe(HolonRecipeBase):
             Copy the cmd file into Peer 1's input directory.
             And read the output JSON to get the term value.
             '''
-            ctl_req_create_cmdfile_and_copy(p1_term_ctl)
+            p1_term_ctl.Apply()
             time_global.sleep(1)
 
             raft_json_dict = genericcmdobj.raft_json_load(p1_term_ctl.output_fpath)
@@ -105,7 +110,7 @@ class Recipe(HolonRecipeBase):
             serverproc0.resume_process()
 
             time_global.sleep(1)
-            ctl_req_create_cmdfile_and_copy(p0_term_ctl)
+            p0_term_ctl.Apply()
 
             raft_json_dict = genericcmdobj.raft_json_load(p0_term_ctl.output_fpath)
             peer0_term = raft_json_dict["raft_root_entry"][0]["term"]

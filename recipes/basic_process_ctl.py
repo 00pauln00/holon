@@ -41,9 +41,12 @@ class Recipe(HolonRecipeBase):
         Copy cmd file. 
         '''
         curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid,
-                                    app_uuid, False)
-        # append the curr_time_ctl object into recipe's ctl_req list.
-        self.recipe_ctl_req_obj_list.append(curr_time_ctl)
+                                    app_uuid, False,
+                                    self.recipe_ctl_req_obj_list).Apply()
+        if curr_time_ctl.Error() != 0:
+            logging.error("Failed to create ctl req object error: %d" % curr_time_ctl.error)
+            logging.error("Basic Process control recipe Failed")
+            return curr_time_ctl.Error()
 
         '''
         Pause and Resume server for n iterations. After pausing the server,

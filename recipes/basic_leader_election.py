@@ -69,9 +69,11 @@ class Recipe(HolonRecipeBase):
 
         for p in range(npeer_start):
             get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
-                                    app_uuid, False)
-            self.recipe_ctl_req_obj_list.append(get_ctl[p])
-
+                                    app_uuid, False, self.recipe_ctl_req_obj_list).Apply()
+            if get_ctl[p].Error() != 0:
+                logging.error("Failed to create ctl req object error: %d" % get_ctl[p].Error())
+                logging.error("Basic control interface recipe Failed")
+                return get_ctl[p].Error()
 
         '''
         Make sure we wait for leader election to complete.
