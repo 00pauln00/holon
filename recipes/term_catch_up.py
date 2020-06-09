@@ -55,8 +55,10 @@ class Recipe(HolonRecipeBase):
         '''
         - Create ctlrequest object to create command for CTL request
         '''
-        p0_term_ctl = CtlRequest(inotifyobj, "get_term", peer0_uuid, app_uuid)
-        p1_term_ctl = CtlRequest(inotifyobj, "get_term", peer1_uuid, app_uuid)
+        p0_term_ctl = CtlRequest(inotifyobj, "get_term", peer0_uuid, app_uuid,
+                                    False)
+        p1_term_ctl = CtlRequest(inotifyobj, "get_term", peer1_uuid, app_uuid,
+                                    False)
 
         # append the get_term_ctl object into recipe's ctl_req list.
         self.recipe_ctl_req_obj_list.append(p0_term_ctl)

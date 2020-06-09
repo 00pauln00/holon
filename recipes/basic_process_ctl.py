@@ -40,7 +40,8 @@ class Recipe(HolonRecipeBase):
         '''
         Copy cmd file. 
         '''
-        curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid, app_uuid)
+        curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid,
+                                    app_uuid, False)
         # append the curr_time_ctl object into recipe's ctl_req list.
         self.recipe_ctl_req_obj_list.append(curr_time_ctl)
 

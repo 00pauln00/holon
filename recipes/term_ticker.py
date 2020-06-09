@@ -43,7 +43,8 @@ class Recipe(HolonRecipeBase):
         Creating cmd file to get all the JSON output from the server.
         Will verify parameters from server JSON output to check term value. 
         '''
-        get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid)
+        get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid,
+                                    False)
 
         # append the curr_time_ctl object into recipe's ctl_req list.
         self.recipe_ctl_req_obj_list.append(get_all_ctl)

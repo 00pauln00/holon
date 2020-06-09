@@ -1,7 +1,9 @@
 import os, logging
 import subprocess
+from genericcmd import GenericCmds
 
 class InotifyPath:
+    base_dir_path = ''
     inotify_path = ''
     inotify_init_path = ''
     inotify_is_base_path = ''
@@ -12,15 +14,25 @@ class InotifyPath:
                 @inotify_is_base_path: Is this NIOVA_INOTIFY_BASE_PATH
                 path? (True/False)
     '''
-    def __init__(self, inotify_path, inotify_is_base_path):
-        self.inotify_path = inotify_path
+    def __init__(self, base_dir_path, inotify_is_base_path):
+        self.inotify_path = "%s/inotify" % base_dir_path
+        self.inotify_shared_init_path = "%s/init" % base_dir_path
         self.inotify_is_base_path = inotify_is_base_path
+
+        # Create inotify and init directories
+        genericcmdobj = GenericCmds()
+        genericcmdobj.make_dir(self.inotify_path)
+        genericcmdobj.make_dir(self.inotify_shared_init_path)
+
+        # export the inotify path
         if inotify_is_base_path:
-            os.environ['NIOVA_INOTIFY_BASE_PATH'] = inotify_path
-            logging.warning("exporting NIOVA_INOTIFY_BASE_PATH=%s", os.environ['NIOVA_INOTIFY_BASE_PATH'])
+            os.environ['NIOVA_INOTIFY_BASE_PATH'] = self.inotify_path
+            logging.warning("exporting NIOVA_INOTIFY_BASE_PATH=%s",
+                            os.environ['NIOVA_INOTIFY_BASE_PATH'])
         else:
-            os.environ['NIOVA_INOTIFY_PATH'] = inotify_path
-            logging.warning("exporting NIOVA_INOTIFY_PATH=%s", os.environ['NIOVA_INOTIFY_PATH'])
+            os.environ['NIOVA_INOTIFY_PATH'] = self.inotify_path
+            logging.warning("exporting NIOVA_INOTIFY_PATH=%s",
+                            os.environ['NIOVA_INOTIFY_PATH'])
 
 
     '''
@@ -28,10 +40,22 @@ class InotifyPath:
     Purpose: export init path
     Parameters: @init_path: Init directory path
     '''
-    def export_init_path(self, init_path):
-        self.inotify_init_path = init_path
+    def export_init_path(self, peer_uuid, shared_path):
+
+        genericcmdobj = GenericCmds()
+
+        '''
+        if shared_path is true, use the shared init path.
+        else use the init directory path inside inotify/peer_uuid/init
+        '''
+        if shared_path:
+            init_path = self.inotify_shared_init_path
+        else:
+            init_path = "%s/%s/init" % (self.inotify_path, peer_uuid)
+
         os.environ['NIOVA_CTL_INTERFACE_INIT_PATH'] = init_path
-        logging.warning("exporting NIOVA_CTL_INTERFACE_INIT_PATH=%s", os.environ['NIOVA_CTL_INTERFACE_INIT_PATH'])
+        logging.warning("exporting NIOVA_CTL_INTERFACE_INIT_PATH=%s",
+                        os.environ['NIOVA_CTL_INTERFACE_INIT_PATH'])
 
 
     '''
@@ -43,6 +67,7 @@ class InotifyPath:
         dir_name = "output"
         if input_dir:
             dir_name = "input"
+
         fpath = "%s/%s/%s/%s.%s" % (self.inotify_path, peer_uuid, dir_name, base_fname,
                                     app_uuid)
         return fpath;
@@ -51,6 +76,10 @@ class InotifyPath:
     method: prepare init cmd path.
     purpose: Prepare the absolute path for init command file.
     '''
-    def prepare_init_path(self, base_fname, app_uuid):
-        fpath = "%s/%s.%s" % (self.inotify_init_path, base_fname, app_uuid)
+    def prepare_init_path(self, peer_uuid, base_fname, app_uuid, shared_init):
+        if shared_init:
+            # The init file should get created inside shared init directory
+            fpath = "%s/%s.%s" % (self.inotify_shared_init_path, base_fname, app_uuid)
+        else:
+            fpath = "%s/%s/init/%s.%s" % (self.inotify_path, peer_uuid, base_fname, app_uuid)
         return fpath

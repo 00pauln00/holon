@@ -7,10 +7,8 @@ from genericcmd import GenericCmds
 '''
 Default values for the command line parameters
 '''
-server_conf_path = "/etc/holon/raftconf/"
-inotify_path = "/tmp/inotify/"
-init_path = "/tmp/init/"
-log_file_path = "/tmp/holon_recipe.log"
+dir_path = "/tmp/holon_recipes_run"
+log_file_path = "/var/log/holon_recipe.log"
 npeers = 5
 port = 6000
 client_port = 13000
@@ -19,20 +17,19 @@ disable_post_run = False
 recipe_name = ""
 
 def Usage():
-    print("-s <server config path>\n"
-          "-n <Inotify path>\n"
-          "-i <Init command path>\n"
+    print("-P <Directory path to store config, inotify files , etc>\n"
           "-l <Log file path>\n"
           "-o <Number of Servers>\n"
           "-p <Port>\n"
           "-c <Client Port>\n"
           "-r <Recipe Name>\n"
           "-d <Dry Run recipes>\n"
+          "-D <Disable port run on error>\n"
           "-h Print Help")
 try:
     options, args = getopt.getopt(
-            sys.argv[1:], "s:n:i:o:p:c:r:l:dhD",["server_conf_path=",
-                        "inotify_path=", "init_path=", "npeers=", 
+            sys.argv[1:], "P:o:p:c:r:l:dhD",["dir_path=",
+                        "npeers=",
                         "port=", "client_port=", "recipe=",
                         "log_path=",
                         "dry-run", "disable-post-run", "help"])
@@ -40,34 +37,12 @@ except getopt.GetoptError:
     Usage()
     sys.exit(1) 
 
+genericcmdobj = GenericCmds()
+
 for name, value in options:
-    if name in ('-s', '--server-conf'):
-        server_conf_path = value
-        if not os.path.exists(server_conf_path):
-            try:
-                os.makedirs(server_conf_path)
-            except OSError as exc:
-                if exc.errno != errno.EEXIST:
-                    raise
-
-    if name in ('-n', '--inotify_path'):
-        inotify_path = value
-        if not os.path.exists(inotify_path):
-            try:
-                os.makedirs(inotify_path)
-            except OSError as exc:
-                if exc.errno != errno.EEXIST:
-                    raise
-
-    if name in ('-i', '--init_path'):
-        init_path = value
-        if not os.path.exists(init_path):
-            try:
-                os.makedirs(init_path)
-            except OSError as exc:
-                if exc.errno != errno.EEXIST:
-                    raise
-
+    if name in ('-P', '--dir_path'):
+        dir_path = value
+        genericcmdobj.make_dir(dir_path)
     if name in ('-l', '--log_path'):
         log_file_path = value
         if not os.path.exists(os.path.dirname(log_file_path)):
@@ -92,16 +67,8 @@ for name, value in options:
         Usage()
         sys.exit(0)
 
-if os.path.exists(server_conf_path) == False:
-    print(f"Server config path (%s) does not exist" % server_conf_path)
-    exit()
-
-if os.path.exists(inotify_path) == False:
-    print(f"Inotify path (%s) does not exist" % inotify_path)
-    exit()
-
-if os.path.exists(init_path) == False:
-    print(f"Init path (%s) does not exist" % init_path)
+if os.path.exists(dir_path) == False:
+    print(f"Holon directory (%s) does not exist" % server_conf_path)
     exit()
 
 if port >= 65536:
@@ -136,9 +103,7 @@ if recipe_name == "":
     print(f"Please pass the recipe name as -r <recipe_name>")
     exit()
 
-print(f"Server conf path: %s" % server_conf_path)
-print(f"Inotify path: %s" % inotify_path)
-print(f"Init directory path: %s" % init_path)
+print(f"Holon Directory path: %s" % dir_path)
 print(f"Log file path %s" % log_file_path)
 print(f"Number of Servers: %s" % npeers)
 print(f"Port no:%s" % port)
@@ -150,18 +115,22 @@ logging.basicConfig(filename=log_file_path, level=logging.DEBUG, format='%(ascti
 # Creare Cluster object
 clusterobj = NiovaCluster(npeers)
 
-genericcmdobj = GenericCmds() 
-raftconfobj = RaftConfig(server_conf_path)
+
+# Generate RAFT UUID
+raft_uuid = genericcmdobj.generate_uuid()
+
+dir_path = "%s/%s" % (dir_path, raft_uuid)
+print("The test root directory is: %s" % dir_path)
+logging.warning("The test root directory is: %s" % dir_path)
+
+raftconfobj = RaftConfig(dir_path, raft_uuid, genericcmdobj)
 
 raftconfobj.generate_raft_conf(genericcmdobj, npeers, "127.0.0.1", port,
-                                client_port, inotify_path)
+                                client_port)
 
-raftconfobj.export_path()
 logging.warning(f"Raft conf and server configs generated")
 
-inotifyobj = InotifyPath(inotify_path, True)
-
-inotifyobj.export_init_path(init_path)
+inotifyobj = InotifyPath(dir_path, True)
 
 clusterobj.raft_conf_obj_store(raftconfobj)
 
