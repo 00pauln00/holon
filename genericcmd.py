@@ -1,4 +1,4 @@
-import os, subprocess, json, time, logging
+import os, subprocess, json, time, logging, socket, errno
 from datetime import datetime
 
 '''
@@ -72,3 +72,18 @@ class GenericCmds:
             except OSError as exc:
                 if exc.errno != errno.EEXIST:
                     raise
+
+    '''
+    method port_check: Check the Port is already in use or not
+    '''
+    def port_check(self, port):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        try:
+            s.bind(("127.0.0.1", port))
+        except socket.error as e:
+            if e.errno == errno.EADDRINUSE:
+               print(f"Port %d is already in use" % port)
+               exit()
+        s.close()
+

@@ -78,17 +78,8 @@ if client_port >= 65536:
     exit()
 
 # Make sure server port and client port are not in use
-s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
 for p in (port, client_port):
-    try:
-        s.bind(("127.0.0.1", p))
-    except socket.error as e:
-        if e.errno == errno.EADDRINUSE:
-            print(f"Port %d is already in use" % p)
-            exit()
-
-s.close()
+    genericcmdobj.port_check(p)
 
 recipe_name = sys.argv[len(sys.argv) -1]
 
