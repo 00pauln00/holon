@@ -175,9 +175,13 @@ dry_run will only print the ancestors recipe names for the given recipe.
 '''
 if dry_run:
     print("Ancestors:")
-    for r in reversed(recipe_arr):
+    for r in (recipe_arr):
         if r().name != recipe_name:
-            print(f"%s " % r().name)
+            if r().parent == "":
+                print(f"%s" % r().name)
+            else:
+                print(f"%s, " % r().name, end="")
+    print("\n")
     exit()
 
 '''
