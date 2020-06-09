@@ -52,8 +52,10 @@ class CtlRequest:
     input_fpath = ""
     output_fpath = ""
     cmd = ""
+    error = 0
 
-    def __init__(self, inotifyobj, cmd, peer_uuid, app_uuid, shared_init):
+    def __init__(self, inotifyobj, cmd, peer_uuid, app_uuid, shared_init,
+                 ctlreq_list):
 
         self.cmd = cmd
 
@@ -72,8 +74,23 @@ class CtlRequest:
         self.output_fpath = inotifyobj.prepare_input_output_path(peer_uuid,
                                                                  cmd, False,
                                                                  app_uuid)
+        # Add the ctlreqobj on the recipe list.
+        ctlreq_list.append(self)
+
         # Copy the cmd file into input directory
-        ctl_req_create_cmdfile_and_copy(self)
+        #ctl_req_create_cmdfile_and_copy(self)
+
+    def Apply(self):
+        logging.warning("APPLY cmd=%s ipath=%s", self.cmd, self.input_fpath)
+        '''
+        Store the return code inside object only so the caller can check for
+        the error later.
+        '''
+        self.error = ctl_req_create_cmdfile_and_copy(self)
+        return self
+
+    def Error(self):
+        return self.error
 
     def delete_files(self):
         genericcmdobj = GenericCmds()
