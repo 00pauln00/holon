@@ -15,7 +15,7 @@ class InotifyPath:
                 path? (True/False)
     '''
     def __init__(self, base_dir_path, inotify_is_base_path):
-        self.inotify_path = "%s/inotify" % base_dir_path
+        self.inotify_path = "%s/ctl-interface" % base_dir_path
         self.inotify_shared_init_path = "%s/init" % base_dir_path
         self.inotify_is_base_path = inotify_is_base_path
 
