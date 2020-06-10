@@ -1,14 +1,20 @@
-import os, sys, importlib, getopt, logging, fnmatch, socket, errno
+import os, sys, importlib, getopt, logging, fnmatch, errno
 from raftconfig import RaftConfig
 from inotifypath import InotifyPath
 from niovacluster import NiovaCluster
 from genericcmd import GenericCmds
 
+#Create object for GenericCmds Class
+genericcmdobj = GenericCmds()
+
+# Generate RAFT UUID
+raft_uuid = genericcmdobj.generate_uuid()
+
 '''
 Default values for the command line parameters
 '''
 dir_path = "/tmp/holon_recipes_run"
-log_file_path = "/var/log/holon_recipe.log"
+log_file_path = "/var/tmp/holon_%s.log" % (raft_uuid)
 npeers = 5
 port = 6000
 client_port = 13000
@@ -23,7 +29,7 @@ def Usage():
           "-p <Port>\n"
           "-c <Client Port>\n"
           "-d <Dry Run recipes>\n"
-          "-D <Disable port run on error>\n"
+          "-D <Disable post run on error>\n"
           "recipe name\n"
           "-h Print Help")
 try:
@@ -37,7 +43,6 @@ except getopt.GetoptError:
     Usage()
     sys.exit(1) 
 
-genericcmdobj = GenericCmds()
 
 for name, value in options:
     if name in ('-P', '--dir_path'):
@@ -83,10 +88,6 @@ for p in (port, client_port):
 
 recipe_name = sys.argv[len(sys.argv) -1]
 
-#print("Recipe name is: %s" % recipe_name)
-#if recipe_name == "":
-#    print("Recipe name is not provided......")
-#    print("Please select from the list of available recipes:")
 listOfFiles = os.listdir('./recipes')
 pattern = "*.py"
 rec_name = []
@@ -118,13 +119,14 @@ logging.basicConfig(filename=log_file_path, level=logging.DEBUG, format='%(ascti
 # Creare Cluster object
 clusterobj = NiovaCluster(npeers)
 
-
-# Generate RAFT UUID
-raft_uuid = genericcmdobj.generate_uuid()
-
+#It prints the base_dir path
 dir_path = "%s/%s" % (dir_path, raft_uuid)
 print("The test root directory is: %s" % dir_path)
 logging.warning("The test root directory is: %s" % dir_path)
+
+#It prints the log_file path
+print("The log file path is: %s" % log_file_path)
+logging.warning("The log file path is: %s" % log_file_path)
 
 raftconfobj = RaftConfig(dir_path, raft_uuid, genericcmdobj)
 
@@ -174,14 +176,13 @@ for r in reversed(recipe_arr):
 dry_run will only print the ancestors recipe names for the given recipe.
 '''
 if dry_run:
-    print("Ancestors:")
+    print("Ancestors: ", end="")
     for r in (recipe_arr):
         if r().name != recipe_name:
             if r().parent == "":
                 print(f"%s" % r().name)
             else:
                 print(f"%s, " % r().name, end="")
-    print("\n")
     exit()
 
 '''
