@@ -45,10 +45,6 @@ class Recipe(HolonRecipeBase):
         '''
         get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid,
                                     False, self.recipe_ctl_req_obj_list).Apply()
-        if get_all_ctl.Error() != 0:
-            logging.error("Failed to create ctl req object error: %d" % get_all_ctl.error)
-            logging.error("Basic control interface recipe Failed")
-            return get_all_ctl.Error()
 
         '''
         Run the loop to copy the command file for getting the term value
@@ -145,7 +141,7 @@ class Recipe(HolonRecipeBase):
         time_global.sleep(1)
 
         # Restart the server
-        serverproc0.start_process(raftconfobj)
+        serverproc0.start_process(raftconfobj, clusterobj)
 
         time_global.sleep(5)
 

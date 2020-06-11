@@ -43,7 +43,7 @@ class Recipe(HolonRecipeBase):
         for p in range(2, npeer_start):
             logging.warning("Starting peer %d with UUID: %s" % (p, peer_uuid_arr[p]))
             serverproc[p] = RaftProcess(peer_uuid_arr[p], p, "server")
-            serverproc[p].start_process(raftconfobj)
+            serverproc[p].start_process(raftconfobj, clusterobj)
             # append the serverproc into recipe process object list
             self.recipe_proc_obj_list.append(serverproc[p])
 
@@ -70,11 +70,6 @@ class Recipe(HolonRecipeBase):
         for p in range(npeer_start):
             get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
                                     app_uuid, False, self.recipe_ctl_req_obj_list).Apply()
-            if get_ctl[p].Error() != 0:
-                logging.error("Failed to create ctl req object error: %d" % get_ctl[p].Error())
-                logging.error("Basic control interface recipe Failed")
-                return get_ctl[p].Error()
-
         '''
         Make sure we wait for leader election to complete.
         Check leader election completion in a loop

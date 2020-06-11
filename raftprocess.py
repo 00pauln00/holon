@@ -1,5 +1,6 @@
 import signal, subprocess, logging
 from raftconfig import RaftConfig
+
 class RaftProcess:
 
     process_type = ''
@@ -27,14 +28,16 @@ class RaftProcess:
         Parameters: @raftconfobj: RaftConf object.
                     @uuid: UUID of the server or client.
     '''
-    def start_process(self, raftconfobj):
+    def start_process(self, raftconfobj, clusterobj):
         logging.warning("Starting process of type: %s with UUID: %s" % (self.process_type,
                                 self.process_uuid))
 
         if self.process_type == 'server':
             server_bin_path = "%s/raft-server" % (self.binary_path)
-            self.process_popen = subprocess.Popen([server_bin_path, '-r',
-                                raftconfobj.raft_uuid, '-u', self.process_uuid])
+            with open(clusterobj.log_file_path, "a") as file:
+                self.process_popen = subprocess.Popen([server_bin_path, '-r',
+                                raftconfobj.raft_uuid, '-u', self.process_uuid], stdout = file, stderr = file)
+                file.close()
         else:
             client_bin_path = "%s/raft-client" % (self.binary_path)
             self.process_popen = subprocess.Popen([client_bin_path, '-r',

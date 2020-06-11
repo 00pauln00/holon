@@ -38,7 +38,7 @@ class Recipe(HolonRecipeBase):
         serverproc1 = RaftProcess(peer1_uuid, 1, "server")
 
         logging.warning("Starting peer 1 with UUID: %s\n" % peer1_uuid)
-        serverproc1.start_process(raftconfobj)
+        serverproc1.start_process(raftconfobj, clusterobj)
 
         # append the serverproc into recipe process object list
         self.recipe_proc_obj_list.append(serverproc1)
@@ -57,17 +57,9 @@ class Recipe(HolonRecipeBase):
         '''
         p0_term_ctl = CtlRequest(inotifyobj, "get_term", peer0_uuid, app_uuid,
                                     False, self.recipe_ctl_req_obj_list).Apply()
-        if p0_term_ctl.Error() != 0:
-            logging.error("Failed to create ctl req object error: %d" % p0_term_ctl.Error())
-            logging.error("Term catch up recipe Failed")
-            return p0_term_ctl.Error()
 
         p1_term_ctl = CtlRequest(inotifyobj, "get_term", peer1_uuid, app_uuid,
                                     False, self.recipe_ctl_req_obj_list).Apply()
-        if p1_term_ctl.Error() != 0:
-            logging.error("Failed to create ctl req object error: %d" % p1_term_ctl.Error())
-            logging.error("Term catch up recipe Failed")
-            return p1_term_ctl.Error()
 
         # Get the term value for Peer0 before pausing it.
         p0_term_ctl.Apply()
@@ -111,7 +103,6 @@ class Recipe(HolonRecipeBase):
 
             time_global.sleep(1)
             p0_term_ctl.Apply()
-
             raft_json_dict = genericcmdobj.raft_json_load(p0_term_ctl.output_fpath)
             peer0_term = raft_json_dict["raft_root_entry"][0]["term"]
 
