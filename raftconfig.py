@@ -2,6 +2,7 @@ import os, logging
 import subprocess
 from basicio import BasicIO
 from genericcmd import GenericCmds
+from pathlib import Path
 
 class RaftConfig:
 
@@ -162,3 +163,15 @@ class RaftConfig:
     '''
     def get_client_uuid_for_clientno(self, clientno):
         return self.client_uuid_arr[clientno]
+
+    '''
+        Method: delete_config_file
+        Purpose: It will remove the all config files
+    '''
+    def delete_config_file(self):
+        for f in Path(self.server_config_path).glob('*'):
+            try:
+                f.unlink()
+            except OSError as e:
+                print("Error: %s : %s" % (f, e.strerror))
+
