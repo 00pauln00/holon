@@ -3,6 +3,7 @@ from raftconfig import RaftConfig
 from inotifypath import InotifyPath
 from niovacluster import NiovaCluster
 from genericcmd import GenericCmds
+from shutil import rmtree
 
 #Create object for GenericCmds Class
 genericcmdobj = GenericCmds()
@@ -215,4 +216,10 @@ cleaning up the files/processes which that specific recipe had created/started.
 for r in recipe_arr:
     logging.warning("Post Run Recipe: %s" % r().name)
     r().post_run(clusterobj)
+
+#It will remove all config files
+raftconfobj.delete_config_file()
+
+#It will remove all files and directory
+rmtree(dir_path)
 
