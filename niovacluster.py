@@ -1,6 +1,7 @@
 class NiovaCluster:
 
     raftnpeers = 0 # Number of servers in the cluster
+    log_file_path = "" #Log file path for holon
     raftconfobj = {} #Raftcong object
     inotifyobj = {} # Could be array
     raftserver = {} # dictionary to store peer:raftserverobj 
@@ -15,6 +16,12 @@ class NiovaCluster:
     def __init__(self, npeers):
         self.raftnpeers = npeers
 
+    '''
+        Method: log_path_store
+        Purpose : To store log file path for holon
+    '''
+    def log_path_store(self,log_file_path):
+        self.log_file_path = log_file_path
     '''
         Method: raft_conf_obj_store
         Purpose: store the raft conf object.

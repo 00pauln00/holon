@@ -141,6 +141,8 @@ inotifyobj = InotifyPath(dir_path, True)
 clusterobj.raft_conf_obj_store(raftconfobj)
 
 clusterobj.inotify_obj_store(inotifyobj)
+#Storing log file path in clusterobj
+clusterobj.log_path_store(log_file_path)
 
 recipe_arr = []
 
@@ -193,6 +195,7 @@ for r in reversed(recipe_arr):
     logging.warning("Running Recipe %s" % r().name)
     recipe_failed = r().run(clusterobj)
     if recipe_failed == 1:
+        logging.error("%s recipe Failed" % r().name)
         print("Error: Terminating recipe hierarchy execution")
         logging.error("Error: Terminating recipe hierarchy execution")
         print("%s ========================== Failed" % r().name)

@@ -77,8 +77,6 @@ class CtlRequest:
         # Add the ctlreqobj on the recipe list.
         ctlreq_list.append(self)
 
-        # Copy the cmd file into input directory
-        #ctl_req_create_cmdfile_and_copy(self)
 
     def Apply(self):
         logging.warning("APPLY cmd=%s ipath=%s", self.cmd, self.input_fpath)
@@ -87,6 +85,10 @@ class CtlRequest:
         the error later.
         '''
         self.error = ctl_req_create_cmdfile_and_copy(self)
+        if self.error != 0:
+            logging.error("Failed to create ctl req object error: %d" % self.Error())
+            #Aborting the execution as apply failed
+            exit()
         return self
 
     def Error(self):

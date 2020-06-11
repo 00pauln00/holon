@@ -47,10 +47,6 @@ class Recipe(HolonRecipeBase):
         '''
         init_ctl = CtlRequest(inotifyobj, "idle_on", peer_uuid, app_uuid,
                               False, self.recipe_ctl_req_obj_list).Apply()
-        if init_ctl.Error() != 0:
-            logging.error("Failed to create ctl req object error: %d" % init_ctl.error)
-            logging.error("Basic control interface recipe Failed")
-            return init_ctl.Error()
 
         '''
         Create Process object for first server
@@ -59,7 +55,7 @@ class Recipe(HolonRecipeBase):
         serverproc = RaftProcess(peer_uuid, peerno, "server")
 
         #Start the server process
-        serverproc.start_process(raftconfobj)
+        serverproc.start_process(raftconfobj, clusterobj)
 
         # sleep for 2 sec
         time_global.sleep(2)
@@ -73,10 +69,6 @@ class Recipe(HolonRecipeBase):
         '''
         get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid,
                                  False, self.recipe_ctl_req_obj_list).Apply()
-        if get_all_ctl.Error() != 0:
-            logging.error("Failed to create ctl req object error: %d" % get_all_ctl.error)
-            logging.error("Basic control interface recipe Failed")
-            return get_all_ctl.Error()
 
         # Sleep before reading the output file.
         time_global.sleep(1)
@@ -124,10 +116,6 @@ class Recipe(HolonRecipeBase):
         '''
         idle_off_ctl = CtlRequest(inotifyobj, "idle_off", peer_uuid, app_uuid,
                                   False, self.recipe_ctl_req_obj_list).Apply()
-        if idle_off_ctl.Error() != 0:
-            logging.error("Failed to create ctl req object error: %d" % idle_off_ctl.error)
-            logging.error("Basic control interface recipe Failed")
-            return idle_off_ctl.Error()
 
         # sleep for 2sec
         time_global.sleep(2)
@@ -137,10 +125,6 @@ class Recipe(HolonRecipeBase):
         # Once server the started, verify that the timestamp progresses
         curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid, app_uuid,
                                     False, self.recipe_ctl_req_obj_list).Apply()
-        if curr_time_ctl.Error() != 0:
-            logging.error("Failed to create ctl req object error: %d" % curr_time_ctl.error)
-            logging.error("Basic control interface recipe Failed")
-            return curr_time_ctl.Error()
 
         # TODO the iteration shouldn't be hardcoded
         timestamp_dict = {}
