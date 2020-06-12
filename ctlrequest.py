@@ -63,8 +63,9 @@ class CtlRequest:
             self.input_fpath = inotifyobj.prepare_init_path(peer_uuid, cmd,
                                                             app_uuid,
                                                             shared_init)
-            # export the init path
-            inotifyobj.export_init_path(peer_uuid, shared_init)
+            # export the shared init path
+            if shared_init:
+                inotifyobj.export_init_path(peer_uuid, shared_init)
 
         else:
             self.input_fpath = inotifyobj.prepare_input_output_path(peer_uuid,
