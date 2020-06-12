@@ -51,7 +51,7 @@ try:
                         "dry-run", "disable-post-run", "help"])
 except getopt.GetoptError:
     Usage()
-    sys.exit(1) 
+    sys.exit(1)
 
 
 for name, value in options:
@@ -195,7 +195,7 @@ while parent != "":
 
 logging.warning("Recipe Hierarchy from Root => Leaf")
 for r in reversed(recipe_arr):
-    logging.warn("%s" % r().name)
+    logging.warning("%s" % r().name)
 
 '''
 dry_run will only print the ancestors recipe names for the given recipe.
@@ -248,4 +248,3 @@ raftconfobj.delete_config_file()
 
 #It will remove all files and directory
 rmtree(dir_path)
-
