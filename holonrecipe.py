@@ -22,8 +22,8 @@ class HolonRecipeBase:
         Purpose: exec dry run conditions
         Parameters:
     '''
-    def dry_run(self, params):
-        self.logger.log(logging.DEBUG, "dry_run!")
+    def print_desc(self, params):
+        self.logger.log(logging.DEBUG, "print_desc!")
         raise NotImplementedError
 
     '''

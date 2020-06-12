@@ -24,6 +24,7 @@ client_port = 13000
 dry_run = False
 disable_post_run = False
 recipe_name = ""
+print_desc = False
 
 def Usage():
     print("usage: holon.py [OPTIONS] <Recipe Name>",
@@ -38,14 +39,15 @@ def Usage():
           "-o             <Number of servers to run>",
           "-l             <Log file path>" ,
           "-d             <Dry Run Recipes>" ,
+          "--print-desc print the recipe's parent name\n"
           "-D             <Disable post run on error>",
           "-h, --help     <show this help message and exit>", sep ="\n")
 try:
     options, args = getopt.getopt(
-            sys.argv[1:], "P:o:p:c:l:dhD",["dir_path=",
+            sys.argv[1:], "P:o:p:c:l:print-disc:dhD",["dir_path=",
                         "npeers=",
                         "port=", "client_port=",
-                        "log_path=",
+                        "log_path=", "print-desc",
                         "dry-run", "disable-post-run", "help"])
 except getopt.GetoptError:
     Usage()
@@ -72,6 +74,8 @@ for name, value in options:
         client_port = int(value)
     if name in ('-d', "--dry-run"):
         dry_run = True
+    if name in ('-print-desc', "--print-desc"):
+        print_desc = True
     if name in ('-D', "--disable-post-run"):
         disable_post_run = True
     if name in ('-h', "--help"):
@@ -124,6 +128,17 @@ logging.warning("Number of Servers: %s" % npeers)
 logging.warning("Port no:%s" % port)
 logging.warning("Client Port no:%s" % client_port)
 logging.warning("Recipe: %s" % recipe_name)
+
+# Print the recipe description
+if print_desc:
+    recipe = ".%s" % recipe_name
+    RecipeModule = importlib.import_module(recipe, package="recipes")
+    logging.warning(RecipeModule)
+
+    RecipeClass = RecipeModule.Recipe
+    RecipeClass().print_desc()
+    print("Parent: %s" % RecipeClass().parent)
+    exit()
 
 # Create Cluster object
 clusterobj = NiovaCluster(npeers)
