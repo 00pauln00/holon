@@ -12,7 +12,7 @@ class Recipe(HolonRecipeBase):
     recipe_proc_obj_list = []
     recipe_ctl_req_obj_list = []
 
-    def dry_run(self):
+    def print_desc(self):
         print(self.desc)
 
     def pre_run(self):
