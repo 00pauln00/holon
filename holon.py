@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import os, sys, importlib, getopt, logging, fnmatch, errno
 from raftconfig import RaftConfig
 from inotifypath import InotifyPath
@@ -24,15 +26,20 @@ disable_post_run = False
 recipe_name = ""
 
 def Usage():
-    print("-P <Directory path to store config, inotify files , etc>\n"
-          "-l <Log file path>\n"
-          "-o <Number of Servers>\n"
-          "-p <Port>\n"
-          "-c <Client Port>\n"
-          "-d <Dry Run recipes>\n"
-          "-D <Disable post run on error>\n"
-          "recipe name\n"
-          "-h Print Help")
+    print("usage: holon.py [OPTIONS] <Recipe Name>",
+          "To run the recipe:\n",
+          "mandatory arguments:",
+          "-P             <Directory Path>\n",
+          "positional arguments:",
+          "<Recipe Name> (Note: Recipe name should be last parameter)\n",
+          "optional arguments:" ,
+          "-p             <Port No>" ,
+          "-c             <Client Port>" ,
+          "-o             <Number of servers to run>",
+          "-l             <Log file path>" ,
+          "-d             <Dry Run Recipes>" ,
+          "-D             <Disable post run on error>",
+          "-h, --help     <show this help message and exit>", sep ="\n")
 try:
     options, args = getopt.getopt(
             sys.argv[1:], "P:o:p:c:l:dhD",["dir_path=",
@@ -108,25 +115,25 @@ if valid_recipe == 0:
         print(r)
     exit()
 
-print(f"Holon Directory path: %s" % dir_path)
-print(f"Log file path %s" % log_file_path)
-print(f"Number of Servers: %s" % npeers)
-print(f"Port no:%s" % port)
-print(f"Client Port no:%s" % client_port)
-print(f"Recipe: %s" % recipe_name)
 
 logging.basicConfig(filename=log_file_path, level=logging.DEBUG, format='%(asctime)s %(message)s')
 
-# Creare Cluster object
+logging.warning("Holon Directory path: %s" % dir_path)
+logging.warning("Log file path %s" % log_file_path)
+logging.warning("Number of Servers: %s" % npeers)
+logging.warning("Port no:%s" % port)
+logging.warning("Client Port no:%s" % client_port)
+logging.warning("Recipe: %s" % recipe_name)
+
+# Create Cluster object
 clusterobj = NiovaCluster(npeers)
 
 #It prints the base_dir path
 dir_path = "%s/%s" % (dir_path, raft_uuid)
-print("The test root directory is: %s" % dir_path)
 logging.warning("The test root directory is: %s" % dir_path)
 
 #It prints the log_file path
-print("The log file path is: %s" % log_file_path)
+print("Log file path : %s" % log_file_path)
 logging.warning("The log file path is: %s" % log_file_path)
 
 raftconfobj = RaftConfig(dir_path, raft_uuid, genericcmdobj)
@@ -152,7 +159,7 @@ Iterate over the recipe hierarchy and gather the recipe objects.
 
 recipe = ".%s" % recipe_name
 RecipeModule = importlib.import_module(recipe, package="recipes")
-print(RecipeModule)
+logging.warning(RecipeModule)
 
 RecipeClass = RecipeModule.Recipe
 
@@ -202,6 +209,7 @@ for r in reversed(recipe_arr):
         break
     else:
         print("%s ========================== OK" % r().name)
+        logging.warning("%s ========================== OK" % r().name)
 
 '''
 If any recipe failed and disable_post_run is set, skip the post_run
