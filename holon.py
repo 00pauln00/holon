@@ -7,6 +7,7 @@ from niovacluster import NiovaCluster
 from genericcmd import GenericCmds
 from shutil import rmtree
 
+
 #Create object for GenericCmds Class
 genericcmdobj = GenericCmds()
 
@@ -39,7 +40,7 @@ def Usage():
           "-o             <Number of servers to run>",
           "-l             <Log file path>" ,
           "-d             <Dry Run Recipes>" ,
-          "--print-desc print the recipe's parent name\n"
+          "--print-desc   <print the recipe's parent name>\n"
           "-D             <Disable post run on error>",
           "-h, --help     <show this help message and exit>", sep ="\n")
 try:
@@ -52,7 +53,6 @@ try:
 except getopt.GetoptError:
     Usage()
     sys.exit(1)
-
 
 for name, value in options:
     if name in ('-P', '--dir_path'):
@@ -82,10 +82,6 @@ for name, value in options:
         Usage()
         sys.exit(0)
 
-if os.path.exists(dir_path) == False:
-    print(f"Holon directory (%s) does not exist" % server_conf_path)
-    exit()
-
 if port >= 65536:
     print(f"Port (%d) should be less than 65536" % port)
     exit()
@@ -93,10 +89,6 @@ if port >= 65536:
 if client_port >= 65536:
     print(f"Client Port (%d) should be less than 65536" % client_port)
     exit()
-
-# Make sure server port and client port are not in use
-for p in (port, client_port):
-    genericcmdobj.port_check(p)
 
 recipe_name = sys.argv[len(sys.argv) -1]
 
@@ -119,7 +111,6 @@ if valid_recipe == 0:
         print(r)
     exit()
 
-
 logging.basicConfig(filename=log_file_path, level=logging.DEBUG, format='%(asctime)s %(message)s')
 
 logging.warning("Holon Directory path: %s" % dir_path)
@@ -139,32 +130,6 @@ if print_desc:
     RecipeClass().print_desc()
     print("Parent: %s" % RecipeClass().parent)
     exit()
-
-# Create Cluster object
-clusterobj = NiovaCluster(npeers)
-
-#It prints the base_dir path
-dir_path = "%s/%s" % (dir_path, raft_uuid)
-logging.warning("The test root directory is: %s" % dir_path)
-
-#It prints the log_file path
-print("Log file path : %s" % log_file_path)
-logging.warning("The log file path is: %s" % log_file_path)
-
-raftconfobj = RaftConfig(dir_path, raft_uuid, genericcmdobj)
-
-raftconfobj.generate_raft_conf(genericcmdobj, npeers, "127.0.0.1", port,
-                                client_port)
-
-logging.warning(f"Raft conf and server configs generated")
-
-inotifyobj = InotifyPath(dir_path, True)
-
-clusterobj.raft_conf_obj_store(raftconfobj)
-
-clusterobj.inotify_obj_store(inotifyobj)
-#Storing log file path in clusterobj
-clusterobj.log_path_store(log_file_path)
 
 recipe_arr = []
 
@@ -209,6 +174,43 @@ if dry_run:
             else:
                 print(f"%s, " % r().name, end="")
     exit()
+
+# Make sure server port and client port are not in use
+for p in (port, client_port):
+    genericcmdobj.port_check(p)
+
+# Create Cluster object
+clusterobj = NiovaCluster(npeers)
+
+#It prints the base_dir path
+dir_path = "%s/%s" % (dir_path, raft_uuid)
+logging.warning("The test root directory is: %s" % dir_path)
+
+#If user doesn't have to specify -P then it will run with default values
+if not os.path.exists(dir_path):
+    Usage()
+    print("\nIf you don't want to pass any path then it will run with default path")
+    print("\nBase directory path : %s" % dir_path)
+
+raftconfobj = RaftConfig(dir_path, raft_uuid, genericcmdobj)
+
+raftconfobj.generate_raft_conf(genericcmdobj, npeers, "127.0.0.1", port,
+                                client_port)
+
+logging.warning(f"Raft conf and server configs generated")
+
+inotifyobj = InotifyPath(dir_path, True)
+
+clusterobj.raft_conf_obj_store(raftconfobj)
+
+clusterobj.inotify_obj_store(inotifyobj)
+
+#Storing log file path in clusterobj
+clusterobj.log_path_store(log_file_path)
+
+#It prints the log_file path
+print("Log file path : %s" % log_file_path)
+logging.warning("The log file path is: %s" % log_file_path)
 
 '''
 Executing recipes from Root to Leaf order.
