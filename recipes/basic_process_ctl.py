@@ -41,7 +41,8 @@ class Recipe(HolonRecipeBase):
         Copy cmd file. 
         '''
         curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid,
-                                    app_uuid, False,
+                                    app_uuid,
+                                    inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply()
 
         '''

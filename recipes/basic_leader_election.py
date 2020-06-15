@@ -69,7 +69,9 @@ class Recipe(HolonRecipeBase):
 
         for p in range(npeer_start):
             get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
-                                    app_uuid, False, self.recipe_ctl_req_obj_list).Apply()
+                                    app_uuid,
+                                    inotify_input_base.REGULAR,
+                                    self.recipe_ctl_req_obj_list).Apply()
         '''
         Make sure we wait for leader election to complete.
         Check leader election completion in a loop

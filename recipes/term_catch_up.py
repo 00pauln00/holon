@@ -56,10 +56,12 @@ class Recipe(HolonRecipeBase):
         - Create ctlrequest object to create command for CTL request
         '''
         p0_term_ctl = CtlRequest(inotifyobj, "get_term", peer0_uuid, app_uuid,
-                                    False, self.recipe_ctl_req_obj_list).Apply()
+                                 inotify_input_base.REGULAR,
+                                 self.recipe_ctl_req_obj_list).Apply()
 
         p1_term_ctl = CtlRequest(inotifyobj, "get_term", peer1_uuid, app_uuid,
-                                    False, self.recipe_ctl_req_obj_list).Apply()
+                                 inotify_input_base.REGULAR,
+                                 self.recipe_ctl_req_obj_list).Apply()
 
         # Get the term value for Peer0 before pausing it.
         p0_term_ctl.Apply()

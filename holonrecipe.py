@@ -5,7 +5,7 @@ from raftconfig import RaftConfig
 from raftserver import RaftServer
 from raftclient import RaftClient
 from raftprocess import RaftProcess
-from inotifypath import InotifyPath
+from inotifypath import *
 from niovacluster import NiovaCluster
 from ctlrequest import * 
 from genericcmd import GenericCmds

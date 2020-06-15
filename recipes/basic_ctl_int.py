@@ -46,7 +46,8 @@ class Recipe(HolonRecipeBase):
           so that server will not go into start loop and will remain idle.
         '''
         init_ctl = CtlRequest(inotifyobj, "idle_on", peer_uuid, app_uuid,
-                              False, self.recipe_ctl_req_obj_list).Apply()
+                              inotify_input_base.PRIVATE_INIT,
+                              self.recipe_ctl_req_obj_list).Apply()
 
         '''
         Create Process object for first server
@@ -68,7 +69,8 @@ class Recipe(HolonRecipeBase):
         Will verify parameters from server JASON output to check the idleness
         '''
         get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid,
-                                 False, self.recipe_ctl_req_obj_list).Apply()
+                                 inotify_input_base.REGULAR,
+                                 self.recipe_ctl_req_obj_list).Apply()
 
         # Sleep before reading the output file.
         time_global.sleep(1)
@@ -115,7 +117,8 @@ class Recipe(HolonRecipeBase):
         of the server.
         '''
         idle_off_ctl = CtlRequest(inotifyobj, "idle_off", peer_uuid, app_uuid,
-                                  False, self.recipe_ctl_req_obj_list).Apply()
+                                  inotify_input_base.REGULAR,
+                                  self.recipe_ctl_req_obj_list).Apply()
 
         # sleep for 2sec
         time_global.sleep(2)
@@ -124,7 +127,8 @@ class Recipe(HolonRecipeBase):
 
         # Once server the started, verify that the timestamp progresses
         curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid, app_uuid,
-                                    False, self.recipe_ctl_req_obj_list).Apply()
+                                    inotify_input_base.REGULAR,
+                                    self.recipe_ctl_req_obj_list).Apply()
 
         # TODO the iteration shouldn't be hardcoded
         timestamp_dict = {}
