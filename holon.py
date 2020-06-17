@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import os, sys, importlib, getopt, logging, fnmatch, errno
+import os, sys, importlib, logging, fnmatch, errno, argparse
 from raftconfig import RaftConfig
 from inotifypath import InotifyPath
 from niovacluster import NiovaCluster
@@ -26,66 +26,58 @@ dry_run = False
 disable_post_run = False
 recipe_name = ""
 print_desc = False
+print_ancestry = False
 
-def Usage():
-    print("usage: holon.py [OPTIONS] <Recipe Name>",
-          "To run the recipe:\n",
-          "mandatory arguments:",
-          "-P             <Directory Path>\n",
-          "positional arguments:",
-          "<Recipe Name> (Note: Recipe name should be last parameter)\n",
-          "optional arguments:" ,
-          "-p             <Port No>" ,
-          "-c             <Client Port>" ,
-          "-o             <Number of servers to run>",
-          "-l             <Log file path>" ,
-          "-d             <Dry Run Recipes>" ,
-          "--print-desc   <print the recipe's description>\n"
-          "-D             <Disable post run on error>",
-          "-h, --help     <show this help message and exit>", sep ="\n")
-try:
-    options, args = getopt.getopt(
-            sys.argv[1:], "P:o:p:c:l:print-disc:dhD",["dir_path=",
-                        "npeers=",
-                        "port=", "client_port=",
-                        "log_path=", "print-desc",
-                        "dry-run", "disable-post-run", "help"])
-except getopt.GetoptError:
-    Usage()
-    sys.exit(1)
+parser = argparse.ArgumentParser()
+parser.add_argument('-P', action="store", dest = "dir_path", help="Directory path to create config/ctl/raftdb files")
+parser.add_argument('-p', action="store", dest = "port", help="Server port")
+parser.add_argument('-c', action="store", dest = "client_port", help="Client port")
+parser.add_argument('-o', action="store", dest = "npeers", help="No. of peers")
 
-#Running holon with no arguments should print the help message
-if len(sys.argv) == 1:
-   Usage()
-   exit()
+parser.add_argument('-l', action="store", dest = "log_file_path", help="Log file path")
 
-for name, value in options:
-    if name in ('-P', '--dir_path'):
-        dir_path = value
-        genericcmdobj.make_dir(dir_path)
-    if name in ('-l', '--log_path'):
-        log_file_path = value
-        if not os.path.exists(os.path.dirname(log_file_path)):
-            try:
-                os.makedirs(os.path.dirname(log_file_path))
-            except OSError as exc:
-                if exc.errno != errno.EEXIST:
-                    raise
-    if name in ('-o', '--npeers'):
-        npeers = int(value)
-    if name in ('-p', '--port'):
-        port = int(value)
-    if name in ('-c', '--client_port'):
-        client_port = int(value)
-    if name in ('-d', "--dry-run"):
-        dry_run = True
-    if name in ('-print-desc', "--print-desc"):
-        print_desc = True
-    if name in ('-D', "--disable-post-run"):
-        disable_post_run = True
-    if name in ('-h', "--help"):
-        Usage()
-        sys.exit(0)
+parser.add_argument('-d', action="store_true",dest= "dry_run", default =False, help="Dry run to print ancestory and create config files")
+parser.add_argument('-D', action="store_true",dest="disable_post_run", default =False, help="Disable post run")
+parser.add_argument('-print-desc',action="store_true",dest = "print_desc", default =False, help="Print description")
+parser.add_argument('-print-ancestry', action="store_true",dest= "print_ancestry", default =False , help="Print ancestry")
+
+parser.add_argument('recipe', type=str,  help="recipe_name")
+
+args = parser.parse_args()
+
+
+if args.dir_path == None:
+    dir_path = dir_path
+    genericcmdobj.make_dir(dir_path)
+else:
+    dir_path = args.dir_path
+    genericcmdobj.make_dir(dir_path)
+
+if args.port == None:
+    port = int(port)
+else:
+    port = int(args.port)
+
+if args.client_port == None :
+    client_port = int(client_port)
+else:
+    client_port = int(args.client_port)
+
+if args.npeers == None:
+    npeers = npeers
+else:
+    npeers = args.npeers
+
+if args.log_file_path == None:
+    log_file_path = log_file_path
+else:
+    log_file_path = args.log_file_path
+
+dry_run = args.dry_run
+disable_post_run = args.disable_post_run
+print_desc = args.print_desc
+print_ancestry = args.print_ancestry
+recipe_name = args.recipe
 
 if port >= 65536:
     print(f"Port (%d) should be less than 65536" % port)
@@ -95,7 +87,6 @@ if client_port >= 65536:
     print(f"Client Port (%d) should be less than 65536" % client_port)
     exit()
 
-recipe_name = sys.argv[len(sys.argv) -1]
 
 listOfFiles = os.listdir('./recipes')
 pattern = "*.py"
@@ -125,23 +116,12 @@ logging.warning("Port no:%s" % port)
 logging.warning("Client Port no:%s" % client_port)
 logging.warning("Recipe: %s" % recipe_name)
 
-# Print the recipe description
-if print_desc:
-    recipe = ".%s" % recipe_name
-    RecipeModule = importlib.import_module(recipe, package="recipes")
-    logging.warning(RecipeModule)
-
-    RecipeClass = RecipeModule.Recipe
-    RecipeClass().print_desc()
-    print("Parent: %s" % RecipeClass().parent)
-    exit()
-
-recipe_arr = []
 
 '''
 Iterate over the recipe hierarchy and gather the recipe objects.
 '''
 
+recipe_arr = []
 recipe = ".%s" % recipe_name
 RecipeModule = importlib.import_module(recipe, package="recipes")
 logging.warning(RecipeModule)
@@ -168,9 +148,22 @@ for r in reversed(recipe_arr):
     logging.warning("%s" % r().name)
 
 '''
-dry_run will only print the ancestors recipe names for the given recipe.
+Print the recipe description
 '''
-if dry_run:
+if print_desc == True:
+    recipe = ".%s" % recipe_name
+    RecipeModule = importlib.import_module(recipe, package="recipes")
+    logging.warning(RecipeModule)
+
+    RecipeClass = RecipeModule.Recipe
+    RecipeClass().print_desc()
+    print("Parent: %s" % RecipeClass().parent)
+    exit()
+
+'''
+print ancestors will only print the ancestors for the recipe and will exit.
+'''
+if print_ancestry == True:
     print("Ancestors: ", end="")
     for r in (recipe_arr):
         if r().name != recipe_name:
@@ -178,11 +171,8 @@ if dry_run:
                 print(f"%s" % r().name)
             else:
                 print(f"%s, " % r().name, end="")
-    exit()
 
-# Make sure server port and client port are not in use
-for p in (port, client_port):
-    genericcmdobj.port_check(p)
+    exit()
 
 # Create Cluster object
 clusterobj = NiovaCluster(npeers)
@@ -199,7 +189,7 @@ raftconfobj.generate_raft_conf(genericcmdobj, npeers, "127.0.0.1", port,
 '''
 dry_run will create config files and  print the ancestors recipe names for the given recipe.
 '''
-if dry_run:
+if dry_run == True:
     print("Ancestors: ", end="")
     for r in (recipe_arr):
         if r().name != recipe_name:
@@ -209,6 +199,12 @@ if dry_run:
                 print(f"%s, " % r().name, end="")
 
     exit()
+
+
+# Make sure server port and client port are not in use
+for p in (port, client_port):
+    genericcmdobj.port_check(p)
+
 
 #If user doesn't have to specify -P then it will run with default values
 if os.path.exists(dir_path):
