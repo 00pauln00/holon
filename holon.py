@@ -40,7 +40,7 @@ def Usage():
           "-o             <Number of servers to run>",
           "-l             <Log file path>" ,
           "-d             <Dry Run Recipes>" ,
-          "--print-desc   <print the recipe's parent name>\n"
+          "--print-desc   <print the recipe's description>\n"
           "-D             <Disable post run on error>",
           "-h, --help     <show this help message and exit>", sep ="\n")
 try:
@@ -53,6 +53,11 @@ try:
 except getopt.GetoptError:
     Usage()
     sys.exit(1)
+
+#Running holon with no arguments should print the help message
+if len(sys.argv) == 1:
+   Usage()
+   exit()
 
 for name, value in options:
     if name in ('-P', '--dir_path'):
@@ -186,16 +191,28 @@ clusterobj = NiovaCluster(npeers)
 dir_path = "%s/%s" % (dir_path, raft_uuid)
 logging.warning("The test root directory is: %s" % dir_path)
 
-#If user doesn't have to specify -P then it will run with default values
-if not os.path.exists(dir_path):
-    Usage()
-    print("\nIf you don't want to pass any path then it will run with default path")
-    print("\nBase directory path : %s" % dir_path)
-
 raftconfobj = RaftConfig(dir_path, raft_uuid, genericcmdobj)
 
 raftconfobj.generate_raft_conf(genericcmdobj, npeers, "127.0.0.1", port,
                                 client_port)
+
+'''
+dry_run will create config files and  print the ancestors recipe names for the given recipe.
+'''
+if dry_run:
+    print("Ancestors: ", end="")
+    for r in (recipe_arr):
+        if r().name != recipe_name:
+            if r().parent == "":
+                print(f"%s" % r().name)
+            else:
+                print(f"%s, " % r().name, end="")
+
+    exit()
+
+#If user doesn't have to specify -P then it will run with default values
+if os.path.exists(dir_path):
+    logging.warning("Base directory path : %s" % dir_path)
 
 logging.warning(f"Raft conf and server configs generated")
 
