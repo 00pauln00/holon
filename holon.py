@@ -6,7 +6,7 @@ from inotifypath import InotifyPath
 from niovacluster import NiovaCluster
 from genericcmd import GenericCmds
 from shutil import rmtree
-
+from os.path import abspath
 
 #Create object for GenericCmds Class
 genericcmdobj = GenericCmds()
@@ -29,19 +29,19 @@ print_desc = False
 print_ancestry = False
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-P', action="store", dest = "dir_path", help="Directory path to create config/ctl/raftdb files")
-parser.add_argument('-p', action="store", dest = "port", help="Server port")
-parser.add_argument('-c', action="store", dest = "client_port", help="Client port")
-parser.add_argument('-o', action="store", dest = "npeers", help="No. of peers")
+parser.add_argument('-P', action= "store", dest = "dir_path", help = "directory path to create config/ctl/raftdb files")
+parser.add_argument('-p', action= "store", dest = "port", help = "server port")
+parser.add_argument('-c', action= "store", dest = "client_port", help = "client port")
+parser.add_argument('-o', action= "store", dest = "npeers", help = "no. of peers")
 
-parser.add_argument('-l', action="store", dest = "log_file_path", help="Log file path")
+parser.add_argument('-l', action = "store", dest = "log_file_path", help = "log file path")
 
-parser.add_argument('-d', action="store_true",dest= "dry_run", default =False, help="Dry run to print ancestory and create config files")
-parser.add_argument('-D', action="store_true",dest="disable_post_run", default =False, help="Disable post run")
-parser.add_argument('-print-desc',action="store_true",dest = "print_desc", default =False, help="Print description")
-parser.add_argument('-print-ancestry', action="store_true",dest= "print_ancestry", default =False , help="Print ancestry")
+parser.add_argument('-d', action = "store_true", dest = "dry_run", default = False, help = "dry run to print ancestory and create config files")
+parser.add_argument('-D', action = "store_true", dest = "disable_post_run", default = False, help = "disable post run")
+parser.add_argument('-print-desc', action = "store_true", dest = "print_desc", default = False, help = "print description")
+parser.add_argument('-print-ancestry', action = "store_true", dest = "print_ancestry", default = False, help = "print ancestry")
 
-parser.add_argument('recipe', type=str,  help="recipe_name")
+parser.add_argument('recipe', type = str, help = "recipe_name")
 
 args = parser.parse_args()
 
@@ -50,7 +50,7 @@ if args.dir_path == None:
     dir_path = dir_path
     genericcmdobj.make_dir(dir_path)
 else:
-    dir_path = args.dir_path
+    dir_path = abspath(args.dir_path)
     genericcmdobj.make_dir(dir_path)
 
 if args.port == None:
@@ -71,7 +71,7 @@ else:
 if args.log_file_path == None:
     log_file_path = log_file_path
 else:
-    log_file_path = args.log_file_path
+    log_file_path = abspath(args.log_file_path)
 
 dry_run = args.dry_run
 disable_post_run = args.disable_post_run
