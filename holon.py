@@ -29,15 +29,15 @@ print_desc = False
 print_ancestry = False
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-P', action= "store", dest = "dir_path", help = "directory path to create config/ctl/raftdb files")
-parser.add_argument('-p', action= "store", dest = "port", help = "server port")
-parser.add_argument('-c', action= "store", dest = "client_port", help = "client port")
-parser.add_argument('-o', action= "store", dest = "npeers", help = "no. of peers")
+parser.add_argument('-P', action = "store", dest = "dir_path", help = "directory path to create config/ctl/raftdb files")
+parser.add_argument('-p', action = "store", dest = "port", help = "server port")
+parser.add_argument('-c', action = "store", dest = "client_port", help = "client port")
+parser.add_argument('-o', action = "store", dest = "npeers", help = "number of peers in the cluster")
 
 parser.add_argument('-l', action = "store", dest = "log_file_path", help = "log file path")
 
-parser.add_argument('-d', action = "store_true", dest = "dry_run", default = False, help = "dry run to print ancestory and create config files")
-parser.add_argument('-D', action = "store_true", dest = "disable_post_run", default = False, help = "disable post run")
+parser.add_argument('-d', action = "store_true", dest = "dry_run", default = False, help = "dry run to print ancestry and create config files")
+parser.add_argument('-D', action = "store_true", dest = "disable_post_run", default = False, help = "disable post run on failure")
 parser.add_argument('-print-desc', action = "store_true", dest = "print_desc", default = False, help = "print description")
 parser.add_argument('-print-ancestry', action = "store_true", dest = "print_ancestry", default = False, help = "print ancestry")
 
@@ -160,36 +160,22 @@ if print_desc == True:
     print("Parent: %s" % RecipeClass().parent)
     exit()
 
-'''
-print ancestors will only print the ancestors for the recipe and will exit.
-'''
-if print_ancestry == True:
-    print("Ancestors: ", end="")
-    for r in (recipe_arr):
-        if r().name != recipe_name:
-            if r().parent == "":
-                print(f"%s" % r().name)
-            else:
-                print(f"%s, " % r().name, end="")
+if dry_run == False:
+    #It prints the base_dir path
+    dir_path = "%s/%s" % (dir_path, raft_uuid)
+    logging.warning("The test root directory is: %s" % dir_path)
 
-    exit()
+    raftconfobj = RaftConfig(dir_path, raft_uuid, genericcmdobj)
 
-# Create Cluster object
-clusterobj = NiovaCluster(npeers)
-
-#It prints the base_dir path
-dir_path = "%s/%s" % (dir_path, raft_uuid)
-logging.warning("The test root directory is: %s" % dir_path)
-
-raftconfobj = RaftConfig(dir_path, raft_uuid, genericcmdobj)
-
-raftconfobj.generate_raft_conf(genericcmdobj, npeers, "127.0.0.1", port,
+    raftconfobj.generate_raft_conf(genericcmdobj, npeers, "127.0.0.1", port,
                                 client_port)
 
 '''
-dry_run will create config files and  print the ancestors recipe names for the given recipe.
+print ancestors will only print the ancestors for the recipe and will exit
+or
+perform dry run : dry_run also prints ancestry but it also creates config files.
 '''
-if dry_run == True:
+if print_ancestry == True or dry_run == True :
     print("Ancestors: ", end="")
     for r in (recipe_arr):
         if r().name != recipe_name:
@@ -197,9 +183,13 @@ if dry_run == True:
                 print(f"%s" % r().name)
             else:
                 print(f"%s, " % r().name, end="")
-
+    if len(recipe_arr) == 1 :
+        print("none ")
     exit()
 
+
+# Create Cluster object
+clusterobj = NiovaCluster(npeers)
 
 # Make sure server port and client port are not in use
 for p in (port, client_port):
