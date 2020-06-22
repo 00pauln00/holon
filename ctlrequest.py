@@ -2,6 +2,7 @@ import os, logging
 import subprocess
 from basicio import BasicIO
 from genericcmd import GenericCmds
+from inotifypath import inotify_input_base
 
 def ctl_req_create_cmdfile_and_copy(ctlreqobj):
     basicioobj = BasicIO()
@@ -54,26 +55,23 @@ class CtlRequest:
     cmd = ""
     error = 0
 
-    def __init__(self, inotifyobj, cmd, peer_uuid, app_uuid, shared_init,
+    def __init__(self, inotifyobj, cmd, peer_uuid, app_uuid, input_base,
                  ctlreq_list):
 
         self.cmd = cmd
 
-        if cmd == "idle_on":
-            self.input_fpath = inotifyobj.prepare_init_path(peer_uuid, cmd,
-                                                            app_uuid,
-                                                            shared_init)
-            # export the shared init path
-            if shared_init:
-                inotifyobj.export_init_path(peer_uuid, shared_init)
+        # export the shared init path
+        if input_base == inotify_input_base.SHARED_INIT:
+            inotifyobj.export_init_path(peer_uuid)
 
-        else:
-            self.input_fpath = inotifyobj.prepare_input_output_path(peer_uuid,
-                                                                    cmd, True,
-                                                                    app_uuid)
+        self.input_fpath = inotifyobj.prepare_input_output_path(peer_uuid,
+                                                                cmd, True,
+                                                                input_base,
+                                                                app_uuid)
 
         self.output_fpath = inotifyobj.prepare_input_output_path(peer_uuid,
                                                                  cmd, False,
+                                                                 input_base,
                                                                  app_uuid)
         # Add the ctlreqobj on the recipe list.
         ctlreq_list.append(self)

@@ -44,7 +44,8 @@ class Recipe(HolonRecipeBase):
         Will verify parameters from server JSON output to check term value. 
         '''
         get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid,
-                                    False, self.recipe_ctl_req_obj_list).Apply()
+                                 inotify_input_base.REGULAR,
+                                 self.recipe_ctl_req_obj_list).Apply()
 
         '''
         Run the loop to copy the command file for getting the term value

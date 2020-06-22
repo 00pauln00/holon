@@ -1,6 +1,12 @@
 import os, logging
 import subprocess
 from genericcmd import GenericCmds
+from enum import Enum
+
+class inotify_input_base(Enum):
+    SHARED_INIT = 1
+    PRIVATE_INIT = 2
+    REGULAR = 3
 
 class InotifyPath:
     base_dir_path = ''
@@ -40,7 +46,7 @@ class InotifyPath:
     Purpose: export init path
     Parameters: @init_path: Init directory path
     '''
-    def export_init_path(self, peer_uuid, shared_path):
+    def export_init_path(self, peer_uuid):
 
         genericcmdobj = GenericCmds()
 
@@ -48,10 +54,7 @@ class InotifyPath:
         if shared_path is true, use the shared init path.
         else use the init directory path inside inotify/peer_uuid/init
         '''
-        if shared_path:
-            init_path = self.inotify_shared_init_path
-        else:
-            init_path = "%s/%s/init" % (self.inotify_path, peer_uuid)
+        init_path = self.inotify_shared_init_path
 
         os.environ['NIOVA_CTL_INTERFACE_INIT_PATH'] = init_path
         logging.warning("exporting NIOVA_CTL_INTERFACE_INIT_PATH=%s",
@@ -63,23 +66,22 @@ class InotifyPath:
     purpose: Prepare the absolute path for input/output files for specific
     peer_uuid and app_uuid
     '''
-    def prepare_input_output_path(self, peer_uuid, base_fname, input_dir, app_uuid):
+    def prepare_input_output_path(self, peer_uuid, base_fname, input_dir,
+                                  input_base, app_uuid):
         dir_name = "output"
         if input_dir:
             dir_name = "input"
+            if input_base == inotify_input_base.SHARED_INIT:
+                # The init file should get created inside shared init directory
+                fpath = "%s/%s.%s" % (self.inotify_shared_init_path, base_fname, app_uuid)
+            elif input_base == inotify_input_base.PRIVATE_INIT:
+                fpath = "%s/%s/init/%s.%s" % (self.inotify_path, peer_uuid, base_fname, app_uuid)
+            else: # input_base = REGULAR
+                fpath = "%s/%s/%s/%s.%s" % (self.inotify_path, peer_uuid, dir_name, base_fname,
+                                            app_uuid)
 
-        fpath = "%s/%s/%s/%s.%s" % (self.inotify_path, peer_uuid, dir_name, base_fname,
+            logging.warning("Input path for ctlrequest cmd is: %s" % fpath)
+        else:
+            fpath = "%s/%s/%s/%s.%s" % (self.inotify_path, peer_uuid, dir_name, base_fname,
                                     app_uuid)
         return fpath;
-
-    '''
-    method: prepare init cmd path.
-    purpose: Prepare the absolute path for init command file.
-    '''
-    def prepare_init_path(self, peer_uuid, base_fname, app_uuid, shared_init):
-        if shared_init:
-            # The init file should get created inside shared init directory
-            fpath = "%s/%s.%s" % (self.inotify_shared_init_path, base_fname, app_uuid)
-        else:
-            fpath = "%s/%s/init/%s.%s" % (self.inotify_path, peer_uuid, base_fname, app_uuid)
-        return fpath
