@@ -127,7 +127,7 @@ class Recipe(HolonRecipeBase):
 
             original_term[p] = raft_json_dict["raft_root_entry"][0]["term"]
             logging.warning(f"Original Term: %s" % original_term[p])
-        
+
         '''
         Copy the cmd file for Disable the net_recv_enable on all
         peers and verify that net_recv_enable is set to false.
@@ -141,7 +141,7 @@ class Recipe(HolonRecipeBase):
                                           inotify_input_base.REGULAR,
                                           self.recipe_ctl_req_obj_list).Apply()
         
-        time_global.sleep(5)
+            time_global.sleep(15)
 
         '''
         Verify if net_recv_enable is set to false for all peers.
@@ -151,7 +151,7 @@ class Recipe(HolonRecipeBase):
             #Copy cmdfile to get the JSON output 
             ctl_req_create_cmdfile_and_copy(get_all[p])
 
-            time_global.sleep(5)
+            time_global.sleep(15)
 
             raft_json_dict = genericcmdobj.raft_json_load(get_all[p].output_fpath)
             net_recv_enable = raft_json_dict["ctl_svc_nodes"][1]["net_recv_enabled"]
@@ -160,6 +160,45 @@ class Recipe(HolonRecipeBase):
                 recipe_failed = 1
                 break
 
+            leader_uuid = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
+            if leader_uuid != original_leader_uuid[p]:
+                logging.error("New leader election happened, original leader: %s, new leader: %s" %
+                        (original_leader[p], leader_uuid))
+                recipe_failed = 1
+                break
+
+            client_req = raft_json_dict["raft_root_entry"][0]["client-requests"]
+
+            term = raft_json_dict["raft_root_entry"][0]["term"]
+
+            state = raft_json_dict["raft_root_entry"][0]["state"]
+            if state != "leader" and state != "candidate":
+                logging.error("peer state %s for peer %s:" % (state, p))
+                logging.error("peer state is wrong: %s" % state)
+                recipe_failed = 1
+                break
+
+            if state == "candidate":
+                if term <= original_term[p]:
+                    logging.error("term value of previous follower is not increasing")
+                    recipe_failed = 1
+                    break
+
+                if client_req != "deny-leader-not-established":
+                    logging.error("client_requests is not deny-leader-not-established: %s" % client_req)
+                    recipe_failed = 1
+                    break
+
+            elif state == "leader":
+                if term != original_term[p]:
+                    logging.error("term value of leader changed: orig %d, new: %d" % (original_term[p], term))
+                    recipe_failed = 1
+                    break
+
+                if client_req != "deny-may-be-deposed":
+                    logging.error("client_requests is not deny-may-be-deposed: %s" % client_req)
+                    recipe_failed = 1
+                    break
 
         if recipe_failed:
             logging.error("Stage 1 of leader overthrow failed")
@@ -251,43 +290,30 @@ class Recipe(HolonRecipeBase):
                 break
 
             voted_for_uuid = raft_json_dict["raft_root_entry"][0]["voted-for-uuid"]
-            if self_uuid != voted_for_uuid:
+            if voted_for_uuid != self_uuid:
                 logging.error("voted_for_uuid is not same as self uuid")
                 logging.error("voted_for_uuid: %s, self uuid: %s" % (voted_for_uuid, self_uuid))
                 recipe_failed = 1
                 break
-
+            
             client_req = raft_json_dict["raft_root_entry"][0]["client-requests"]
-            term = raft_json_dict["raft_root_entry"][0]["term"]
-
-            state = raft_json_dict["raft_root_entry"][0]["state"]
-            if state != "leader" or state != "candidate":
-                logging.error("peer state is wrong: %s" % state)
+            if client_req != "deny-leader-not-established":
+                logging.error("client_requests is not deny-leader-not-established: %s" % client_req)
                 recipe_failed = 1
                 break
 
-            if state == "candidate":
-                if term <= original_term[p]:
+            term = raft_json_dict["raft_root_entry"][0]["term"]
+            if term <= original_term[p]:
                     logging.error("term value of previous follower is not increasing")
                     recipe_failed = 1
                     break
 
-                if client_req != "deny-leader-not-established":
-                    logging.error("client_requests is not deny-leader-not-established: %s" % client_req)
-                    recipe_failed = 1
-                    break
-
-            elif state == "leader":
-                if term != original_term[p]:
-                    logging.error("term value of leader changed: orig %d, new: %d" % (original_term[p], term))
-                    recipe_failed = 1
-                    break
-
-                if client_req != "deny-may-be-deposed":
-                    logging.error("client_requests is not deny-may-be-deposed: %s" % client_req)
-                    recipe_failed = 1
-                    break
-
+            state = raft_json_dict["raft_root_entry"][0]["state"]
+            if state != "candidate":
+                logging.error("peer state is wrong: %s" % state)
+                recipe_failed = 1
+                break
+            
         if recipe_failed:
             logging.error("Stage 2 of Leader overthrow failed")
             return recipe_failed
