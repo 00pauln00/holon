@@ -1,8 +1,10 @@
 import os, logging
 import subprocess
+import time as time_global
 from basicio import BasicIO
 from genericcmd import GenericCmds
 from inotifypath import inotify_input_base
+from os import path
 
 def ctl_req_create_cmdfile_and_copy(ctlreqobj):
     basicioobj = BasicIO()
@@ -88,6 +90,15 @@ class CtlRequest:
             logging.error("Failed to create ctl req object error: %d" % self.Error())
             #Aborting the execution as apply failed
             exit()
+
+        '''
+        TO check if outfile is created
+        '''
+        while(1):
+            if path.exists(self.output_fpath) != True:
+                    logging.error("Outfile not created yet")
+                    time_global.sleep(0.005)
+            break
         return self
 
     def Error(self):
