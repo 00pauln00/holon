@@ -48,85 +48,44 @@ class Recipe(HolonRecipeBase):
         Will verify parameters from server JSON output to check term value.
         '''
         get_all = [None] * npeer
+        idle_off = [None] * npeer
         net_rcv_false = [None] * npeer
         new_uuid = [None] * npeer
         net_rcv_true = [None] * npeer
+        orig_raftjsonobj = [None] * npeer
+        rcv_false_raftjson = [None] * npeer
+        set_leader_raftjson = [None] * npeer
+        raftjsonobj = [None] * npeer
 
         #Verify the parameters
-        original_leader_uuid = {}
-        original_state = {}
-        original_term = {}
-        original_commit_idx = {}
-        original_last_applied = {}
-        original_cumu_crc = {}
-        original_newest_entry_idx = {}
-        original_newest_entry_term = {}
-        original_newest_entry_dsize = {}
-        original_newest_entry_crc = {}
         leader_to_be = -1
         LEADER_ELECTION_TIME_OUT = 300 #5mins
        
+        recipe_failed = 0
+        '''
+        Make sure none of the peer is in idle state
+        '''
+        for p in range(npeer):
+            idle_off[0] = CtlRequest(inotifyobj, "idle_off", peer_uuid_arr[0],
+                                    app_uuid,
+                                    inotify_input_base.REGULAR,
+                                    self.recipe_ctl_req_obj_list).Apply()
+        time_global.sleep(3)
         '''
         Get the parameter of basic leader election
         to compare with New leader-to-be
         '''
-        recipe_failed = 0
-        for p in range(npeer):
+
+        for p in range(npeer):    
             get_all[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
                                     app_uuid,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply()
-         
-            raft_json_dict = genericcmdobj.raft_json_load(get_all[p].output_fpath)
-            peer_uuid = raft_json_dict["raft_root_entry"][0]["peer-uuid"]
-            if peer_uuid != peer_uuid_arr[p]:
-                logging.error("Peer uuid %s is different, expected: %s" % (peer_uuid, peer_uuid_arr[p]))
-            logging.warning(f"peer-uuid for peer: %d is: %s" % (p, peer_uuid))
-
-            original_leader_uuid[p] = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
-            logging.warning(f"Original Leader UUID is: %s" % original_leader_uuid[p])
-
-            if p > 0 and original_leader_uuid[p] != original_leader_uuid[p - 1]:
-                logging.error("leader for peer %s is different than peer %s") % (peer_uuid, peer_uuid_arr[p - 1])
-                recipe_failed = 1
-                break
-
-            voted_for_uuid = raft_json_dict["raft_root_entry"][0]["voted-for-uuid"]
-            if voted_for_uuid != original_leader_uuid[p]:
-                logging.error("voted-for-uuid %s is not same as leader %s" % (voted_for_uuid, original_leader_uuid[p]))
-                recipe_failed = 1
-                break
-
-            original_state[p] = raft_json_dict["raft_root_entry"][0]["state"]
-            logging.warning(f"State is: %s" % original_state[p])
-
-            if original_state[p] == "follower" and leader_to_be == -1:
-                logging.warning("peer: %d is leader_to_be" % p)
+           
+            orig_raftjsonobj[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
+            if orig_raftjsonobj[p].state == "follower" and leader_to_be == -1:
+                logging.warning("New leader-to-be is peer: %d" % p)
                 leader_to_be = p
-
-            original_commit_idx[p] = raft_json_dict["raft_root_entry"][0]["commit-idx"]
-            logging.warning(f"Original commit-idx: %d" % original_commit_idx[p])
-            
-            original_last_applied[p] = raft_json_dict["raft_root_entry"][0]["last-applied"]
-            logging.warning(f"Original last-applied: %d" % original_last_applied[p])
-
-            original_cumu_crc[p] = raft_json_dict["raft_root_entry"][0]["last-applied-cumulative-crc"]
-            logging.warning(f"Original last-applied-cumulative-crc: %d" % original_cumu_crc[p])
-            
-            original_newest_entry_idx[p] = raft_json_dict["raft_root_entry"][0]["newest-entry-idx"]
-            logging.warning(f"Original newest_entry_idx: %d" % original_newest_entry_idx[p])
-
-            original_newest_entry_term[p] = raft_json_dict["raft_root_entry"][0]["newest-entry-term"]
-            logging.warning(f"Original newest_entry_term: %d" % original_newest_entry_term[p])
-
-            original_newest_entry_dsize[p] = raft_json_dict["raft_root_entry"][0]["newest-entry-data-size"]
-            logging.warning(f"Original newest_entry_data_size: %d" % original_newest_entry_dsize[p])
-
-            original_newest_entry_crc[p] = raft_json_dict["raft_root_entry"][0]["newest-entry-crc"]
-            logging.warning(f"Original newest_entry_crc: %d" % original_newest_entry_crc[p])
-
-            original_term[p] = raft_json_dict["raft_root_entry"][0]["term"]
-            logging.warning(f"Original Term: %s" % original_term[p])
 
         '''
         Copy the cmd file for Disable the net_recv_enable on all
@@ -141,7 +100,7 @@ class Recipe(HolonRecipeBase):
                                           inotify_input_base.REGULAR,
                                           self.recipe_ctl_req_obj_list).Apply()
         
-            time_global.sleep(15)
+        time_global.sleep(7)
 
         '''
         Verify if net_recv_enable is set to false for all peers.
@@ -151,52 +110,46 @@ class Recipe(HolonRecipeBase):
             #Copy cmdfile to get the JSON output 
             ctl_req_create_cmdfile_and_copy(get_all[p])
 
-            time_global.sleep(15)
+            time_global.sleep(5)
 
-            raft_json_dict = genericcmdobj.raft_json_load(get_all[p].output_fpath)
-            net_recv_enable = raft_json_dict["ctl_svc_nodes"][1]["net_recv_enabled"]
-            if net_recv_enable != False:
-                logging.error("net_rcv_enable is not set to false(%s) for peer %s" % (net_recv_enable, p))
+            rcv_false_raftjson[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
+            peer_uuid = peer_uuid_arr[p]
+            if rcv_false_raftjson[p].net_rcv_enabled[peer_uuid] != False:
+                logging.error("net_rcv_enable is not set to false(%s) for peer %s" % (rcv_false_raftjson[p].net_recv_enable, p))
                 recipe_failed = 1
                 break
 
-            leader_uuid = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
-            if leader_uuid != original_leader_uuid[p]:
+            if rcv_false_raftjson[p].leader_uuid != orig_raftjsonobj[p].leader_uuid:
                 logging.error("New leader election happened, original leader: %s, new leader: %s" %
-                        (original_leader[p], leader_uuid))
+                        (orig_raftjsonobj[p].leader_uuid, rcv_false_raftjson[p].leader_uuid))
                 recipe_failed = 1
                 break
 
-            client_req = raft_json_dict["raft_root_entry"][0]["client-requests"]
-
-            term = raft_json_dict["raft_root_entry"][0]["term"]
-
-            state = raft_json_dict["raft_root_entry"][0]["state"]
-            if state != "leader" and state != "candidate":
-                logging.error("peer state %s for peer %s:" % (state, p))
-                logging.error("peer state is wrong: %s" % state)
+            if rcv_false_raftjson[p].state != "candidate" and rcv_false_raftjson[p].state != "leader":
+                logging.error(f"peer state %s for peer-uuid %s" % (rcv_false_raftjson[p].state, peer_uuid_arr[p]))
+                logging.error("peer %s state is not candidate" % p)
                 recipe_failed = 1
                 break
 
-            if state == "candidate":
-                if term <= original_term[p]:
+            if rcv_false_raftjson[p].state == "candidate":
+                if rcv_false_raftjson[p].term <= orig_raftjsonobj[p].term:
                     logging.error("term value of previous follower is not increasing")
                     recipe_failed = 1
                     break
 
-                if client_req != "deny-leader-not-established":
-                    logging.error("client_requests is not deny-leader-not-established: %s" % client_req)
+                if rcv_false_raftjson[p].client_req != "deny-leader-not-established":
+                    logging.error("client_requests is not deny-leader-not-established: %s" % rcv_false_raftjson[p].client_req)
                     recipe_failed = 1
                     break
 
-            elif state == "leader":
-                if term != original_term[p]:
-                    logging.error("term value of leader changed: orig %d, new: %d" % (original_term[p], term))
+            elif rcv_false_raftjson[p].state == "leader":
+                if rcv_false_raftjson[p].term != orig_raftjsonobj[p].term:
+                    logging.error("term value of leader changed: orig %d, new: %d" % (orig_raftjsonobj[p].term, rcv_false_raftjson[p].term))
                     recipe_failed = 1
                     break
 
-                if client_req != "deny-may-be-deposed":
-                    logging.error("client_requests is not deny-may-be-deposed: %s" % client_req)
+                if rcv_false_raftjson[p].client_req != "deny-may-be-deposed":
+                    logging.error("client_requests is not deny-may-be-deposed: %s" % rcv_false_raftjson[p].client_req)
                     recipe_failed = 1
                     break
 
@@ -232,88 +185,73 @@ class Recipe(HolonRecipeBase):
             ctl_req_create_cmdfile_and_copy(get_all[p])
             time_global.sleep(2)
 
-            raft_json_dict = genericcmdobj.raft_json_load(get_all[p].output_fpath)
-
+            set_leader_raftjson[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
             '''
             Make sure following item values are consistent and leader-election
             has not happened yet.
             '''
-            self_uuid = raft_json_dict["raft_root_entry"][0]["peer-uuid"]
-
-            leader_uuid = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
-            if leader_uuid != original_leader_uuid[p]:
+            if set_leader_raftjson[p].leader_uuid != orig_raftjsonobj[p].leader_uuid:
                 logging.error("New leader election happened, original leader: %s, new leader: %s" %
-                        (original_leader[p], leader_uuid))
+                        (orig_raftjsonobj[p].leader_uuid, set_leader_raftjsonj[p].leader_uuid))
                 recipe_failed = 1
                 break
 
-            commit_idx = raft_json_dict["raft_root_entry"][0]["commit-idx"] 
-            if commit_idx != original_commit_idx[p]:
-                logging.error("commit indx changed. Original: %d, new: %d" % (original_commit_idx[p], commit_idx))
+            if set_leader_raftjson[p].commit_idx != orig_raftjsonobj[p].commit_idx:
+                logging.error("commit indx changed. Original: %d, new: %d" % (orig_raftjsonobj[p].commit_idx, set_leader_raftjson[p].commit_idx))
                 recipe_failed
                 break
 
-            last_applied = raft_json_dict["raft_root_entry"][0]["last-applied"] 
-            if last_applied != original_last_applied[p]:
-                logging.error("last-applied changed: original: %d, new: %d" % (original_last_applied[p], last_applied))
+            if set_leader_raftjson[p].last_applied != orig_raftjsonobj[p].last_applied:
+                logging.error("last-applied changed: original: %d, new: %d" % (orig_raftjsonobj[p].last_applied, set_leader_raftjson[p].last_applied))
                 recipe_failed = 1
                 break
 
-            last_app_cumu_crc = raft_json_dict["raft_root_entry"][0]["last-applied-cumulative-crc"]
-            if last_app_cumu_crc != original_cumu_crc[p]:
-                logging.error("last-applied-cumulative-crc changed: original: %d, new: %d" % (original_cumu_crc[p], last_app_cumu_crc))
+            if set_leader_raftjson[p].cumu_crc != orig_raftjsonobj[p].cumu_crc:
+                logging.error("last-applied-cumulative-crc changed: original: %d, new: %d" % (orig_raftjsonobj[p].cumu_crc, set_leader_raftjson[p].cumu_crc))
                 recipe_failed = 1
                 break
 
-            newest_entry_idx = raft_json_dict["raft_root_entry"][0]["newest-entry-idx"]
-            if newest_entry_idx != original_newest_entry_idx[p]:
-                logging.error("newest-entry-idx changed. Original: %d, new: %d" % (original_newest_entry_idx[p], newest_entry_idx))
+            if set_leader_raftjson[p].newest_entry_idx != set_leader_raftjson[p].newest_entry_idx:
+                logging.error("newest-entry-idx changed. Original: %d, new: %d" % (orig_raftjsonobj[p].newest_entry_idx, set_leader_raftjson[p].newest_entry_idx))
                 recipe_failed = 1
                 break
 
-            newest_entry_term = raft_json_dict["raft_root_entry"][0]["newest-entry-term"]
-            if newest_entry_term != original_newest_entry_term[p]:
-                logging.error("newest-entry-term changed. Original: %d, new: %d" % (original_newest_entry_term[p], newest_entry_term))
+            if set_leader_raftjson[p].newest_entry_term != orig_raftjsonobj[p].newest_entry_term:
+                logging.error("newest-entry-term changed. Original: %d, new: %d" % (orig_raftjsonobj[p].newest_entry_term, set_leader_raftjson[p].newest_entry_term))
                 recipe_failed = 1
                 break
 
-            newest_entry_dsize = raft_json_dict["raft_root_entry"][0]["newest-entry-data-size"]
-            if newest_entry_dsize != original_newest_entry_dsize[p]:
-                logging.error("newest-entry-data-size changed. Original: %d, new: %d" % (original_newest_entry_dsize[p], newest_entry_dsize))
+            if set_leader_raftjson[p].newest_entry_dsize != orig_raftjsonobj[p].newest_entry_dsize:
+                logging.error("newest-entry-data-size changed. Original: %d, new: %d" % (orig_raftjsonobj[p].newest_entry_dsize, set_leader_raftjson[p].newest_entry_dsize))
                 recipe_failed = 1
                 break
 
-            newest_entry_crc = raft_json_dict["raft_root_entry"][0]["newest-entry-crc"]
-            if newest_entry_crc != original_newest_entry_crc[p]:
-                logging.error("newest-entry-crc changed. Original: %d, new: %d" % (original_newest_entry_crc[p], newest_entry_crc))
+            if set_leader_raftjson[p].newest_entry_crc != orig_raftjsonobj[p].newest_entry_crc:
+                logging.error("newest-entry-crc changed. Original: %d, new: %d" % (orig_raftjsonobj[p].newest_entry_crc, set_leader_raftjson[p].newest_entry_crc))
                 recipe_failed = 1
                 break
 
-            voted_for_uuid = raft_json_dict["raft_root_entry"][0]["voted-for-uuid"]
-            if voted_for_uuid != self_uuid:
+            if set_leader_raftjson[p].voted_for_uuid != set_leader_raftjson[p].peer_uuid:
                 logging.error("voted_for_uuid is not same as self uuid")
-                logging.error("voted_for_uuid: %s, self uuid: %s" % (voted_for_uuid, self_uuid))
+                logging.error("voted_for_uuid: %s, self uuid: %s" % (set_leader_raftjson[p].voted_for_uuid, set_leader_raftjson[p].peer_uuid))
                 recipe_failed = 1
                 break
             
-            client_req = raft_json_dict["raft_root_entry"][0]["client-requests"]
-            if client_req != "deny-leader-not-established":
-                logging.error("client_requests is not deny-leader-not-established: %s" % client_req)
+            if set_leader_raftjson[p].client_req != "deny-leader-not-established":
+                logging.error("client_requests is not deny-leader-not-established: %s" % set_leader_raftjson[p].client_req)
                 recipe_failed = 1
                 break
 
-            term = raft_json_dict["raft_root_entry"][0]["term"]
-            if term <= original_term[p]:
+            if set_leader_raftjson[p].term <= orig_raftjsonobj[p].term:
                     logging.error("term value of previous follower is not increasing")
                     recipe_failed = 1
                     break
 
-            state = raft_json_dict["raft_root_entry"][0]["state"]
-            if state != "candidate":
-                logging.error("peer state is wrong: %s" % state)
+            if set_leader_raftjson[p].state != "candidate":
+                logging.error("peer state is wrong: %s" % set_leader_raftjson[p].state)
                 recipe_failed = 1
                 break
-            
+
         if recipe_failed:
             logging.error("Stage 2 of Leader overthrow failed")
             return recipe_failed
@@ -341,21 +279,20 @@ class Recipe(HolonRecipeBase):
             ctl_req_create_cmdfile_and_copy(get_all[leader_to_be])
             time_global.sleep(5)
 
-            raft_json_dict = genericcmdobj.raft_json_load(get_all[leader_to_be].output_fpath)
-
-            voted_for_uuid = raft_json_dict["raft_root_entry"][0]["voted-for-uuid"]
-            leader_uuid = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
-            if voted_for_uuid != peer_uuid_arr[leader_to_be] or leader_uuid != peer_uuid_arr[leader_to_be]:
+            leader_json = RaftJson(get_all[p].output_fpath, raftconfobj)
+            
+            if leader_json.voted_for_uuid != peer_uuid_arr[leader_to_be] or leader_json.leader_uuid != peer_uuid_arr[leader_to_be]:
                 time_out = time_out + 10
                 if time_out >= LEADER_ELECTION_TIME_OUT:
                     logging.error("Leader election failed")
                     recipe_failed = 1
                     break
+
                 logging.warning("Leader election is not done yet!, retry")
-                logging.warning("leader_uuid: %s, voted_for_uuid: %s" % (leader_uuid, voted_for_uuid))
+                logging.warning("leader_uuid: %s, voted_for_uuid: %s" % (leader_json.leader_uuid, leader_json.voted_for_uuid))
                 continue
             else:
-                logging.warning("New leader elected successfuly %s" % leader_uuid)
+                logging.warning("New leader elected successfuly %s" % leader_json.peer_uuid)
                 break
 
         if recipe_failed:
@@ -370,34 +307,30 @@ class Recipe(HolonRecipeBase):
             #Copy ctlrequest cmd file to get JSON output
             ctl_req_create_cmdfile_and_copy(get_all[p])
             time_global.sleep(2)
-
-            raft_json_dict = genericcmdobj.raft_json_load(get_all[p].output_fpath)
-            voted_for_uuid = raft_json_dict["raft_root_entry"][0]["voted-for-uuid"]
-            leader_uuid = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
-            if voted_for_uuid != peer_uuid_arr[leader_to_be] or leader_uuid != peer_uuid_arr[leader_to_be]:
+            
+            raftjsonobj[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
+        
+            if raftjsonobj[p].voted_for_uuid != peer_uuid_arr[leader_to_be] or raftjsonobj[p].leader_uuid != peer_uuid_arr[leader_to_be]:
                 logging.error("New leader is not elected by peer: %d" % peer_uuid_arr[p])
                 recipe_failed = 1
                 break
 
             # commit idx should be pre-state1 value + 1
-            commit_idx = raft_json_dict["raft_root_entry"][0]["commit-idx"]
-            if commit_idx != original_commit_idx[p] + 1:
-                logging.error("Current commit idx(%d) != orig commit indx + 1(%d)" % (commit_idx, original_commit_idx[p]))
+            if raftjsonobj[p].commit_idx != orig_raftjsonobj[p].commit_idx + 1:
+                logging.error("Current commit idx(%d) != orig commit indx + 1(%d)" % (raftjsonobj[p].commit_idx, orig_raftjsonobj[p].commit_idx))
                 recipe_failed = 1
                 break
 
             # newest_entry_idx should be Pre-stage1 value + 1
-            newest_entry_idx = raft_json_dict["raft_root_entry"][0]["newest-entry-idx"]
-            if newest_entry_idx != original_newest_entry_idx[p] + 1:
-                logging.error("Current newest_entry_idx (%) != original + 1 (%d)" % (newest_entry_idx, original_newest_entry_idx[p]))
+            if raftjsonobj[p].newest_entry_idx != orig_raftjsonobj[p].newest_entry_idx + 1:
+                logging.error("Current newest_entry_idx (%) != original + 1 (%d)" % (raftjsonobj[p].newest_entry_idx, orig_raftjsonobj[p].newest_entry_idx))
                 recipe_failed = 1
                 break
 
             # Term should be greater than pre-stage1. With multiple failed leader election, its value can
             # increase more than one.
-            term = raft_json_dict["raft_root_entry"][0]["term"]
-            if term > original_term[p]:
-                logging.error("Current term (%) is not greater than original (%d)" % (term, original_term[p]))
+            if raftjsonobj[p].term > orig_raftjsonobj[p].term:
+                logging.error("Current term (%) is not greater than original (%d)" % (raftjsonobj[p].term, orig_raftjsonobj[p].term))
                 recipe_failed = 1
                 break
 
@@ -405,7 +338,7 @@ class Recipe(HolonRecipeBase):
             logging.error("Stage 3 failed")
             return recipe_failed
 
-        logging.warning(f"Stage 3 successful" % leader_uuid)
+        logging.warning(f"Stage 3 successful")
 
         '''
         Finalization of recipe: The recipe should restore net_recv_enabled state to true on all peers.
@@ -420,9 +353,10 @@ class Recipe(HolonRecipeBase):
             #Copy ctlrequest cmd file to get JSON output
             ctl_req_create_cmdfile_and_copy(get_all[p])
 
-            raft_json_dict = genericcmdobj.raft_json_load(get_all[p].output_fpath)
-            net_recv_enable = raft_json_dict["ctl_svc_nodes"][0]["net_recv_enabled"]
-            if net_recv_enable != True:
+            raftjsonobj[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
+
+            peer_uuid = peer_uuid_arr[p]
+            if raftjsonobj[p].net_rcv_enabled[peer_uuid] != True:
                 logging.error("net_recv_enable is not set to true for peer %s" % peer_uuid_arr[p])
                 recipe_failed = 1
                 break
