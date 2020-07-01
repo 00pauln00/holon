@@ -84,15 +84,14 @@ class Recipe(HolonRecipeBase):
            
             orig_raftjsonobj[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
             if orig_raftjsonobj[p].state == "follower" and leader_to_be == -1:
-                logging.warning("New leader-to-be is peer: %d" % p)
+                logging.warning("New leader-to-be is peer: %d and uuid: %s" % (p, peer_uuid_arr[p]))
                 leader_to_be = p
 
         '''
         Copy the cmd file for Disable the net_recv_enable on all
         peers and verify that net_recv_enable is set to false.
         '''
-        logging.warning("Stage 1:")
-        logging.warning("Disable message receive on all peers")
+        logging.warning("Stage 1: Disable message receive on all peers")
         for p in range(npeer): 
             #Copy the cmd file for Disable the net_recv_enable
             net_rcv_false[p] = CtlRequest(inotifyobj, "rcv_false", peer_uuid_arr[p],
@@ -163,8 +162,7 @@ class Recipe(HolonRecipeBase):
         Copy the cmd for "Enable Recv on all Peers from the Leader-to-be"
         verify the new value by comparing with original values.
         '''
-        logging.warning("Stage 2:")
-        logging.warning("Enable receive on all Peers from the Leader-to-be")
+        logging.warning("Stage 2: Enable receive on all Peers from the Leader-to-be")
         for p in range(npeer): 
             #Copy new leader-to-be cmd file. Use first follower as leader-to-be
             CtlRequest(inotifyobj, "set_leader_uuid", peer_uuid_arr[p],
@@ -178,7 +176,7 @@ class Recipe(HolonRecipeBase):
         Verify receive enable to the peer which is to be appointed as leader for
         all peers.
         '''
-        logging.warning("Verify receive enable to the peer which is to be appointed as leader")
+        logging.warning("Verify receive enable on the peer which is to be appointed as leader")
         for p in range(npeer):
 
             #Copy ctlrequest cmd file to get JSON output
@@ -261,8 +259,7 @@ class Recipe(HolonRecipeBase):
         The cmd is copied only to UUID-of-leader-to-be.
         check net_rcv_enabled is set to true on UUID-of-leader-to-be.
         '''    
-        logging.warning("Stage 3:")
-        logging.warning("Enable Recv from all Peers on the Leader-to-be")
+        logging.warning("Stage 3: Enable Recv from all Peers on the Leader-to-be")
 
         CtlRequest(inotifyobj, "rcv_true", peer_uuid_arr[leader_to_be],
                                     app_uuid,
@@ -270,16 +267,16 @@ class Recipe(HolonRecipeBase):
                                     self.recipe_ctl_req_obj_list).Apply()
         time_global.sleep(5)
 
-        logging.warning("New leader election may take time")
+        logging.warning("New leader election may take time...")
 
         time_out = 0
         while 1:
             recipe_failed = 0
 
             ctl_req_create_cmdfile_and_copy(get_all[leader_to_be])
-            time_global.sleep(5)
+            time_global.sleep(3)
 
-            leader_json = RaftJson(get_all[p].output_fpath, raftconfobj)
+            leader_json = RaftJson(get_all[leader_to_be].output_fpath, raftconfobj)
             
             if leader_json.voted_for_uuid != peer_uuid_arr[leader_to_be] or leader_json.leader_uuid != peer_uuid_arr[leader_to_be]:
                 time_out = time_out + 10
@@ -317,20 +314,20 @@ class Recipe(HolonRecipeBase):
 
             # commit idx should be pre-state1 value + 1
             if raftjsonobj[p].commit_idx != orig_raftjsonobj[p].commit_idx + 1:
-                logging.error("Current commit idx(%d) != orig commit indx + 1(%d)" % (raftjsonobj[p].commit_idx, orig_raftjsonobj[p].commit_idx))
+                logging.error("Current commit idx %d != orig commit indx + 1 %d" % (raftjsonobj[p].commit_idx, orig_raftjsonobj[p].commit_idx))
                 recipe_failed = 1
                 break
 
             # newest_entry_idx should be Pre-stage1 value + 1
             if raftjsonobj[p].newest_entry_idx != orig_raftjsonobj[p].newest_entry_idx + 1:
-                logging.error("Current newest_entry_idx (%) != original + 1 (%d)" % (raftjsonobj[p].newest_entry_idx, orig_raftjsonobj[p].newest_entry_idx))
+                logging.error("Current newest_entry_idx %d != original + 1 %d" % (raftjsonobj[p].newest_entry_idx, orig_raftjsonobj[p].newest_entry_idx))
                 recipe_failed = 1
                 break
 
             # Term should be greater than pre-stage1. With multiple failed leader election, its value can
             # increase more than one.
-            if raftjsonobj[p].term > orig_raftjsonobj[p].term:
-                logging.error("Current term (%) is not greater than original (%d)" % (raftjsonobj[p].term, orig_raftjsonobj[p].term))
+            if raftjsonobj[p].term <= orig_raftjsonobj[p].term:
+                logging.error("Current term %d is not greater than original %d" % (raftjsonobj[p].term, orig_raftjsonobj[p].term))
                 recipe_failed = 1
                 break
 
@@ -338,13 +335,13 @@ class Recipe(HolonRecipeBase):
             logging.error("Stage 3 failed")
             return recipe_failed
 
-        logging.warning(f"Stage 3 successful")
+        logging.warning(f"Stage 3 successful, all peers elected the new leader.")
 
         '''
         Finalization of recipe: The recipe should restore net_recv_enabled state to true on all peers.
         '''
         for p in range(npeer):
-            net_rcv_true[p] = CtlRequest(inotifyobj, "rcv_true", peer_uuid_arr[follower_to_be_leaer],
+            net_rcv_true[p] = CtlRequest(inotifyobj, "rcv_true", peer_uuid_arr[p],
                                          app_uuid,
                                          inotify_input_base.REGULAR,
                                          self.recipe_ctl_req_obj_list).Apply()

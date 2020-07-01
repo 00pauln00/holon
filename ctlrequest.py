@@ -12,7 +12,7 @@ def ctl_req_create_cmdfile_and_copy(ctlreqobj):
     i_base = os.path.basename(ctlreqobj.input_fpath)
     cmd_str = "%s\nOUTFILE /%s\n" % (ctlreqobj.ctl_cmd_dict[ctlreqobj.cmd], o_base)
 
-    logging.warning("cmd_str: %s" % cmd_str)
+    logging.info("cmd_str: %s" % cmd_str)
     # Before copying the cmdfile, remove the output file if it already exits.
     if os.path.exists(ctlreqobj.output_fpath):
         genericcmdobj.remove_file(ctlreqobj.output_fpath)
