@@ -78,7 +78,6 @@ class CtlRequest:
         # Add the ctlreqobj on the recipe list.
         ctlreq_list.append(self)
 
-
     def Apply(self):
         logging.warning("APPLY cmd=%s ipath=%s", self.cmd, self.input_fpath)
         '''
@@ -91,15 +90,17 @@ class CtlRequest:
             #Aborting the execution as apply failed
             exit()
 
+        return self
+
+    def Wait_for_outfile(self):
         '''
-        TO check if outfile is created
+        Wait for outfile creation
         '''
         while(1):
-            if path.exists(self.output_fpath) != True:
-                    logging.error("Outfile not created yet")
-                    time_global.sleep(0.005)
-            break
-        return self
+            if path.exists(self.output_fpath) == True:
+                break
+            logging.info("Outfile not created yet: %s" % self.output_fpath)
+            time_global.sleep(0.005)
 
     def Error(self):
         return self.error
