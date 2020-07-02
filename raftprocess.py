@@ -49,6 +49,10 @@ class RaftProcess:
         else:
             logging.error("Raft process failed to start")
             raise subprocess.SubprocessError(self.process_popen.returncode)
+        
+        #Print <process_type.peer_index> at the start of raft log messages 
+        output_label = "raft-%s.%s" % (self.process_type, self.process_idx)
+        logging.warning(output_label)
 
     '''
         Method: pause_process

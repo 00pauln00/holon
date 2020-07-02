@@ -27,6 +27,7 @@ disable_post_run = False
 recipe_name = ""
 print_desc = False
 print_ancestry = False
+skip_post_run = False
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-P', action = "store", dest = "dir_path", help = "directory path to create config/ctl/raftdb files")
@@ -40,6 +41,7 @@ parser.add_argument('-d', action = "store_true", dest = "dry_run", default = Fal
 parser.add_argument('-D', action = "store_true", dest = "disable_post_run", default = False, help = "disable post run on failure")
 parser.add_argument('-print-desc', action = "store_true", dest = "print_desc", default = False, help = "print description")
 parser.add_argument('-print-ancestry', action = "store_true", dest = "print_ancestry", default = False, help = "print ancestry")
+parser.add_argument('-R', action = "store_true", dest = "skip_post_run", default = False, help = "Disable post run")
 
 parser.add_argument('recipe', type = str, help = "recipe_name")
 
@@ -77,6 +79,7 @@ dry_run = args.dry_run
 disable_post_run = args.disable_post_run
 print_desc = args.print_desc
 print_ancestry = args.print_ancestry
+skip_post_run = args.skip_post_run
 recipe_name = args.recipe
 
 if port >= 65536:
@@ -107,7 +110,7 @@ if valid_recipe == 0:
         print(r)
     exit()
 
-logging.basicConfig(filename=log_file_path, level=logging.DEBUG, format='%(asctime)s %(message)s')
+logging.basicConfig(filename=log_file_path, level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
 
 logging.warning("Holon Directory path: %s" % dir_path)
 logging.warning("Log file path %s" % log_file_path)
@@ -231,6 +234,13 @@ for r in reversed(recipe_arr):
         print("%s ========================== OK" % r().name)
         logging.warning("%s ========================== OK" % r().name)
 
+'''
+Even after holon terminates, skip the post_run
+method so that processes will keep running.
+'''
+if skip_post_run == True:
+    print("Processes will keep running even after holon terminates")
+    exit(1)
 '''
 If any recipe failed and disable_post_run is set, skip the post_run
 method so that processes do not get terminated and can be used for
