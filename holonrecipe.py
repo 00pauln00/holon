@@ -9,6 +9,7 @@ from inotifypath import *
 from niovacluster import NiovaCluster
 from ctlrequest import * 
 from genericcmd import GenericCmds
+from raft_json import RaftJson
 
 class HolonRecipeBase:
 

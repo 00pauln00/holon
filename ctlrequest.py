@@ -14,6 +14,7 @@ def ctl_req_create_cmdfile_and_copy(ctlreqobj):
     i_base = os.path.basename(ctlreqobj.input_fpath)
     cmd_str = "%s\nOUTFILE /%s\n" % (ctlreqobj.ctl_cmd_dict[ctlreqobj.cmd], o_base)
 
+    logging.info("cmd_str: %s" % cmd_str)
     # Before copying the cmdfile, remove the output file if it already exits.
     if os.path.exists(ctlreqobj.output_fpath):
         genericcmdobj.remove_file(ctlreqobj.output_fpath)
@@ -49,7 +50,10 @@ class CtlRequest:
         'idle_off':'APPLY ignore_timer_events@false\nWHERE /raft_net_info/ignore_timer_events',
         'get_all':'GET /.*/.*/.*/.*',
         'current_time':'GET /system_info/current_time',
-        'get_term':'GET /raft_root_entry/term'
+        'get_term':'GET /raft_root_entry/term',
+        'rcv_false':'APPLY net_recv_enabled@false\nWHERE /ctl_svc_nodes/net_recv_enabled@true',
+        'set_leader_uuid':'APPLY net_recv_enabled@true\nWHERE /ctl_svc_nodes/uuid@',
+        'rcv_true':'APPLY net_recv_enabled@true\nWHERE /ctl_svc_nodes/net_recv_enabled@false'
         }
 
     input_fpath = ""
@@ -77,6 +81,28 @@ class CtlRequest:
                                                                  app_uuid)
         # Add the ctlreqobj on the recipe list.
         ctlreq_list.append(self)
+
+
+
+    def set_leader(self, uuid):
+
+        orig_cmd = self.ctl_cmd_dict["set_leader_uuid"]
+        cmd_uuid = orig_cmd + uuid
+
+        self.ctl_cmd_dict["set_leader_uuid"] = cmd_uuid
+
+        logging.warning("APPLY cmd=%s ipath=%s", self.cmd, self.input_fpath)
+        self.error = ctl_req_create_cmdfile_and_copy(self)
+        if self.error != 0:
+            logging.error("Failed to create ctl req object error: %d" % self.Error())
+            #Aborting the execution as apply failed
+            exit()
+
+        #Update the dict value to original cmd
+        self.ctl_cmd_dict["set_leader_uuid"] = orig_cmd
+
+        return self
+
 
     def Apply(self):
         logging.warning("APPLY cmd=%s ipath=%s", self.cmd, self.input_fpath)
