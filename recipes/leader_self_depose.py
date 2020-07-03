@@ -1,21 +1,50 @@
 from holonrecipe import *
 import logging
 import psutil
+
+def verify_follower_stat_for_non_running_peers(leader_json, raftconf, nstarted):
+    for p in range(raftconf.nservers - 1):
+        follower_peer_uuid = leader_json["raft_root_entry"][0]["follower-stats"][p]["peer-uuid"]
+
+        for n in range(nstarted, raftconf.nservers):
+            if follower_peer_uuid == raftconf.peer_uuid_arr[n]:
+                logging.warning("Checking non-running peers parameter: %s" % follower_peer_uuid)
+                last_ack = leader_json["raft_root_entry"][0]["follower-stats"][p]["last-ack"]
+                if last_ack != "Thu Jan 01 00:00:00 UTC 1970":
+                    logging.error("last_ack is %s not (Thu Jan 01 00:00:00 UTC 1970)" % last_ack)
+                    return False
+                next_idx = leader_json["raft_root_entry"][0]["follower-stats"][p]["next-idx"]
+                if int(next_idx) < 1:
+                    logging.error("next idx is not >= 1: %s" % next_idx)
+                    return False
+                prev_idx_term = leader_json["raft_root_entry"][0]["follower-stats"][p]["prev-idx-term"]
+                if int(prev_idx_term) < 1:
+                    logging.error("prev_idx_term  is not >= 1: %s" % prev_idx_term)
+                    return False
+
+    return True
+
+
 '''
 The unpaused follower becomes leader.
 '''
-def leader_self_depose_case1(ctlreq_arr, resume_peer_uuid, orig_term, npeer_start):
+def leader_self_depose_case1(ctlreq_arr, raftconf, resume_peer_uuid, orig_term, nstarted):
     '''
     Create object for generic cmds.
     '''
     genericcmdobj = GenericCmds()
 
-    for p in range(npeer_start):
+    leader_idx = 0
+    for p in range(nstarted):
         if ctlreq_arr[p] == None:
             continue
 
         raft_json_dict = genericcmdobj.raft_json_load(ctlreq_arr[p].output_fpath)
         leader_uuid = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
+        state = raft_json_dict["raft_root_entry"][0]["state"]
+        if state == "leader":
+            leader_idx = p
+
         voted_for_uuid = raft_json_dict["raft_root_entry"][0]["voted-for-uuid"]
         term = raft_json_dict["raft_root_entry"][0]["term"]
         commit_idx = raft_json_dict["raft_root_entry"][0]["commit-idx"]
@@ -32,28 +61,32 @@ def leader_self_depose_case1(ctlreq_arr, resume_peer_uuid, orig_term, npeer_star
         if term != (orig_term[p] + 1):
             return False
 
-        if newest_entry_term != term:
-            return False
-
         if newest_entry_dsize != 0:
             return False
 
-    return True
+    leader_json = genericcmdobj.raft_json_load(ctlreq_arr[leader_idx].output_fpath)
+    case_occurred = verify_follower_stat_for_non_running_peers(leader_json, raftconf, nstarted)
+    return case_occurred
+
 '''
-Unpaused follower started the election, but did not win or win immediately.
+Unpaused follower started the election, but did not win or did not win immediately.
 '''
-def leader_self_depose_case2(ctlreq_arr, resume_peer_uuid, orig_term, npeer_start):
+def leader_self_depose_case2(ctlreq_arr, raftconf, resume_peer_uuid, orig_term, nstarted):
     case2_occurred = False
     '''
     Create object for generic cmds.
     '''
     genericcmdobj = GenericCmds()
 
-    for p in range(npeer_start):
+    for p in range(nstarted):
         if ctlreq_arr[p] == None:
             continue
 
         raft_json_dict = genericcmdobj.raft_json_load(ctlreq_arr[p].output_fpath)
+        state = raft_json_dict["raft_root_entry"][0]["state"]
+        if state == "leader":
+            leader_idx = p
+
         peer_uuid = raft_json_dict["raft_root_entry"][0]["peer-uuid"]
         if peer_uuid != resume_peer_uuid:
             continue
@@ -67,32 +100,37 @@ def leader_self_depose_case2(ctlreq_arr, resume_peer_uuid, orig_term, npeer_star
         logging.warning("term: %d, orig term: %d" % (term, orig_term[p]))
 
         if leader_uuid == resume_peer_uuid or voted_for_uuid == resume_peer_uuid:
-            if term >= orig_term[p]:
+            if term >= (orig_term[p] + 2):
                 case2_occurred =  True
 
         break
 
-    #TODO check the values of follower-stat for non-running peers 
+    if case2_occurred:
+        leader_json = genericcmdobj.raft_json_load(ctlreq_arr[leader_idx].output_fpath)
+        case2_occurred = verify_follower_stat_for_non_running_peers(leader_json, raftconf, nstarted)
+    
     return case2_occurred
  
 '''
 original leader maintains the leadership after the pause.
 '''
-def leader_self_depose_case3(ctlreq_arr, orig_leader, orig_term, npeer_start):
+def leader_self_depose_case3(ctlreq_arr, orig_leader, orig_term, nstarted):
     '''
     Create object for generic cmds.
     '''
+    logging.warning("Checking case#3")
     genericcmdobj = GenericCmds()
-    for p in range(npeer_start):
+
+    for p in range(nstarted):
         if ctlreq_arr[p] == None:
             continue
 
         raft_json_dict = genericcmdobj.raft_json_load(ctlreq_arr[p].output_fpath)
         leader_uuid = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
+
         voted_for_uuid = raft_json_dict["raft_root_entry"][0]["voted-for-uuid"]
         term = raft_json_dict["raft_root_entry"][0]["term"]
 
-        logging.warning("Checking case#3")
         logging.warning("leader uuid: %s orig leader: %s" % (leader_uuid, orig_leader))
         logging.warning("term %d, orig term: %d" % (term, orig_term[p]))
         if leader_uuid != orig_leader:
@@ -104,6 +142,10 @@ def leader_self_depose_case3(ctlreq_arr, orig_leader, orig_term, npeer_start):
 
     return True
 
+
+'''
+Leader Self depose recipe
+'''
 class Recipe(HolonRecipeBase):
     name = "leader_self_depose"
     desc = "Leader Self-Depose\n"\
@@ -179,8 +221,8 @@ class Recipe(HolonRecipeBase):
                                     app_uuid,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply()
-            get_ctl[p].Wait_for_outfile()
-        follower ={}
+
+        orig_follower_last_ack ={}
         fpeer = 0
 
         for p in range(npeer_start):
@@ -192,8 +234,13 @@ class Recipe(HolonRecipeBase):
             orig_newest_entry_term[p] = raft_json_dict["raft_root_entry"][0]["newest-entry-term"]
             orig_newest_entry_dsize[p] = raft_json_dict["raft_root_entry"][0]["newest-entry-data-size"]
             orig_newest_entry_crc[p] = raft_json_dict["raft_root_entry"][0]["newest-entry-crc"]
-            
             orig_state[p]  = raft_json_dict["raft_root_entry"][0]["state"]
+
+            if orig_state[p] == "leader":
+                # Get the follower stat.
+                for p in range(raftconfobj.nservers - 1):
+                    follower_peer_uuid = raft_json_dict["raft_root_entry"][0]["follower-stats"][p]["peer-uuid"]
+                    orig_follower_last_ack[follower_peer_uuid] = raft_json_dict["raft_root_entry"][0]["follower-stats"][p]["last-ack"]
     
         logging.warning("Leader uuid is: %s" % orig_leader_uuid[0])
 
@@ -214,13 +261,15 @@ class Recipe(HolonRecipeBase):
                 if rc < 0:
                     logging.error("Failed to pause the peer: %s" % serverproc[p].process_uuid)
                     return 1
+
+                time_global.sleep(1)
                 '''
                 To check if process is paused
                 '''
                 paused_peer_pid = serverproc[p].process_popen.pid
                 ps = psutil.Process(paused_peer_pid)
                 if ps.status() != "stopped":
-                    logging.error("Process for follower uuid : %s is not paused"% paused_peer_uuid)
+                    logging.error("Process for follower uuid : %s is not paused"% serverproc[p].process_uuid)
                     return 1
 
                 paused_peer_uuid = serverproc[p].process_uuid
@@ -244,20 +293,45 @@ class Recipe(HolonRecipeBase):
                                     app_uuid,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply()
-        get_ctl[0].Wait_for_outfile()
+
         raft_json_dict = genericcmdobj.raft_json_load(get_ctl[0].output_fpath)
         client_req =  raft_json_dict["raft_root_entry"][0]["client-requests"]
-        last_ack = raft_json_dict["raft_root_entry"][0]["follower-stats"][0]["last-ack"]
         if client_req != "deny-may-be-deposed":
             logging.error("client requests is not deny-may-be-deposed: %s" % client_req)
             return 1
 
         '''
-        To check if last-ack for paused peer has stopped ticking.
+        Iterate over follower stat and for paused followers check the last-ack
         '''
-        if last_ack != "Thu Jan 01 00:00:00 UTC 1970":
-             logging.error("last-ack is not stopped ticking: %s" % last_ack)
-             return 1
+        for p in range(raftconfobj.nservers - 1):
+            follower_peer_uuid = raft_json_dict["raft_root_entry"][0]["follower-stats"][p]["peer-uuid"]
+            for f in paused_follower_uuid:
+                if follower_peer_uuid == paused_follower_uuid[f]:
+                    curr_last_ack = raft_json_dict["raft_root_entry"][0]["follower-stats"][p]["last-ack"]
+                    '''
+                    To check if last-ack for paused peer has stopped ticking.
+                    '''
+                    #TODO compare time stamp.
+                    orig_last_ack = orig_follower_last_ack[follower_peer_uuid]
+                    time_string = orig_last_ack.split()
+                    time = time_string[3]
+                    orig_last_ack_time = datetime.strptime(time, "%H:%M:%S")
+
+                    logging.warning("orig_last_ack : %s" % orig_last_ack_time)
+
+                    time_string = curr_last_ack.split()
+                    time = time_string[3]
+                    curr_last_ack_time = datetime.strptime(time, "%H:%M:%S")
+                    logging.warning("curr last ack: %s" % curr_last_ack_time)
+
+                    time_diff = curr_last_ack_time - orig_last_ack_time
+                    time_diff_in_sec = time_diff.total_seconds()
+                    logging.warning("time difference is %d" % time_diff_in_sec)
+                    # As follower was paused for 10sec, we should not see last-ack difference
+                    # more than 2sec
+                    if time_diff_in_sec > 5:
+                        logging.error("last-ack has not stopped ticking: curr :%s, orig: %s" % (curr_last_ack, orig_last_ack))
+                        return 1
 
         '''
         Resuming the paused peers now
@@ -279,6 +353,9 @@ class Recipe(HolonRecipeBase):
             # Modify peer entry from paused_follower_uuid dictionary
             paused_follower_uuid[p] = "INVALID_UUID"
 
+            # Sleep for 5sec to allow any new election to happen after unpausing.
+            time_global.sleep(5)
+
             '''
             After resume of peer, check which unpause case observed.
             '''
@@ -292,13 +369,13 @@ class Recipe(HolonRecipeBase):
                                         app_uuid,
                                         inotify_input_base.REGULAR,
                                         self.recipe_ctl_req_obj_list).Apply()
-                get_ctl[i].Wait_for_outfile()
+
 
             '''
             Check if this is Unpause case 1
             The unpaused follower immediately becomes the leader
             '''
-            rc = leader_self_depose_case1(get_ctl, resume_peer_uuid, orig_term, npeer_start)
+            rc = leader_self_depose_case1(get_ctl, raftconfobj, resume_peer_uuid, orig_term, npeer_start)
             if rc == True:
                 logging.warning("Unpause case#1 occurred after pausing peer %s" % resume_peer_uuid)
                 if unpause_case1_occurred == True:
@@ -314,7 +391,7 @@ class Recipe(HolonRecipeBase):
             did not win or did not win immediately.
             Paused peer started the election
             '''
-            rc = leader_self_depose_case2(get_ctl, resume_peer_uuid, orig_term, npeer_start)
+            rc = leader_self_depose_case2(get_ctl, raftconfobj, resume_peer_uuid, orig_term, npeer_start)
             if rc == True:
                 logging.warning("Unpause case#2 occurred after pausing peer %s" % resume_peer_uuid)
                 if unpause_case2_occurred == True:
