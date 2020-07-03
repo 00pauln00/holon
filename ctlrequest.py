@@ -1,8 +1,10 @@
 import os, logging
 import subprocess
+import time as time_global
 from basicio import BasicIO
 from genericcmd import GenericCmds
 from inotifypath import inotify_input_base
+from os import path
 
 def ctl_req_create_cmdfile_and_copy(ctlreqobj):
     basicioobj = BasicIO()
@@ -80,6 +82,8 @@ class CtlRequest:
         # Add the ctlreqobj on the recipe list.
         ctlreq_list.append(self)
 
+
+
     def set_leader(self, uuid):
 
         orig_cmd = self.ctl_cmd_dict["set_leader_uuid"]
@@ -99,6 +103,7 @@ class CtlRequest:
 
         return self
 
+
     def Apply(self):
         logging.warning("APPLY cmd=%s ipath=%s", self.cmd, self.input_fpath)
         '''
@@ -110,7 +115,18 @@ class CtlRequest:
             logging.error("Failed to create ctl req object error: %d" % self.Error())
             #Aborting the execution as apply failed
             exit()
+
         return self
+
+    def Wait_for_outfile(self):
+        '''
+        Wait for outfile creation
+        '''
+        while(1):
+            if path.exists(self.output_fpath) == True:
+                break
+            logging.info("Outfile not created yet: %s" % self.output_fpath)
+            time_global.sleep(0.005)
 
     def Error(self):
         return self.error
