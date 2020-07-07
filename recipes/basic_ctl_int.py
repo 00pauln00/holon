@@ -48,7 +48,7 @@ class Recipe(HolonRecipeBase):
         init_ctl = CtlRequest(inotifyobj, "idle_on", peer_uuid, app_uuid,
                               inotify_input_base.PRIVATE_INIT,
                               self.recipe_ctl_req_obj_list).Apply()
-
+        init_ctl.Wait_for_outfile()
         '''
         Create Process object for first server
         '''
@@ -71,9 +71,7 @@ class Recipe(HolonRecipeBase):
         get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid,
                                  inotify_input_base.REGULAR,
                                  self.recipe_ctl_req_obj_list).Apply()
-
-        # Sleep before reading the output file.
-        time_global.sleep(1)
+        get_all_ctl.Wait_for_outfile()
 
         '''
         Verify the JSON out for idleness.
@@ -119,9 +117,7 @@ class Recipe(HolonRecipeBase):
         idle_off_ctl = CtlRequest(inotifyobj, "idle_off", peer_uuid, app_uuid,
                                   inotify_input_base.REGULAR,
                                   self.recipe_ctl_req_obj_list).Apply()
-
-        # sleep for 2sec
-        time_global.sleep(2)
+        idle_off_ctl.Wait_for_outfile()
 
         logging.warning("Exited Idleness and starting the server loop\n")
 
@@ -129,7 +125,7 @@ class Recipe(HolonRecipeBase):
         curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid, app_uuid,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply()
-
+        curr_time_ctl.Wait_for_outfile()
         # TODO the iteration shouldn't be hardcoded
         timestamp_dict = {}
         for i in range(4):
@@ -146,7 +142,7 @@ class Recipe(HolonRecipeBase):
             # Copy the cmd file into input directory of server.
             logging.warning("Copy cmd file to get current_system_time for iteration: %d" % i)
             ctl_req_create_cmdfile_and_copy(curr_time_ctl)
-
+            curr_time_ctl.Wait_for_outfile()
         '''
         Compare the timestamp stored in the timestamp_arr and verify time
         is progressing.

@@ -44,7 +44,7 @@ class Recipe(HolonRecipeBase):
                                     app_uuid,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply()
-
+        curr_time_ctl.Wait_for_outfile()
         '''
         Pause and Resume server for n iterations. After pausing the server,
         copy the cmd file into input directory. As process is paused, output
@@ -58,6 +58,7 @@ class Recipe(HolonRecipeBase):
             logging.warning("pausing the process for 5secs and then resume")
             time_global.sleep(5)
             ctl_req_create_cmdfile_and_copy(curr_time_ctl)
+            curr_time_ctl.Wait_for_outfile()
             # Only check if output file got created.
             if os.path.exists(curr_time_ctl.output_fpath):
                 logging.error("Error: Output file gets created even when paused")
@@ -84,7 +85,7 @@ class Recipe(HolonRecipeBase):
         for i in range(4):
             logging.warning("Copy the cmd file into input directory of server. Itr %d" % i)
             ctl_req_create_cmdfile_and_copy(curr_time_ctl)
-
+            curr_time_ctl.Wait_for_outfile()
             # Read the output file and get the time
             raft_json_dict = genericcmdobj.raft_json_load(curr_time_ctl.output_fpath)
             curr_time_string = raft_json_dict["system_info"]["current_time"]

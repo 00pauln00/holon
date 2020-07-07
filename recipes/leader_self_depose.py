@@ -221,7 +221,7 @@ class Recipe(HolonRecipeBase):
                                     app_uuid,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply()
-
+            get_ctl[p].Wait_for_outfile()
         orig_follower_last_ack ={}
         fpeer = 0
 
@@ -294,6 +294,7 @@ class Recipe(HolonRecipeBase):
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply()
 
+        get_ctl[0].Wait_for_outfile()
         raft_json_dict = genericcmdobj.raft_json_load(get_ctl[0].output_fpath)
         client_req =  raft_json_dict["raft_root_entry"][0]["client-requests"]
         if client_req != "deny-may-be-deposed":
@@ -369,8 +370,7 @@ class Recipe(HolonRecipeBase):
                                         app_uuid,
                                         inotify_input_base.REGULAR,
                                         self.recipe_ctl_req_obj_list).Apply()
-
-
+                get_ctl[i].Wait_for_outfile()
             '''
             Check if this is Unpause case 1
             The unpaused follower immediately becomes the leader

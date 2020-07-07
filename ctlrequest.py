@@ -5,6 +5,7 @@ from basicio import BasicIO
 from genericcmd import GenericCmds
 from inotifypath import inotify_input_base
 from os import path
+from func_timeout import func_timeout, FunctionTimedOut
 
 def ctl_req_create_cmdfile_and_copy(ctlreqobj):
     basicioobj = BasicIO()
@@ -118,15 +119,26 @@ class CtlRequest:
 
         return self
 
-    def Wait_for_outfile(self):
+    def check_for_outfile_creation(self):
         '''
-        Wait for outfile creation
+        Check if outfile is created in a loop.
         '''
         while(1):
             if path.exists(self.output_fpath) == True:
+                logging.info("Outfile is created :%s" % self.output_fpath)
                 break
-            logging.info("Outfile not created yet: %s" % self.output_fpath)
             time_global.sleep(0.005)
+
+    def Wait_for_outfile(self):
+        '''
+        Wait for outfile creation.
+        Timeout is added to wait for outfile creation till the specified time.
+        '''
+        try:
+            func_timeout(10, self.check_for_outfile_creation, args=())
+        except FunctionTimedOut:
+            logging.error("Error : timeout occur for outfile creation")
+            return 1
 
     def Error(self):
         return self.error

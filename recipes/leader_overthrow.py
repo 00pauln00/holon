@@ -70,7 +70,7 @@ class Recipe(HolonRecipeBase):
                                     app_uuid,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply()
-        time_global.sleep(3)
+            idle_off[0].Wait_for_outfile()
         '''
         Get the parameter of basic leader election
         to compare with New leader-to-be
@@ -81,6 +81,7 @@ class Recipe(HolonRecipeBase):
                                     app_uuid,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply()
+            get_all[p].Wait_for_outfile()
            
             orig_raftjsonobj[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
             if orig_raftjsonobj[p].state == "follower" and leader_to_be == -1:
@@ -98,8 +99,8 @@ class Recipe(HolonRecipeBase):
                                           app_uuid,
                                           inotify_input_base.REGULAR,
                                           self.recipe_ctl_req_obj_list).Apply()
-        
-        time_global.sleep(7)
+            net_rcv_false[p].Wait_for_outfile()
+        time_global.sleep(3)
 
         '''
         Verify if net_recv_enable is set to false for all peers.
@@ -108,8 +109,7 @@ class Recipe(HolonRecipeBase):
 
             #Copy cmdfile to get the JSON output 
             ctl_req_create_cmdfile_and_copy(get_all[p])
-
-            time_global.sleep(5)
+            get_all[p].Wait_for_outfile()
 
             rcv_false_raftjson[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
             peer_uuid = peer_uuid_arr[p]
@@ -168,9 +168,8 @@ class Recipe(HolonRecipeBase):
             CtlRequest(inotifyobj, "set_leader_uuid", peer_uuid_arr[p],
                                   app_uuid,
                                   inotify_input_base.REGULAR,
-                                  self.recipe_ctl_req_obj_list).set_leader(peer_uuid_arr[leader_to_be])
-
-        time_global.sleep(5)
+                                  self.recipe_ctl_req_obj_list).set_leader(peer_uuid_arr[leader_to_be]).Wait_for_outfile()
+        time_global.sleep(3)
 
         '''
         Verify receive enable to the peer which is to be appointed as leader for
@@ -181,7 +180,7 @@ class Recipe(HolonRecipeBase):
 
             #Copy ctlrequest cmd file to get JSON output
             ctl_req_create_cmdfile_and_copy(get_all[p])
-            time_global.sleep(2)
+            get_all[p].Wait_for_outfile()
 
             set_leader_raftjson[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
             '''
@@ -264,8 +263,7 @@ class Recipe(HolonRecipeBase):
         CtlRequest(inotifyobj, "rcv_true", peer_uuid_arr[leader_to_be],
                                     app_uuid,
                                     inotify_input_base.REGULAR,
-                                    self.recipe_ctl_req_obj_list).Apply()
-        time_global.sleep(5)
+                                    self.recipe_ctl_req_obj_list).Apply().Wait_for_outfile()
 
         logging.warning("New leader election may take time...")
 
@@ -274,7 +272,6 @@ class Recipe(HolonRecipeBase):
             recipe_failed = 0
 
             ctl_req_create_cmdfile_and_copy(get_all[leader_to_be])
-            time_global.sleep(3)
 
             leader_json = RaftJson(get_all[leader_to_be].output_fpath, raftconfobj)
             
@@ -303,7 +300,7 @@ class Recipe(HolonRecipeBase):
 
             #Copy ctlrequest cmd file to get JSON output
             ctl_req_create_cmdfile_and_copy(get_all[p])
-            time_global.sleep(2)
+            get_all[p].Wait_for_outfile()
             
             raftjsonobj[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
         
@@ -345,11 +342,11 @@ class Recipe(HolonRecipeBase):
                                          app_uuid,
                                          inotify_input_base.REGULAR,
                                          self.recipe_ctl_req_obj_list).Apply()
-            time_global.sleep(2)
+            net_rcv_true[p].Wait_for_outfile()
 
             #Copy ctlrequest cmd file to get JSON output
             ctl_req_create_cmdfile_and_copy(get_all[p])
-
+            get_all[p].Wait_for_outfile()
             raftjsonobj[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
 
             peer_uuid = peer_uuid_arr[p]

@@ -65,8 +65,7 @@ class Recipe(HolonRecipeBase):
 
         # Get the term value for Peer0 before pausing it.
         p0_term_ctl.Apply()
-        
-        time_global.sleep(1)
+        p0_term_ctl.Wait_for_outfile()
         raft_json_dict = genericcmdobj.raft_json_load(p0_term_ctl.output_fpath)
         peer0_term = raft_json_dict["raft_root_entry"][0]["term"]
         
@@ -91,7 +90,7 @@ class Recipe(HolonRecipeBase):
             And read the output JSON to get the term value.
             '''
             p1_term_ctl.Apply()
-            time_global.sleep(1)
+            p1_term_ctl.Wait_for_outfile()
 
             raft_json_dict = genericcmdobj.raft_json_load(p1_term_ctl.output_fpath)
             peer1_term = raft_json_dict["raft_root_entry"][0]["term"]
@@ -103,8 +102,8 @@ class Recipe(HolonRecipeBase):
             '''
             serverproc0.resume_process()
 
-            time_global.sleep(1)
             p0_term_ctl.Apply()
+            p0_term_ctl.Wait_for_outfile()
             raft_json_dict = genericcmdobj.raft_json_load(p0_term_ctl.output_fpath)
             peer0_term = raft_json_dict["raft_root_entry"][0]["term"]
 
