@@ -104,7 +104,6 @@ class CtlRequest:
 
         return self
 
-
     def Apply(self):
         logging.warning("APPLY cmd=%s ipath=%s", self.cmd, self.input_fpath)
         '''
@@ -116,6 +115,18 @@ class CtlRequest:
             logging.error("Failed to create ctl req object error: %d" % self.Error())
             #Aborting the execution as apply failed
             exit()
+        return self
+
+    def Apply_and_Wait(self):
+        '''
+        To Apply the cmd and Wait for outfile
+        '''
+        rc = self.Apply()
+        if rc == -1 :
+            return rc
+        rc = self.Wait_for_outfile()
+        if rc == -1:
+            return rc
 
         return self
 

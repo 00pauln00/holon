@@ -71,8 +71,7 @@ class Recipe(HolonRecipeBase):
             get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
                                     app_uuid,
                                     inotify_input_base.REGULAR,
-                                    self.recipe_ctl_req_obj_list).Apply()
-            get_ctl[p].Wait_for_outfile()
+                                    self.recipe_ctl_req_obj_list).Apply_and_Wait()
         '''
         Make sure we wait for leader election to complete.
         Check leader election completion in a loop

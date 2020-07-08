@@ -45,8 +45,7 @@ class Recipe(HolonRecipeBase):
         '''
         get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid,
                                  inotify_input_base.REGULAR,
-                                 self.recipe_ctl_req_obj_list).Apply()
-        get_all_ctl.Wait_for_outfile()
+                                 self.recipe_ctl_req_obj_list).Apply_and_Wait()
         '''
         Run the loop to copy the command file for getting the term value
         and verifying in each iteration, term value increases.
@@ -57,8 +56,7 @@ class Recipe(HolonRecipeBase):
         logging.warning("Copy cmd file to get and verify term value\n")
         for i in range(10):
             # Copy the cmd file into input directory of server.
-            ctl_req_create_cmdfile_and_copy(get_all_ctl)
-            get_all_ctl.Wait_for_outfile()
+            get_all_ctl.Apply_and_Wait()
             # Send the output value for reading the term value.
             raft_json_dict = genericcmdobj.raft_json_load(get_all_ctl.output_fpath)
             term = raft_json_dict["raft_root_entry"][0]["term"]
@@ -146,8 +144,7 @@ class Recipe(HolonRecipeBase):
         time_global.sleep(5)
 
         # Copy the cmd file and verify term value is greater than before_restart_term
-        ctl_req_create_cmdfile_and_copy(get_all_ctl)
-        get_all_ctl.Wait_for_outfile()
+        get_all_ctl.Apply_and_Wait()
         # Send the output value for reading the term value.
         raft_json_dict = genericcmdobj.raft_json_load(get_all_ctl.output_fpath)
         curr_term = raft_json_dict["raft_root_entry"][0]["term"]
