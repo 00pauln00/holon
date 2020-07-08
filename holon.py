@@ -1,6 +1,7 @@
 #!/usr/bin/python3
+# PYTHON_ARGCOMPLETE_OK
 
-import os, sys, importlib, logging, fnmatch, errno, argparse
+import os, sys, importlib, logging, fnmatch, errno, argparse, argcomplete
 from raftconfig import RaftConfig
 from inotifypath import InotifyPath
 from niovacluster import NiovaCluster
@@ -29,7 +30,25 @@ print_desc = False
 print_ancestry = False
 skip_post_run = False
 
+'''
+It list the recipe names from /recipes directory and
+split it from ".py" and then store it into rec_name[]
+rec_name: List of recipe name.
+'''
+listOfFiles = os.listdir('./recipes')
+pattern = "*.py"
+rec_name = []
+valid_recipe = 0
+for files in listOfFiles:
+    if fnmatch.fnmatch(files, pattern):
+        x = files.split(".py")
+        rec_name.append(x[0])
+        if x[0] == recipe_name:
+            valid_recipe = 1
+            break
+
 parser = argparse.ArgumentParser()
+
 parser.add_argument('-P', action = "store", dest = "dir_path", help = "directory path to create config/ctl/raftdb files")
 parser.add_argument('-p', action = "store", dest = "port", help = "server port")
 parser.add_argument('-c', action = "store", dest = "client_port", help = "client port")
@@ -43,10 +62,15 @@ parser.add_argument('-print-desc', action = "store_true", dest = "print_desc", d
 parser.add_argument('-print-ancestry', action = "store_true", dest = "print_ancestry", default = False, help = "print ancestry")
 parser.add_argument('-R', action = "store_true", dest = "skip_post_run", default = False, help = "Disable post run")
 
-parser.add_argument('recipe', type = str, help = "recipe_name")
+parser.add_argument('recipe', type = str, help = "recipe_name", choices = rec_name)
+
+'''
+This method used for Tab completion. 
+It interactively printing the recipes
+'''
+argcomplete.autocomplete(parser)
 
 args = parser.parse_args()
-
 
 if args.dir_path == None:
     dir_path = dir_path
@@ -90,26 +114,6 @@ if client_port >= 65536:
     print(f"Client Port (%d) should be less than 65536" % client_port)
     exit()
 
-
-listOfFiles = os.listdir('./recipes')
-pattern = "*.py"
-rec_name = []
-valid_recipe = 0
-for files in listOfFiles:
-    if fnmatch.fnmatch(files, pattern):
-        x = files.split(".py")
-        rec_name.append(x[0])
-        if x[0] == recipe_name:
-            valid_recipe = 1
-            break
-
-if valid_recipe == 0:
-    print("Error: Invalid recipe name passed")
-    print("Select from valid recipes:")
-    for r in rec_name:
-        print(r)
-    exit()
-
 logging.basicConfig(filename=log_file_path, level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
 
 logging.warning("Holon Directory path: %s" % dir_path)
@@ -118,7 +122,6 @@ logging.warning("Number of Servers: %s" % npeers)
 logging.warning("Port no:%s" % port)
 logging.warning("Client Port no:%s" % client_port)
 logging.warning("Recipe: %s" % recipe_name)
-
 
 '''
 Iterate over the recipe hierarchy and gather the recipe objects.
@@ -189,7 +192,6 @@ if print_ancestry == True or dry_run == True :
     if len(recipe_arr) == 1 :
         print("none ")
     exit()
-
 
 # Create Cluster object
 clusterobj = NiovaCluster(npeers)
@@ -263,3 +265,4 @@ raftconfobj.delete_config_file()
 
 #It will remove all files and directory
 rmtree(dir_path)
+
