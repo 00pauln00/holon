@@ -47,7 +47,7 @@ class Recipe(HolonRecipeBase):
         '''
         init_ctl = CtlRequest(inotifyobj, "idle_on", peer_uuid, app_uuid,
                               inotify_input_base.PRIVATE_INIT,
-                              self.recipe_ctl_req_obj_list).Apply_and_Wait()
+                              self.recipe_ctl_req_obj_list).Apply()
         '''
         Create Process object for first server
         '''
@@ -69,7 +69,7 @@ class Recipe(HolonRecipeBase):
         '''
         get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid,
                                  inotify_input_base.REGULAR,
-                                 self.recipe_ctl_req_obj_list).Apply_and_Wait()
+                                 self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
         '''
         Verify the JSON out for idleness.
@@ -114,14 +114,14 @@ class Recipe(HolonRecipeBase):
         '''
         idle_off_ctl = CtlRequest(inotifyobj, "idle_off", peer_uuid, app_uuid,
                                   inotify_input_base.REGULAR,
-                                  self.recipe_ctl_req_obj_list).Apply_and_Wait()
+                                  self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
         logging.warning("Exited Idleness and starting the server loop\n")
 
         # Once server the started, verify that the timestamp progresses
         curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid, app_uuid,
                                     inotify_input_base.REGULAR,
-                                    self.recipe_ctl_req_obj_list).Apply_and_Wait()
+                                    self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         # TODO the iteration shouldn't be hardcoded
         timestamp_dict = {}
         for i in range(4):
@@ -137,7 +137,7 @@ class Recipe(HolonRecipeBase):
             time_global.sleep(3)
             # Copy the cmd file into input directory of server.
             logging.warning("Copy cmd file to get current_system_time for iteration: %d" % i)
-            curr_time_ctl.Apply_and_Wait()
+            curr_time_ctl.Apply_and_Wait(False)
         '''
         Compare the timestamp stored in the timestamp_arr and verify time
         is progressing.

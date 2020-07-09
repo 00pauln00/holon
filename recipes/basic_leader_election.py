@@ -10,7 +10,7 @@ class Recipe(HolonRecipeBase):
     parent = "term_catch_up"
     recipe_proc_obj_list = []
     recipe_ctl_req_obj_list = []
-    
+
     def print_desc(self):
         print(self.desc)
 
@@ -71,7 +71,7 @@ class Recipe(HolonRecipeBase):
             get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
                                     app_uuid,
                                     inotify_input_base.REGULAR,
-                                    self.recipe_ctl_req_obj_list).Apply_and_Wait()
+                                    self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         '''
         Make sure we wait for leader election to complete.
         Check leader election completion in a loop

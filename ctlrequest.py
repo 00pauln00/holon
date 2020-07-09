@@ -117,14 +117,17 @@ class CtlRequest:
             exit()
         return self
 
-    def Apply_and_Wait(self):
+    def Apply_and_Wait(self, can_fail):
         '''
         To Apply the cmd and Wait for outfile
+        Paramter "can_fail" is added so that
+        if can_fail is True and timeout occurs,recipe should not terminate and
+        if can_fail is False and timeout occurs, recipe will get aborted.
         '''
         rc = self.Apply()
         if rc == -1 :
             return rc
-        rc = self.Wait_for_outfile()
+        rc = self.Wait_for_outfile(can_fail)
         if rc == -1:
             return rc
 
@@ -140,7 +143,7 @@ class CtlRequest:
                 break
             time_global.sleep(0.005)
 
-    def Wait_for_outfile(self):
+    def Wait_for_outfile(self, can_fail):
         '''
         Wait for outfile creation.
         Timeout is added to wait for outfile creation till the specified time.
@@ -148,7 +151,10 @@ class CtlRequest:
         try:
             func_timeout(10, self.check_for_outfile_creation, args=())
         except FunctionTimedOut:
-            logging.error("Error : timeout occur for outfile creation")
+            if can_fail == False:
+                logging.error("Error : timeout occur for outfile creation : %s" % self.output_fpath)
+                logging.error("Recipe Failed")
+                exit()
             return 1
 
     def Error(self):

@@ -153,7 +153,7 @@ class Recipe(HolonRecipeBase):
     parent = "basic_leader_election"
     recipe_proc_obj_list = []
     recipe_ctl_req_obj_list = []
-    
+
     def print_desc(self):
         print(self.desc)
 
@@ -220,7 +220,7 @@ class Recipe(HolonRecipeBase):
             get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
                                     app_uuid,
                                     inotify_input_base.REGULAR,
-                                    self.recipe_ctl_req_obj_list).Apply_and_Wait()
+                                    self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         orig_follower_last_ack ={}
         fpeer = 0
 
@@ -291,7 +291,7 @@ class Recipe(HolonRecipeBase):
         get_ctl[0] = CtlRequest(inotifyobj, "get_all", orig_leader_uuid[0],
                                     app_uuid,
                                     inotify_input_base.REGULAR,
-                                    self.recipe_ctl_req_obj_list).Apply_and_Wait()
+                                    self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         raft_json_dict = genericcmdobj.raft_json_load(get_ctl[0].output_fpath)
         client_req =  raft_json_dict["raft_root_entry"][0]["client-requests"]
         if client_req != "deny-may-be-deposed":
@@ -366,7 +366,7 @@ class Recipe(HolonRecipeBase):
                 get_ctl[i] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[i],
                                         app_uuid,
                                         inotify_input_base.REGULAR,
-                                        self.recipe_ctl_req_obj_list).Apply_and_Wait()
+                                        self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
             '''
             Check if this is Unpause case 1
             The unpaused follower immediately becomes the leader
