@@ -49,6 +49,14 @@ for files in listOfFiles:
 
 parser = argparse.ArgumentParser()
 
+parser.add_argument('recipe', type = str, help = "recipe_name", choices = rec_name)
+
+'''
+This method used for Tab completion.
+It interactively printing the recipes
+'''
+argcomplete.autocomplete(parser)
+
 parser.add_argument('-P', action = "store", dest = "dir_path", help = "directory path to create config/ctl/raftdb files")
 parser.add_argument('-p', action = "store", dest = "port", help = "server port")
 parser.add_argument('-c', action = "store", dest = "client_port", help = "client port")
@@ -61,14 +69,6 @@ parser.add_argument('-D', action = "store_true", dest = "disable_post_run", defa
 parser.add_argument('-print-desc', action = "store_true", dest = "print_desc", default = False, help = "print description")
 parser.add_argument('-print-ancestry', action = "store_true", dest = "print_ancestry", default = False, help = "print ancestry")
 parser.add_argument('-R', action = "store_true", dest = "skip_post_run", default = False, help = "Disable post run")
-
-parser.add_argument('recipe', type = str, help = "recipe_name", choices = rec_name)
-
-'''
-This method used for Tab completion. 
-It interactively printing the recipes
-'''
-argcomplete.autocomplete(parser)
 
 args = parser.parse_args()
 
