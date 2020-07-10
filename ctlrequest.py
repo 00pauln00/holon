@@ -113,7 +113,6 @@ class CtlRequest:
         self.error = ctl_req_create_cmdfile_and_copy(self)
         if self.error != 0:
             logging.error("Failed to create ctl req object error: %d" % self.Error())
-            #Aborting the execution as apply failed
             exit()
         return self
 
@@ -123,13 +122,30 @@ class CtlRequest:
         Paramter "can_fail" is added so that
         if can_fail is True and timeout occurs,recipe should not terminate and
         if can_fail is False and timeout occurs, recipe will get aborted.
+        retry apply_and_wait for 5 times before exiting the recipe with error.
         '''
-        rc = self.Apply()
-        if rc == -1 :
-            return rc
-        rc = self.Wait_for_outfile(can_fail)
-        if rc == -1:
-            return rc
+        retry = 0
+        while retry < 5:
+            self.Apply()
+
+            # Wait for outfile creation
+            logging.warning("calling wait for outfule")
+            rc = self.Wait_for_outfile(can_fail)
+            logging.warning("rc is: %d" % rc)
+            if rc == 0:
+                break
+
+            if can_fail:
+                logging.error("Outfile is not generated, but calling function expects this to fail")
+                rc = 0
+                break
+
+            retry += 1
+
+        if rc == 1:
+            #Aborting the execution as apply failed
+            logging.error("Apply_and_Wait() failed")
+            exit()
 
         return self
 
@@ -153,9 +169,9 @@ class CtlRequest:
         except FunctionTimedOut:
             if can_fail == False:
                 logging.error("Error : timeout occur for outfile creation : %s" % self.output_fpath)
-                logging.error("Recipe Failed")
-                exit()
             return 1
+
+        return 0
 
     def Error(self):
         return self.error
