@@ -90,9 +90,9 @@ else:
     client_port = int(args.client_port)
 
 if args.npeers == None:
-    npeers = npeers
+    npeers = int(npeers)
 else:
-    npeers = args.npeers
+    npeers = int(args.npeers)
 
 if args.log_file_path == None:
     log_file_path = log_file_path
