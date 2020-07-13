@@ -55,7 +55,6 @@ class Recipe(HolonRecipeBase):
             # pause the process
             serverproc.pause_process()
             logging.warning("pausing the process for 5secs and then resume")
-            time_global.sleep(5)
             curr_time_ctl.Apply_and_Wait(True)
             # Only check if output file got created.
             if os.path.exists(curr_time_ctl.output_fpath):

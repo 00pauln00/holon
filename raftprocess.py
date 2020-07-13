@@ -1,10 +1,24 @@
-import signal, subprocess, logging
+import signal, subprocess, logging, psutil
+import time as time_global
 from raftconfig import RaftConfig
+from func_timeout import func_timeout, FunctionTimedOut
+
+def check_for_process_status(pid, process_status):
+    '''
+    To check process status
+    '''
+    ps = psutil.Process(pid)
+    while(1):
+        if ps.status() == process_status:
+            logging.info(" process status %s (expected %s)"% (ps.status(), process_status))
+            break
+        time_global.sleep(0.005)
 
 class RaftProcess:
 
     process_type = ''
     process_uuid = ''
+    process_status = ''
     process_popen = {}
     process_idx = 0
     binary_path='/home/pauln/raft-builds/latest/'
@@ -21,13 +35,29 @@ class RaftProcess:
         self.process_uuid = uuid
         self.process_idx = process_idx
         self.process_type = process_type
-        
+
     '''
         Method: start_process
         Purpose: Start the process of type process_type
         Parameters: @raftconfobj: RaftConf object.
                     @uuid: UUID of the server or client.
     '''
+
+    def Wait_for_process_status(self, process_status):
+        '''
+        To wait for change in process status.
+        Timeout is added to wait for change in process status till the specified time.
+        '''
+        rc = 0
+        try:
+            func_timeout(20, check_for_process_status, args=(self.process_popen.pid, process_status))
+        except FunctionTimedOut:
+                logging.error("Error : timeout occur to change process status to %s" % process_status)
+                rc = 1
+
+        if rc == 1:
+            exit()
+
     def start_process(self, raftconfobj, clusterobj):
         logging.warning("Starting process of type: %s with UUID: %s" % (self.process_type,
                                 self.process_uuid))
@@ -50,6 +80,11 @@ class RaftProcess:
             logging.error("Raft process failed to start")
             raise subprocess.SubprocessError(self.process_popen.returncode)
 
+        '''
+        To check if process is started
+        '''
+        self.Wait_for_process_status("running")
+
     '''
         Method: pause_process
         Purpose: pause the process by sending sigstop
@@ -63,6 +98,10 @@ class RaftProcess:
             logging.error("Failed to send Stop signal with error: %s" % os.stderror(e.errno))
             return -1
 
+        '''
+        To check if process is paused
+        '''
+        self.Wait_for_process_status("stopped")
         return 0
 
     '''
@@ -92,5 +131,4 @@ class RaftProcess:
         except subprocess.SubprocessError as e:
             logging.error("Failed to send kill signal with error: %s" % os.stderror(e.errno))
             return -1
-
         return 0

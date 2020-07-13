@@ -47,7 +47,6 @@ class Recipe(HolonRecipeBase):
             # append the serverproc into recipe process object list
             self.recipe_proc_obj_list.append(serverproc[p])
 
-        time_global.sleep(2)
         '''
         After starting peer2, minimum number of servers for leader election
         have reached.

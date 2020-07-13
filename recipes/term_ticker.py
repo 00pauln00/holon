@@ -136,12 +136,8 @@ class Recipe(HolonRecipeBase):
         # Kill the server
         serverproc0.kill_process()
 
-        time_global.sleep(1)
-
         # Restart the server
         serverproc0.start_process(raftconfobj, clusterobj)
-
-        time_global.sleep(5)
 
         # Copy the cmd file and verify term value is greater than before_restart_term
         get_all_ctl.Apply_and_Wait(False)

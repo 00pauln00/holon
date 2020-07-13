@@ -129,9 +129,8 @@ class CtlRequest:
             self.Apply()
 
             # Wait for outfile creation
-            logging.warning("calling wait for outfule")
+            logging.warning("calling wait for outfile")
             rc = self.Wait_for_outfile(can_fail)
-            logging.warning("rc is: %d" % rc)
             if rc == 0:
                 break
 

@@ -57,8 +57,6 @@ class Recipe(HolonRecipeBase):
         #Start the server process
         serverproc.start_process(raftconfobj, clusterobj)
 
-        # sleep for 2 sec
-        time_global.sleep(2)
 
         # append the serverproc into recipe process object list
         self.recipe_proc_obj_list.append(serverproc)
@@ -134,7 +132,7 @@ class Recipe(HolonRecipeBase):
 
             logging.warning("Time is: %s" % time)
             timestamp_dict[i] = time
-            time_global.sleep(3)
+            time_global.sleep(1)
             # Copy the cmd file into input directory of server.
             logging.warning("Copy cmd file to get current_system_time for iteration: %d" % i)
             curr_time_ctl.Apply_and_Wait(False)

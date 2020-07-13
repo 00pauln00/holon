@@ -261,7 +261,6 @@ class Recipe(HolonRecipeBase):
                     logging.error("Failed to pause the peer: %s" % serverproc[p].process_uuid)
                     return 1
 
-                time_global.sleep(1)
                 '''
                 To check if process is paused
                 '''
@@ -277,7 +276,6 @@ class Recipe(HolonRecipeBase):
                 if f >= nfollower_paused:
                     break
 
-        time_global.sleep(10)
 
 
         '''
