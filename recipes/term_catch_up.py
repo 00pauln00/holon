@@ -40,8 +40,6 @@ class Recipe(HolonRecipeBase):
         logging.warning("Starting peer 1 with UUID: %s\n" % peer1_uuid)
         serverproc1.start_process(raftconfobj, clusterobj)
 
-        # TODO make sure start_process returns only after process starts
-        time_global.sleep(1)
 
         # append the serverproc into recipe process object list
         self.recipe_proc_obj_list.append(serverproc1)
