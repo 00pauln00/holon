@@ -270,14 +270,15 @@ class Recipe(HolonRecipeBase):
             leader_json = RaftJson(get_all[leader_to_be].output_fpath, raftconfobj)
             
             if leader_json.voted_for_uuid != peer_uuid_arr[leader_to_be] or leader_json.leader_uuid != peer_uuid_arr[leader_to_be]:
-                time_out = time_out + 10
+                time_out = time_out + 1
                 if time_out >= LEADER_ELECTION_TIME_OUT:
                     logging.error("Leader election failed")
                     recipe_failed = 1
                     break
 
-                logging.warning("Leader election is not done yet!, retry")
+                logging.warning("Leader election is not done yet!, retry after sleep 1sec")
                 logging.warning("leader_uuid: %s, voted_for_uuid: %s" % (leader_json.leader_uuid, leader_json.voted_for_uuid))
+                time_global.sleep(1)
                 continue
             else:
                 logging.warning("New leader elected successfuly %s" % leader_json.peer_uuid)

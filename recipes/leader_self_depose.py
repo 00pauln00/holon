@@ -251,7 +251,7 @@ class Recipe(HolonRecipeBase):
         if nfollower_paused == 1 and npeer_start > 2:
             nfollower_paused = nfollower_paused + 1
 
-        logging.warning("Number of followers to paus %d" % nfollower_paused)
+        logging.warning("Number of followers to pause %d" % nfollower_paused)
         f = 0
         for p in range(npeer_start):
             if orig_state[p] == "follower":
@@ -286,14 +286,26 @@ class Recipe(HolonRecipeBase):
         this means that the leader will not accept any requests from clients
         since it has lost contact with the quorum
         '''
-        get_ctl[0] = CtlRequest(inotifyobj, "get_all", orig_leader_uuid[0],
+        retry = 0
+        while retry < 5:
+            rc = 0
+            get_ctl[0] = CtlRequest(inotifyobj, "get_all", orig_leader_uuid[0],
                                     app_uuid,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
-        raft_json_dict = genericcmdobj.raft_json_load(get_ctl[0].output_fpath)
-        client_req =  raft_json_dict["raft_root_entry"][0]["client-requests"]
-        if client_req != "deny-may-be-deposed":
-            logging.error("client requests is not deny-may-be-deposed: %s" % client_req)
+            raft_json_dict = genericcmdobj.raft_json_load(get_ctl[0].output_fpath)
+            client_req =  raft_json_dict["raft_root_entry"][0]["client-requests"]
+            if client_req != "deny-may-be-deposed":
+                logging.warning("client req changed to deny-may-be-deposed!")
+                break
+
+            logging.warning("client requests is not deny-may-be-deposed yet, retry: %s" % client_req)
+            rc = 1
+            time_global.sleep(1)
+            retry += 1
+
+        if rc == 1:
+            logging.error("client req is still not deny-may-depose")
             return 1
 
         '''
