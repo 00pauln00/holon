@@ -1,6 +1,8 @@
 import signal, subprocess, logging, psutil
 import time as time_global
 from raftconfig import RaftConfig
+import shutil, os
+from genericcmd import GenericCmds
 from func_timeout import func_timeout, FunctionTimedOut
 
 def check_for_process_status(pid, process_status):
@@ -61,13 +63,27 @@ class RaftProcess:
     def start_process(self, raftconfobj, clusterobj):
         logging.warning("Starting process of type: %s with UUID: %s" % (self.process_type,
                                 self.process_uuid))
+    
+        # Create object for generic cmds.
+        genericcmdobj = GenericCmds()
+        '''
+        Generate UUID for the application to be used in the raft_log.txt file.
+        '''
+        app_uuid = genericcmdobj.generate_uuid()
 
         if self.process_type == 'server':
             server_bin_path = "%s/raft-server" % (self.binary_path)
-            with open(clusterobj.log_file_path, "a") as file:
+            file_path = "%s/raft_log_%s.txt" % (raftconfobj.base_dir_path, app_uuid)
+            with open(file_path, "w+") as file:
                 self.process_popen = subprocess.Popen([server_bin_path, '-r',
                                 raftconfobj.raft_uuid, '-u', self.process_uuid], stdout = file, stderr = file)
                 file.close()
+
+            time_global.sleep(3)
+
+            with open(file_path, "r") as fp:
+                Lines = fp.readlines()
+                output_label = "raft-%s.%s" % (self.process_type, self.process_idx)
         else:
             client_bin_path = "%s/raft-client" % (self.binary_path)
             self.process_popen = subprocess.Popen([client_bin_path, '-r',
@@ -79,6 +95,14 @@ class RaftProcess:
         else:
             logging.error("Raft process failed to start")
             raise subprocess.SubprocessError(self.process_popen.returncode)
+        
+        #Print <process_type.peer_index> at the start of raft log messages
+        for line in Lines:
+            logging.warning("<{}>:{}".format(output_label, line.strip()))
+
+        #Remove the temporary created raft_log.txt file
+        if os.path.exists(file_path):
+            shutil.os.remove(file_path)
 
         '''
         To check if process is started
