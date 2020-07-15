@@ -10,7 +10,7 @@ class Recipe(HolonRecipeBase):
     parent = "term_catch_up"
     recipe_proc_obj_list = []
     recipe_ctl_req_obj_list = []
-    
+
     def print_desc(self):
         print(self.desc)
 
@@ -47,7 +47,6 @@ class Recipe(HolonRecipeBase):
             # append the serverproc into recipe process object list
             self.recipe_proc_obj_list.append(serverproc[p])
 
-        time_global.sleep(2)
         '''
         After starting peer2, minimum number of servers for leader election
         have reached.
@@ -71,7 +70,7 @@ class Recipe(HolonRecipeBase):
             get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
                                     app_uuid,
                                     inotify_input_base.REGULAR,
-                                    self.recipe_ctl_req_obj_list).Apply()
+                                    self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         '''
         Make sure we wait for leader election to complete.
         Check leader election completion in a loop

@@ -40,6 +40,7 @@ class Recipe(HolonRecipeBase):
         logging.warning("Starting peer 1 with UUID: %s\n" % peer1_uuid)
         serverproc1.start_process(raftconfobj, clusterobj)
 
+
         # append the serverproc into recipe process object list
         self.recipe_proc_obj_list.append(serverproc1)
 
@@ -57,16 +58,13 @@ class Recipe(HolonRecipeBase):
         '''
         p0_term_ctl = CtlRequest(inotifyobj, "get_term", peer0_uuid, app_uuid,
                                  inotify_input_base.REGULAR,
-                                 self.recipe_ctl_req_obj_list).Apply()
+                                 self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
         p1_term_ctl = CtlRequest(inotifyobj, "get_term", peer1_uuid, app_uuid,
                                  inotify_input_base.REGULAR,
-                                 self.recipe_ctl_req_obj_list).Apply()
+                                 self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
         # Get the term value for Peer0 before pausing it.
-        p0_term_ctl.Apply()
-        
-        time_global.sleep(1)
         raft_json_dict = genericcmdobj.raft_json_load(p0_term_ctl.output_fpath)
         peer0_term = raft_json_dict["raft_root_entry"][0]["term"]
         
@@ -90,8 +88,7 @@ class Recipe(HolonRecipeBase):
             Copy the cmd file into Peer 1's input directory.
             And read the output JSON to get the term value.
             '''
-            p1_term_ctl.Apply()
-            time_global.sleep(1)
+            p1_term_ctl.Apply_and_Wait(False)
 
             raft_json_dict = genericcmdobj.raft_json_load(p1_term_ctl.output_fpath)
             peer1_term = raft_json_dict["raft_root_entry"][0]["term"]
@@ -103,8 +100,7 @@ class Recipe(HolonRecipeBase):
             '''
             serverproc0.resume_process()
 
-            time_global.sleep(1)
-            p0_term_ctl.Apply()
+            p0_term_ctl.Apply_and_Wait(False)
             raft_json_dict = genericcmdobj.raft_json_load(p0_term_ctl.output_fpath)
             peer0_term = raft_json_dict["raft_root_entry"][0]["term"]
 

@@ -5,6 +5,7 @@ from basicio import BasicIO
 from genericcmd import GenericCmds
 from inotifypath import inotify_input_base
 from os import path
+from func_timeout import func_timeout, FunctionTimedOut
 
 def ctl_req_create_cmdfile_and_copy(ctlreqobj):
     basicioobj = BasicIO()
@@ -103,7 +104,6 @@ class CtlRequest:
 
         return self
 
-
     def Apply(self):
         logging.warning("APPLY cmd=%s ipath=%s", self.cmd, self.input_fpath)
         '''
@@ -113,20 +113,65 @@ class CtlRequest:
         self.error = ctl_req_create_cmdfile_and_copy(self)
         if self.error != 0:
             logging.error("Failed to create ctl req object error: %d" % self.Error())
+            exit()
+        return self
+
+    def Apply_and_Wait(self, can_fail):
+        '''
+        To Apply the cmd and Wait for outfile
+        Paramter "can_fail" is added so that
+        if can_fail is True and timeout occurs,recipe should not terminate and
+        if can_fail is False and timeout occurs, recipe will get aborted.
+        retry apply_and_wait for 5 times before exiting the recipe with error.
+        '''
+        retry = 0
+        while retry < 5:
+            self.Apply()
+
+            # Wait for outfile creation
+            logging.warning("calling wait for outfile")
+            rc = self.Wait_for_outfile(can_fail)
+            if rc == 0:
+                break
+
+            if can_fail:
+                logging.error("Outfile is not generated, but calling function expects this to fail")
+                rc = 0
+                break
+
+            retry += 1
+
+        if rc == 1:
             #Aborting the execution as apply failed
+            logging.error("Apply_and_Wait() failed")
             exit()
 
         return self
 
-    def Wait_for_outfile(self):
+    def check_for_outfile_creation(self):
         '''
-        Wait for outfile creation
+        Check if outfile is created in a loop.
         '''
         while(1):
             if path.exists(self.output_fpath) == True:
+                logging.info("Outfile is created :%s" % self.output_fpath)
                 break
-            logging.info("Outfile not created yet: %s" % self.output_fpath)
             time_global.sleep(0.005)
+
+    def Wait_for_outfile(self, can_fail):
+        '''
+        Wait for outfile creation.
+        Timeout is added to wait for outfile creation till the specified time.
+        '''
+        rc = 0
+        try:
+            func_timeout(10, self.check_for_outfile_creation, args=())
+        except FunctionTimedOut:
+            if can_fail == False:
+                logging.error("Error : timeout occur for outfile creation : %s" % self.output_fpath)
+                rc = 1
+
+        return rc
 
     def Error(self):
         return self.error
