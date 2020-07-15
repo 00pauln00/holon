@@ -1,4 +1,5 @@
 from holonrecipe import *
+from recipe_verify import *
 import logging
 
 class Recipe(HolonRecipeBase):
@@ -73,34 +74,36 @@ class Recipe(HolonRecipeBase):
         Verify the JSON out for idleness.
         '''
 
-        raft_json_dict = genericcmdobj.raft_json_load(get_all_ctl.output_fpath)
-        # Leader UUID should be null
-        recipe_failed = 0
-        leader_uuid = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
-        if leader_uuid != "":
-            logging.error("Error: Leader uuid is set: %s" % leader_uuid)
-            recipe_failed = 1
+        stage1_rule_table = {
+                "rule1" : {"key1" : "/raft_root_entry/*/leader-uuid",
+                            "key2" : "null",
+                            "expected_value" : "",
+                            "data_type" : "string",
+                            "operator" : "=="},
+                "rule2" : {"key1" : "/raft_root_entry/*/commit-idx",
+                            "key2" : "null",
+                            "expected_value" : "-1",
+                            "data_type" : "int",
+                            "operator" : "=="},
+                "rule3" : {"key1" : "/raft_root_entry/*/last-applied",
+                            "key2" : "null",
+                            "expected_value" : "-1",
+                            "data_type" : "int",
+                            "operator" : "=="},
+                "rule4" : {"key1" : "/raft_root_entry/*/last-applied-cumulative-crc",
+                            "key2" : "null",
+                            "expected_value" : "0",
+                            "data_type" : "int",
+                            "operator" : "=="},
+                "rule5" : {"key1" : "/raft_net_info/ignore_timer_events",
+                            "key2" : "null",
+                            "expected_value" : "True",
+                            "data_type" : "bool",
+                            "operator" : "=="},
+                "ctlreqobj" : get_all_ctl
+                }
 
-        commit_idx = raft_json_dict["raft_root_entry"][0]["commit-idx"]
-        if commit_idx != -1:
-            logging.error("commit-idx is not -1: %s" % commit_idx)
-            recipe_failed = 1
-        
-        last_applied = raft_json_dict["raft_root_entry"][0]["last-applied"]
-        if last_applied != -1:
-            logging.error("last-applied is not -1: %s" % {last_applied})
-            recipe_failed = 1
-
-        last_applied_cumulative_crc = raft_json_dict["raft_root_entry"][0]["last-applied-cumulative-crc"]
-        if last_applied_cumulative_crc != 0:
-            logging.error("last-applied-cumulative-crc is not zero: %s" % last_applied_cumulative_crc)
-            recipe_failed = 1
-
-        ignore_timer_events = raft_json_dict["raft_net_info"]["ignore_timer_events"]
-        if ignore_timer_events != True:
-            logging.error("ignore_timer_evernts should be true %s" % ignore_timer_events)
-            recipe_failed = 1
-
+        recipe_failed = verify_rule_table(stage1_rule_table)
         if recipe_failed:
             logging.error("Basic control interface recipe Failed")
             return recipe_failed
