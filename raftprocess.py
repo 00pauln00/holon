@@ -12,9 +12,10 @@ def check_for_process_status(pid, process_status):
     ps = psutil.Process(pid)
     while(1):
         if ps.status() == process_status:
-            logging.info(" process status %s (expected %s)"% (ps.status(), process_status))
             break
+
         time_global.sleep(0.005)
+        logging.info(" process status %s (expected %s)"% (ps.status(), process_status))
 
 class RaftProcess:
 
@@ -63,7 +64,7 @@ class RaftProcess:
     def start_process(self, raftconfobj, clusterobj):
         logging.warning("Starting process of type: %s with UUID: %s" % (self.process_type,
                                 self.process_uuid))
-    
+
         # Create object for generic cmds.
         genericcmdobj = GenericCmds()
         '''
@@ -79,8 +80,6 @@ class RaftProcess:
                                 raftconfobj.raft_uuid, '-u', self.process_uuid], stdout = file, stderr = file)
                 file.close()
 
-            time_global.sleep(3)
-
             with open(file_path, "r") as fp:
                 Lines = fp.readlines()
                 output_label = "raft-%s.%s" % (self.process_type, self.process_idx)
@@ -89,13 +88,18 @@ class RaftProcess:
             self.process_popen = subprocess.Popen([client_bin_path, '-r',
                                 raftconfobj.raft_uuid, '-u', self.process_uuid])
 
+        '''
+        To check if process is started
+        '''
+        self.Wait_for_process_status("running")
+
         # Check if child process exited with error
         if self.process_popen.poll() is None:
             logging.warning("Raft process started successfully")
         else:
             logging.error("Raft process failed to start")
             raise subprocess.SubprocessError(self.process_popen.returncode)
-        
+
         #Print <process_type.peer_index> at the start of raft log messages
         for line in Lines:
             logging.warning("<{}>:{}".format(output_label, line.strip()))
@@ -104,10 +108,6 @@ class RaftProcess:
         if os.path.exists(file_path):
             shutil.os.remove(file_path)
 
-        '''
-        To check if process is started
-        '''
-        self.Wait_for_process_status("running")
 
     '''
         Method: pause_process

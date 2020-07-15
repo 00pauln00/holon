@@ -163,14 +163,15 @@ class CtlRequest:
         Wait for outfile creation.
         Timeout is added to wait for outfile creation till the specified time.
         '''
+        rc = 0
         try:
             func_timeout(10, self.check_for_outfile_creation, args=())
         except FunctionTimedOut:
             if can_fail == False:
                 logging.error("Error : timeout occur for outfile creation : %s" % self.output_fpath)
-            return 1
+                rc = 1
 
-        return 0
+        return rc
 
     def Error(self):
         return self.error
