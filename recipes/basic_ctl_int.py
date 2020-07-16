@@ -11,6 +11,40 @@ class Recipe(HolonRecipeBase):
     parent = ""
     recipe_proc_obj_list = []
     recipe_ctl_req_obj_list = []
+    stage1_rule_table = {
+            "rule1" : {"key1" : "/raft_root_entry/*/leader-uuid",
+                        "key2" : "null",
+                        "expected_value" : "",
+                        "data_type" : "string",
+                        "operator" : "=="},
+            "rule2" : {"key1" : "/raft_root_entry/*/commit-idx",
+                        "key2" : "null",
+                        "expected_value" : "-1",
+                        "data_type" : "int",
+                        "operator" : "=="},
+            "rule3" : {"key1" : "/raft_root_entry/*/last-applied",
+                        "key2" : "null",
+                        "expected_value" : "-1",
+                        "data_type" : "int",
+                        "operator" : "=="},
+            "rule4" : {"key1" : "/raft_root_entry/*/last-applied-cumulative-crc",
+                        "key2" : "null",
+                        "expected_value" : "0",
+                        "data_type" : "int",
+                        "operator" : "=="},
+            "rule5" : {"key1" : "/raft_net_info/ignore_timer_events",
+                        "key2" : "null",
+                        "expected_value" : "True",
+                        "data_type" : "bool",
+                        "operator" : "=="},
+    }
+    stage2_rule_table = {
+            "rule1" : {"key1" : "/system_info/current_time",
+                        "key2" : "/system_info/current_time",
+                        "expected_value" : "null",
+                        "data_type" : "time",
+                        "operator" : "<"},
+        }
 
     def print_desc(self):
         print(self.desc)
@@ -29,6 +63,8 @@ class Recipe(HolonRecipeBase):
 
         # Create object for generic cmds.
         genericcmdobj = GenericCmds()
+
+        get_all_ctl = []
         '''
         This recipe starts peer0
         '''
@@ -66,44 +102,20 @@ class Recipe(HolonRecipeBase):
         Creating cmd file to get all the JSON output from the server.
         Will verify parameters from server JASON output to check the idleness
         '''
-        get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid,
-                                 inotify_input_base.REGULAR,
-                                 self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
+        ctlobj = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid,
+                            inotify_input_base.REGULAR,
+                            self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
         '''
-        Verify the JSON out for idleness.
+        Add get_all_ctl object into stage1_rule_table to perform the rule checks
+        on it.
         '''
+        get_all_ctl.append(ctlobj)
 
-        stage1_rule_table = {
-                "rule1" : {"key1" : "/raft_root_entry/*/leader-uuid",
-                            "key2" : "null",
-                            "expected_value" : "",
-                            "data_type" : "string",
-                            "operator" : "=="},
-                "rule2" : {"key1" : "/raft_root_entry/*/commit-idx",
-                            "key2" : "null",
-                            "expected_value" : "-1",
-                            "data_type" : "int",
-                            "operator" : "=="},
-                "rule3" : {"key1" : "/raft_root_entry/*/last-applied",
-                            "key2" : "null",
-                            "expected_value" : "-1",
-                            "data_type" : "int",
-                            "operator" : "=="},
-                "rule4" : {"key1" : "/raft_root_entry/*/last-applied-cumulative-crc",
-                            "key2" : "null",
-                            "expected_value" : "0",
-                            "data_type" : "int",
-                            "operator" : "=="},
-                "rule5" : {"key1" : "/raft_net_info/ignore_timer_events",
-                            "key2" : "null",
-                            "expected_value" : "True",
-                            "data_type" : "bool",
-                            "operator" : "=="},
-                "ctlreqobj" : get_all_ctl
-                }
+        self.stage1_rule_table["ctlreqobj"] = get_all_ctl
+        self.stage1_rule_table["orig_ctlreqobj"] = None
 
-        recipe_failed = verify_rule_table(stage1_rule_table)
+        recipe_failed = verify_rule_table(self.stage1_rule_table)
         if recipe_failed:
             logging.error("Basic control interface recipe Failed")
             return recipe_failed
