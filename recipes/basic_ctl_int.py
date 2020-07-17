@@ -11,6 +11,7 @@ class Recipe(HolonRecipeBase):
     parent = ""
     recipe_proc_obj_list = []
     recipe_ctl_req_obj_list = []
+    
     stage1_rule_table = {
             "rule1" : {"key1" : "/raft_root_entry/*/leader-uuid",
                         "key2" : "null",
@@ -45,7 +46,7 @@ class Recipe(HolonRecipeBase):
                         "data_type" : "time",
                         "operator" : "<"},
         }
-
+    
     def print_desc(self):
         print(self.desc)
 
@@ -111,7 +112,7 @@ class Recipe(HolonRecipeBase):
         on it.
         '''
         get_all_ctl.append(ctlobj)
-
+        
         self.stage1_rule_table["ctlreqobj"] = get_all_ctl
         self.stage1_rule_table["orig_ctlreqobj"] = None
 
@@ -166,7 +167,6 @@ class Recipe(HolonRecipeBase):
                 logging.error("Error: Time is not updating")
                 recipe_failed = 1
                 break
-
         if recipe_failed:
             logging.error("Basic control interface recipe failed")
         else:

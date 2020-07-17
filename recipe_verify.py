@@ -2,6 +2,7 @@ import dpath.util
 import json
 from ctlrequest import *
 import logging
+from datetime import datetime
 
 '''
 recipe_verify is the class for verifying recipe stages generically.
@@ -41,18 +42,25 @@ def convert_to_data_type(value, data_type):
     elif data_type == "bool":
         conv_value = bool(value)
 
+    if data_type == "time":
+        time_string = value.split()
+        time = time_string[3]
+        conv_value = datetime.strptime(time, "%H:%M:%S")
+    
     return conv_value
 
 
 def compare_values(key_value_tuple, operator):
     val1 = key_value_tuple[1]
     val2 = key_value_tuple[3]
+    rc = 0 
     if not ops[operator](val1, val2):
         logging.error("key1:val1 : (%s:%s), key2:val2: (%s:%s), operator: %s failed" % (key_value_tuple[0], val1, key_value_tuple[2], val2, operator))
+        rc = 1
     else:
         logging.warning("key1:val1 : (%s:%s), key2:val2: (%s:%s), operator: %s passed!" % (key_value_tuple[0], val1, key_value_tuple[2], val2, operator))
 
-    return 0
+    return rc
 
 
 def rule_table_key_to_value(dictionary, rule_key, data_type):
@@ -103,9 +111,20 @@ def verify_rule_table(recipe_stage_rule_table):
                     if rc == 1:
                         return 1
             else:
-                # orig and ctlreq
-                print("orig and ctlreq both present!!!")
+                '''
+                when original and current ctlreq list are passed, key1 from 
+                one file is compared with key1 from another file.
+                '''
 
+                for odct in orig_dict:
+                    for cdct in curr_dict:
+                        orig_key_val = rule_table_key_to_value(odct, v['key1'], v['data_type'])
+                        curr_key_val = rule_table_key_to_value(cdct, v['key1'], v['data_type'])
 
-
+                        key_value_tuple = (v['key1'], orig_key_val, v['key1'], curr_key_val)
+                        rc = compare_values(key_value_tuple, v['operator'])
+                        
+                        if rc == 1:
+                            return 1
+       
     return 0
