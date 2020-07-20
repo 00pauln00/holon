@@ -37,10 +37,10 @@ class Recipe(HolonRecipeBase):
 
         '''
         peer0 and peer1 is already started by the previous recipes.
-        So start from peer2 till npeer_start for basic leader election
+        So check len(raftserverprocess) and start the remaining peers till npeer_start for basic leader election
         '''
         serverproc = {}
-        for p in range(2, npeer_start):
+        for p in range(len(clusterobj.raftserverprocess), npeer_start):
             logging.warning("Starting peer %d with UUID: %s" % (p, peer_uuid_arr[p]))
             serverproc[p] = RaftProcess(peer_uuid_arr[p], p, "server")
             serverproc[p].start_process(raftconfobj, clusterobj)
