@@ -1,6 +1,7 @@
 from holonrecipe import *
 from recipe_verify import *
 import logging
+import json
 
 class Recipe(HolonRecipeBase):
     name = "basic_ctl_int"
@@ -11,42 +12,8 @@ class Recipe(HolonRecipeBase):
     parent = ""
     recipe_proc_obj_list = []
     recipe_ctl_req_obj_list = []
-    
-    stage1_rule_table = {
-            "rule1" : {"key1" : "/raft_root_entry/*/leader-uuid",
-                        "key2" : "null",
-                        "expected_value" : "",
-                        "data_type" : "string",
-                        "operator" : "=="},
-            "rule2" : {"key1" : "/raft_root_entry/*/commit-idx",
-                        "key2" : "null",
-                        "expected_value" : "-1",
-                        "data_type" : "int",
-                        "operator" : "=="},
-            "rule3" : {"key1" : "/raft_root_entry/*/last-applied",
-                        "key2" : "null",
-                        "expected_value" : "-1",
-                        "data_type" : "int",
-                        "operator" : "=="},
-            "rule4" : {"key1" : "/raft_root_entry/*/last-applied-cumulative-crc",
-                        "key2" : "null",
-                        "expected_value" : "0",
-                        "data_type" : "int",
-                        "operator" : "=="},
-            "rule5" : {"key1" : "/raft_net_info/ignore_timer_events",
-                        "key2" : "null",
-                        "expected_value" : "True",
-                        "data_type" : "bool",
-                        "operator" : "=="},
-    }
-    stage2_rule_table = {
-            "rule1" : {"key1" : "/system_info/current_time",
-                        "key2" : "/system_info/current_time",
-                        "expected_value" : "null",
-                        "data_type" : "time",
-                        "operator" : "<"},
-        }
-    
+    stage_rule_table = {}
+
     def print_desc(self):
         print(self.desc)
 
@@ -66,6 +33,7 @@ class Recipe(HolonRecipeBase):
         genericcmdobj = GenericCmds()
 
         get_all_ctl = []
+
         '''
         This recipe starts peer0
         '''
@@ -112,11 +80,15 @@ class Recipe(HolonRecipeBase):
         on it.
         '''
         get_all_ctl.append(ctlobj)
-        
-        self.stage1_rule_table["ctlreqobj"] = get_all_ctl
-        self.stage1_rule_table["orig_ctlreqobj"] = None
 
-        recipe_failed = verify_rule_table(self.stage1_rule_table)
+        #Load te rule table
+        with open('rule_table/basic_ctl_int.json') as json_file:
+            self.stage_rule_table = json.load(json_file)
+
+        self.stage_rule_table[0]["ctlreqobj"] = get_all_ctl
+        self.stage_rule_table[0]["orig_ctlreqobj"] = None
+
+        recipe_failed = verify_rule_table(self.stage_rule_table[0])
         if recipe_failed:
             logging.error("Basic control interface recipe Failed")
             return recipe_failed
@@ -132,41 +104,46 @@ class Recipe(HolonRecipeBase):
 
         logging.warning("Exited Idleness and starting the server loop\n")
 
-        # Once server the started, verify that the timestamp progresses
-        curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid, app_uuid,
-                                    inotify_input_base.REGULAR,
-                                    self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         # TODO the iteration shouldn't be hardcoded
-        timestamp_dict = {}
+        app_uuid = {}
+        curr_time_ctlreqobj = {}
         for i in range(4):
 
-            # Read the output file and get the time
-            raft_json_dict = genericcmdobj.raft_json_load(curr_time_ctl.output_fpath)
-            curr_time_string = raft_json_dict["system_info"]["current_time"]
-            time_string = curr_time_string.split()
-            time = time_string[3]
+            '''
+            Generate UUID for the application to be used in the outfilename.
+            '''
+            app_uuid[i] = genericcmdobj.generate_uuid()
 
-            logging.warning("Time is: %s" % time)
-            timestamp_dict[i] = time
+            # Once server is started, verify that the timestamp progresses
+            curr_time_ctlreqobj[i] = CtlRequest(inotifyobj, "current_time", peer_uuid, app_uuid[i],
+                                    inotify_input_base.REGULAR,
+                                    self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
+
             time_global.sleep(1)
-            # Copy the cmd file into input directory of server.
-            logging.warning("Copy cmd file to get current_system_time for iteration: %d" % i)
-            curr_time_ctl.Apply_and_Wait(False)
+
         '''
-        Compare the timestamp stored in the timestamp_arr and verify time
+        Compare the timestamp and verify time
         is progressing.
         '''
         recipe_failed = 0
         logging.warning("Compare the timestamp and it should be progressing.")
         for i in range(3):
-            time1 = timestamp_dict[i]
-            time2 = timestamp_dict[i+1]
-            prev_time = datetime.strptime(time1,"%H:%M:%S")
-            curr_time = datetime.strptime(time2,"%H:%M:%S")
-            if prev_time >= curr_time:
-                logging.error("Error: Time is not updating")
-                recipe_failed = 1
-                break
+            '''
+            Add curr_time_ctl object into stage2_rule_table to perform the rule checks
+            on it.
+            '''
+            curr_time_ctl = []
+            orig_time_ctl = []
+
+            curr_time_ctl.append(curr_time_ctlreqobj[i+1])
+            orig_time_ctl.append(curr_time_ctlreqobj[i])
+
+            # Now access stage2_rule_table
+            self.stage_rule_table[1]["ctlreqobj"] = curr_time_ctl
+            self.stage_rule_table[1]["orig_ctlreqobj"] = orig_time_ctl
+
+            recipe_failed = verify_rule_table(self.stage_rule_table[1])
+
         if recipe_failed:
             logging.error("Basic control interface recipe failed")
         else:

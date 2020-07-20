@@ -1,0 +1,8 @@
+{
+            "rule1" : {"key1" : "/system_info/current_time",
+                        "key2" : "/system_info/current_time",
+                        "expected_value" : "null",
+                        "data_type" : "time",
+                        "operator" : "<"}
+}
+

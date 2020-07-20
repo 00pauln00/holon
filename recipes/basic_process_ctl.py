@@ -1,5 +1,7 @@
 from holonrecipe import *
 import logging
+from recipe_verify import *
+import json
 
 class Recipe(HolonRecipeBase):
 
@@ -29,21 +31,9 @@ class Recipe(HolonRecipeBase):
         # Create object for generic cmds.
         genericcmdobj = GenericCmds()
 
-        '''
-        Generate UUID for the application to be used in the outfilename.
-        '''
-        app_uuid = genericcmdobj.generate_uuid()
-
         peer_uuid = raftconfobj.get_peer_uuid_for_peerno(0)
         logging.warning("Pause and resume the peer: %s\n" % peer_uuid)
 
-        '''
-        Copy cmd file. 
-        '''
-        curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid,
-                                    app_uuid,
-                                    inotify_input_base.REGULAR,
-                                    self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         '''
         Pause and Resume server for n iterations. After pausing the server,
         copy the cmd file into input directory. As process is paused, output
@@ -51,13 +41,26 @@ class Recipe(HolonRecipeBase):
         '''
         # TODO iteration count should not be hardcoded.
         recipe_failed = 0
+        curr_time_ctlreqobj = {}
+        app_uuid = {}
         for i in range(5):
             # pause the process
             serverproc.pause_process()
             logging.warning("pausing the process for 5secs and then resume")
-            curr_time_ctl.Apply_and_Wait(True)
+            time_global.sleep(5)
+
+            '''
+            Generate UUID for the application to be used in the outfilename.
+            '''
+            app_uuid[i] = genericcmdobj.generate_uuid()
+
+            curr_time_ctlreqobj[i] = CtlRequest(inotifyobj, "current_time", peer_uuid, app_uuid[i],
+                                    inotify_input_base.REGULAR,
+                                    self.recipe_ctl_req_obj_list).Apply_and_Wait(True)
+
+            time_global.sleep(1)
             # Only check if output file got created.
-            if os.path.exists(curr_time_ctl.output_fpath):
+            if os.path.exists(curr_time_ctlreqobj[i].output_fpath):
                 logging.error("Error: Output file gets created even when paused")
                 recipe_failed = 1
                 break
@@ -76,25 +79,31 @@ class Recipe(HolonRecipeBase):
         progressing.
         '''
 
-        prev_time_string = "00:00:00"
-        prev_time = datetime.strptime(prev_time_string,"%H:%M:%S")
+        #Load the rule table
+        with open('rule_table/basic_process_ctl.json') as json_file:
+            self.stage_rule_table = json.load(json_file)
+
         recipe_failed = 0
         for i in range(4):
             logging.warning("Copy the cmd file into input directory of server. Itr %d" % i)
-            curr_time_ctl.Apply_and_Wait(False)
-            # Read the output file and get the time
-            raft_json_dict = genericcmdobj.raft_json_load(curr_time_ctl.output_fpath)
-            curr_time_string = raft_json_dict["system_info"]["current_time"]
-            time_string = curr_time_string.split()
-            time = time_string[3]
-            time_global.sleep(1)
 
-            logging.warning("Current Time is: %s" % time)
-            curr_time = datetime.strptime(time,"%H:%M:%S")
-            if prev_time >= curr_time:
-                logging.error("Error: Time is not updating from Basic process control recipe")
-                recipe_failed = 1
-                break
+            curr_time_ctlreqobj[i].Apply_and_Wait(False)
+            time_global.sleep(1)
+            '''
+            Add curr_time_ctl object into stage1_rule_table to perform the rule checks
+            on it.
+            '''
+            curr_time_ctl = []
+            orig_time_ctl = []
+
+            curr_time_ctl.append(curr_time_ctlreqobj[i])
+            orig_time_ctl.append(curr_time_ctlreqobj[i+1])
+ 
+
+            self.stage_rule_table["ctlreqobj"] = curr_time_ctl
+            self.stage_rule_table["orig_ctlreqobj"] = orig_time_ctl
+
+            recipe_failed = verify_rule_table(self.stage_rule_table)
 
         if recipe_failed:
             logging.error("basic process control recipe failed")

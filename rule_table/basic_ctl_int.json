@@ -1,0 +1,37 @@
+[{
+            "rule1" : {"key1" : "/raft_root_entry/*/leader-uuid",
+                        "key2" : "null",
+                        "expected_value" : "",
+                        "data_type" : "string",
+                        "operator" : "=="},
+            "rule2" : {"key1" : "/raft_root_entry/*/commit-idx",
+                        "key2" : "null",
+                        "expected_value" : "-1",
+                        "data_type" : "int",
+                        "operator" : "=="},
+            "rule3" : {"key1" : "/raft_root_entry/*/last-applied",
+                        "key2" : "null",
+                        "expected_value" : "-1",
+                        "data_type" : "int",
+                        "operator" : "=="},
+            "rule4" : {"key1" : "/raft_root_entry/*/last-applied-cumulative-crc",
+                        "key2" : "null",
+                        "expected_value" : "0",
+                        "data_type" : "int",
+                        "operator" : "=="},
+            "rule5" : {"key1" : "/raft_net_info/ignore_timer_events",
+                        "key2" : "null",
+                        "expected_value" : "True",
+                        "data_type" : "bool",
+                        "operator" : "=="}
+
+},
+
+{
+            "rule1" : {"key1" : "/system_info/current_time",
+                        "key2" : "/system_info/current_time",
+                        "expected_value" : "null",
+                        "data_type" : "time",
+                        "operator" : "<"}
+}]
+
