@@ -1,4 +1,4 @@
-import os, subprocess, json, time, logging, socket, errno
+import os, subprocess, json, time, logging, socket, errno, shutil
 from datetime import datetime
 
 '''
@@ -37,11 +37,11 @@ class GenericCmds:
     '''
     def move_file(self, src_path, dest_path):
         
-        p = subprocess.run(['mv', src_path, dest_path], stdout=subprocess.PIPE)
-        if p.returncode != 0:
-            logging.error("Move file %s to %s failed with error: %d" % (src_path, dest_path, p.returncode))
-
-        return p.returncode
+        try:
+            shutil.move(src_path, dest_path)
+        except shutil.Error:
+            raise logging.error("Move file %s to %s failed with error: %s" % (src_path, dest_path, shutil.Error))
+            return shutil.Error
 
     def remove_file(self, fpath):
         rc = 0

@@ -111,9 +111,10 @@ class CtlRequest:
         the error later.
         '''
         self.error = ctl_req_create_cmdfile_and_copy(self)
-        if self.error != 0:
-            logging.error("Failed to create ctl req object error: %d" % self.Error())
+        if self.error != None:
+            logging.error("Failed to create ctl req object error: %s" % self.Error())
             exit()
+
         return self
 
     def Apply_and_Wait(self, can_fail):
