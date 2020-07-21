@@ -1,4 +1,6 @@
 from holonrecipe import *
+from recipe_verify import *
+import json
 
 class Recipe(HolonRecipeBase):
     name = "term_ticker"
@@ -9,13 +11,14 @@ class Recipe(HolonRecipeBase):
     parent = "basic_process_ctl"
     recipe_proc_obj_list = []
     recipe_ctl_req_obj_list = []
+    stage_rule_table = {}
 
     def print_desc(self):
         print(self.desc)
 
     def pre_run(self):
         return self.parent
-    
+
     def run(self, clusterobj):
         logging.warning("=================Run Term Ticker recipe ====================\n")
 
@@ -25,113 +28,77 @@ class Recipe(HolonRecipeBase):
         inotifyobj = clusterobj.inotifyobj
         raftconfobj = clusterobj.raftconfobj
         serverproc0 = clusterobj.raftserverprocess[0]
-        
 
         # Create object for generic cmds.
         genericcmdobj = GenericCmds()
-
-        '''
-        Generate UUID for the application to be used in the outfilename.
-        '''
-        app_uuid = genericcmdobj.generate_uuid()
-        logging.warning("Application UUID generated: %s" % app_uuid)
 
         peerno = 0
         peer_uuid = raftconfobj.get_peer_uuid_for_peerno(peerno)
 
         '''
-        Creating cmd file to get all the JSON output from the server.
-        Will verify parameters from server JSON output to check term value. 
-        '''
-        get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid,
-                                 inotify_input_base.REGULAR,
-                                 self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
-        '''
         Run the loop to copy the command file for getting the term value
         and verifying in each iteration, term value increases.
         '''
-        prev_term = 0
+        app_uuid = {}
+        get_all_ctlreqobj = {}
         recipe_failed = 0
+
         # TODO Iteration value should be specified by user. 
+        itr = 10
         logging.warning("Copy cmd file to get and verify term value\n")
-        for i in range(10):
-            # Copy the cmd file into input directory of server.
-            get_all_ctl.Apply_and_Wait(False)
-            # Send the output value for reading the term value.
-            raft_json_dict = genericcmdobj.raft_json_load(get_all_ctl.output_fpath)
-            term = raft_json_dict["raft_root_entry"][0]["term"]
+        for i in range(itr):
+            '''
+            Generate UUID for the application to be used in the outfilename.
+            '''
+            app_uuid[i] = genericcmdobj.generate_uuid()
 
-            logging.warning("Term value returned is: %d" % term)
-            if term <= prev_term:
-                logging.error("Raft server term value is not increasing")
-                recipe_failed = 1
-                break
+            '''
+            Creating cmd file to get all the JSON output from the server.
+            Will verify parameters from server JSON output to check term value.
+            '''
+            get_all_ctlreqobj[i] = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid[i],
+                                              inotify_input_base.REGULAR,
+                                              self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
-            # Verify voted-for-uuid should be same as self uuid
-            voted_for_uuid = raft_json_dict["raft_root_entry"][0]["voted-for-uuid"]
-            if voted_for_uuid != peer_uuid:
-                logging.error("voted-for-uuid %s is not same as self uuid %s" % (voted_for_uuid, peer_uuid))
-                recipe_failed = 1
-                break
+            # sleep to allow term to get incremented
+            time_global.sleep(3)
 
-            leader_uuid = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
-            if leader_uuid != "":
-                logging.error("Error: Leader UUID is not Null: %s" % leader_uuid)
-                recipe_failed = 1
-                break
+        #Load te rule table
+        with open('rule_table/term_ticker.json') as json_file:
+            self.stage_rule_table = json.load(json_file)
 
-            state = raft_json_dict["raft_root_entry"][0]["state"]
-            if state != "candidate":
-                logging.error("State(%s) is not candiate" % state)
-                recipe_failed = 1
-                break
+        for i in range(9):
+            logging.warning("Copy the cmd file into input directory of server. Itr %d" % i)  
+            '''
+            Add get_all_ctl object into stage2_rule_table to perform the rule checks
+            on it.
+            '''
+            get_all_ctl = []
+            orig_get_all = []
 
-            follower_reason = raft_json_dict["raft_root_entry"][0]["follower-reason"]
-            if follower_reason != "none":
-                logging.error("Follower reason is not none (%s)" % follower_reason)
-                recipe_failed = 1
-                break
+            get_all_ctl.append(get_all_ctlreqobj[i+1])
+            orig_get_all.append(get_all_ctlreqobj[i])
+ 
+            # Now access stage2_rule_table
+            self.stage_rule_table[0]["ctlreqobj"] = get_all_ctl
+            self.stage_rule_table[0]["orig_ctlreqobj"] = orig_get_all
 
-            cli_req = raft_json_dict["raft_root_entry"][0]["client-requests"]
-            if cli_req != "deny-leader-not-established":
-                logging.error("client-requests is not deny-leader-not-established (%s)" % cli_req)
-                recipe_failed = 1
-                break
-
-            commit_idx = raft_json_dict["raft_root_entry"][0]["commit-idx"]
-            if commit_idx != -1:
-                logging.error("commit-idx is not -1 (%s)" % commit_idx)
-                recipe_failed = 1
-                break
-
-            last_applied = raft_json_dict["raft_root_entry"][0]["last-applied"]
-            if last_applied != -1:
-                logging.error("Last applied is not -1 (%s)" % last_applied)
-                recipe_failed = 1
-                break
-
-            cumu_crc = raft_json_dict["raft_root_entry"][0]["last-applied-cumulative-crc"]
-            if cumu_crc != 0:
-                logging.error("last-applied-cumulative-crc is not 0 (%s)" % cumu_crc)
-                recipe_failed = 1
+            recipe_failed = verify_rule_table(self.stage_rule_table[0])
+            if recipe_failed:
                 break
 
             #TODO verify total_writes - Term = 2
-            # Sleep for 2second to allow term to get incremented.
-            time_global.sleep(2)
 
         if recipe_failed:
             logging.error("Term ticker recipe failed")
             return recipe_failed
 
         '''
-        Store the current term and restart the server. After reboot, server should have
-        term value > previously strored term + 1 or 2. I.e term value should persist
-        across reboots.
+        After reboot, server should have term value > previously strored term + 1 or 2. 
+        I.e term value should persist across reboots.
         '''
-            
-        before_restart_term = term
-        logging.warning("Term value before Restart of the server is %s" % before_restart_term)
+        after_reboot_ctl = []
+        before_reboot_ctl = []
 
         # Kill the server
         serverproc0.kill_process()
@@ -139,18 +106,26 @@ class Recipe(HolonRecipeBase):
         # Restart the server
         serverproc0.start_process(raftconfobj, clusterobj)
 
-        # Copy the cmd file and verify term value is greater than before_restart_term
-        get_all_ctl.Apply_and_Wait(False)
-        # Send the output value for reading the term value.
-        raft_json_dict = genericcmdobj.raft_json_load(get_all_ctl.output_fpath)
-        curr_term = raft_json_dict["raft_root_entry"][0]["term"]
+        time_global.sleep(2)
 
-        logging.warning("After restart, term value is: %s" % curr_term)
+        app_uuid = genericcmdobj.generate_uuid()
+        after_reboot_ctlreq = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid,
+                                              inotify_input_base.REGULAR,
+                                              self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
+        
 
-        if curr_term <= before_restart_term:
-            logging.error("curr_term %s <= before_restart_term %s" % (curr_term, before_restart_term))
-            recipe_failed = 1
+        # Add the newly taken ctlreq object after reboot ctl list.
+        after_reboot_ctl.append(after_reboot_ctlreq)
 
+        # Use the last iteration ctlreqobj as before restart parameter.
+        before_reboot_ctl.append(get_all_ctlreqobj[itr - 1])
+
+        # Now access stage2_rule_table
+        self.stage_rule_table[1]["ctlreqobj"] = after_reboot_ctl
+        self.stage_rule_table[1]["orig_ctlreqobj"] = before_reboot_ctl
+        
+        recipe_failed = verify_rule_table(self.stage_rule_table[1])
+        
         if recipe_failed:
             logging.error("Term Ticker Recipe Failed")
         else:
