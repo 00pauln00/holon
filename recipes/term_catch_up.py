@@ -47,25 +47,20 @@ class Recipe(HolonRecipeBase):
         # Create object for generic cmds.
         genericcmdobj = GenericCmds()
 
-        '''
-        Generate UUID for the application to be used in the outfilename.
-        '''
-        app_uuid = genericcmdobj.generate_uuid()
-        logging.warning("Application UUID generated: %s" % app_uuid)
 
         '''
         - Create ctlrequest object to create command for CTL request
         '''
-        p0_term_ctl = CtlRequest(inotifyobj, "get_term", peer0_uuid, app_uuid,
+        p0_term_ctl = CtlRequest(inotifyobj, "get_term", peer0_uuid, genericcmdobj,
                                  inotify_input_base.REGULAR,
                                  self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
-        p1_term_ctl = CtlRequest(inotifyobj, "get_term", peer1_uuid, app_uuid,
+        p1_term_ctl = CtlRequest(inotifyobj, "get_term", peer1_uuid, genericcmdobj,
                                  inotify_input_base.REGULAR,
                                  self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
         # Get the term value for Peer0 before pausing it.
-        raft_json_dict = genericcmdobj.raft_json_load(p0_term_ctl.output_fpath)
+        raft_json_dict = genericcmdobj.raft_json_load(p0_term_ctl)
         peer0_term = raft_json_dict["raft_root_entry"][0]["term"]
         
         logging.warning("Term value of peer0 before pausing it: %s" % peer0_term)
@@ -90,7 +85,7 @@ class Recipe(HolonRecipeBase):
             '''
             p1_term_ctl.Apply_and_Wait(False)
 
-            raft_json_dict = genericcmdobj.raft_json_load(p1_term_ctl.output_fpath)
+            raft_json_dict = genericcmdobj.raft_json_load(p1_term_ctl)
             peer1_term = raft_json_dict["raft_root_entry"][0]["term"]
 
             logging.warning("Term value for peer1: %d" % peer1_term)
@@ -101,7 +96,7 @@ class Recipe(HolonRecipeBase):
             serverproc0.resume_process()
 
             p0_term_ctl.Apply_and_Wait(False)
-            raft_json_dict = genericcmdobj.raft_json_load(p0_term_ctl.output_fpath)
+            raft_json_dict = genericcmdobj.raft_json_load(p0_term_ctl)
             peer0_term = raft_json_dict["raft_root_entry"][0]["term"]
 
             logging.warning("Term value of peer0 after resume is: %d" % peer0_term)

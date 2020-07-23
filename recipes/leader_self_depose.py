@@ -39,7 +39,7 @@ def leader_self_depose_case1(ctlreq_arr, raftconf, resume_peer_uuid, orig_term, 
         if ctlreq_arr[p] == None:
             continue
 
-        raft_json_dict = genericcmdobj.raft_json_load(ctlreq_arr[p].output_fpath)
+        raft_json_dict = genericcmdobj.raft_json_load(ctlreq_arr[p])
         leader_uuid = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
         state = raft_json_dict["raft_root_entry"][0]["state"]
         if state == "leader":
@@ -64,7 +64,7 @@ def leader_self_depose_case1(ctlreq_arr, raftconf, resume_peer_uuid, orig_term, 
         if newest_entry_dsize != 0:
             return False
 
-    leader_json = genericcmdobj.raft_json_load(ctlreq_arr[leader_idx].output_fpath)
+    leader_json = genericcmdobj.raft_json_load(ctlreq_arr[leader_idx])
     case_occurred = verify_follower_stat_for_non_running_peers(leader_json, raftconf, nstarted)
     return case_occurred
 
@@ -82,7 +82,7 @@ def leader_self_depose_case2(ctlreq_arr, raftconf, resume_peer_uuid, orig_term, 
         if ctlreq_arr[p] == None:
             continue
 
-        raft_json_dict = genericcmdobj.raft_json_load(ctlreq_arr[p].output_fpath)
+        raft_json_dict = genericcmdobj.raft_json_load(ctlreq_arr[p])
         state = raft_json_dict["raft_root_entry"][0]["state"]
         if state == "leader":
             leader_idx = p
@@ -106,7 +106,7 @@ def leader_self_depose_case2(ctlreq_arr, raftconf, resume_peer_uuid, orig_term, 
         break
 
     if case2_occurred:
-        leader_json = genericcmdobj.raft_json_load(ctlreq_arr[leader_idx].output_fpath)
+        leader_json = genericcmdobj.raft_json_load(ctlreq_arr[leader_idx])
         case2_occurred = verify_follower_stat_for_non_running_peers(leader_json, raftconf, nstarted)
     
     return case2_occurred
@@ -125,7 +125,7 @@ def leader_self_depose_case3(ctlreq_arr, orig_leader, orig_term, nstarted):
         if ctlreq_arr[p] == None:
             continue
 
-        raft_json_dict = genericcmdobj.raft_json_load(ctlreq_arr[p].output_fpath)
+        raft_json_dict = genericcmdobj.raft_json_load(ctlreq_arr[p])
         leader_uuid = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
 
         voted_for_uuid = raft_json_dict["raft_root_entry"][0]["voted-for-uuid"]
@@ -205,10 +205,6 @@ class Recipe(HolonRecipeBase):
         '''
         genericcmdobj = GenericCmds()
 
-        '''
-        Generate UUID for the application to be used in the outfilename.
-        '''
-        app_uuid = genericcmdobj.generate_uuid()
 
         '''
         Creating cmd file to get all the JSON output from the server.
@@ -218,14 +214,14 @@ class Recipe(HolonRecipeBase):
 
         for p in range(npeer_start):
             get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
-                                    app_uuid,
+                                    genericcmdobj,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         orig_follower_last_ack ={}
         fpeer = 0
 
         for p in range(npeer_start):
-            raft_json_dict = genericcmdobj.raft_json_load(get_ctl[p].output_fpath)
+            raft_json_dict = genericcmdobj.raft_json_load(get_ctl[p])
             peer_uuid[p] = raft_json_dict["raft_root_entry"][0]["peer-uuid"]
             orig_leader_uuid[p] = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
             orig_term[p] = raft_json_dict["raft_root_entry"][0]["term"]
@@ -290,10 +286,10 @@ class Recipe(HolonRecipeBase):
         while retry < 5:
             rc = 0
             get_ctl[0] = CtlRequest(inotifyobj, "get_all", orig_leader_uuid[0],
-                                    app_uuid,
+                                    genericcmdobj,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
-            raft_json_dict = genericcmdobj.raft_json_load(get_ctl[0].output_fpath)
+            raft_json_dict = genericcmdobj.raft_json_load(get_ctl[0])
             client_req =  raft_json_dict["raft_root_entry"][0]["client-requests"]
             if client_req != "deny-may-be-deposed":
                 logging.warning("client req changed to deny-may-be-deposed!")
@@ -374,7 +370,7 @@ class Recipe(HolonRecipeBase):
                     continue
 
                 get_ctl[i] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[i],
-                                        app_uuid,
+                                        genericcmdobj,
                                         inotify_input_base.REGULAR,
                                         self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
             '''

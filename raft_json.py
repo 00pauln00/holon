@@ -20,15 +20,16 @@ class RaftJson:
     client_req = ''
     ignore_timer = False
   
-    def __init__(self, outfile, raftconfigobj):
+    def __init__(self, ctlreqobj, raftconfigobj):
 
-        self.outfile = outfile
- 
-        #Sleep for 1 sec if file has not got created yet.
-        while os.path.exists(outfile) == False:
+        fpath = ctlreqobj.get_latest_version_ofile()
+        '''
+        Sleep for 1 sec if file has not got created yet.
+        '''
+        while os.path.exists(fpath) == False:
             time.sleep(1)
 
-        with open(outfile, "r") as f:
+        with open(fpath) as f:
             raft_json_dict = json.load(f)
   
             #Extract the JSON Parameters

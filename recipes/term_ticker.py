@@ -30,11 +30,6 @@ class Recipe(HolonRecipeBase):
         # Create object for generic cmds.
         genericcmdobj = GenericCmds()
 
-        '''
-        Generate UUID for the application to be used in the outfilename.
-        '''
-        app_uuid = genericcmdobj.generate_uuid()
-        logging.warning("Application UUID generated: %s" % app_uuid)
 
         peerno = 0
         peer_uuid = raftconfobj.get_peer_uuid_for_peerno(peerno)
@@ -43,7 +38,7 @@ class Recipe(HolonRecipeBase):
         Creating cmd file to get all the JSON output from the server.
         Will verify parameters from server JSON output to check term value. 
         '''
-        get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid,
+        get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, genericcmdobj,
                                  inotify_input_base.REGULAR,
                                  self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         '''
@@ -58,7 +53,7 @@ class Recipe(HolonRecipeBase):
             # Copy the cmd file into input directory of server.
             get_all_ctl.Apply_and_Wait(False)
             # Send the output value for reading the term value.
-            raft_json_dict = genericcmdobj.raft_json_load(get_all_ctl.output_fpath)
+            raft_json_dict = genericcmdobj.raft_json_load(get_all_ctl)
             term = raft_json_dict["raft_root_entry"][0]["term"]
 
             logging.warning("Term value returned is: %d" % term)
@@ -142,7 +137,7 @@ class Recipe(HolonRecipeBase):
         # Copy the cmd file and verify term value is greater than before_restart_term
         get_all_ctl.Apply_and_Wait(False)
         # Send the output value for reading the term value.
-        raft_json_dict = genericcmdobj.raft_json_load(get_all_ctl.output_fpath)
+        raft_json_dict = genericcmdobj.raft_json_load(get_all_ctl)
         curr_term = raft_json_dict["raft_root_entry"][0]["term"]
 
         logging.warning("After restart, term value is: %s" % curr_term)

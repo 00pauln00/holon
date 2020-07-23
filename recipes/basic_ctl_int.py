@@ -34,18 +34,13 @@ class Recipe(HolonRecipeBase):
         peerno = 0
         peer_uuid = raftconfobj.get_peer_uuid_for_peerno(peerno)
 
-        '''
-        Generate UUID for the application to be used in the outfilename.
-        '''
-        app_uuid = genericcmdobj.generate_uuid()
-        logging.warning("Application UUID generated: %s" % app_uuid)
 
         '''
         - Create ctlrequest object to create command for CTL request
         - Before starting the server, copy the APPLY init command into init directory,
           so that server will not go into start loop and will remain idle.
         '''
-        init_ctl = CtlRequest(inotifyobj, "idle_on", peer_uuid, app_uuid,
+        init_ctl = CtlRequest(inotifyobj, "idle_on", peer_uuid,genericcmdobj,
                               inotify_input_base.PRIVATE_INIT,
                               self.recipe_ctl_req_obj_list).Apply()
         '''
@@ -65,7 +60,7 @@ class Recipe(HolonRecipeBase):
         Creating cmd file to get all the JSON output from the server.
         Will verify parameters from server JASON output to check the idleness
         '''
-        get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, app_uuid,
+        get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid,genericcmdobj,
                                  inotify_input_base.REGULAR,
                                  self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
@@ -73,7 +68,7 @@ class Recipe(HolonRecipeBase):
         Verify the JSON out for idleness.
         '''
 
-        raft_json_dict = genericcmdobj.raft_json_load(get_all_ctl.output_fpath)
+        raft_json_dict = genericcmdobj.raft_json_load(get_all_ctl)
         # Leader UUID should be null
         recipe_failed = 0
         leader_uuid = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
@@ -110,14 +105,14 @@ class Recipe(HolonRecipeBase):
         Create cmdfile to exit idleness and copy it into input directory
         of the server.
         '''
-        idle_off_ctl = CtlRequest(inotifyobj, "idle_off", peer_uuid, app_uuid,
+        idle_off_ctl = CtlRequest(inotifyobj, "idle_off", peer_uuid,genericcmdobj,
                                   inotify_input_base.REGULAR,
                                   self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
         logging.warning("Exited Idleness and starting the server loop\n")
 
         # Once server the started, verify that the timestamp progresses
-        curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid, app_uuid,
+        curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid,genericcmdobj,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         # TODO the iteration shouldn't be hardcoded
@@ -125,7 +120,7 @@ class Recipe(HolonRecipeBase):
         for i in range(4):
 
             # Read the output file and get the time
-            raft_json_dict = genericcmdobj.raft_json_load(curr_time_ctl.output_fpath)
+            raft_json_dict = genericcmdobj.raft_json_load(curr_time_ctl)
             curr_time_string = raft_json_dict["system_info"]["current_time"]
             time_string = curr_time_string.split()
             time = time_string[3]

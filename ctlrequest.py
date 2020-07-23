@@ -11,14 +11,18 @@ def ctl_req_create_cmdfile_and_copy(ctlreqobj):
     basicioobj = BasicIO()
     genericcmdobj = GenericCmds()
 
-    o_base = os.path.basename(ctlreqobj.output_fpath)
+    # Use the new file version everytime you copy same cmd file.
+    ctlreqobj.version += 1
+    ofile_with_version = "%s.%d" % (ctlreqobj.output_fpath, ctlreqobj.version)
+    o_base = os.path.basename(ofile_with_version)
     i_base = os.path.basename(ctlreqobj.input_fpath)
     cmd_str = "%s\nOUTFILE /%s\n" % (ctlreqobj.ctl_cmd_dict[ctlreqobj.cmd], o_base)
 
     logging.info("cmd_str: %s" % cmd_str)
-    # Before copying the cmdfile, remove the output file if it already exits.
-    if os.path.exists(ctlreqobj.output_fpath):
-        genericcmdobj.remove_file(ctlreqobj.output_fpath)
+    # Before copying the cmdfile, remove the output file if it already exists.
+    if os.path.exists(ofile_with_version):
+        logging.error("outfile with same name should not be present")
+        return -1
 
     # Write the cmd to tmpfile.
     tmp_file = "/tmp/%s" % i_base
@@ -26,15 +30,12 @@ def ctl_req_create_cmdfile_and_copy(ctlreqobj):
     fd = basicioobj.open_file(tmp_file)
     if fd == None:
         return -1
-
     rc = basicioobj.write_file(fd, cmd_str)
     if rc == -1:
         return rc
-
     rc = basicioobj.close_file(fd)
     if rc == -1:
         return rc
-
     # Create input_fpath directory if does not exist already.
     if not os.path.exists(os.path.dirname(ctlreqobj.input_fpath)):
         genericcmdobj.make_dir(os.path.dirname(ctlreqobj.input_fpath))
@@ -42,7 +43,6 @@ def ctl_req_create_cmdfile_and_copy(ctlreqobj):
     rc = genericcmdobj.move_file(tmp_file, ctlreqobj.input_fpath)
     if rc == -1:
         return rc
-
     return rc
 
 
@@ -60,9 +60,11 @@ class CtlRequest:
     input_fpath = ""
     output_fpath = ""
     cmd = ""
+    version = -1
     error = 0
+    app_uuid = 0
 
-    def __init__(self, inotifyobj, cmd, peer_uuid, app_uuid, input_base,
+    def __init__(self, inotifyobj, cmd, peer_uuid, genericcmdobj, input_base,
                  ctlreq_list):
 
         self.cmd = cmd
@@ -71,6 +73,8 @@ class CtlRequest:
         if input_base == inotify_input_base.SHARED_INIT:
             inotifyobj.export_init_path(peer_uuid)
 
+        #Generate app_uuid for each ctlrequest object
+        app_uuid = genericcmdobj.generate_uuid()
         self.input_fpath = inotifyobj.prepare_input_output_path(peer_uuid,
                                                                 cmd, True,
                                                                 input_base,
@@ -84,6 +88,12 @@ class CtlRequest:
         ctlreq_list.append(self)
 
 
+    def get_latest_version_ofile(self):
+        '''
+        Return the latest version of the file.
+        '''
+        ofile = "%s.%d" % (self.output_fpath, self.version)
+        return ofile
 
     def set_leader(self, uuid):
 
@@ -94,8 +104,8 @@ class CtlRequest:
 
         logging.warning("APPLY cmd=%s ipath=%s", self.cmd, self.input_fpath)
         self.error = ctl_req_create_cmdfile_and_copy(self)
-        if self.error != 0:
-            logging.error("Failed to create ctl req object error: %d" % self.Error())
+        if self.error != None:
+            logging.error("Failed to create ctl req object error: %s" % self.Error())
             #Aborting the execution as apply failed
             exit()
 
@@ -114,6 +124,7 @@ class CtlRequest:
         if self.error != None:
             logging.error("Failed to create ctl req object error: %s" % self.Error())
             exit()
+
 
         return self
 
@@ -154,8 +165,9 @@ class CtlRequest:
         Check if outfile is created in a loop.
         '''
         while(1):
-            if path.exists(self.output_fpath) == True:
-                logging.info("Outfile is created :%s" % self.output_fpath)
+            ofile = self.get_latest_version_ofile()
+            if path.exists(ofile) == True:
+                logging.info("Outfile is created :%s" % ofile)
                 break
             time_global.sleep(0.005)
 
@@ -169,7 +181,8 @@ class CtlRequest:
             func_timeout(10, self.check_for_outfile_creation, args=())
         except FunctionTimedOut:
             if can_fail == False:
-                logging.error("Error : timeout occur for outfile creation : %s" % self.output_fpath)
+                ofile = self.get_latest_version_ofile()
+                logging.error("Error : timeout occur for outfile creation : %s" % ofile)
                 rc = 1
 
         return rc
@@ -185,7 +198,9 @@ class CtlRequest:
             logging.warning("Removing file: %s" % self.input_fpath)
             genericcmdobj.remove_file(self.input_fpath)
 
-        if os.path.exists(self.output_fpath):
-            logging.warning("Removing file: %s" % self.output_fpath)
-            genericcmdobj.remove_file(self.output_fpath)
+        for i in range(self.version):
+            ofile = "%s.%d" % (self.output_fpath, self.version)
+            if os.path.exists(ofile):
+                logging.warning("Removing file: %s" % ofile)
+                genericcmdobj.remove_file(ofile)
 
