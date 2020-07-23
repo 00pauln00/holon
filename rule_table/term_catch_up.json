@@ -1,0 +1,7 @@
+{
+            "rule1" : {"key1" : "/raft_root_entry/*/term",
+                        "key2" : "/raft_root_entry/*/term",
+                        "expected_value" : "",
+                        "data_type" : "int",
+                        "operator" : "<="}
+}

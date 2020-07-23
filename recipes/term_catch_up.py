@@ -1,5 +1,6 @@
 from holonrecipe import *
 import logging
+from recipe_verify import *
 
 class Recipe(HolonRecipeBase):
     name = "term_catch_up"
@@ -11,6 +12,7 @@ class Recipe(HolonRecipeBase):
     parent = "term_ticker"
     recipe_proc_obj_list = []
     recipe_ctl_req_obj_list = []
+    stage_rule_table = {}
 
     def print_desc(self):
         print(self.desc)
@@ -46,29 +48,26 @@ class Recipe(HolonRecipeBase):
 
         # Create object for generic cmds.
         genericcmdobj = GenericCmds()
-
         '''
         Generate UUID for the application to be used in the outfilename.
         '''
         app_uuid = genericcmdobj.generate_uuid()
-        logging.warning("Application UUID generated: %s" % app_uuid)
 
         '''
         - Create ctlrequest object to create command for CTL request
         '''
         p0_term_ctl = CtlRequest(inotifyobj, "get_term", peer0_uuid, app_uuid,
-                                 inotify_input_base.REGULAR,
-                                 self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
+                                        inotify_input_base.REGULAR,
+                                        self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
         p1_term_ctl = CtlRequest(inotifyobj, "get_term", peer1_uuid, app_uuid,
-                                 inotify_input_base.REGULAR,
-                                 self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
+                                        inotify_input_base.REGULAR,
+                                        self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
-        # Get the term value for Peer0 before pausing it.
-        raft_json_dict = genericcmdobj.raft_json_load(p0_term_ctl.output_fpath)
-        peer0_term = raft_json_dict["raft_root_entry"][0]["term"]
-        
-        logging.warning("Term value of peer0 before pausing it: %s" % peer0_term)
+        #Load the rule table
+        with open('rule_table/term_catch_up.json') as json_file:
+            self.stage_rule_table = json.load(json_file)
+
         '''
         Run the loop to copy the command file for getting the term value
         and verifying in each iteration, term value increases.
@@ -78,6 +77,7 @@ class Recipe(HolonRecipeBase):
         recipe_failed = 0
         # TODO Iteration value should be specified by user. 
         for i in range(5):
+            logging.warning("Copy the cmd file into input directory of server. Itr %d" % i)
 
             serverproc0.pause_process()
 
@@ -89,31 +89,33 @@ class Recipe(HolonRecipeBase):
             And read the output JSON to get the term value.
             '''
             p1_term_ctl.Apply_and_Wait(False)
-
-            raft_json_dict = genericcmdobj.raft_json_load(p1_term_ctl.output_fpath)
-            peer1_term = raft_json_dict["raft_root_entry"][0]["term"]
-
-            logging.warning("Term value for peer1: %d" % peer1_term)
-
+            time_global.sleep(3)
             '''
             Resume Peer0 and again copy cmd file to get it's current term value.
             '''
             serverproc0.resume_process()
 
+            logging.warning("After resume Peer0, compare its term value with Peer1's term value")
             p0_term_ctl.Apply_and_Wait(False)
-            raft_json_dict = genericcmdobj.raft_json_load(p0_term_ctl.output_fpath)
-            peer0_term = raft_json_dict["raft_root_entry"][0]["term"]
+            time_global.sleep(3)
 
-            logging.warning("Term value of peer0 after resume is: %d" % peer0_term)
+            p0_ctl = []
+            p1_ctl = []
+            # Now access stage_rule_table
+            p0_ctl.append(p0_term_ctl)
+            p1_ctl.append(p1_term_ctl)
+
+            self.stage_rule_table["ctlreqobj"] = p0_ctl
+            self.stage_rule_table["orig_ctlreqobj"] = p1_ctl
 
             '''
             Peer0 term should have catched up with peer1 term i.e Peer0 term value should
             be greater than or equal to peer1's term value or different between term 
             should not be greater than pause_time.
             '''
-            if peer0_term < peer1_term and ((peer1_term - peer0_term) > pause_time):
-                logging.warning("Term Catch up failed, peer0 term: %d and peer1 term: %d" % (peer0_term, peer1_term))
-                recipe_failed = 1
+
+            recipe_failed = verify_rule_table(self.stage_rule_table)
+            if recipe_failed:
                 break
 
         if recipe_failed:
