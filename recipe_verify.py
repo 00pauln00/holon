@@ -98,13 +98,13 @@ def verify_rule_table(recipe_stage_rule_table):
 
                     key1_val = rule_table_key_to_value(dct, v['key1'], v['data_type'])
                     key2_val = rule_table_key_to_value(dct, v['key2'], v['data_type'])
-                    expected_val = v['expected_value']
-                    expected_val = convert_to_data_type(expected_val, v['data_type'])
 
                     if key2_val != None:
                         key_value_tuple = (v['key1'], key1_val, v['key2'], key2_val)
                         rc = compare_values(key_value_tuple, v['operator'])
                     else:
+                        expected_val = v['expected_value']
+                        expected_val = convert_to_data_type(expected_val, v['data_type'])
                         key_value_tuple = (v['key1'], key1_val, None, expected_val)
                         rc = compare_values(key_value_tuple, v['operator'])
 

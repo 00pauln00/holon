@@ -1,0 +1,31 @@
+[{
+                    "rule1" : {"key1" : "/raft_root_entry/*/leader-uuid",
+                                "key2" : "null",
+                                "expected_value" : "",
+                                "data_type" : "string",
+                                "operator" : "!="}
+},
+{
+                    "rule1" : {"key1" : "/raft_root_entry/*/commit-idx",
+                                "key2" : "null",
+                                "expected_value" : "0",
+                                "data_type" : "int",
+                                "operator" : "=="}, 
+                    "rule2" : {"key1" : "/raft_root_entry/*/last-applied",
+                                "key2" : "null",
+                                "expected_value" : "0",
+                                "data_type" : "int",
+                                "operator" : "=="},
+                    "rule3" : {"key1" : "/raft_root_entry/*/last-applied-cumulative-crc",
+                                "key2" : "/raft_root_entry/*/newest-entry-crc",
+                                "expected_value" : "null",
+                                "data_type" : "int",
+                                "operator" : "=="},
+                    "rule4" : {"key1" : "/raft_root_entry/*/term",
+                                "key2" : "/raft_root_entry/*/newest-entry-term",
+                                "expected_value" : "null",
+                                "data_type" : "int",
+                                "operator" : "=="}  
+}]
+
+

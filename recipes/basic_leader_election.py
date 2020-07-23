@@ -1,5 +1,7 @@
 from holonrecipe import *
 import logging
+from recipe_verify import *
+import json
 
 class Recipe(HolonRecipeBase):
     name = "basic_leader_election"
@@ -10,6 +12,7 @@ class Recipe(HolonRecipeBase):
     parent = "term_catch_up"
     recipe_proc_obj_list = []
     recipe_ctl_req_obj_list = []
+    stage_rule_table = {}
 
     def print_desc(self):
         print(self.desc)
@@ -51,7 +54,6 @@ class Recipe(HolonRecipeBase):
         After starting peer2, minimum number of servers for leader election
         have reached.
         '''
-
         # Create object for generic cmds.
         genericcmdobj = GenericCmds()
 
@@ -75,89 +77,68 @@ class Recipe(HolonRecipeBase):
         Make sure we wait for leader election to complete.
         Check leader election completion in a loop
         '''
-        leader_uuid = {}
-        term_values = {}
-        commit_idx = {}
-        last_applied = {}
-        cumu_crc = {}
-        newest_entry_term = {}
-        newest_entry_crc = {}
+        #Load te rule table
+        with open('rule_table/basic_leader_election.json') as json_file:
+            self.stage_rule_table = json.load(json_file)
 
-        for itr in range(100):
+        for itr in range(5):
             election_in_progress = 0
             for p in range(npeer_start):
-                raft_json_dict = genericcmdobj.raft_json_load(get_ctl[p].output_fpath)
-                leader_uuid[p] = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
-                if leader_uuid[p] == "":
-                    time_global.sleep(1)
+                logging.warning("Copy the cmd file into input directory of server. peer %d" % p)
+                get_ctl[p].Apply_and_Wait(False)
+                time_global.sleep(4)
+                '''
+                Add get_ctl object into stage0_rule_table to perform the rule checks
+                on it.
+                '''
+                get_all_ctl = []
+                get_all_ctl.append(get_ctl[p])
+
+                # Now access stage0_rule_table
+                self.stage_rule_table[0]["ctlreqobj"] = get_all_ctl
+                self.stage_rule_table[0]["orig_ctlreqobj"] = None
+
+                recipe_failed = verify_rule_table(self.stage_rule_table[0])
+                if recipe_failed:
                     election_in_progress = 1
-                    ctl_req_create_cmdfile_and_copy(get_ctl[p])
+                    logging.warning("Leader election failed")
+                    get_ctl[p].Apply_and_Wait(False)
                     break
 
             if election_in_progress == 0:
                 logging.warning("Leader election successful")
                 break
 
-        
-        recipe_failed = 0
         for p in range(npeer_start):
-            raft_json_dict = genericcmdobj.raft_json_load(get_ctl[p].output_fpath)
-            leader_uuid[p] = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
+            logging.warning("Copy the cmd file into input directory of server. peer %d" % p)
+            get_ctl[p].Apply_and_Wait(False)
+            time_global.sleep(4)
+            '''
+            Add get_ctl object into stage1_rule_table to perform the rule checks
+            on it.
+            '''
+            compare_value = []
+            compare_value.append(get_ctl[p])
+           
+            # Now access stage1_rule_table
+            self.stage_rule_table[1]["ctlreqobj"] = compare_value
+            self.stage_rule_table[1]["orig_ctlreqobj"] = None
 
-            term_values[p] = raft_json_dict["raft_root_entry"][0]["term"]
-
-            commit_idx[p] = raft_json_dict["raft_root_entry"][0]["commit-idx"]
-            if commit_idx[p] != 0:
-                logging.error("Commit idx is not 0 for peer %s" % p)
-                recipe_failed = 1
-                break
-
-            last_applied[p] = raft_json_dict["raft_root_entry"][0]["last-applied"]
-            if last_applied[p] != 0:
-                logging.error("Last applied is not 0 for peer %s" % p)
-                recipe_failed = 1
-                break
-
-            cumu_crc[p] = raft_json_dict["raft_root_entry"][0]["last-applied-cumulative-crc"]
-
-            newest_entry_term[p] = raft_json_dict["raft_root_entry"][0]["newest-entry-term"]
-
-            newest_entry_crc[p] = raft_json_dict["raft_root_entry"][0]["newest-entry-crc"]
-
-            # Term should be same as newest_entry_term
-            if term_values[p] != newest_entry_term[p]:
-                loggin.error("term %d is not same as newest-entry-term %d" % (term_values[p], newest_entry_term[p]))
-                recipe_failed = 1
-                break
-
-            # last-applied-cumulative-crc should be same as newest-entry-crc
-            if cumu_crc[p] != newest_entry_crc[p]:
-                logging.error("last-applied-cumulative-crc %d is not same as newest-entry-crc : %d" % (cumu_crc[p], newest_entry_crc[p]))
-                recipe_failed = 1
+            recipe_failed = verify_rule_table(self.stage_rule_table[1])
+            if recipe_failed:
                 break
 
         if recipe_failed:
-            logging.error("Basic leader election recipe failed")
-            return recipe_failed
-        # Make sure leader-uuid is same on all three peers.
-        elif not (leader_uuid[0] == leader_uuid[1] and leader_uuid[0] == leader_uuid[2]):
-            logging.error("Leader uuid is not same of all peers")
-            recipe_failed = 1
-        elif not (term_values[0] == term_values[1] and term_values[0] == term_values[2]):
-            logging.error("Term values are not same for all peers")
-            recipe_failed = 1
-
-        if recipe_failed:
-            logging.error("Basic Leader election recipe Failed")
+            logging.error("Basic Leader Election recipe failed")
         else:
-            logging.warning("Basic leader election Successful, Leader election successful!!\n")
-
+            logging.warning("Basic Leader Election recipe Successful")
+        return recipe_failed
         # Store server2 process object
         for p in range(2, npeer_start):
             clusterobj.raftprocess_obj_store(serverproc[p], p)
 
         return recipe_failed
-        
+
 
     def post_run(self, clusterobj):
         logging.warning("Post run method")
