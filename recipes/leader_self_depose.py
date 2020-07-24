@@ -213,8 +213,7 @@ class Recipe(HolonRecipeBase):
         get_ctl = [None] * npeer_start
 
         for p in range(npeer_start):
-            get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
-                                    genericcmdobj,
+            get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p], genericcmdobj,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         orig_follower_last_ack ={}
@@ -285,8 +284,7 @@ class Recipe(HolonRecipeBase):
         retry = 0
         while retry < 5:
             rc = 0
-            get_ctl[0] = CtlRequest(inotifyobj, "get_all", orig_leader_uuid[0],
-                                    genericcmdobj,
+            get_ctl[0] = CtlRequest(inotifyobj, "get_all", orig_leader_uuid[0], genericcmdobj,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
             raft_json_dict = genericcmdobj.raft_json_load(get_ctl[0])
@@ -369,8 +367,7 @@ class Recipe(HolonRecipeBase):
                     get_ctl[i] = None
                     continue
 
-                get_ctl[i] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[i],
-                                        genericcmdobj,
+                get_ctl[i] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[i], genericcmdobj,
                                         inotify_input_base.REGULAR,
                                         self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
             '''

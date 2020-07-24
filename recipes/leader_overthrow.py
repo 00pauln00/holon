@@ -61,8 +61,7 @@ class Recipe(HolonRecipeBase):
         Make sure none of the peer is in idle state
         '''
         for p in range(npeer):
-            idle_off[0] = CtlRequest(inotifyobj, "idle_off", peer_uuid_arr[0],
-                                    genericcmdobj,
+            idle_off[0] = CtlRequest(inotifyobj, "idle_off", peer_uuid_arr[0], genericcmdobj,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         '''
@@ -71,8 +70,7 @@ class Recipe(HolonRecipeBase):
         '''
 
         for p in range(npeer):    
-            get_all[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
-                                    genericcmdobj,
+            get_all[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p], genericcmdobj,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
            
@@ -88,8 +86,7 @@ class Recipe(HolonRecipeBase):
         logging.warning("Stage 1: Disable message receive on all peers")
         for p in range(npeer): 
             #Copy the cmd file for Disable the net_recv_enable
-            net_rcv_false[p] = CtlRequest(inotifyobj, "rcv_false", peer_uuid_arr[p],
-                                          genericcmdobj,
+            net_rcv_false[p] = CtlRequest(inotifyobj, "rcv_false", peer_uuid_arr[p], genericcmdobj,
                                           inotify_input_base.REGULAR,
                                           self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         time_global.sleep(3)
@@ -156,8 +153,7 @@ class Recipe(HolonRecipeBase):
         logging.warning("Stage 2: Enable receive on all Peers from the Leader-to-be")
         for p in range(npeer): 
             #Copy new leader-to-be cmd file. Use first follower as leader-to-be
-            CtlRequest(inotifyobj, "set_leader_uuid", peer_uuid_arr[p],
-                                  genericcmdobj,
+            CtlRequest(inotifyobj, "set_leader_uuid", peer_uuid_arr[p], genericcmdobj,
                                   inotify_input_base.REGULAR,
                                   self.recipe_ctl_req_obj_list).set_leader(peer_uuid_arr[leader_to_be])
         time_global.sleep(3)
@@ -250,8 +246,7 @@ class Recipe(HolonRecipeBase):
         '''    
         logging.warning("Stage 3: Enable Recv from all Peers on the Leader-to-be")
 
-        CtlRequest(inotifyobj, "rcv_true", peer_uuid_arr[leader_to_be],
-                                    genericcmdobj,
+        CtlRequest(inotifyobj, "rcv_true", peer_uuid_arr[leader_to_be], genericcmdobj,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
@@ -327,8 +322,7 @@ class Recipe(HolonRecipeBase):
         Finalization of recipe: The recipe should restore net_recv_enabled state to true on all peers.
         '''
         for p in range(npeer):
-            net_rcv_true[p] = CtlRequest(inotifyobj, "rcv_true", peer_uuid_arr[p],
-                                         genericcmdobj,
+            net_rcv_true[p] = CtlRequest(inotifyobj, "rcv_true", peer_uuid_arr[p], genericcmdobj,
                                          inotify_input_base.REGULAR,
                                          self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 

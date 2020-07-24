@@ -40,7 +40,7 @@ class Recipe(HolonRecipeBase):
         - Before starting the server, copy the APPLY init command into init directory,
           so that server will not go into start loop and will remain idle.
         '''
-        init_ctl = CtlRequest(inotifyobj, "idle_on", peer_uuid,genericcmdobj,
+        init_ctl = CtlRequest(inotifyobj, "idle_on", peer_uuid, genericcmdobj,
                               inotify_input_base.PRIVATE_INIT,
                               self.recipe_ctl_req_obj_list).Apply()
         '''
@@ -60,7 +60,7 @@ class Recipe(HolonRecipeBase):
         Creating cmd file to get all the JSON output from the server.
         Will verify parameters from server JASON output to check the idleness
         '''
-        get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid,genericcmdobj,
+        get_all_ctl = CtlRequest(inotifyobj, "get_all", peer_uuid, genericcmdobj,
                                  inotify_input_base.REGULAR,
                                  self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
@@ -105,14 +105,14 @@ class Recipe(HolonRecipeBase):
         Create cmdfile to exit idleness and copy it into input directory
         of the server.
         '''
-        idle_off_ctl = CtlRequest(inotifyobj, "idle_off", peer_uuid,genericcmdobj,
+        idle_off_ctl = CtlRequest(inotifyobj, "idle_off", peer_uuid, genericcmdobj,
                                   inotify_input_base.REGULAR,
                                   self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
         logging.warning("Exited Idleness and starting the server loop\n")
 
         # Once server the started, verify that the timestamp progresses
-        curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid,genericcmdobj,
+        curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid, genericcmdobj,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         # TODO the iteration shouldn't be hardcoded

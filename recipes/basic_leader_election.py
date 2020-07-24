@@ -64,8 +64,7 @@ class Recipe(HolonRecipeBase):
 
         for p in range(npeer_start):
             logging.warning("Creating cmd file for peer %s" % peer_uuid_arr[p])
-            get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
-                                    genericcmdobj,
+            get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p], genericcmdobj,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         '''
