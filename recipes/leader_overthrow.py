@@ -1,5 +1,6 @@
 from holonrecipe import *
-import logging 
+import logging
+from recipe_verify import *
 
 class Recipe(HolonRecipeBase):
     name = "leader_overthrow"
@@ -47,18 +48,13 @@ class Recipe(HolonRecipeBase):
         Creating cmd file to get all the JSON output from the server.
         Will verify parameters from server JSON output to check term value.
         '''
-        get_all = [None] * npeer
-        idle_off = [None] * npeer
-        net_rcv_false = [None] * npeer
-        new_uuid = [None] * npeer
-        net_rcv_true = [None] * npeer
-        orig_raftjsonobj = [None] * npeer
-        rcv_false_raftjson = [None] * npeer
-        set_leader_raftjson = [None] * npeer
-        raftjsonobj = [None] * npeer
+        orig_ctlreqobj = [None] * npeer
+        rcv_false_ctlreqobj = [None] * npeer
+        set_leader_ctlreqobj = [None] * npeer
+        new_election_ctlreqobj = [None] * npeer
 
         #Verify the parameters
-        leader_to_be = -1
+        new_leader_idx = -1
         LEADER_ELECTION_TIME_OUT = 300 #5mins
        
         recipe_failed = 0
@@ -66,38 +62,43 @@ class Recipe(HolonRecipeBase):
         Make sure none of the peer is in idle state
         '''
         for p in range(npeer):
-            idle_off[0] = CtlRequest(inotifyobj, "idle_off", peer_uuid_arr[0],
+            CtlRequest(inotifyobj, "idle_off", peer_uuid_arr[0],
                                     app_uuid,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         '''
-        Get the parameter of basic leader election
-        to compare with New leader-to-be
+        Get the leader uuid and select one of the follower as leader-to-be
+        for next leader election.
         '''
-
-        for p in range(npeer):    
-            get_all[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
-                                    app_uuid,
-                                    inotify_input_base.REGULAR,
-                                    self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
-           
-            orig_raftjsonobj[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
-            if orig_raftjsonobj[p].state == "follower" and leader_to_be == -1:
-                logging.warning("New leader-to-be is peer: %d and uuid: %s" % (p, peer_uuid_arr[p]))
-                leader_to_be = p
+        orig_leader_uuid = ""
+        for p in range(npeer):
+            orig_ctlreqobj[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
+                                        app_uuid,
+                                        inotify_input_base.REGULAR,
+                                        self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
+            if orig_leader_uuid == "":
+                orig_leader_uuid = get_raft_json_key_value(orig_ctlreqobj[p], "/raft_root_entry/*/leader-uuid")
+            # Select the new leader-to-be from follower peers
+            if peer_uuid_arr[p] != orig_leader_uuid and new_leader_idx == -1:
+                logging.warning("Peer uuid for new leader is: %s" % peer_uuid_arr[p])
+                new_leader_idx = p
 
         '''
-        Copy the cmd file for Disable the net_recv_enable on all
+        Copy the cmd file to Disable the net_recv_enable on all
         peers and verify that net_recv_enable is set to false.
         '''
         logging.warning("Stage 1: Disable message receive on all peers")
-        for p in range(npeer): 
+        for p in range(npeer):
             #Copy the cmd file for Disable the net_recv_enable
-            net_rcv_false[p] = CtlRequest(inotifyobj, "rcv_false", peer_uuid_arr[p],
-                                          app_uuid,
-                                          inotify_input_base.REGULAR,
-                                          self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
+            CtlRequest(inotifyobj, "rcv_false", peer_uuid_arr[p],
+                        app_uuid,
+                        inotify_input_base.REGULAR,
+                        self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         time_global.sleep(3)
+
+        #Load the rule table
+        with open('rule_table/leader_overthrow.json') as json_file:
+            self.stage_rule_table = json.load(json_file)
 
         '''
         Verify if net_recv_enable is set to false for all peers.
@@ -105,48 +106,35 @@ class Recipe(HolonRecipeBase):
         for p in range(npeer):
 
             #Copy cmdfile to get the JSON output 
-            get_all[p].Apply_and_Wait(False)
+            rcv_false_ctlreqobj[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
+                                             app_uuid,
+                                             inotify_input_base.REGULAR,
+                                             self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
-            rcv_false_raftjson[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
-            peer_uuid = peer_uuid_arr[p]
-            if rcv_false_raftjson[p].net_rcv_enabled[peer_uuid] != False:
-                logging.error("net_rcv_enable is not set to false(%s) for peer %s" % (rcv_false_raftjson[p].net_recv_enable, p))
+            peer_state = get_raft_json_key_value(rcv_false_ctlreqobj[p],
+                                                 "/raft_root_entry/*/state")
+
+            if peer_state != "candidate" and peer_state != "leader":
+                logging.error("peer %s state is not leader or candidate. It is: %s" % (peer_uuid_arr[p], peer_state))
                 recipe_failed = 1
                 break
 
-            if rcv_false_raftjson[p].leader_uuid != orig_raftjsonobj[p].leader_uuid:
-                logging.error("New leader election happened, original leader: %s, new leader: %s" %
-                        (orig_raftjsonobj[p].leader_uuid, rcv_false_raftjson[p].leader_uuid))
-                recipe_failed = 1
+            ctlreq_list = []
+            orig_ctlreq_list = []
+
+            ctlreq_list.append(rcv_false_ctlreqobj[p])
+            orig_ctlreq_list.append(orig_ctlreqobj[p])
+
+            stage_no = 0
+            if peer_state == "leader":
+                #leader stage is stage1 and candidate is stage 0
+                stage_no = 1
+
+            self.stage_rule_table[stage_no]["cltreqobj"] = ctlreq_list
+            self.state_rule_table[stage_no]["orig_ctlreqobj"] = orig_ctlreq_list
+            recipe_failed = verify_rule_table(self.stage_rule_table[stage_no])
+            if recipe_failed:
                 break
-
-            if rcv_false_raftjson[p].state != "candidate" and rcv_false_raftjson[p].state != "leader":
-                logging.error(f"peer state %s for peer-uuid %s" % (rcv_false_raftjson[p].state, peer_uuid_arr[p]))
-                logging.error("peer %s state is not candidate" % p)
-                recipe_failed = 1
-                break
-
-            if rcv_false_raftjson[p].state == "candidate":
-                if rcv_false_raftjson[p].term <= orig_raftjsonobj[p].term:
-                    logging.error("term value of previous follower is not increasing")
-                    recipe_failed = 1
-                    break
-
-                if rcv_false_raftjson[p].client_req != "deny-leader-not-established":
-                    logging.error("client_requests is not deny-leader-not-established: %s" % rcv_false_raftjson[p].client_req)
-                    recipe_failed = 1
-                    break
-
-            elif rcv_false_raftjson[p].state == "leader":
-                if rcv_false_raftjson[p].term != orig_raftjsonobj[p].term:
-                    logging.error("term value of leader changed: orig %d, new: %d" % (orig_raftjsonobj[p].term, rcv_false_raftjson[p].term))
-                    recipe_failed = 1
-                    break
-
-                if rcv_false_raftjson[p].client_req != "deny-may-be-deposed":
-                    logging.error("client_requests is not deny-may-be-deposed: %s" % rcv_false_raftjson[p].client_req)
-                    recipe_failed = 1
-                    break
 
         if recipe_failed:
             logging.error("Stage 1 of leader overthrow failed")
@@ -175,74 +163,26 @@ class Recipe(HolonRecipeBase):
         for p in range(npeer):
 
             #Copy ctlrequest cmd file to get JSON output
-            get_all[p].Apply_and_Wait(False)
+            set_leader_ctlreqobj[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
+                                             app_uuid,
+                                             inotify_input_base.REGULAR,
+                                             self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
-            set_leader_raftjson[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
+            ctlreq_list = []
+            orig_ctlreq_list = []
+
+            ctlreq_list.append(set_leader_ctlreqobj[p])
+            orig_ctlreq_list.append(orig_ctlreqobj[p])
+            self.stage_rule_table[2]["cltreqobj"] = ctlreq_list
+            self.state_rule_table[2]["orig_ctlreqobj"] = orig_ctlreq_list
+            recipe_failed = verify_rule_table(self.stage_rule_table[2])
+            if recipe_failed:
+                break
+
             '''
             Make sure following item values are consistent and leader-election
             has not happened yet.
             '''
-            if set_leader_raftjson[p].leader_uuid != orig_raftjsonobj[p].leader_uuid:
-                logging.error("New leader election happened, original leader: %s, new leader: %s" %
-                        (orig_raftjsonobj[p].leader_uuid, set_leader_raftjsonj[p].leader_uuid))
-                recipe_failed = 1
-                break
-
-            if set_leader_raftjson[p].commit_idx != orig_raftjsonobj[p].commit_idx:
-                logging.error("commit indx changed. Original: %d, new: %d" % (orig_raftjsonobj[p].commit_idx, set_leader_raftjson[p].commit_idx))
-                recipe_failed
-                break
-
-            if set_leader_raftjson[p].last_applied != orig_raftjsonobj[p].last_applied:
-                logging.error("last-applied changed: original: %d, new: %d" % (orig_raftjsonobj[p].last_applied, set_leader_raftjson[p].last_applied))
-                recipe_failed = 1
-                break
-
-            if set_leader_raftjson[p].cumu_crc != orig_raftjsonobj[p].cumu_crc:
-                logging.error("last-applied-cumulative-crc changed: original: %d, new: %d" % (orig_raftjsonobj[p].cumu_crc, set_leader_raftjson[p].cumu_crc))
-                recipe_failed = 1
-                break
-
-            if set_leader_raftjson[p].newest_entry_idx != set_leader_raftjson[p].newest_entry_idx:
-                logging.error("newest-entry-idx changed. Original: %d, new: %d" % (orig_raftjsonobj[p].newest_entry_idx, set_leader_raftjson[p].newest_entry_idx))
-                recipe_failed = 1
-                break
-
-            if set_leader_raftjson[p].newest_entry_term != orig_raftjsonobj[p].newest_entry_term:
-                logging.error("newest-entry-term changed. Original: %d, new: %d" % (orig_raftjsonobj[p].newest_entry_term, set_leader_raftjson[p].newest_entry_term))
-                recipe_failed = 1
-                break
-
-            if set_leader_raftjson[p].newest_entry_dsize != orig_raftjsonobj[p].newest_entry_dsize:
-                logging.error("newest-entry-data-size changed. Original: %d, new: %d" % (orig_raftjsonobj[p].newest_entry_dsize, set_leader_raftjson[p].newest_entry_dsize))
-                recipe_failed = 1
-                break
-
-            if set_leader_raftjson[p].newest_entry_crc != orig_raftjsonobj[p].newest_entry_crc:
-                logging.error("newest-entry-crc changed. Original: %d, new: %d" % (orig_raftjsonobj[p].newest_entry_crc, set_leader_raftjson[p].newest_entry_crc))
-                recipe_failed = 1
-                break
-
-            if set_leader_raftjson[p].voted_for_uuid != set_leader_raftjson[p].peer_uuid:
-                logging.error("voted_for_uuid is not same as self uuid")
-                logging.error("voted_for_uuid: %s, self uuid: %s" % (set_leader_raftjson[p].voted_for_uuid, set_leader_raftjson[p].peer_uuid))
-                recipe_failed = 1
-                break
-            
-            if set_leader_raftjson[p].client_req != "deny-leader-not-established":
-                logging.error("client_requests is not deny-leader-not-established: %s" % set_leader_raftjson[p].client_req)
-                recipe_failed = 1
-                break
-
-            if set_leader_raftjson[p].term <= orig_raftjsonobj[p].term:
-                    logging.error("term value of previous follower is not increasing")
-                    recipe_failed = 1
-                    break
-
-            if set_leader_raftjson[p].state != "candidate":
-                logging.error("peer state is wrong: %s" % set_leader_raftjson[p].state)
-                recipe_failed = 1
-                break
 
         if recipe_failed:
             logging.error("Stage 2 of Leader overthrow failed")
@@ -266,10 +206,15 @@ class Recipe(HolonRecipeBase):
         while 1:
             recipe_failed = 0
 
-            get_all[leader_to_be].Apply_and_Wait(False)
-            leader_json = RaftJson(get_all[leader_to_be].output_fpath, raftconfobj)
-            
-            if leader_json.voted_for_uuid != peer_uuid_arr[leader_to_be] or leader_json.leader_uuid != peer_uuid_arr[leader_to_be]:
+            new_leader_ctlreqobj = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[leader_to_be],
+                                             app_uuid,
+                                             inotify_input_base.REGULAR,
+                                             self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
+           
+            leader_uuid = get_raft_json_key_value(new_leader_ctlreqobj, "/raft_root_entry/*/leader-uuid")
+            voted_for_uuid = get_raft_json_key_value(new_leader_ctlreqobj, "/raft_root_entry/*/voted-for-uuid")
+
+            if leader_uuid != peer_uuid_arr[leader_to_be] or voted_for_uuid != peer_uuid_arr[leader_to_be]:
                 time_out = time_out + 1
                 if time_out >= LEADER_ELECTION_TIME_OUT:
                     logging.error("Leader election failed")
@@ -294,33 +239,22 @@ class Recipe(HolonRecipeBase):
         for p in range(npeer):
 
             #Copy ctlrequest cmd file to get JSON output
-            get_all[p].Apply_and_Wait(False)
+            new_election_ctlreqobj[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
+                                             app_uuid,
+                                             inotify_input_base.REGULAR,
+                                             self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
             
-            raftjsonobj[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
+            ctlreq_list = []
+            orig_ctlreq_list = []
+
+            ctlreq_list.append(new_election_ctlreqobj[p])
+            orig_ctlreq_list.append(orig_ctlreqobj[p])
+            self.stage_rule_table[3]["cltreqobj"] = ctlreq_list
+            self.state_rule_table[3]["orig_ctlreqobj"] = orig_ctlreq_list
+            recipe_failed = verify_rule_table(self.stage_rule_table[3])
+            if recipe_failed:
+                break
         
-            if raftjsonobj[p].voted_for_uuid != peer_uuid_arr[leader_to_be] or raftjsonobj[p].leader_uuid != peer_uuid_arr[leader_to_be]:
-                logging.error("New leader is not elected by peer: %d" % peer_uuid_arr[p])
-                recipe_failed = 1
-                break
-
-            # commit idx should be pre-state1 value + 1
-            if raftjsonobj[p].commit_idx != orig_raftjsonobj[p].commit_idx + 1:
-                logging.error("Current commit idx %d != orig commit indx + 1 %d" % (raftjsonobj[p].commit_idx, orig_raftjsonobj[p].commit_idx))
-                recipe_failed = 1
-                break
-
-            # newest_entry_idx should be Pre-stage1 value + 1
-            if raftjsonobj[p].newest_entry_idx != orig_raftjsonobj[p].newest_entry_idx + 1:
-                logging.error("Current newest_entry_idx %d != original + 1 %d" % (raftjsonobj[p].newest_entry_idx, orig_raftjsonobj[p].newest_entry_idx))
-                recipe_failed = 1
-                break
-
-            # Term should be greater than pre-stage1. With multiple failed leader election, its value can
-            # increase more than one.
-            if raftjsonobj[p].term <= orig_raftjsonobj[p].term:
-                logging.error("Current term %d is not greater than original %d" % (raftjsonobj[p].term, orig_raftjsonobj[p].term))
-                recipe_failed = 1
-                break
 
         if recipe_failed:
             logging.error("Stage 3 failed")
@@ -332,20 +266,26 @@ class Recipe(HolonRecipeBase):
         Finalization of recipe: The recipe should restore net_recv_enabled state to true on all peers.
         '''
         for p in range(npeer):
-            net_rcv_true[p] = CtlRequest(inotifyobj, "rcv_true", peer_uuid_arr[p],
+            CtlRequest(inotifyobj, "rcv_true", peer_uuid_arr[p],
                                          app_uuid,
                                          inotify_input_base.REGULAR,
                                          self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
 
-            #Copy ctlrequest cmd file to get JSON output
-            get_all[p].Apply_and_Wait(False)
-            raftjsonobj[p] = RaftJson(get_all[p].output_fpath, raftconfobj)
+            # verify rcv_true is set for all peers
+            ctlreqobj = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
+                                             app_uuid,
+                                             inotify_input_base.REGULAR,
+                                             self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
+            ctlreq_list = []
 
-            peer_uuid = peer_uuid_arr[p]
-            if raftjsonobj[p].net_rcv_enabled[peer_uuid] != True:
-                logging.error("net_recv_enable is not set to true for peer %s" % peer_uuid_arr[p])
-                recipe_failed = 1
+            ctlreq_list.append(new_election_ctlreqobj[p])
+
+            self.stage_rule_table[4]["cltreqobj"] = ctlreq_list
+            self.state_rule_table[4]["orig_ctlreqobj"] = None 
+            recipe_failed = verify_rule_table(self.stage_rule_table[4])
+            if recipe_failed:
                 break
+
 
         if recipe_failed:
             logging.error("Finalization of recipe failed")

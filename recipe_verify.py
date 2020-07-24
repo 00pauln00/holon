@@ -128,3 +128,10 @@ def verify_rule_table(recipe_stage_rule_table):
                             return 1
        
     return 0
+
+def get_raft_json_key_value(ctlreqobj, key):
+    with open(ctlreqobj.output_fpath, 'r') as json_file:
+        dic = json.load(json_file)
+
+    value = dpath.util.values(dic, key)
+    return value[0]
