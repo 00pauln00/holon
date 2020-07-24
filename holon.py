@@ -1,13 +1,14 @@
 #!/usr/bin/python3
 # PYTHON_ARGCOMPLETE_OK
 
-import os, sys, importlib, logging, fnmatch, errno, argparse, argcomplete
+import os, sys, importlib, time, logging, fnmatch, errno, argparse, argcomplete
 from raftconfig import RaftConfig
 from inotifypath import InotifyPath
 from niovacluster import NiovaCluster
 from genericcmd import GenericCmds
 from shutil import rmtree
 from os.path import abspath
+from alive_progress import alive_bar
 
 #Create object for GenericCmds Class
 genericcmdobj = GenericCmds()
@@ -223,19 +224,20 @@ logging.warning("The log file path is: %s" % log_file_path)
 '''
 Executing recipes from Root to Leaf order.
 '''
-for r in reversed(recipe_arr):
-    logging.warning("Running Recipe %s" % r().name)
-    recipe_failed = r().run(clusterobj)
-    if recipe_failed == 1:
-        logging.error("%s recipe Failed" % r().name)
-        print("Error: Terminating recipe hierarchy execution")
-        logging.error("Error: Terminating recipe hierarchy execution")
-        print("%s ========================== Failed" % r().name)
-        break
-    else:
-        print("%s ========================== OK" % r().name)
-        logging.warning("%s ========================== OK" % r().name)
-
+with alive_bar(len(recipe_arr)) as bar:
+    for r in reversed(recipe_arr):
+        logging.warning("Running Recipe %s" % r().name)
+        recipe_failed = r().run(clusterobj)
+        bar()
+        if recipe_failed == 1:
+            logging.error("%s recipe Failed" % r().name)
+            print("Error: Terminating recipe hierarchy execution")
+            logging.error("Error: Terminating recipe hierarchy execution")
+            print("%s ========================== Failed" % r().name)
+            break
+        else:
+            print("%s ========================== OK" % r().name)
+            logging.warning("%s ========================== OK" % r().name)
 '''
 Even after holon terminates, skip the post_run
 method so that processes will keep running.
