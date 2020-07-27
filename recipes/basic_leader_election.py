@@ -55,10 +55,6 @@ class Recipe(HolonRecipeBase):
         # Create object for generic cmds.
         genericcmdobj = GenericCmds()
 
-        '''
-        Generate UUID for the application to be used in the outfilename.
-        '''
-        app_uuid = genericcmdobj.generate_uuid()
 
         '''
         Creating cmd file to get all the JSON output from the server.
@@ -67,8 +63,8 @@ class Recipe(HolonRecipeBase):
         get_ctl = [None] * npeer_start
 
         for p in range(npeer_start):
-            get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p],
-                                    app_uuid,
+            logging.warning("Creating cmd file for peer %s" % peer_uuid_arr[p])
+            get_ctl[p] = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[p], genericcmdobj,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         '''
@@ -86,7 +82,7 @@ class Recipe(HolonRecipeBase):
         for itr in range(100):
             election_in_progress = 0
             for p in range(npeer_start):
-                raft_json_dict = genericcmdobj.raft_json_load(get_ctl[p].output_fpath)
+                raft_json_dict = genericcmdobj.raft_json_load(get_ctl[p])
                 leader_uuid[p] = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
                 if leader_uuid[p] == "":
                     time_global.sleep(1)
@@ -101,7 +97,7 @@ class Recipe(HolonRecipeBase):
         
         recipe_failed = 0
         for p in range(npeer_start):
-            raft_json_dict = genericcmdobj.raft_json_load(get_ctl[p].output_fpath)
+            raft_json_dict = genericcmdobj.raft_json_load(get_ctl[p])
             leader_uuid[p] = raft_json_dict["raft_root_entry"][0]["leader-uuid"]
 
             term_values[p] = raft_json_dict["raft_root_entry"][0]["term"]

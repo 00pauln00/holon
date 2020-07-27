@@ -29,10 +29,6 @@ class Recipe(HolonRecipeBase):
         # Create object for generic cmds.
         genericcmdobj = GenericCmds()
 
-        '''
-        Generate UUID for the application to be used in the outfilename.
-        '''
-        app_uuid = genericcmdobj.generate_uuid()
 
         peer_uuid = raftconfobj.get_peer_uuid_for_peerno(0)
         logging.warning("Pause and resume the peer: %s\n" % peer_uuid)
@@ -40,8 +36,7 @@ class Recipe(HolonRecipeBase):
         '''
         Copy cmd file. 
         '''
-        curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid,
-                                    app_uuid,
+        curr_time_ctl = CtlRequest(inotifyobj, "current_time", peer_uuid, genericcmdobj,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
         '''
@@ -83,7 +78,7 @@ class Recipe(HolonRecipeBase):
             logging.warning("Copy the cmd file into input directory of server. Itr %d" % i)
             curr_time_ctl.Apply_and_Wait(False)
             # Read the output file and get the time
-            raft_json_dict = genericcmdobj.raft_json_load(curr_time_ctl.output_fpath)
+            raft_json_dict = genericcmdobj.raft_json_load(curr_time_ctl)
             curr_time_string = raft_json_dict["system_info"]["current_time"]
             time_string = curr_time_string.split()
             time = time_string[3]

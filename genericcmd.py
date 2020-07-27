@@ -55,8 +55,11 @@ class GenericCmds:
     '''
     method raft_json_load: Lead the JSON file
     '''
-    def raft_json_load(self, fpath):
-        # SLeep for 1 sec if file has not got created yet.
+    def raft_json_load(self, ctlreqobj):
+        fpath = ctlreqobj.get_latest_version_ofile()
+        '''
+        Sleep for 1 sec if file has not got created yet.
+        '''
         while os.path.exists(fpath) == False:
             time.sleep(1)
 
