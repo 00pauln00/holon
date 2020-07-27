@@ -130,8 +130,8 @@ class Recipe(HolonRecipeBase):
                 #leader stage is stage1 and candidate is stage 0
                 stage_no = 1
 
-            self.stage_rule_table[stage_no]["ctlreqobj"] = ctlreq_list
-            self.stage_rule_table[stage_no]["orig_ctlreqobj"] = orig_ctlreq_list
+            self.stage_rule_table[stage_no]["cltreqobj"] = ctlreq_list
+            self.state_rule_table[stage_no]["orig_ctlreqobj"] = orig_ctlreq_list
             recipe_failed = verify_rule_table(self.stage_rule_table[stage_no])
             if recipe_failed:
                 break
@@ -152,7 +152,7 @@ class Recipe(HolonRecipeBase):
             CtlRequest(inotifyobj, "set_leader_uuid", peer_uuid_arr[p],
                                   app_uuid,
                                   inotify_input_base.REGULAR,
-                                  self.recipe_ctl_req_obj_list).set_leader(peer_uuid_arr[new_leader_idx])
+                                  self.recipe_ctl_req_obj_list).set_leader(peer_uuid_arr[leader_to_be])
         time_global.sleep(3)
 
         '''
@@ -173,8 +173,8 @@ class Recipe(HolonRecipeBase):
 
             ctlreq_list.append(set_leader_ctlreqobj[p])
             orig_ctlreq_list.append(orig_ctlreqobj[p])
-            self.stage_rule_table[2]["ctlreqobj"] = ctlreq_list
-            self.stage_rule_table[2]["orig_ctlreqobj"] = orig_ctlreq_list
+            self.stage_rule_table[2]["cltreqobj"] = ctlreq_list
+            self.state_rule_table[2]["orig_ctlreqobj"] = orig_ctlreq_list
             recipe_failed = verify_rule_table(self.stage_rule_table[2])
             if recipe_failed:
                 break
@@ -195,7 +195,7 @@ class Recipe(HolonRecipeBase):
         '''    
         logging.warning("Stage 3: Enable Recv from all Peers on the Leader-to-be")
 
-        CtlRequest(inotifyobj, "rcv_true", peer_uuid_arr[new_leader_idx],
+        CtlRequest(inotifyobj, "rcv_true", peer_uuid_arr[leader_to_be],
                                     app_uuid,
                                     inotify_input_base.REGULAR,
                                     self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
@@ -206,7 +206,7 @@ class Recipe(HolonRecipeBase):
         while 1:
             recipe_failed = 0
 
-            new_leader_ctlreqobj = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[new_leader_idx],
+            new_leader_ctlreqobj = CtlRequest(inotifyobj, "get_all", peer_uuid_arr[leader_to_be],
                                              app_uuid,
                                              inotify_input_base.REGULAR,
                                              self.recipe_ctl_req_obj_list).Apply_and_Wait(False)
@@ -214,7 +214,7 @@ class Recipe(HolonRecipeBase):
             leader_uuid = get_raft_json_key_value(new_leader_ctlreqobj, "/raft_root_entry/*/leader-uuid")
             voted_for_uuid = get_raft_json_key_value(new_leader_ctlreqobj, "/raft_root_entry/*/voted-for-uuid")
 
-            if leader_uuid != peer_uuid_arr[new_leader_idx] or voted_for_uuid != peer_uuid_arr[new_leader_idx]:
+            if leader_uuid != peer_uuid_arr[leader_to_be] or voted_for_uuid != peer_uuid_arr[leader_to_be]:
                 time_out = time_out + 1
                 if time_out >= LEADER_ELECTION_TIME_OUT:
                     logging.error("Leader election failed")
@@ -222,11 +222,11 @@ class Recipe(HolonRecipeBase):
                     break
 
                 logging.warning("Leader election is not done yet!, retry after sleep 1sec")
-                logging.warning("leader_uuid: %s, voted_for_uuid: %s" % (leader_uuid, voted_for_uuid))
+                logging.warning("leader_uuid: %s, voted_for_uuid: %s" % (leader_json.leader_uuid, leader_json.voted_for_uuid))
                 time_global.sleep(1)
                 continue
             else:
-                logging.warning("New leader elected successfuly %s" % leader_uuid)
+                logging.warning("New leader elected successfuly %s" % leader_json.peer_uuid)
                 break
 
         if recipe_failed:
@@ -249,8 +249,8 @@ class Recipe(HolonRecipeBase):
 
             ctlreq_list.append(new_election_ctlreqobj[p])
             orig_ctlreq_list.append(orig_ctlreqobj[p])
-            self.stage_rule_table[3]["ctlreqobj"] = ctlreq_list
-            self.stage_rule_table[3]["orig_ctlreqobj"] = orig_ctlreq_list
+            self.stage_rule_table[3]["cltreqobj"] = ctlreq_list
+            self.state_rule_table[3]["orig_ctlreqobj"] = orig_ctlreq_list
             recipe_failed = verify_rule_table(self.stage_rule_table[3])
             if recipe_failed:
                 break
@@ -280,8 +280,8 @@ class Recipe(HolonRecipeBase):
 
             ctlreq_list.append(new_election_ctlreqobj[p])
 
-            self.stage_rule_table[4]["ctlreqobj"] = ctlreq_list
-            self.stage_rule_table[4]["orig_ctlreqobj"] = None
+            self.stage_rule_table[4]["cltreqobj"] = ctlreq_list
+            self.state_rule_table[4]["orig_ctlreqobj"] = None 
             recipe_failed = verify_rule_table(self.stage_rule_table[4])
             if recipe_failed:
                 break
