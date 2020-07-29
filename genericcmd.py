@@ -1,10 +1,29 @@
-import os, subprocess, json, time, logging, socket, errno, shutil
+import os, sys, subprocess, json, time, logging, socket, errno, shutil, pkg_resources
 from datetime import datetime
 
 '''
 This class will have wrapper functions for generic system cmds.
 '''
 class GenericCmds:
+    '''
+    Method: install_python_modules
+    Purpose: Install required modules for holon
+    Parameters:
+    '''
+    def install_python_modules(self):
+        required = []
+        with open('./modules', 'r') as fh:
+            lines = fh.readlines()
+            for line in lines:
+                required.append(line)
+            for package in required:
+                try:
+                    dist = pkg_resources.get_distribution(package)
+                except pkg_resources.DistributionNotFound:
+                    print('{} is NOT installed'.format(package))
+                    print('Installing : {}'.format(package))
+                    subprocess.run(['pip3', 'install', package])
+
     '''
     Method: generate uuid.
     Purpose: Call uuid system command and generate the UUID.

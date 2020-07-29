@@ -1,5 +1,16 @@
 #!/usr/bin/python3
 # PYTHON_ARGCOMPLETE_OK
+from genericcmd import GenericCmds
+
+'''
+Create object for GenericCmds Class
+'''
+genericcmdobj = GenericCmds()
+
+'''
+Installation of required modules
+'''
+genericcmdobj.install_python_modules()
 
 import os, sys, importlib, logging, fnmatch, errno, argparse, argcomplete
 from raftconfig import RaftConfig
@@ -9,10 +20,9 @@ from genericcmd import GenericCmds
 from shutil import rmtree
 from os.path import abspath
 
-#Create object for GenericCmds Class
-genericcmdobj = GenericCmds()
-
-# Generate RAFT UUID
+'''
+Generate RAFT UUID
+'''
 raft_uuid = genericcmdobj.generate_uuid()
 
 '''
