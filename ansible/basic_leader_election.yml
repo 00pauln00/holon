@@ -1,0 +1,79 @@
+- import_playbook: term_ticker.yml
+- name: "basic_leader_election"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "basic_leader_election"
+     parent: "term_ticker"
+     #TODO Need to define array to start all peers
+     peer_idx0: 0
+     peer_idx1: 1
+     peer_idx2: 2
+  tasks:
+    - name: "Start peer 1"
+      set_fact: raft_json="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx1, "start", wantlist=True)}}"
+
+    - name: "Start peer 2"
+      set_fact: raft_json="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx2, "start", wantlist=True)}}"
+
+    - name: "Retry until leader gets elected"
+      vars:
+         ctlreq_cmd:
+             cmd: "get_all"
+             wait_for_ofile: True
+             recipe_name: "{{ recipe_name }}"
+             stage: "stage0"
+             src: "src1"
+             raft_key: "/raft_root_entry/*/leader-uuid"
+      set_fact:
+         raft_json="{{lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx0, ctlreq_cmd, wantlist=True)}}"
+         leader_uuid="{{lookup('niova_plugin', 'lookup_raft_key', recipe_params, peer_idx0, ctlreq_cmd, wantlist=True)}}"
+      register: result
+      until: leader_uuid["raft_key"] == ""
+      retries: 5
+      delay: 20
+
+
+    - name: "Copy the get_all cmd to all peers to verify stage1"
+      vars:
+         ctlreq_cmd:
+             cmd: "get_all"
+             wait_for_ofile: True
+             recipe_name: "{{ recipe_name }}"
+             stage: "stage1"
+             src: "src1"
+      set_fact: 
+        raft_json="{{lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx0, ctlreq_cmd, wantlist=True)}}"
+        raft_json="{{lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx1, ctlreq_cmd, wantlist=True)}}"
+        raft_json="{{lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx2, ctlreq_cmd, wantlist=True)}}"
+
+    - name: "Verify stage 1 rule table"
+      vars:
+          stage1_rule_table:
+             rule1: 
+                key1: "/raft_root_entry/*/commit-idx"
+                expected_value: "0"
+                data_type: "int"
+                operator: "=="
+             rule2: 
+                key1: "/raft_root_entry/*/last-applied"
+                expected_value: "0"
+                data_type: "int"
+                operator: "=="
+             rule3: 
+                key1: "/raft_root_entry/*/last-applied-cumulative-crc"
+                key2: "/raft_root_entry/*/newest-entry-crc"
+                expected_value: "null"
+                data_type: "int"
+                operator: "=="
+             rule4:
+                key1: "/raft_root_entry/*/term"
+                key2: "/raft_root_entry/*/newest-entry-term"
+                expected_value: "null"
+                data_type: "int"
+                operator: "=="
+
+          compare_sources:
+               src1: "{{ recipe_name }}/stage1/src1"
+
+      set_fact: result="{{lookup('niova_plugin', 'recipe_verify', recipe_params, compare_sources, stage1_rule_table, wantlist=True)}}"

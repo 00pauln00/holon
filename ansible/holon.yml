@@ -1,0 +1,36 @@
+- name: "Holon framework"
+  hosts: localhost
+  connection: local
+  tasks:
+  - name: "Get Raft UUID"
+    shell: "/usr/bin/uuid"
+    register: cluster_uuid
+
+  - name: "Prepare parameter to pass across recipes"
+    set_fact:
+       raft_param:
+           base_dir: "{{ dir_path }}"
+           raft_uuid: "{{ cluster_uuid.stdout}}"
+
+  - name: "prepare config"
+    vars:
+      config_params:
+        npeers: "{{ npeers }}"
+        port: "{{ port }}"
+        client_port: "{{ client_port }}"
+    set_fact: raft_conf="{{lookup('niova_plugin', 'raftconfigure', raft_param, config_params, wantlist=True)}}"
+
+  - name: "Show the values"
+    debug:
+      msg:
+        - "Directory path: {{ dir_path }}"
+        - "Port is {{ port }}"
+        - "Nservers is: {{ npeers }}"
+        - "client port is {{ client_port }}"
+        - "Raft UUID is {{ cluster_uuid.stdout }}"
+        - "Recipe: {{ recipe }}"
+        - "Raft params: {{ raft_param }}"
+
+- import_playbook: "{{ recipe }}"
+  vars:
+    recipe_params: "{{ raft_param }}"

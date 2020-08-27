@@ -1,0 +1,25 @@
+- name: "Print values"
+  debug:
+     msg:
+      - "{{ recipe_stage }}"
+      - "{{ ctlreq }}"
+      -  "{{ orig_ctlreq }}"
+- name: "Add ctlreq_dict to stage"
+  set_fact:
+    stage: "{{ recipe_stage | combine({outer_item: ctlreq})}}" 
+  with_items:
+    - 'ctlreq_dict'
+  loop_control:
+    loop_var: outer_item
+- name: "Add orig_ctlreq_dict to stage"
+  set_fact:
+    stage: "{{ stage | combine({outer_item: orig_ctlreq})}}"
+  with_items:
+    - 'orig_ctlreq_dict'
+  loop_control:
+    loop_var: outer_item
+
+- name: "Verify stage"
+  set_fact: result="{{lookup('recipeverify_plugin', stage, wantlist=True)}}"
+
+

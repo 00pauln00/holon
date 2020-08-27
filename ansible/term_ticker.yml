@@ -1,0 +1,134 @@
+- import_playbook: basic_process_ctl.yml
+- name: "term_ticker"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "term_ticker"
+     parent: "basic_process_ctl"
+     peer_idx: 0
+
+  tasks:
+    - name: "Copy get_all cmd file"
+      vars:
+        ctlreq_cmd:
+            cmd: "get_all"
+            wait_for_ofile: True
+            recipe_name: "{{ recipe_name }}"
+            stage: "stage0"
+            src: "src1"
+      set_fact: raft_json="{{lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx, ctlreq_cmd, wantlist=True)}}"
+      loop: "{{ range(0, 5)| list }}"
+      loop_control:
+          pause: 3
+     
+    - name: "Verify stage 0 rule table"
+      vars:
+          stage0_rule_table:
+             {
+                    "rule1" : {"key1" : "/raft_root_entry/*/term",
+                                "key2" : "/raft_root_entry/*/term",
+                                "expected_value" : "",
+                                "data_type" : "int",
+                                "operator" : "<"},
+                    "rule2" : {"key1" : "/raft_root_entry/*/voted-for-uuid",
+                                "key2" : "peer-uuid",
+                                "expected_value" : "",
+                                "data_type" : "string",
+                                "operator" : "=="},
+                    "rule3" : {"key1" : "/raft_root_entry/*/leader-uuid",
+                                "key2" : "null",
+                                "expected_value" : "",
+                                "data_type" : "string",
+                                "operator" : "=="},
+                    "rule4" : {"key1" : "/raft_root_entry/*/last-applied-cumulative-crc",
+                                "key2" : "null",
+                                "expected_value" : "0",
+                                "data_type" : "int",
+                                "operator" : "=="},
+                    "rule5" : {"key1" : "/raft_root_entry/*/last-applied",
+                                "key2" : "null",
+                                "expected_value" : "-1",
+                                "data_type" : "int",
+                                "operator" : "=="},
+                    "rule6" : {"key1" : "/raft_root_entry/*/commit-idx",
+                                "key2" : "null",
+                                "expected_value" : "-1",
+                                "data_type" : "int",
+                                "operator" : "=="},
+                    "rule7" : {"key1" : "/raft_root_entry/*/state",
+                                "key2" : "null",
+                                "expected_value" : "candidate",
+                                "data_type" : "string",
+                                "operator" : "=="},
+                    "rule8" : {"key1" : "/raft_root_entry/*/follower-reason",
+                                "key2" : "null",
+                                "expected_value" : "none",
+                                "data_type" : "string",
+                                "operator" : "=="},
+                    "rule9" : {"key1" : "/raft_root_entry/*/client-requests",
+                                "key2" : "null",
+                                "expected_value" : "deny-leader-not-established",
+                                "data_type" : "string",
+                                "operator" : "=="}
+            }
+          compare_sources:
+             src1: "{{ recipe_name }}/stage0/src1"
+
+      set_fact: result="{{lookup('niova_plugin', 'recipe_verify', recipe_params, compare_sources, stage0_rule_table, wantlist=True)}}"
+
+    - name: "Stage 1 : Copy get_all cmd before killing the process"
+      vars:
+         ctlreq_cmd:
+             cmd: "get_all"
+             wait_for_ofile: True
+             recipe_name: "{{ recipe_name }}"
+             stage: "stage1"
+             src: "src1"
+      set_fact: raft_json="{{lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx, ctlreq_cmd, wantlist=True)}}"
+
+    - name: "Kill the process"
+      set_fact: raft_json="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx, "kill", wantlist=True)}}"
+
+    - name: "Restart the process"
+      set_fact: raft_json="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx, "start", wantlist=True)}}"
+
+    - name: "Idle off cmd"
+      vars:
+        ctlreq_cmd:
+           cmd: "idle_off"
+           wait_for_ofile: True
+           recipe_name: "{{ recipe_name }}"
+           stage: "pre_stage1"
+           src: "src1"
+      set_fact: idle_off="{{lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx, ctlreq_cmd, wantlist=True)}}"
+
+    - name: "wait for 5 sec"
+      wait_for:
+        timeout: 5
+
+    - name: "Copy get_all cmd"
+      vars:
+        ctlreq_cmd:
+           cmd: "get_all"
+           wait_for_ofile: True
+           recipe_name: "{{ recipe_name }}"
+           stage: "stage1"
+           src: "src2"
+      set_fact: raft_json="{{lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx, ctlreq_cmd, wantlist=True)}}"
+
+    - name: "Verify Stage1 rule table"
+      vars:
+        stage1_rule_table:
+            {
+                  "rule1" : {"key1" : "/raft_root_entry/*/term",
+                             "key2" : "/raft_root_entry/*/term",
+                             "expected_value" : "",
+                             "data_type" : "int",
+                             "operator" : "<"}
+       
+           }
+        compare_sources:
+           src1: "{{ recipe_name }}/stage1/src1"
+           src2: "{{ recipe_name }}/stage1/src2"
+
+      set_fact: result="{{lookup('niova_plugin', 'recipe_verify', recipe_params, compare_sources, stage1_rule_table, wantlist=True)}}"
