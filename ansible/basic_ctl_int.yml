@@ -1,0 +1,83 @@
+- name: "basic_ctl_int"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "basic_ctl_int"
+     parent: None
+     peer_idx: 0
+     curr_time_arr: []
+
+  tasks:
+    - name: "Ctlreq for idle_on cmd"
+      vars:
+          ctlreq_cmd:
+             cmd: "idle_on"
+             wait_for_ofile: False
+             recipe_name: "{{ recipe_name }}"
+             stage: "pre_stage0"
+             src: "src1"
+      set_fact: idle_off="{{lookup('niova_plugin', "ctlrequest", recipe_params, peer_idx, ctlreq_cmd, wantlist=True)}}"
+
+    - name: "Start peer 0"
+      set_fact: server0="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx, "start", wantlist=True)}}"
+
+    - name: "Copy the get_all cmd to verify stage0"
+      vars:
+         ctlreq_cmd:
+             cmd: "get_all"
+             wait_for_ofile: True
+             recipe_name: "{{ recipe_name }}"
+             stage: "stage0"
+             src: "src1"
+      set_fact: peer0_get_all="{{lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx, ctlreq_cmd, wantlist=True)}}"
+
+    - name: "Verify stage0 leader-uuid should be null"
+      set_fact: result="{{lookup('niova_plugin', 'query', recipe_params, peer0_get_all, "/raft_root_entry/*/leader-uuid", wantlist=True)}}"
+      failed_when: result['raft_key'] != ""
+
+    - name: "commit-idx should be -1"
+      set_fact: result="{{lookup('niova_plugin', 'query', recipe_params, peer0_get_all, "/raft_root_entry/*/commit-idx", wantlist=True)}}"
+      failed_when: result['raft_key'] != -1
+
+    - name: "last-applied should be -1"
+      set_fact: result="{{lookup('niova_plugin', 'query', recipe_params, peer0_get_all, "/raft_root_entry/*/last-applied", wantlist=True)}}"
+      failed_when: result['raft_key'] != -1
+
+    - name: "last-applied-cumulative-crc == 0"
+      set_fact: result="{{lookup('niova_plugin', 'query', recipe_params, peer0_get_all, "/raft_root_entry/*/last-applied-cumulative-crc", wantlist=True)}}"
+      failed_when: result['raft_key'] != 0
+
+    - name: "ignore_timer_events == True"
+      set_fact: result="{{lookup('niova_plugin', 'query', recipe_params, peer0_get_all, "/raft_net_info/ignore_timer_events", wantlist=True)}}"
+      failed_when: result['raft_key'] != True
+
+    - name: "Idleness off"
+      vars:
+         ctlreq_cmd:
+            cmd: "idle_off"
+            wait_for_ofile: True
+            recipe_name: "{{ recipe_name }}"
+            stage: "pre_stage1"
+            src: "src1"
+      set_fact: idle_off="{{lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx, ctlreq_cmd, wantlist=True)}}"
+
+    - name: "Get current_time in a loop with sleep of 1sec in between"
+      vars:
+         ctlreq_cmd:
+            cmd: "current_time"
+            wait_for_ofile: True
+            recipe_name: "{{ recipe_name }}"
+            stage: "stage1"
+            src: "src1"
+      set_fact:
+          curr_time_arr: "{{curr_time_arr + [lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx, ctlreq_cmd, wantlist=True)] }}"
+      loop: "{{ range(0, 5)| list }}"
+      loop_control:
+          pause: 1
+
+    - name: "Verify stage1"
+      set_fact:
+         curr_time0="{{lookup('niova_plugin', 'query', recipe_params, curr_time_arr[item], "/system_info/current_time", wantlist=True)}}"
+         curr_time1="{{lookup('niova_plugin', 'query', recipe_params, curr_time_arr[item+1], "/system_info/current_time", wantlist=True)}}"
+      failed_when: curr_time0['raft_key'] >= curr_time1['raft_key']
+      loop: "{{ range(0, 4)| list }}"

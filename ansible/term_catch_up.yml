@@ -1,0 +1,66 @@
+- import_playbook: term_ticker.yml
+- name: "term_catch_up"
+  hosts: localhost
+  connection: local
+  vars:
+     parent: "term_ticker"
+     recipe_name: "term_catch_up"
+     peer_idx: "1"
+  tasks:
+    - name: "Start peer 1"
+      set_fact: raft_json="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx, "start", wantlist=True)}}"
+
+    - name: "Copy the get_all cmd for peer0"
+      vars:
+         ctlreq_cmd:
+             cmd: "get_all"
+             wait_for_ofile: True
+             recipe_name: "{{ recipe_name }}"
+             stage: "stage0"
+             src: "src1"
+      set_fact: raft_json_get_all_peer0="{{lookup('niova_plugin', 'ctlrequest', recipe_params, 0, ctlreq_cmd, wantlist=True)}}"
+    
+    - name: "Copy the get_all cmd for peer1"
+      vars:
+         ctlreq_cmd:
+             cmd: "get_all"
+             wait_for_ofile: True
+             recipe_name: "{{ recipe_name }}"
+             stage: "stage0"
+             src: "src2"
+      set_fact: raft_json_get_all_peer1="{{lookup('niova_plugin', 'ctlrequest', recipe_params, 1, ctlreq_cmd, wantlist=True)}}"
+
+    - name: "Pause peer0, copy get_all for peer1, resume peer0, copy get_all for peer0 and verify Stage1 rule table"
+      vars:
+        stage1_rule_table:
+            {
+                  "rule1" : {"key1" : "/raft_root_entry/*/term",
+                             "key2" : "/raft_root_entry/*/term",
+                             "expected_value" : "",
+                             "data_type" : "int",
+                             "operator" : "<"}
+
+           }
+        ctlreq_cmd1:
+             cmd: "get_all"
+             wait_for_ofile: True
+             recipe_name: "{{ recipe_name }}"
+             stage: "stage1"
+             src: "src1"
+        ctlreq_cmd0:
+             cmd: "get_all"
+             wait_for_ofile: True
+             recipe_name: "{{ recipe_name }}"
+             stage: "stage1"
+             src: "src2"
+        compare_sources:
+           src1: "{{ recipe_name }}/stage1/src1"
+           src2: "{{ recipe_name }}/stage1/src2"
+
+      set_fact: 
+          raft_json_pause="{{lookup('niova_plugin', 'raftprocess', recipe_params, 0, "pause", wantlist=True)}}"
+          get_all_peer1="{{lookup('niova_plugin', 'ctlrequest', recipe_params, 1, ctlreq_cmd1, wantlist=True)}}"
+          raft_json_resume="{{lookup('niova_plugin', 'raftprocess', recipe_params, 0, "resume", wantlist=True)}}"
+          get_all_peer0="{{lookup('niova_plugin', 'ctlrequest', recipe_params, 0, ctlreq_cmd0, wantlist=True)}}"
+          result="{{lookup('niova_plugin', 'recipe_verify', recipe_params, compare_sources, stage1_rule_table, wantlist=True)}}"
+      loop: "{{ range(0, 5)| list }}"

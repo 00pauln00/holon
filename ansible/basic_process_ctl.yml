@@ -1,0 +1,47 @@
+- import_playbook: basic_ctl_int.yml
+- name: "basic_process_ctl"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "basic_process_ctl"
+     parent: "basic_ctl_int"
+     peer_idx: 0
+     curr_time_arr: []
+
+  tasks:
+    - name: "Pause peer 0, get current_time and resume peer 0"
+      vars:
+         ctlreq_cmd:
+            cmd: "current_time"
+            wait_for_ofile: True
+            recipe_name: "{{ recipe_name }}"
+            stage: "stage0"
+            src: "src1"
+      set_fact: 
+         pause_peer0="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx, "pause", wantlist=True)}}"
+         curr_time_peer0="{{lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx, ctlreq_cmd, wantlist=True)}}"
+         resume_peer0="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx, "resume", wantlist=True)}}"
+      loop: "{{ range(0, 5)| list }}"
+      loop_control:
+        pause: 5
+    
+    - name: "Get current_time in a loop with sleep of 1sec in between"
+      vars:
+         ctlreq_cmd:
+            cmd: "current_time"
+            wait_for_ofile: True
+            recipe_name: "{{ recipe_name }}"
+            stage: "stage1"
+            src: "src1"
+      set_fact:
+          curr_time_arr: "{{curr_time_arr + [lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx, ctlreq_cmd, wantlist=True)] }}"
+      loop: "{{ range(0, 5)| list }}"
+      loop_control:
+          pause: 1
+
+    - name: "Verify Stage1 rule table"
+      set_fact:
+         curr_time0="{{lookup('niova_plugin', 'query', recipe_params, curr_time_arr[item], "/system_info/current_time", wantlist=True)}}"
+         curr_time1="{{lookup('niova_plugin', 'query', recipe_params, curr_time_arr[item+1], "/system_info/current_time", wantlist=True)}}"
+      failed_when: curr_time0['raft_key'] >= curr_time1['raft_key']
+      loop: "{{ range(0, 4)| list }}"
