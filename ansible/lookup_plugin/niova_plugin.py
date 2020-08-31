@@ -198,7 +198,6 @@ def niova_raft_lookup_key(raft_conf, peer_idx, ctlreq_dict):
 
     result = {}
     result['raft_key'] = value[0]
-
     return result
 
 def niova_raft_query(ctlreq_dict, raft_key):
@@ -210,14 +209,12 @@ def niova_raft_query(ctlreq_dict, raft_key):
     with open(out_fpath, 'r') as json_file:
         raft_dict = json.load(json_file)
 
-    
     value = dpath.util.values(raft_dict, raft_key)
+    print("value to key %s is %s" % (raft_key, value[0]))
 
-    print(value)
-    result = {}
-    result['raft_key'] = value[0]
+    #result = str(value[0])
 
-    return result
+    return value
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
@@ -256,4 +253,3 @@ class LookupModule(LookupBase):
             niova_obj_dict = niova_raft_query(ctlreq_cmd_dict, raft_key)
 
         return niova_obj_dict
-

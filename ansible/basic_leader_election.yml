@@ -1,10 +1,10 @@
-- import_playbook: term_ticker.yml
+- import_playbook: basic_ctl_int.yml
 - name: "basic_leader_election"
   hosts: localhost
   connection: local
   vars:
      recipe_name: "basic_leader_election"
-     parent: "term_ticker"
+     parent: "basic_ctl_int"
      #TODO Need to define array to start all peers
      peer_idx0: 0
      peer_idx1: 1
@@ -27,9 +27,9 @@
              src: "src1"
       set_fact:
           peer0_get_all="{{lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx0, ctlreq_cmd, wantlist=True)}}"
-          result="{{lookup('niova_plugin', 'query', recipe_params, peer0_get_all, '/raft_root_entry/*/leader-uuid', wantlist=True)}}"
+          leader_uuid="{{lookup('niova_plugin', 'query', recipe_params, peer0_get_all, '/raft_root_entry/*/leader-uuid', wantlist=True)}}"
       loop: "{{ range(0, 5) | list }}"
-      until: result['raft_key'] != ""
+      until: leader_uuid[0] != ""
       retries: 5
       ignore_errors: yes
       delay: 2
@@ -46,26 +46,19 @@
         get_all_arr: "{{get_all_arr + [lookup('niova_plugin', 'ctlrequest', recipe_params, item, ctlreq_cmd, wantlist=True)] }}"
       loop: "{{ range(0, 2) | list }}"
 
-    - name: "Verify stage 1 commit-idx"
-      set_fact: result="{{lookup('niova_plugin', 'query', recipe_params, get_all_arr[item], "/raft_root_entry/*/commit-idx", wantlist=True)}}"
-      failed_when: result['raft_key'] != 0
+    - name: "Verify stage 1"
+      set_fact: 
+          commit_idx="{{lookup('niova_plugin', 'query', recipe_params, get_all_arr[item], "/raft_root_entry/*/commit-idx", wantlist=True)}}"
+          last_applied="{{lookup('niova_plugin', 'query', recipe_params, get_all_arr[item], "/raft_root_entry/*/last-applied", wantlist=True)}}"
+          cumm_crc="{{lookup('niova_plugin', 'query', recipe_params, get_all_arr[item], "/raft_root_entry/*/last-applied-cumulative-crc", wantlist=True)}}"
+          newest_crc="{{lookup('niova_plugin', 'query', recipe_params, get_all_arr[item], "/raft_root_entry/*/newest-entry-crc", wantlist=True)}}"
+          term="{{lookup('niova_plugin', 'query', recipe_params, get_all_arr[item], "/raft_root_entry/*/term", wantlist=True)}}"
+          newest_term="{{lookup('niova_plugin', 'query', recipe_params, get_all_arr[item], "/raft_root_entry/*/newest-entry-term", wantlist=True)}}"
+
+      failed_when: 
+        commit_idx[0] != 0 or
+        last_applied[0] != 0 or
+        cumm_crc[0] != newest_crc[0] or
+        term[0] != newest_term[0]
       loop: "{{ range(0, 2) | list}}"
 
-    - name: "Verify stage 1 last-applied"
-      set_fact: result="{{lookup('niova_plugin', 'query', recipe_params, get_all_arr[item], "/raft_root_entry/*/last-applied", wantlist=True)}}"
-      failed_when: result['raft_key'] != 0
-      loop: "{{ range(0, 2) | list}}"
-
-    - name: "Verify stage 1 last-app-cumu-ctc == newest-entry-crc"
-      set_fact:
-         key1="{{lookup('niova_plugin', 'query', recipe_params, get_all_arr[item], "/raft_root_entry/*/last-applied-cumulative-crc", wantlist=True)}}"
-         key2="{{lookup('niova_plugin', 'query', recipe_params, get_all_arr[item], "/raft_root_entry/*/newest-entry-crc", wantlist=True)}}"
-      failed_when: key1['raft_key'] != key2['raft_key']
-      loop: "{{ range(0, 2) | list}}"
-
-    - name: "Verify stage 1 term == newest-entry-term"
-      set_fact:
-         key1="{{lookup('niova_plugin', 'query', recipe_params, get_all_arr[item], "/raft_root_entry/*/term", wantlist=True)}}"
-         key2="{{lookup('niova_plugin', 'query', recipe_params, get_all_arr[item], "/raft_root_entry/*/newest-entry-term", wantlist=True)}}"
-      failed_when: key1['raft_key'] != key2['raft_key']
-      loop: "{{ range(0, 2) | list}}"

@@ -43,5 +43,5 @@
       set_fact:
          curr_time0="{{lookup('niova_plugin', 'query', recipe_params, curr_time_arr[item], "/system_info/current_time", wantlist=True)}}"
          curr_time1="{{lookup('niova_plugin', 'query', recipe_params, curr_time_arr[item+1], "/system_info/current_time", wantlist=True)}}"
-      failed_when: curr_time0['raft_key'] >= curr_time1['raft_key']
+      failed_when: curr_time0[0] >= curr_time1[0]
       loop: "{{ range(0, 4)| list }}"
