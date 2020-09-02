@@ -1,6 +1,6 @@
 from ansible.plugins.lookup import LookupBase
 import json
-import os
+import os, time
 
 import subprocess
 from genericcmd import *
@@ -18,12 +18,13 @@ def niova_write_to_recipe_json(raft_conf):
         json.dump(raft_conf, json_file, indent = 4)
 
 
-def niova_ctlreq_cmd_create(raft_conf, peer_idx, ctlreq_dict):
+def niova_ctlreq_cmd_create(raft_conf, ctlreq_dict):
     cmd = ctlreq_dict['cmd']
     wait_for_ofile = ctlreq_dict['wait_for_ofile']
     recipe_name = ctlreq_dict['recipe_name']
+    peer_idx = ctlreq_dict['peer_id']
     stage = ctlreq_dict['stage']
-    src = ctlreq_dict['src']
+    peerno = "peer%s" % peer_idx
 
     # Get the peer_uuid from the raft json dictionary
     peer_uuid = raft_conf['raft_config']['peer_uuid_dict'][str(peer_idx)]
@@ -48,13 +49,13 @@ def niova_ctlreq_cmd_create(raft_conf, peer_idx, ctlreq_dict):
     # Add the ctlreq to the raft json directionary
     if not recipe_name in raft_conf:
         raft_conf[recipe_name] = {}
-    if not stage in raft_conf[recipe_name]:
-        raft_conf[recipe_name][stage] = {}
-    if not src in raft_conf[recipe_name][stage]:
-        raft_conf[recipe_name][stage][src] = ctlreq_dict_list
+    if not peerno in raft_conf[recipe_name]:
+        raft_conf[recipe_name][peerno] = {}
+    if not stage in raft_conf[recipe_name][peerno]:
+        raft_conf[recipe_name][peerno][stage] = ctlreq_dict_list
     else:
-        ctl_list = raft_conf[recipe_name][stage][src]
-        raft_conf[recipe_name][stage][src] = ctl_list + ctlreq_dict_list
+        ctl_list = raft_conf[recipe_name][peerno][stage]
+        raft_conf[recipe_name][peerno][stage] = ctl_list + ctlreq_dict_list
 
     niova_write_to_recipe_json(raft_conf)
     return ctlreqobj.__dict__
@@ -180,25 +181,40 @@ def niova_raft_recipe_verify(raft_conf, compare_sources, rule_table):
 
     return result
 
-def niova_raft_lookup_key(raft_conf, peer_idx, ctlreq_dict):
+def niova_raft_lookup_create(raft_conf, ctlreq_dict, raft_key):
 
     recipe_name = ctlreq_dict['recipe_name']
+    peerno = "peer%s" % ctlreq_dict['peer_id']
     stage = ctlreq_dict['stage']
-    src = ctlreq_dict['src']
-    index = len(raft_conf[recipe_name][stage][src]) - 1
-    raft_key = ctlreq_dict['raft_key']
 
-    output_fpath = raft_conf[recipe_name][stage][src][index]['output_fpath']
+    '''
+    If the index inside stage array is give, use it.
+    Otherwise use zeroth index.
+    '''
+    index = 0
+    if "index" in ctlreq_dict:
+        index = int(ctlreq_dict['index'])
 
-    # Read the output file and lookup for the raft key value
-    with open(output_fpath, 'r') as json_file:
-        raft_dict = json.load(json_file)
+    if raft_conf.get(recipe_name, {}).get(peerno, {}).get(stage[index]):
+        # Get the output_fpath from the recipe json
+        output_fpath = raft_conf[recipe_name][peerno][stage][index]['output_fpath']
 
-    value = dpath.util.values(raft_dict, raft_key)
+        # Read the output file and lookup for the raft key value
+        with open(output_fpath, 'r') as json_file:
+            raft_dict = json.load(json_file)
 
-    result = {}
-    result['raft_key'] = value[0]
-    return result
+        value = dpath.util.values(raft_dict, raft_key)
+    else:
+        # Prepare the ctlrequest cmd.
+        niova_obj_dict = niova_ctlreq_cmd_create(raft_conf, ctlreq_dict)
+        value = niova_raft_query(niova_obj_dict, raft_key)
+
+    # If user asked to sleep after completing the cmd
+    if "sleep_after" in ctlreq_dict:
+        stime = int(ctlreq_dict['sleep_after'])
+        time.sleep(stime)
+
+    return value
 
 def niova_raft_query(ctlreq_dict, raft_key):
 
@@ -210,9 +226,6 @@ def niova_raft_query(ctlreq_dict, raft_key):
         raft_dict = json.load(json_file)
 
     value = dpath.util.values(raft_dict, raft_key)
-    print("value to key %s is %s" % (raft_key, value[0]))
-
-    #result = str(value[0])
 
     return value
 
@@ -229,9 +242,8 @@ class LookupModule(LookupBase):
                 raft_conf = json.load(json_file)
 
         if operation == "ctlrequest":
-            peer_idx = terms[2]
-            ctlreq_cmd_dict = terms[3]
-            niova_obj_dict = niova_ctlreq_cmd_create(raft_conf, peer_idx, ctlreq_cmd_dict)
+            ctlreq_cmd_dict = terms[2]
+            niova_obj_dict = niova_ctlreq_cmd_create(raft_conf, ctlreq_cmd_dict)
         elif operation == "raftconfigure":
             config_params_dict = terms[2]
             niova_obj_dict = niova_raft_conf_create(recipe_params, config_params_dict)
@@ -243,13 +255,16 @@ class LookupModule(LookupBase):
             compare_src = terms[2]
             rule_table = terms[3]
             niova_obj_dict = niova_raft_recipe_verify(raft_conf, compare_src, rule_table)
-        elif operation == "lookup_from_json":
-            peer_idx = terms[2]
-            ctlreq_cmd_dict = terms[3]
-            niova_obj_dict = niova_raft_lookup_key(raft_conf, peer_idx, ctlreq_cmd_dict)
+        elif operation == "lookup_create":
+            ctlreq_cmd_dict = terms[2]
+            raft_key = terms[3]
+            niova_obj_dict = niova_raft_lookup_create(raft_conf, ctlreq_cmd_dict, raft_key)
         elif operation == "query":
             ctlreq_cmd_dict = terms[2]
             raft_key = terms[3]
             niova_obj_dict = niova_raft_query(ctlreq_cmd_dict, raft_key)
+        else:
+            print("Invalide option passed: %s" % operation)
+            sys.exit()
 
         return niova_obj_dict
