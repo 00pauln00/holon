@@ -13,13 +13,13 @@
       vars:
          ctlreq_cmd:
             cmd: "current_time"
-            wait_for_ofile: True
+            wait_for_ofile: False
             recipe_name: "{{ recipe_name }}"
+            peer_id: "{{ peer_idx }}"
             stage: "stage0"
-            src: "src1"
-      set_fact: 
+      set_fact:
          pause_peer0="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx, "pause", wantlist=True)}}"
-         curr_time_peer0="{{lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx, ctlreq_cmd, wantlist=True)}}"
+         curr_time_peer0="{{lookup('niova_plugin', 'ctlrequest', recipe_params, ctlreq_cmd, wantlist=True)}}"
          resume_peer0="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx, "resume", wantlist=True)}}"
       loop: "{{ range(0, 5)| list }}"
       loop_control:
@@ -27,21 +27,23 @@
     
     - name: "Get current_time in a loop with sleep of 1sec in between"
       vars:
-         ctlreq_cmd:
+         ctlreq_cmd0:
             cmd: "current_time"
-            wait_for_ofile: True
             recipe_name: "{{ recipe_name }}"
+            peer_id: "{{ peer_idx }}"
             stage: "stage1"
-            src: "src1"
+            index: "{{ item }}"
+            sleep_after: 1
+         ctlreq_cmd1:
+            cmd: "current_time"
+            recipe_name: "{{ recipe_name }}"
+            peer_id: "{{ peer_idx }}"
+            stage: "stage1"
+            index: "{{ item + 1 }}"
+         raft_key:
+            - "/system_info/current_time"
       set_fact:
-          curr_time_arr: "{{curr_time_arr + [lookup('niova_plugin', 'ctlrequest', recipe_params, peer_idx, ctlreq_cmd, wantlist=True)] }}"
-      loop: "{{ range(0, 5)| list }}"
-      loop_control:
-          pause: 1
-
-    - name: "Verify Stage1 rule table"
-      set_fact:
-         curr_time0="{{lookup('niova_plugin', 'query', recipe_params, curr_time_arr[item], "/system_info/current_time", wantlist=True)}}"
-         curr_time1="{{lookup('niova_plugin', 'query', recipe_params, curr_time_arr[item+1], "/system_info/current_time", wantlist=True)}}"
+         curr_time0="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd0, raft_key, wantlist=True)}}"
+         curr_time1="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd1, raft_key, wantlist=True)}}"
       failed_when: curr_time0[0] >= curr_time1[0]
-      loop: "{{ range(0, 4)| list }}"
+      loop: "{{ range(0, 5)| list }}"

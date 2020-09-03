@@ -19,12 +19,13 @@ def niova_write_to_recipe_json(raft_conf):
 
 
 def niova_ctlreq_cmd_create(raft_conf, ctlreq_dict):
+    wait_for_ofile = True
     cmd = ctlreq_dict['cmd']
-    wait_for_ofile = ctlreq_dict['wait_for_ofile']
     recipe_name = ctlreq_dict['recipe_name']
     peer_idx = ctlreq_dict['peer_id']
     stage = ctlreq_dict['stage']
     peerno = "peer%s" % peer_idx
+    input_base = inotify_input_base.REGULAR
 
     # Get the peer_uuid from the raft json dictionary
     peer_uuid = raft_conf['raft_config']['peer_uuid_dict'][str(peer_idx)]
@@ -35,13 +36,19 @@ def niova_ctlreq_cmd_create(raft_conf, ctlreq_dict):
         
     inotifyobj = InotifyPath(base_dir, True)
 
-    # Prepare the ctlreq object
+    # For idle_on cmd , input_base would be PRIVATE_INIT.
     if cmd == "idle_on":
+        input_base = inotify_input_base.PRIVATE_INIT
+
+    if 'wait_for_ofile' in ctlreq_dict:
+        wait_for_ofile = ctlreq_dict['wait_for_ofile']
+    # Prepare the ctlreq object
+    if wait_for_ofile == False:
         ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                        inotify_input_base.PRIVATE_INIT).Apply()
+                        input_base).Apply()
     else:
         ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                        inotify_input_base.REGULAR).Apply_and_Wait(wait_for_ofile)
+                        input_base).Apply_and_Wait(wait_for_ofile)
 
     ctlreq_dict_list = []
     ctlreq_dict_list.append(ctlreqobj.__dict__)
@@ -248,6 +255,7 @@ def niova_raft_lookup_create(raft_conf, ctlreq_dict, raft_key_list):
         stime = int(ctlreq_dict['sleep_after'])
         time.sleep(stime)
 
+    print(raft_values)
     return raft_values
 
 def niova_raft_query(ctlreq_dict, raft_key):
