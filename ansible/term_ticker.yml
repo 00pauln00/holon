@@ -6,48 +6,49 @@
      recipe_name: "term_ticker"
      parent: "basic_process_ctl"
      peer_idx: 0
-     get_all_arr: []
-
   tasks:
     - name: "Verify stage 0 rule table"
       vars:
          ctlreq_cmd0:
             cmd: "get_all"
-            wait_for_ofile: True
             recipe_name: "{{ recipe_name }}"
             peer_id: "{{ peer_idx }}"
             stage: "stage0"
             index: "{{ item }}"
-            sleep_after: 3
+            sleep_after: 2
          ctlreq_cmd1:
             cmd: "get_all"
-            wait_for_ofile: True
             recipe_name: "{{ recipe_name }}"
             peer_id: "{{ peer_idx }}"
             stage: "stage0"
             index: "{{ item + 1 }}"
+            sleep_after: 2
+         term_key:
+            - "/raft_root_entry/*/term"
+         raft_keys:
+            - "/raft_root_entry/*/term"
+            - "/raft_root_entry/*/voted-for-uuid"
+            - "/raft_root_entry/*/leader-uuid"
+            - "/raft_root_entry/*/commit-idx"
+            - "/raft_root_entry/*/last-applied"
+            - "/raft_root_entry/*/last-applied-cumulative-crc"
+            - "/raft_root_entry/*/state"
+            - "/raft_root_entry/*/follower-reason"
+            - "/raft_root_entry/*/client-requests"
+            - "/raft_root_entry/*/peer-uuid"
       set_fact:
-          term0="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd0, '/raft_root_entry/*/term', wantlist=True)}}"
-          term1="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd1, '/raft_root_entry/*/term', wantlist=True)}}"
-          voted_uuid="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd0, '/raft_root_entry/*/voted-for-uuid', wantlist=True)}}"
-          leader_uuid="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd0, '/raft_root_entry/*/leader-uuid', wantlist=True)}}"
-          commit_idx="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd0, '/raft_root_entry/*/commit-idx', wantlist=True)}}"
-          last_applied="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd0, '/raft_root_entry/*/last-applied', wantlist=True)}}"
-          crc="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd0, '/raft_root_entry/*/last-applied-cumulative-crc', wantlist=True)}}"
-          state="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd0, '/raft_root_entry/*/state', wantlist=True)}}"
-          follower_reason="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd0, '/raft_root_entry/*/follower-reason', wantlist=True)}}"
-          client_req="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd0, '/raft_root_entry/*/client-requests', wantlist=True)}}"
-
+          raft_value="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd0, raft_keys, wantlist=True)}}"
+          term="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd1, term_key, wantlist=True)}}"
       failed_when: >
-        (term0[0] > term1[0]) and
-        (voted_uuid[0] != "") and
-        (leader_uuid[0] != "") and
-        (commit_idx[0] != -1) and
-        (last_applied[0] != -1) and
-        (crc[0] != 0) and
-        (state[0] != "candidate") and
-        (follower_reason[0] != "none") and
-        (client_req[0] != "deny-leader-not-established")
+        (term[0] < raft_value[0]) or
+        (raft_value[1] != raft_value[9]) or
+        (raft_value[2] != "null") or
+        (raft_value[3] != "-1") or
+        (raft_value[4] != "-1") or
+        (raft_value[5] != "0") or
+        (raft_value[6] != "candidate") or
+        (raft_value[7] != "none") or
+        (raft_value[8] != "deny-leader-not-established")
       loop: "{{ range(0, 5)| list }}"
 
     - name: "Copy get_all before killing process"
@@ -84,16 +85,18 @@
             recipe_name: "{{ recipe_name }}"
             peer_id: "{{ peer_idx }}"
             stage: "stage1_before_reboot"
-            sleep_after: 3
+            sleep_after: 4
          after_reboot_ctlreq_cmd:
             cmd: "get_all"
             wait_for_ofile: True
             recipe_name: "{{ recipe_name }}"
             peer_id: "{{ peer_idx }}"
             stage: "stage1_after_reboot"
+         raft_key:
+            - "/raft_root_entry/*/term"
       set_fact: 
-          before_reboot="{{lookup('niova_plugin', 'lookup_create', recipe_params, before_reboot_ctlreq_cmd, '/raft_root_entry/*/term', wantlist=True)}}"
-          after_reboot="{{lookup('niova_plugin', 'lookup_create', recipe_params, after_reboot_ctlreq_cmd, '/raft_root_entry/*/term', wantlist=True)}}"
+          before_reboot="{{lookup('niova_plugin', 'lookup_create', recipe_params, before_reboot_ctlreq_cmd, raft_key, wantlist=True)}}"
+          after_reboot="{{lookup('niova_plugin', 'lookup_create', recipe_params, after_reboot_ctlreq_cmd, raft_key, wantlist=True)}}"
 
       failed_when:
         before_reboot[0] >= after_reboot[0]
