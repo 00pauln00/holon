@@ -181,8 +181,36 @@ def niova_raft_recipe_verify(raft_conf, compare_sources, rule_table):
 
     return result
 
-def niova_raft_lookup_create(raft_conf, ctlreq_dict, raft_key):
+'''
+Load the output json file and lookup raft_keys
+from the list and return the list of raft values.
+'''
+def niova_raft_return_values(ctlreq_dict, raft_key_list):
 
+    raft_values = []
+    out_fpath = ctlreq_dict['output_fpath']
+
+    # Read the output file and lookup for the raft key value
+    with open(out_fpath, 'r') as json_file:
+        raft_dict = json.load(json_file)
+
+    for key in raft_key_list:
+        value = dpath.util.values(raft_dict, key)
+        if value[0] == "":
+            value[0] = "null"
+        raft_values.append(str(value[0]))
+
+    return raft_values
+
+'''
+Lookup the raft keys in 'recipe:peerid:stage:index' tuple if the ctlreq
+for it is already present.
+Otherwise fire ctlreq cmd for this tuple and then get the raft keys
+for it.
+'''
+def niova_raft_lookup_create(raft_conf, ctlreq_dict, raft_key_list):
+
+    print(raft_key_list)
     recipe_name = ctlreq_dict['recipe_name']
     peerno = "peer%s" % ctlreq_dict['peer_id']
     stage = ctlreq_dict['stage']
@@ -195,32 +223,37 @@ def niova_raft_lookup_create(raft_conf, ctlreq_dict, raft_key):
     if "index" in ctlreq_dict:
         index = int(ctlreq_dict['index'])
 
+    '''
+    If the ctlreq_cmd entry for 'recipe-name:peerid:stage:index' tuple already
+    present, simply lookup raft_key(s) in the raft json output file
+    '''
     if raft_conf.get(recipe_name, {}).get(peerno, {}).get(stage[index]):
-        # Get the output_fpath from the recipe json
-        output_fpath = raft_conf[recipe_name][peerno][stage][index]['output_fpath']
-
-        # Read the output file and lookup for the raft key value
-        with open(output_fpath, 'r') as json_file:
-            raft_dict = json.load(json_file)
-
-        value = dpath.util.values(raft_dict, raft_key)
+        ctlreq_dict = raft_conf[recipe_name][peerno][stage][index]
+        raft_values = niova_raft_return_values(ctlreq_dict, raft_key_list)
     else:
-        # Prepare the ctlrequest cmd.
-        niova_obj_dict = niova_ctlreq_cmd_create(raft_conf, ctlreq_dict)
-        value = niova_raft_query(niova_obj_dict, raft_key)
+        '''
+        But if ctlreq_cmd entry for 'recipe-name:peerid:stage:index' tuple is
+        not present that means command was never executed before.
+        Execute the ctlreq cmd and then get value for the raft key(s)
+        '''
+        new_ctlreq_dict = niova_ctlreq_cmd_create(raft_conf, ctlreq_dict)
+        raft_values = niova_raft_return_values(new_ctlreq_dict, raft_key_list)
 
-    # If user asked to sleep after completing the cmd
+    '''
+    TODO: There was issue in adding sleep from ansible after ctlreq_Cmd.
+    So for now added the option in the lookup plugin to sleep.
+    We should figure out how to do it from ansible playbook itself.
+    '''
     if "sleep_after" in ctlreq_dict:
         stime = int(ctlreq_dict['sleep_after'])
         time.sleep(stime)
 
-    return value
+    return raft_values
 
 def niova_raft_query(ctlreq_dict, raft_key):
 
     out_fpath = ctlreq_dict['output_fpath']
 
-    print(out_fpath)
     # Read the output file and lookup for the raft key value
     with open(out_fpath, 'r') as json_file:
         raft_dict = json.load(json_file)
@@ -257,8 +290,8 @@ class LookupModule(LookupBase):
             niova_obj_dict = niova_raft_recipe_verify(raft_conf, compare_src, rule_table)
         elif operation == "lookup_create":
             ctlreq_cmd_dict = terms[2]
-            raft_key = terms[3]
-            niova_obj_dict = niova_raft_lookup_create(raft_conf, ctlreq_cmd_dict, raft_key)
+            raft_key_list = terms[3]
+            niova_obj_dict = niova_raft_lookup_create(raft_conf, ctlreq_cmd_dict, raft_key_list)
         elif operation == "query":
             ctlreq_cmd_dict = terms[2]
             raft_key = terms[3]
