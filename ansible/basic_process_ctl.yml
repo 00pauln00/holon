@@ -5,45 +5,38 @@
   vars:
      recipe_name: "basic_process_ctl"
      parent: "basic_ctl_int"
-     peer_idx: 0
+     peerid0: 0
+     iterations: 5
      curr_time_arr: []
 
   tasks:
     - name: "Pause peer 0, get current_time and resume peer 0"
       vars:
-         ctlreq_cmd:
-            cmd: "current_time"
-            wait_for_ofile: False
-            recipe_name: "{{ recipe_name }}"
-            peer_id: "{{ peer_idx }}"
-            stage: "stage0"
+        stage: "stage0"
       set_fact:
-         pause_peer0="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx, "pause", wantlist=True)}}"
-         curr_time_peer0="{{lookup('niova_plugin', 'ctlrequest', recipe_params, ctlreq_cmd, wantlist=True)}}"
-         resume_peer0="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx, "resume", wantlist=True)}}"
-      loop: "{{ range(0, 5)| list }}"
+         pause_peer0="{{lookup('niova_raftprocess', 'pause', peerid0, wantlist=True)}}"
+         curr_time_peer0="{{lookup('niova_ctlrequest', 'create_cmd', 'current_time', peerid0, False, wantlist=True)}}"
+         resume_peer0="{{lookup('niova_raftprocess', 'resume', peerid0, wantlist=True)}}"
+      loop: "{{ range(0, iterations)| list }}"
       loop_control:
         pause: 5
     
-    - name: "Get current_time in a loop with sleep of 1sec in between"
+    - name: "Get the current time for the peer in loop"
       vars:
-         ctlreq_cmd0:
-            cmd: "current_time"
-            recipe_name: "{{ recipe_name }}"
-            peer_id: "{{ peer_idx }}"
-            stage: "stage1"
-            index: "{{ item }}"
-            sleep_after: 1
-         ctlreq_cmd1:
-            cmd: "current_time"
-            recipe_name: "{{ recipe_name }}"
-            peer_id: "{{ peer_idx }}"
-            stage: "stage1"
-            index: "{{ item + 1 }}"
-         raft_key:
-            - "/system_info/current_time"
+        stage: "stage1"
+        raft_key:
+           - "/system_info/current_time"
+        iter_info:
+           iter: 5
+           sleep_after_cmd: 2
       set_fact:
-         curr_time0="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd0, raft_key, wantlist=True)}}"
-         curr_time1="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd1, raft_key, wantlist=True)}}"
-      failed_when: curr_time0[0] >= curr_time1[0]
-      loop: "{{ range(0, 5)| list }}"
+          curr_time_arr="{{ lookup('niova_ctlrequest', 'lookup', 'current_time', peerid0, raft_key, iter_info, wantlist=True)}}"
+
+    - name: "verify stage1, current time should increament in each iteration"
+      vars:
+        orig_time: "{{curr_time_arr[item]}}"
+        curr_time: "{{curr_time_arr[item + 1]}}"
+      debug:
+         msg: "Compare time stamp: {{ orig_time }} with {{ curr_time }}"
+      failed_when: orig_time >= curr_time
+      loop: "{{ range(0, (iterations - 1))| list }}"

@@ -65,6 +65,11 @@ class GenericCmds:
 
         return data
 
+    def recipe_json_dump(self, recipe_dict):
+        recipe_json_fpath = "%s/%s.json" % (recipe_dict['raft_config']['base_dir_path'], recipe_dict['raft_config']['raft_uuid'])
+        with open(recipe_json_fpath, "w+", encoding="utf-8") as json_file:
+            json.dump(recipe_dict, json_file, indent = 4)
+
     def make_dir(self, dirpath):
         if not os.path.exists(dirpath):
             try:

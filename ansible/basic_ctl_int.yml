@@ -4,38 +4,29 @@
   vars:
      recipe_name: "basic_ctl_int"
      parent: None
-     peer_idx: 0
+     peerid0: 0
      curr_time_arr: []
 
   tasks:
     - name: "Ctlreq for idle_on cmd"
       vars:
-          ctlreq_cmd:
-             cmd: "idle_on"
-             wait_for_ofile: False
-             recipe_name: "{{ recipe_name }}"
-             peer_id: "{{ peer_idx }}"
-             stage: "pre_stage0"
-      set_fact: idle_on="{{lookup('niova_plugin', 'ctlrequest', recipe_params, ctlreq_cmd, wantlist=True)}}"
+        stage: "idle_on"
+      set_fact: idle_on="{{lookup('niova_ctlrequest', 'create_cmd', "idle_on", peerid0, False, wantlist=True)}}"
 
     - name: "Start peer 0"
-      set_fact: server0="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx, 'start', wantlist=True)}}"
+      set_fact: server0="{{lookup('niova_raftprocess', 'start', peerid0, wantlist=True)}}"
 
     - name: "Verify using lookup_and_create"
       vars:
-         ctlreq_cmd:
-            cmd: "get_all"
-            recipe_name: "{{ recipe_name }}"
-            peer_id: "{{ peer_idx }}"
-            stage: "stage0"
-         raft_keys:
+        stage: "stage0"
+        raft_keys:
             - "/raft_root_entry/*/leader-uuid"
             - "/raft_root_entry/*/commit-idx"
             - "/raft_root_entry/*/last-applied-cumulative-crc"
             - "/raft_root_entry/*/last-applied"
             - "/raft_net_info/ignore_timer_events"
       set_fact:
-          raft_values="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd, raft_keys, wantlist=True)}}"
+          raft_values="{{lookup('niova_ctlrequest', 'lookup', 'get_all', peerid0, raft_keys, wantlist=True)}}"
       failed_when: >
          (raft_values[0] != "null") or
          (raft_values[1] != "-1") or
@@ -45,33 +36,25 @@
 
     - name: "Idleness off"
       vars:
-         ctlreq_cmd:
-            cmd: "idle_off"
-            recipe_name: "{{ recipe_name }}"
-            peer_id: "{{ peer_idx }}"
-            stage: "pre_stage1"
-      set_fact: idle_off="{{lookup('niova_plugin', 'ctlrequest', recipe_params, ctlreq_cmd, wantlist=True)}}"
+         stage: "idle_off"
+      set_fact: idle_off="{{lookup('niova_ctlrequest', 'create_cmd', 'idle_off', peerid0, False, wantlist=True)}}"
 
-    # Sleep after execution of the 1st ctlreq cmd.
-    - name: "Verify stage1"
+    - name: "Get the current time for the peer in loop"
       vars:
-         ctlreq_cmd0:
-            cmd: "current_time"
-            recipe_name: "{{ recipe_name }}"
-            peer_id: "{{ peer_idx }}"
-            stage: "stage1"
-            index: "{{ item }}"
-            sleep_after: 2
-         ctlreq_cmd1:
-            cmd: "current_time"
-            recipe_name: "{{ recipe_name }}"
-            peer_id: "{{ peer_idx }}"
-            stage: "stage1"
-            index: "{{ item + 1 }}"
-         raft_key:
-            - "/system_info/current_time"
+        stage: "stage1"
+        raft_key:
+           - "/system_info/current_time"
+        iter_info:
+           iter: 5
+           sleep_after_cmd: 2
       set_fact:
-         curr_time0="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd0, raft_key, wantlist=True)}}"
-         curr_time1="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd1, raft_key, wantlist=True)}}"
-      failed_when: curr_time0[0] >= curr_time1[0]
-      loop: "{{ range(0, 5)| list }}"
+          curr_time_arr="{{ lookup('niova_ctlrequest', 'lookup', 'current_time', peerid0, raft_key, iter_info, wantlist=True)}}"
+
+    - name: "verify stage1, current time should increament in each iteration"
+      vars:
+        orig_time: "{{curr_time_arr[item]}}"
+        curr_time: "{{curr_time_arr[item + 1]}}"
+      debug:
+         msg: "Compare time stamp: {{ orig_time }} with {{ curr_time }}"
+      failed_when: orig_time >= curr_time
+      loop: "{{ range(0, 4)| list }}"
