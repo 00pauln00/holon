@@ -5,27 +5,13 @@
   vars:
      recipe_name: "term_ticker"
      parent: "basic_process_ctl"
-     peer_idx: 0
+     peer_idx0: 0
+     raft_value: []
   tasks:
-    - name: "Verify stage 0 rule table"
+    - name: "Verify stage 0"
       vars:
-         ctlreq_cmd0:
-            cmd: "get_all"
-            recipe_name: "{{ recipe_name }}"
-            peer_id: "{{ peer_idx }}"
-            stage: "stage0"
-            index: "{{ item }}"
-            sleep_after: 2
-         ctlreq_cmd1:
-            cmd: "get_all"
-            recipe_name: "{{ recipe_name }}"
-            peer_id: "{{ peer_idx }}"
-            stage: "stage0"
-            index: "{{ item + 1 }}"
-            sleep_after: 2
-         term_key:
-            - "/raft_root_entry/*/term"
-         raft_keys:
+        stage: "stage0"
+        raft_keys:
             - "/raft_root_entry/*/term"
             - "/raft_root_entry/*/voted-for-uuid"
             - "/raft_root_entry/*/leader-uuid"
@@ -36,68 +22,71 @@
             - "/raft_root_entry/*/follower-reason"
             - "/raft_root_entry/*/client-requests"
             - "/raft_root_entry/*/peer-uuid"
+        iter_info:
+           iter: 5
+           sleep_after_cmd: 3
       set_fact:
-          raft_value="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd0, raft_keys, wantlist=True)}}"
-          term="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd1, term_key, wantlist=True)}}"
+          raft_value="{{ lookup('niova_ctlrequest', 'lookup', 'get_all', peer_idx0, raft_keys, iter_info, wantlist=True)}}"
+
+    - name: "verify stage0, current term should increament in each iteration"
+      vars:
+        orig_values: "{{raft_value[item]}}"
+        curr_values: "{{raft_value[item + 1]}}"
+      debug:
+         msg: "Compare term value: {{ orig_values}} with {{ curr_values }}"
       failed_when: >
-        (term[0] < raft_value[0]) or
-        (raft_value[1] != raft_value[9]) or
-        (raft_value[2] != "null") or
-        (raft_value[3] != "-1") or
-        (raft_value[4] != "-1") or
-        (raft_value[5] != "0") or
-        (raft_value[6] != "candidate") or
-        (raft_value[7] != "none") or
-        (raft_value[8] != "deny-leader-not-established")
-      loop: "{{ range(0, 5)| list }}"
+        (orig_values[0] >= curr_values[0]) or
+        (orig_values[1] != orig_values[9]) or
+        (orig_values[2] != "null") or
+        (orig_values[3] != "-1") or
+        (orig_values[4] != "-1") or
+        (orig_values[5] != "0") or
+        (orig_values[6] != "candidate") or
+        (orig_values[7] != "none") or
+        (orig_values[8] != "deny-leader-not-established")
+      loop: "{{ range(0, 4)| list }}"
 
     - name: "Copy get_all before killing process"
       vars:
-         before_reboot_ctlreq_cmd:
-            cmd: "get_all"
-            wait_for_ofile: True
-            recipe_name: "{{ recipe_name }}"
-            peer_id: "{{ peer_idx }}"
-            stage: "stage1_before_reboot"
-      set_fact: raft_json="{{lookup('niova_plugin', 'ctlrequest', recipe_params, before_reboot_ctlreq_cmd, wantlist=True)}}"
+         stage: "stage1"
+      set_fact: get_all="{{lookup('niova_ctlrequest', 'create_cmd', 'get_all', peer_idx0, True, wantlist=True)}}"
 
     - name: "Kill the process"
-      set_fact: kill_peer0="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx, "kill", wantlist=True)}}"
+      set_fact: server0="{{lookup('niova_raftprocess', 'kill', peer_idx0, wantlist=True)}}"
 
     - name: "Restart the process"
-      set_fact: start_peer0="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx, "start", wantlist=True)}}"
+      set_fact: server0="{{lookup('niova_raftprocess', 'start', peer_idx0, wantlist=True)}}"
 
     - name: "Idle off cmd"
       vars:
-        ctlreq_cmd:
-           cmd: "idle_off"
-           wait_for_ofile: True
-           recipe_name: "{{ recipe_name }}"
-           peer_id: "{{ peer_idx }}"
-           stage: "pre_stage1"
-      set_fact: idle_off="{{lookup('niova_plugin', 'ctlrequest', recipe_params, ctlreq_cmd, wantlist=True)}}"
+         stage: "idle_off"
+      set_fact: idle_off="{{lookup('niova_ctlrequest', 'create_cmd', 'idle_off', peer_idx0, False, wantlist=True)}}"
 
-    - name: "Verify Stage1 rule table"
+    - name: "Verify Stage1 rule table for before_reboot"
       vars:
-         before_reboot_ctlreq_cmd:
-            cmd: "get_all"
-            wait_for_ofile: True
-            recipe_name: "{{ recipe_name }}"
-            peer_id: "{{ peer_idx }}"
-            stage: "stage1_before_reboot"
-            sleep_after: 4
-         after_reboot_ctlreq_cmd:
-            cmd: "get_all"
-            wait_for_ofile: True
-            recipe_name: "{{ recipe_name }}"
-            peer_id: "{{ peer_idx }}"
-            stage: "stage1_after_reboot"
-         raft_key:
+         stage: "stage1_before_reboot"
+         raft_key0:
             - "/raft_root_entry/*/term"
       set_fact: 
-          before_reboot="{{lookup('niova_plugin', 'lookup_create', recipe_params, before_reboot_ctlreq_cmd, raft_key, wantlist=True)}}"
-          after_reboot="{{lookup('niova_plugin', 'lookup_create', recipe_params, after_reboot_ctlreq_cmd, raft_key, wantlist=True)}}"
+          before_reboot="{{lookup('niova_ctlrequest', 'lookup', 'get_all', peer_idx0, raft_key0, wantlist=True)}}"
 
-      failed_when:
-        before_reboot[0] >= after_reboot[0]
-        
+    - name: "wait for 5 sec"
+      wait_for:
+        timeout: 5
+
+    - name: "Verify Stage1 rule table for after_reboot"
+      vars:
+         stage: "stage1_after_reboot"
+         raft_key1:
+            - "/raft_root_entry/*/term"
+      set_fact:
+          after_reboot="{{lookup('niova_ctlrequest', 'lookup', 'get_all', peer_idx0, raft_key1, wantlist=True)}}"
+
+    - name: "verify stage1, term value should increment after reboot"
+      vars:
+        orig_term: "{{before_reboot}}"
+        curr_term: "{{after_reboot}}"
+      debug:
+         msg: "Compare term value: {{ orig_term }} with {{ curr_term }}"
+      failed_when: orig_term >= curr_term
+
