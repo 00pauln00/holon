@@ -18,7 +18,7 @@
         npeers: "{{ npeers }}"
         port: "{{ port }}"
         client_port: "{{ client_port }}"
-    set_fact: raft_conf="{{lookup('niova_plugin', 'raftconfigure', raft_param, config_params, wantlist=True)}}"
+    set_fact: raft_conf="{{lookup('niova_raftconfig', config_params, wantlist=True)}}"
 
   - name: "Show the values"
     debug:
