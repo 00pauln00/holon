@@ -7,35 +7,28 @@
      recipe_name: "term_catch_up"
      peer_idx0: 0
      peer_idx1: 1
+     iterations: 5
   
   #Start Peer1
   tasks:
     - name: "Start peer 1"
-      set_fact: raft_json="{{lookup('niova_plugin', 'raftprocess', recipe_params, peer_idx1, "start", wantlist=True)}}"
+      set_fact: server0="{{lookup('niova_raftprocess', 'start', peer_idx1, wantlist=True)}}"
 
     #Copy get_term in peer1 and in peer0, Pause and Resume peer0 in loop and compare its term catches up peer1 term
     - name: "Pause peer0, copy get_all for peer1, resume peer0, copy get_all for peer0, verify stage 1"
       vars:
-          ctlreq_cmd0:
-               cmd: "get_term"
-               recipe_name: "{{ recipe_name }}"
-               peer_id: "{{ peer_idx0 }}"
-               stage: "peer0_stage1"
-               index: "{{ item }}"
-               sleep_after: 2
-          ctlreq_cmd1:
-               cmd: "get_term"
-               recipe_name: "{{ recipe_name }}"
-               peer_id: "{{ peer_idx1 }}"
-               stage: "peer1_stage1"
-               index: "{{ item }}"
-               sleep_after: 2
-          raft_key:
-             - "/raft_root_entry/*/term"
+        stage: "stage1"
+        iter_info:
+          iter: 1
+          sleep_after_cmd: 2
+        term_key:
+          - "/raft_root_entry/*/term"
       set_fact:
-          raft_json_pause="{{lookup('niova_plugin', 'raftprocess', recipe_params, 0, "pause", wantlist=True)}}"
-          peer1_term="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd1, raft_key, wantlist=True)}}"
-          raft_json_resume="{{lookup('niova_plugin', 'raftprocess', recipe_params, 0, "resume", wantlist=True)}}"
-          peer0_term="{{lookup('niova_plugin', 'lookup_create', recipe_params, ctlreq_cmd0, raft_key, wantlist=True)}}"
-      failed_when: peer1_term[0] >= peer0_term[0]
-      loop: "{{ range(0, 5)| list }}"
+         pause_peer0="{{lookup('niova_raftprocess', 'pause', peer_idx0, wantlist=True)}}"
+         peer1_term="{{lookup('niova_ctlrequest', 'lookup', 'get_term', peer_idx1, term_key, iter_info, wantlist=True)}}"
+         resume_peer0="{{lookup('niova_raftprocess', 'resume', peer_idx0, wantlist=True)}}"
+         peer0_term="{{lookup('niova_ctlrequest', 'lookup', 'get_term', peer_idx0, term_key, wantlist=True)}}"
+      failed_when: peer1_term > peer0_term
+      loop: "{{ range(0, iterations)| list }}"
+      loop_control:
+        pause: 2

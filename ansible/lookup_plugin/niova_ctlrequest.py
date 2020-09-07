@@ -47,7 +47,7 @@ def niova_ctlreq_cmd_create(recipe_conf, ctlreq_dict):
                         input_base).Apply()
     else:
         ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                        input_base).Apply_and_Wait(wait_for_ofile)
+                        input_base).Apply_and_Wait(False)
 
     ctlreq_dict_list = []
     ctlreq_dict_list.append(ctlreqobj.__dict__)
