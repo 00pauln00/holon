@@ -46,10 +46,13 @@
         (orig_values[8] != "deny-leader-not-established")
       loop: "{{ range(0, 4)| list }}"
 
-    - name: "Copy get_all before killing process"
+    - name: "Get the term value before peer0 reboot"
       vars:
-         stage: "stage1"
-      set_fact: get_all="{{lookup('niova_ctlrequest', 'create_cmd', 'get_all', peer_idx0, True, wantlist=True)}}"
+         stage: "stage1_before_reboot"
+         raft_key0:
+            - "/raft_root_entry/*/term"
+      set_fact:
+          before_reboot="{{lookup('niova_ctlrequest', 'lookup', 'get_all', peer_idx0, raft_key0, wantlist=True)}}"
 
     - name: "Kill the process"
       set_fact: server0="{{lookup('niova_raftprocess', 'kill', peer_idx0, wantlist=True)}}"
@@ -62,19 +65,11 @@
          stage: "idle_off"
       set_fact: idle_off="{{lookup('niova_ctlrequest', 'create_cmd', 'idle_off', peer_idx0, False, wantlist=True)}}"
 
-    - name: "Verify Stage1 rule table for before_reboot"
-      vars:
-         stage: "stage1_before_reboot"
-         raft_key0:
-            - "/raft_root_entry/*/term"
-      set_fact: 
-          before_reboot="{{lookup('niova_ctlrequest', 'lookup', 'get_all', peer_idx0, raft_key0, wantlist=True)}}"
-
     - name: "wait for 5 sec"
       wait_for:
         timeout: 5
 
-    - name: "Verify Stage1 rule table for after_reboot"
+    - name: "Get the term value after reboot"
       vars:
          stage: "stage1_after_reboot"
          raft_key1:
@@ -83,10 +78,7 @@
           after_reboot="{{lookup('niova_ctlrequest', 'lookup', 'get_all', peer_idx0, raft_key1, wantlist=True)}}"
 
     - name: "verify stage1, term value should increment after reboot"
-      vars:
-        orig_term: "{{before_reboot}}"
-        curr_term: "{{after_reboot}}"
       debug:
-         msg: "Compare term value: {{ orig_term }} with {{ curr_term }}"
-      failed_when: orig_term >= curr_term
+         msg: "Compare term value: {{ before_reboot }} with {{ after_reboot }}"
+      failed_when: before_reboot >= after_reboot
 
