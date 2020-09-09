@@ -68,29 +68,33 @@ def niova_ctlreq_cmd_create(recipe_conf, ctlreq_dict):
 
 def niova_raft_lookup_values(ctlreq_dict, raft_key_list):
 
-    raft_values = []
+    raft_values_dict = {}
     out_fpath = ctlreq_dict['output_fpath']
 
     # Read the output file and lookup for the raft key value
     with open(out_fpath, 'r') as json_file:
         raft_dict = json.load(json_file)
 
+    '''
+    Lookup each key from the raft_key_list.
+    The output would be stored in another dictionary with key as
+    last two keys from the complete key path.
+    '''
     for key in raft_key_list:
         value = dpath.util.values(raft_dict, key)
         if value[0] == "":
             value[0] = "null"
-        raft_values.append(str(value[0]))
+        output_key = "/%s/%s" % (os.path.basename(os.path.dirname(key)), os.path.basename(key))
+        raft_values_dict[output_key] = value[0]
 
-    if len(raft_key_list) == 1:
-        return raft_values[0]
-    else:
-        return raft_values
+    return raft_values_dict
 
 def niova_raft_lookup_ctlreq(recipe_conf, ctlreq_cmd_dict, raft_keys):
 
     ctlreq_obj_dict = niova_ctlreq_cmd_create(recipe_conf, ctlreq_cmd_dict)
     raft_values = niova_raft_lookup_values(ctlreq_obj_dict, raft_keys)
 
+    print(raft_values)
     return raft_values
 
 class LookupModule(LookupBase):
