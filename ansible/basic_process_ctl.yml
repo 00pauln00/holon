@@ -5,7 +5,6 @@
   vars:
      recipe_name: "basic_process_ctl"
      parent: "basic_ctl_int"
-     peerid0: 0
      iterations: 5
      curr_time_arr: []
 
@@ -14,9 +13,9 @@
       vars:
         stage: "stage0"
       set_fact:
-         pause_peer0="{{lookup('niova_raftprocess', 'pause', peerid0, wantlist=True)}}"
-         curr_time_peer0="{{lookup('niova_ctlrequest', 'create_cmd', 'current_time', peerid0, False, wantlist=True)}}"
-         resume_peer0="{{lookup('niova_raftprocess', 'resume', peerid0, wantlist=True)}}"
+         pause_peer0="{{lookup('niova_raftprocess', 'pause', 0, wantlist=True)}}"
+         curr_time_peer0="{{lookup('niova_ctlrequest', 'create_cmd', 'current_time', 0, False, wantlist=True)}}"
+         resume_peer0="{{lookup('niova_raftprocess', 'resume', 0, wantlist=True)}}"
       loop: "{{ range(0, iterations)| list }}"
       loop_control:
         pause: 5
@@ -30,12 +29,12 @@
            iter: 5
            sleep_after_cmd: 2
       set_fact:
-          curr_time_arr="{{ lookup('niova_ctlrequest', 'lookup', 'current_time', peerid0, raft_key, iter_info, wantlist=True)}}"
+          curr_time_arr="{{ lookup('niova_ctlrequest', 'lookup', 'current_time', 0, raft_key, iter_info, wantlist=True)}}"
 
     - name: "verify stage1, current time should increament in each iteration"
       vars:
-        orig_time: "{{curr_time_arr[item]}}"
-        curr_time: "{{curr_time_arr[item + 1]}}"
+        orig_time: "{{curr_time_arr[item]['/system_info/current_time']}}"
+        curr_time: "{{curr_time_arr[item + 1]['/system_info/current_time']}}"
       debug:
          msg: "Compare time stamp: {{ orig_time }} with {{ curr_time }}"
       failed_when: orig_time >= curr_time

@@ -5,28 +5,27 @@
   vars:
      recipe_name: "term_ticker"
      parent: "basic_process_ctl"
-     peer_idx0: 0
      raft_value: []
   tasks:
     - name: "Verify stage 0"
       vars:
         stage: "stage0"
         raft_keys:
-            - "/raft_root_entry/*/term"
-            - "/raft_root_entry/*/voted-for-uuid"
-            - "/raft_root_entry/*/leader-uuid"
-            - "/raft_root_entry/*/commit-idx"
-            - "/raft_root_entry/*/last-applied"
-            - "/raft_root_entry/*/last-applied-cumulative-crc"
-            - "/raft_root_entry/*/state"
-            - "/raft_root_entry/*/follower-reason"
-            - "/raft_root_entry/*/client-requests"
-            - "/raft_root_entry/*/peer-uuid"
+            - "/raft_root_entry/0/term"
+            - "/raft_root_entry/0/voted-for-uuid"
+            - "/raft_root_entry/0/leader-uuid"
+            - "/raft_root_entry/0/commit-idx"
+            - "/raft_root_entry/0/last-applied"
+            - "/raft_root_entry/0/last-applied-cumulative-crc"
+            - "/raft_root_entry/0/state"
+            - "/raft_root_entry/0/follower-reason"
+            - "/raft_root_entry/0/client-requests"
+            - "/raft_root_entry/0/peer-uuid"
         iter_info:
            iter: 5
            sleep_after_cmd: 3
       set_fact:
-          raft_value="{{ lookup('niova_ctlrequest', 'lookup', 'get_all', peer_idx0, raft_keys, iter_info, wantlist=True)}}"
+          raft_value="{{ lookup('niova_ctlrequest', 'lookup', 'get_all', 0, raft_keys, iter_info, wantlist=True)}}"
 
     - name: "verify stage0, current term should increament in each iteration"
       vars:
@@ -35,35 +34,35 @@
       debug:
          msg: "Compare term value: {{ orig_values}} with {{ curr_values }}"
       failed_when: >
-        (orig_values[0] >= curr_values[0]) or
-        (orig_values[1] != orig_values[9]) or
-        (orig_values[2] != "null") or
-        (orig_values[3] != "-1") or
-        (orig_values[4] != "-1") or
-        (orig_values[5] != "0") or
-        (orig_values[6] != "candidate") or
-        (orig_values[7] != "none") or
-        (orig_values[8] != "deny-leader-not-established")
+        (orig_values["/0/term"] >= curr_values["/0/term"]) or
+        (orig_values["/0/voted-for-uuid"] != orig_values["/0/peer-uuid"]) or
+        (orig_values["/0/leader-uuid"] != "null") or
+        (orig_values["/0/commit-idx"] != -1) or
+        (orig_values["/0/last-applied"] != -1) or
+        (orig_values["/0/last-applied-cumulative-crc"] != 0) or
+        (orig_values["/0/state"] != "candidate") or
+        (orig_values["/0/follower-reason"] != "none") or
+        (orig_values["/0/client-requests"] != "deny-leader-not-established")
       loop: "{{ range(0, 4)| list }}"
 
     - name: "Get the term value before peer0 reboot"
       vars:
          stage: "stage1_before_reboot"
          raft_key0:
-            - "/raft_root_entry/*/term"
+            - "/raft_root_entry/0/term"
       set_fact:
-          before_reboot="{{lookup('niova_ctlrequest', 'lookup', 'get_all', peer_idx0, raft_key0, wantlist=True)}}"
+          before_reboot="{{lookup('niova_ctlrequest', 'lookup', 'get_all', 0, raft_key0, wantlist=True)}}"
 
     - name: "Kill the process"
-      set_fact: server0="{{lookup('niova_raftprocess', 'kill', peer_idx0, wantlist=True)}}"
+      set_fact: server0="{{lookup('niova_raftprocess', 'kill', 0, wantlist=True)}}"
 
     - name: "Restart the process"
-      set_fact: server0="{{lookup('niova_raftprocess', 'start', peer_idx0, wantlist=True)}}"
+      set_fact: server0="{{lookup('niova_raftprocess', 'start', 0, wantlist=True)}}"
 
     - name: "Idle off cmd"
       vars:
          stage: "idle_off"
-      set_fact: idle_off="{{lookup('niova_ctlrequest', 'create_cmd', 'idle_off', peer_idx0, False, wantlist=True)}}"
+      set_fact: idle_off="{{lookup('niova_ctlrequest', 'create_cmd', 'idle_off', 0, False, wantlist=True)}}"
 
     - name: "wait for 5 sec"
       wait_for:
@@ -73,12 +72,11 @@
       vars:
          stage: "stage1_after_reboot"
          raft_key1:
-            - "/raft_root_entry/*/term"
+            - "/raft_root_entry/0/term"
       set_fact:
-          after_reboot="{{lookup('niova_ctlrequest', 'lookup', 'get_all', peer_idx0, raft_key1, wantlist=True)}}"
+          after_reboot="{{lookup('niova_ctlrequest', 'lookup', 'get_all', 0, raft_key1, wantlist=True)}}"
 
     - name: "verify stage1, term value should increment after reboot"
       debug:
-         msg: "Compare term value: {{ before_reboot }} with {{ after_reboot }}"
-      failed_when: before_reboot >= after_reboot
-
+         msg: "Compare term value: {{ before_reboot['/0/term'] }} with {{ after_reboot['/0/term'] }}"
+      failed_when: before_reboot["/0/term"] >= after_reboot["/0/term"]
