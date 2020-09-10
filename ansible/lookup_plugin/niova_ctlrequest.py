@@ -41,13 +41,17 @@ def niova_ctlreq_cmd_create(recipe_conf, ctlreq_dict):
     if 'wait_for_ofile' in ctlreq_dict:
         wait_for_ofile = ctlreq_dict['wait_for_ofile']
 
-    # Prepare the ctlreq object
-    if wait_for_ofile == False:
-        ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                        input_base).Apply()
+    if cmd == "set_leader_uuid":
+       ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
+                    input_base).set_leader(ctlreq_dict['set_leader_uuid'])
     else:
-        ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                        input_base).Apply_and_Wait(False)
+        # Prepare the ctlreq object
+        if wait_for_ofile == False:
+            ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
+                            input_base).Apply()
+        else:
+            ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
+                            input_base).Apply_and_Wait(False)
 
     ctlreq_dict_list = []
     ctlreq_dict_list.append(ctlreqobj.__dict__)
@@ -81,6 +85,7 @@ def niova_raft_lookup_values(ctlreq_dict, raft_key_list):
     last two keys from the complete key path.
     '''
     for key in raft_key_list:
+        print(key)
         value = dpath.util.values(raft_dict, key)
         if value[0] == "":
             value[0] = "null"
@@ -96,6 +101,11 @@ def niova_raft_lookup_ctlreq(recipe_conf, ctlreq_cmd_dict, raft_keys):
 
     print(raft_values)
     return raft_values
+
+def niova_set_leader(recipe_conf, ctlreq_dict):
+
+    ctlreq_obj_dict = niova_ctlreq_cmd_create(recipe_conf, ctlreq_dict)
+    return ctlreq_obj_dict
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
@@ -121,6 +131,9 @@ class LookupModule(LookupBase):
         if operation == "create_cmd":
             ctlreq_cmd_dict['wait_for_ofile'] = terms[3]
             result = niova_ctlreq_cmd_create(recipe_conf, ctlreq_cmd_dict)
+        elif operation == "set_leader":
+            ctlreq_cmd_dict['set_leader_uuid'] = terms[3]
+            result = niova_set_leader(recipe_conf, ctlreq_cmd_dict)
         else:
             raft_key = terms[3]
             '''
@@ -150,3 +163,6 @@ class LookupModule(LookupBase):
                 return result[0]
             else:
                 return result
+
+            return result
+

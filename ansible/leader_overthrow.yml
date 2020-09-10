@@ -1,0 +1,157 @@
+- import_playbook: basic_leader_election.yml
+- name: "leader_overthrow"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "leader_overthrow"
+     parent: "basic_leader_election"
+     follower_idx: []
+     follower_uuid: []
+
+  tasks:
+    - name: "Get following raft key values for comparison"
+      vars:
+         stage: "stage0_get_all"
+         raft_keys:
+            - "/raft_root_entry/0/leader-uuid"
+            - "/raft_root_entry/0/term"
+            - "/raft_root_entry/0/commit-idx"
+            - "/raft_root_entry/0/newest-entry-idx"
+            - "/raft_root_entry/0/newest-entry-term"
+            - "/raft_root_entry/0/newest-entry-crc"
+            - "/raft_root_entry/0/newest-entry-data-size"
+            - "/raft_root_entry/0/state"
+            - "/raft_root_entry/0/last-applied"
+            - "/raft_root_entry/0/last-applied-cumulative-crc"
+            - "/raft_root_entry/0/peer-uuid"
+      set_fact:
+          stage0_values="{{lookup('niova_ctlrequest', 'lookup', 'get_all', item, raft_keys, wantlist=True)}}"   
+      loop: "{{ range(0, 3) | list}}"  
+      loop_control:
+          pause: 2
+
+    - name: "Get the peer array from recipe json"
+      set_fact:
+        peer_arr="{{ raft_conf | json_query('peer_uuid_dict')}}"    
+
+    - name: Display peer_arr
+      debug:
+        msg: "{{ peer_arr }}"
+
+    - name: "Get leader index from the peer array"
+      set_fact:
+        leader_idx: "{{ item.key }}"
+      when: stage0_values["/0/leader-uuid"] == item.value
+      with_dict: "{{ peer_arr }}"    
+
+    - name: "Get follower indexes and uuids"
+      set_fact:
+         follower_idx: "{{ follower_idx + [item.key] }}"
+         follower_uuid: "{{ follower_uuid + [item.value] }}"
+      when: stage0_values["/0/leader-uuid"] != item.value
+      with_dict: "{{ peer_arr }}"
+
+    - name: "Display value for followers"
+      debug:
+        msg:
+          - "Leader idx: {{ leader_idx }}"
+          - "Follower ids: {{ follower_idx }}"
+          - "Follower uuid: {{ follower_uuid }}"
+
+    - name: "Copy rcv_false on all peers"
+      vars:
+         stage: "stage1_rcv_false"
+      set_fact: recv_false="{{lookup('niova_ctlrequest', 'create_cmd', 'rcv_false', item, False, wantlist=True)}}"
+      loop: "{{ range(0, 3) | list}}"
+      loop_control:
+          pause: 2
+
+    - name: "Copy get_all on all peers to verify net_rcv set to false"
+      vars:
+         stage: "stage1_get_all"
+         raft_keys:
+             - "/ctl_svc_nodes/*/net_recv_enabled"
+             - "/raft_root_entry/0/leader-uuid"
+             - "/raft_root_entry/0/state"
+             - "/raft_root_entry/0/client-requests"
+             - "/raft_root_entry/0/term"
+      set_fact:
+          net_rcv="{{lookup('niova_ctlrequest', 'lookup', 'get_all', item, raft_keys, wantlist=True)}}"
+      failed_when: >
+           (net_rcv["/*/net_recv_enabled"] != False) or
+           (net_rcv["/0/leader-uuid"] != stage0_values["/0/leader-uuid"]) or
+           ((net_rcv["/0/state"] != "leader") and
+           (net_rcv["/0/state"] != "candidate")) or
+           ((net_rcv["/0/client-requests"] != "deny-may-be-deposed") and
+           (net_rcv["/0/client-requests"] != "deny-leader-not-established")) or
+           ((net_rcv["/0/term"] != stage0_values["/0/term"]) and
+           (net_rcv["/0/term"] <= stage0_values["/0/term"]))
+      loop: "{{ range(0, 3) | list}}"
+      loop_control:
+          pause: 2
+
+    - name: "Copy set_leader_uuid on all peers"
+      vars:
+         stage: "stage2_set_leader"
+      set_fact: set_leader_id="{{lookup('niova_ctlrequest', 'set_leader', 'set_leader_uuid', item, follower_uuid[0], wantlist=True)}}"
+      loop: "{{ range(0, 3) | list}}"
+      loop_control:
+          pause: 2
+
+    - name: "Verify set_leader"
+      vars:
+         stage: "stage2_set_leader"
+         raft_keys:
+            - "/raft_root_entry/0/leader-uuid"
+            - "/raft_root_entry/0/commit-idx"
+            - "/raft_root_entry/0/last-applied"
+            - "/raft_root_entry/0/last-applied-cumulative-crc"
+            - "/raft_root_entry/0/term"
+            - "/raft_root_entry/0/newest-entry-term"
+            - "/raft_root_entry/0/newest-entry-crc"
+            - "/raft_root_entry/0/newest-entry-data-size"
+            - "/raft_root_entry/0/newest-entry-idx"
+            - "/raft_root_entry/0/state"
+            - "/raft_root_entry/0/client-requests"
+            - "/raft_root_entry/0/voted-for-uuid"
+            - "/raft_root_entry/0/peer-uuid"
+      set_fact:
+          set_leader="{{lookup('niova_ctlrequest', 'lookup', 'get_all', item, raft_keys, wantlist=True)}}"
+      failed_when: >
+        (set_leader["/0/leader-uuid"] != stage0_values["/0/leader-uuid"]) or
+        (set_leader["/0/commit-idx"] != stage0_values["/0/commit-idx"]) or
+        (set_leader["/0/last-applied"] != stage0_values["/0/last-applied"]) or
+        (set_leader["/0/last-applied-cumulative-crc"] != stage0_values["/0/last-applied-cumulative-crc"]) or
+        (set_leader["/0/term"] <= stage0_values["/0/term"]) or
+        (set_leader["/0/newest-entry-term"] != stage0_values["/0/newest-entry-term"]) or
+        (set_leader["/0/newest-entry-crc"] != stage0_values["/0/newest-entry-crc"]) or
+        (set_leader["/0/newest-entry-data-size"] != stage0_values["/0/newest-entry-data-size"]) or
+        (set_leader["/0/newest-entry-idx"] != stage0_values["/0/newest-entry-idx"]) or
+        (set_leader["/0/state"] != "candidate") or
+        (set_leader["/0/client-requests"] != "deny-leader-not-established") or
+        (set_leader["/0/voted-for-uuid"] != set_leader["/0/peer-uuid"]) 
+      loop: "{{ range(0, 3) | list}}"
+      loop_control:
+          pause: 2
+
+    - name: "Copy rcv_true on  leader-to-be"
+      vars:
+         stage: "stage3_rcv_true"
+         peer_id: "{{ set_leader_id }}"
+      set_fact: recv_true="{{lookup('niova_ctlrequest', 'create_cmd', 'rcv_true', follower_idx[0], False, wantlist=True)}}"
+
+    - name: "Verify new leader is elected successfully"
+      vars:
+         stage: "stage4_get_all"
+         raft_key:
+            - "/raft_root_entry/0/leader-uuid"
+            - "/raft_root_entry/0/voted-for-uuid"
+      set_fact:
+          new_leader_election="{{lookup('niova_ctlrequest', 'lookup', 'get_all', follower_idx[0], raft_key, wantlist=True)}}"
+      until: new_leader_election["/0/leader-uuid"] == new_leader_election["/0/voted-for-uuid"]
+      retries: 10
+      delay: 2
+      ignore_errors: yes
+      loop: "{{ range(0, 5) | list}}"
+      loop_control:
+          pause: 2
