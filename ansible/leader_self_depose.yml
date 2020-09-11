@@ -1,0 +1,143 @@
+- import_playbook: basic_leader_election.yml
+- name: "leader_self_depose"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "leader_overthrow"
+     parent: "basic_leader_election"
+     follower_idx: []
+     follower_uuid: []
+     leader_info: []
+     case1: False
+     case2: False
+     case3: False
+
+
+  tasks:
+    - name: "Get following raft key values for comparison"
+      vars:
+         stage: "stage0_get_all"
+         raft_keys:
+            - "/raft_root_entry/0/leader-uuid"
+            - "/raft_root_entry/0/term"
+            - "/raft_root_entry/0/commit-idx"
+            - "/raft_root_entry/0/newest-entry-idx"
+            - "/raft_root_entry/0/newest-entry-term"
+            - "/raft_root_entry/0/newest-entry-crc"
+            - "/raft_root_entry/0/newest-entry-data-size"
+            - "/raft_root_entry/0/state"
+            - "/raft_root_entry/0/last-applied"
+            - "/raft_root_entry/0/last-applied-cumulative-crc"
+            - "/raft_root_entry/0/peer-uuid"
+      set_fact:
+          stage0_values="{{lookup('niova_ctlrequest', 'lookup', 'get_all', item, raft_keys, wantlist=True)}}"   
+      loop: "{{ range(0, 3) | list}}"  
+      loop_control:
+          pause: 2
+
+    - name: "Get the peer array from recipe json"
+      set_fact:
+        peer_arr="{{ raft_conf | json_query('peer_uuid_dict')}}"    
+
+    - name: "Get leader index from the peer array"
+      set_fact:
+        leader_idx: "{{ item.key }}"
+      when: stage0_values["/0/leader-uuid"] == item.value
+      with_dict: "{{ peer_arr }}"    
+
+    - name: "Get follower indexes and uuids"
+      set_fact:
+         follower_idx: "{{ follower_idx + [item.key] }}"
+         follower_uuid: "{{ follower_uuid + [item.value] }}"
+      when: stage0_values["/0/leader-uuid"] != item.value
+      with_dict: "{{ peer_arr }}"
+
+    - name: "Display value for leader and followers"
+      debug:
+        msg:
+          - "Leader idx: {{ leader_idx }}"
+          - "Follower ids: {{ follower_idx }}"
+          - "Follower uuid: {{ follower_uuid }}"
+
+    - name: "Now get the follower-stats"
+      vars:
+        stage: "get_follower"
+        follower_key:
+           - "/raft_root_entry/0/follower-stats"
+      set_fact:
+          follower_before_pause="{{lookup('niova_ctlrequest', 'lookup', 'get_all', leader_idx, follower_key, wantlist=True)}}"
+
+    - name: "Get the count of followers to pause"
+      vars:
+      set_fact:
+         nfollower_pause: "{{ (1, 2) | random | int}}"
+
+    - name: "Print the follower_stat"
+      debug:
+        msg:
+         - "{{ follower_before_pause }}"
+         - "{{ nfollower_pause }}"
+
+    - name: "Pause number of followers in series"
+      set_fact:
+         pause_peer="{{lookup('niova_raftprocess', 'pause', follower_idx[item], wantlist=True)}}"
+      loop: "{{ range(0, 2) | list}}" 
+
+    - name: "Wait for 5sec"
+      wait_for:
+         timeout: 5
+ 
+    - name: "Observe the leader parameters"
+      vars:
+         stage: "stage0"
+         raft_keys:
+            - "/raft_root_entry/0/leader-uuid"
+            - "/raft_root_entry/0/follower-stats"
+            - "/raft_root_entry/*/client-requests"
+      set_fact:
+         follower_after_pause="{{ lookup('niova_ctlrequest', 'lookup', 'get_all', leader_idx, raft_keys, wantlist=True)}}"
+      failed_when: >
+          follower_after_pause['/*/client-requests'] != "deny-may-be-deposed"
+
+    - name: "Print before and after pause"
+      debug:
+         msg:
+           - "{{ follower_before_pause}}"
+           - "{{ follower_after_pause}}"
+
+    - name: "Verify follower parameters"
+      set_fact:
+        before_pause_lack: "{{follower_before_pause['/0/follower-stats'][item]['last-ack']}}"
+        after_pause_lack: "{{follower_after_pause['/0/follower-stats'][item]['last-ack']}}"
+      failed_when: >
+        after_pause_lack != before_pause_lack
+      loop: "{{ range(0, follower_idx | length) | list}}"
+
+    - name: "Resume the followers one at a time and verify stages"
+      vars:
+        resume_peer: "{{ lookup('niova_raftprocess', 'resume', follower_idx[item], 5, wantlist=True)}}"
+        stage: "stage1"
+        raft_keys:
+          - "/raft_root_entry/0/leader-uuid"
+          - "/raft_root_entry/0/peer-uuid"
+          - "/raft_root_entry/0/newest-entry-term"
+        leader_info: "{{ lookup('niova_ctlrequest', 'lookup', 'get_all', leader_idx, raft_keys, wantlist=True)}}"
+
+      set_fact:
+         case1: True
+      when: leader_info['/0/leader-uuid'] == follower_idx[item]
+      set_fact:
+         case3: True
+      when: leader_info['/0/leader-uuid'] == leader_info['/0/peer-uuid']
+      set_fact:
+          case2: True
+      when: leader_info['/0/newest-entry-term'] > 2
+      loop: "{{ range(0, 2) | list}}"
+
+
+    - name: "Print which case occured"
+      debug:
+        msg:
+         - "Case1: {{ case1 }}"
+         - "Case2: {{ case2 }}"
+         - "Case3: {{ case3 }}"

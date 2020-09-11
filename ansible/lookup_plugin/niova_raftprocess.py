@@ -68,3 +68,7 @@ class LookupModule(LookupBase):
                 recipe_conf = json.load(json_file)
 
         niova_obj_dict = niova_raft_process_ops(recipe_conf, peer_id, proc_operation)
+        if len(terms) == 3:
+            print("sleep after the operation")
+            sleep_time = int(terms[2])
+            time.sleep(sleep_time)
