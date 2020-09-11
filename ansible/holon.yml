@@ -1,11 +1,23 @@
 - name: "Holon framework"
   hosts: localhost
   connection: local
+
+  vars_files:
+    - ./cmdline_vars.yml
+
+  vars:
+    # Default values
+    dir_path: "/tmp/holon_recipes_run"
+    port: 6000
+    npeers: 5
+    client_port: 13000
+
   tasks:
+
   - name: "Get Raft UUID"
     shell: "/usr/bin/uuid"
     register: cluster_uuid
-
+  
   - name: "Prepare parameter to pass across recipes"
     set_fact:
        raft_param:
