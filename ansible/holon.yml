@@ -5,14 +5,13 @@
   vars_files:
     - ./cmdline_vars.yml
 
-  vars:
-    # Default values
-    dir_path: "/tmp/holon_recipes_run"
-    port: 6000
-    npeers: 5
-    client_port: 13000
-
   tasks:
+  - name: "Default Values"
+    set_fact:
+      dir_path: "{{ dir_path | default('/tmp/holon_recipes_run') }}"
+      port: "{{ port | default(6000) }}"
+      npeers: "{{ npeers | default(5) }}"
+      client_port: "{{ client_port | default(13000) }}"
 
   - name: "Get Raft UUID"
     shell: "/usr/bin/uuid"
