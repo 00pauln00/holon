@@ -6,36 +6,34 @@
      recipe_name: "basic_process_ctl"
      parent: "basic_ctl_int"
      iterations: 5
-     curr_time_arr: []
+     timestamp: []
 
   tasks:
-    - name: "Pause peer 0, get current_time and resume peer 0"
+    - name: "Pause an resume peer0 in a loop"
       vars:
         stage: "stage0"
       set_fact:
          pause_peer0="{{lookup('niova_raftprocess', 'pause', 0, wantlist=True)}}"
-         curr_time_peer0="{{lookup('niova_ctlrequest', 'create_cmd', 'current_time', 0, False, wantlist=True)}}"
+         curr_time_peer0="{{lookup('niova_ctlrequest', 'apply_cmd', 0, 'current_time', False, wantlist=True)}}"
          resume_peer0="{{lookup('niova_raftprocess', 'resume', 0, wantlist=True)}}"
       loop: "{{ range(0, iterations)| list }}"
       loop_control:
         pause: 5
     
-    - name: "Get the current time for the peer in loop"
+    - name: "Get the timestamp for peer0 in a loop with gap of 2secs"
       vars:
         stage: "stage1"
-        raft_key:
-           - "/system_info/current_time"
         iter_info:
            iter: 5
            sleep_after_cmd: 2
       set_fact:
-          curr_time_arr="{{ lookup('niova_ctlrequest', 'lookup', 'current_time', 0, raft_key, iter_info, wantlist=True)}}"
+          timestamp="{{ lookup('niova_ctlrequest', 'lookup', 0, '/system_info/current_time', iter_info, wantlist=True)}}"
 
-    - name: "verify stage1, current time should increament in each iteration"
+    - name: "verify stage1: timestamp should be incremental in each iteration"
       vars:
-        orig_time: "{{curr_time_arr[item]['/system_info/current_time']}}"
-        curr_time: "{{curr_time_arr[item + 1]['/system_info/current_time']}}"
+        time1: "{{timestamp[item]['/system_info/current_time']}}"
+        time2: "{{timestamp[item + 1]['/system_info/current_time']}}"
       debug:
-         msg: "Compare time stamp: {{ orig_time }} with {{ curr_time }}"
-      failed_when: orig_time >= curr_time
+         msg: "Compare time stamp: {{ time1 }} with {{ time2 }}"
+      failed_when: time1 >= time2
       loop: "{{ range(0, (iterations - 1))| list }}"

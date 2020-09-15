@@ -1,5 +1,5 @@
 from ansible.plugins.lookup import LookupBase
-import json
+import json, re
 import os, time
 import dpath.util
 import subprocess
@@ -31,7 +31,7 @@ def niova_ctlreq_cmd_create(recipe_conf, ctlreq_dict):
 
     genericcmdobj = GenericCmds()
     app_uuid = genericcmdobj.generate_uuid()
-        
+
     inotifyobj = InotifyPath(base_dir, True)
 
     # For idle_on cmd , input_base would be PRIVATE_INIT.
@@ -42,16 +42,18 @@ def niova_ctlreq_cmd_create(recipe_conf, ctlreq_dict):
         wait_for_ofile = ctlreq_dict['wait_for_ofile']
 
     if cmd == "set_leader_uuid":
-       ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
+        print("cmd is set_leader_uuid")
+        ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
                     input_base).set_leader(ctlreq_dict['set_leader_uuid'])
     else:
+        raft_key = ctlreq_dict['raft_key']
         # Prepare the ctlreq object
         if wait_for_ofile == False:
             ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                            input_base).Apply()
+                            input_base).Apply(raft_key)
         else:
             ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                            input_base).Apply_and_Wait(False)
+                            input_base).Apply_and_Wait(raft_key, False)
 
     ctlreq_dict_list = []
     ctlreq_dict_list.append(ctlreqobj.__dict__)
@@ -85,7 +87,6 @@ def niova_raft_lookup_values(ctlreq_dict, raft_key_list):
     last two keys from the complete key path.
     '''
     for key in raft_key_list:
-        print(key)
         value = dpath.util.values(raft_dict, key)
         if value[0] == "":
             value[0] = "null"
@@ -95,6 +96,17 @@ def niova_raft_lookup_values(ctlreq_dict, raft_key_list):
     return raft_values_dict
 
 def niova_raft_lookup_ctlreq(recipe_conf, ctlreq_cmd_dict, raft_keys):
+
+    if isinstance(raft_keys, list):
+        ctlreq_cmd_dict['raft_key'] = "/.*/.*/.*/.*"
+    else:
+        single_key = re.sub('/0/', '/', raft_keys)
+        ctlreq_cmd_dict['raft_key'] = single_key
+        '''
+        If single key is passed by user, niova_raft_lookup_values expects
+        the keys are added in a list. So add the key in the list.
+        '''
+        raft_keys = [raft_keys]
 
     ctlreq_obj_dict = niova_ctlreq_cmd_create(recipe_conf, ctlreq_cmd_dict)
     raft_values = niova_raft_lookup_values(ctlreq_obj_dict, raft_keys)
@@ -118,8 +130,7 @@ class LookupModule(LookupBase):
         ctlreq_cmd_dict['stage'] = kwargs['variables']['stage']
 
         operation = terms[0]
-        ctlreq_cmd_dict['cmd'] = terms[1]
-        ctlreq_cmd_dict['peer_id'] = terms[2]
+        ctlreq_cmd_dict['peer_id'] = terms[1]
 
         raft_json_fpath = "%s/%s/%s.json" % (recipe_params['base_dir'], recipe_params['raft_uuid'], recipe_params['raft_uuid'])
 
@@ -128,25 +139,30 @@ class LookupModule(LookupBase):
             with open(raft_json_fpath, "r+", encoding="utf-8") as json_file:
                 recipe_conf = json.load(json_file)
 
-        if operation == "create_cmd":
+        if operation == "apply_cmd":
+            ctlreq_cmd_dict['cmd'] = terms[2]
             ctlreq_cmd_dict['wait_for_ofile'] = terms[3]
+            ctlreq_cmd_dict['raft_key'] = "None"
             result = niova_ctlreq_cmd_create(recipe_conf, ctlreq_cmd_dict)
         elif operation == "set_leader":
-            ctlreq_cmd_dict['set_leader_uuid'] = terms[3]
+            ctlreq_cmd_dict['cmd'] = "set_leader_uuid"
+            ctlreq_cmd_dict['set_leader_uuid'] = terms[2]
             result = niova_set_leader(recipe_conf, ctlreq_cmd_dict)
-        else:
-            raft_key = terms[3]
+        elif operation == "lookup":
+            raft_key = terms[2]
+            ctlreq_cmd_dict['cmd'] = "get_key"
             '''
             If this lookup is gonna run for number of iterations.
             '''
             iter_info = None
-            if len(terms) == 5:
-                iter_info = terms[4]
+            if len(terms) > 3 and isinstance(terms[3], dict):
+                iter_info = terms[3]
 
             result = []
             iter_cnt = 1
             sleep_sec = 0
             if iter_info != None:
+                print("Get the dictionary values: %s" % iter_info)
                 iter_cnt = int(iter_info['iter'])
                 sleep_sec = int(iter_info['sleep_after_cmd'])
 
@@ -161,8 +177,6 @@ class LookupModule(LookupBase):
             '''
             if iter_cnt == 1:
                 return result[0]
-            else:
-                return result
 
-            return result
+        return result
 

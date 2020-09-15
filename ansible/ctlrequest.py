@@ -7,15 +7,22 @@ from inotifypath import inotify_input_base
 from os import path
 from func_timeout import func_timeout, FunctionTimedOut
 
-def ctl_req_create_cmdfile_and_copy(ctlreqobj):
+def ctl_req_create_cmdfile_and_copy(ctlreqobj, raft_key):
     basicioobj = BasicIO()
     genericcmdobj = GenericCmds()
 
     o_base = os.path.basename(ctlreqobj.output_fpath)
     i_base = os.path.basename(ctlreqobj.input_fpath)
-    cmd_str = "%s\nOUTFILE /%s\n" % (ctlreqobj.ctl_cmd_dict[ctlreqobj.cmd], o_base)
 
-    logging.info("cmd_str: %s" % cmd_str)
+    if ctlreqobj.cmd == "get_key":
+        ctl_req_string = "%s %s" % (ctlreqobj.ctl_cmd_dict[ctlreqobj.cmd], raft_key)
+
+    else:
+        ctl_req_string = ctlreqobj.ctl_cmd_dict[ctlreqobj.cmd]
+
+
+    cmd_str = "%s\nOUTFILE /%s\n" % (ctl_req_string, o_base)
+
     # Before copying the cmdfile, remove the output file if it already exits.
     if os.path.exists(ctlreqobj.output_fpath):
         genericcmdobj.remove_file(ctlreqobj.output_fpath)
@@ -49,12 +56,11 @@ def ctl_req_create_cmdfile_and_copy(ctlreqobj):
 class CtlRequest:
     ctl_cmd_dict = {'idle_on':'APPLY ignore_timer_events@true\nWHERE /raft_net_info/ignore_timer_events',
         'idle_off':'APPLY ignore_timer_events@false\nWHERE /raft_net_info/ignore_timer_events',
-        'get_all':'GET /.*/.*/.*/.*',
-        'current_time':'GET /system_info/current_time',
-        'get_term':'GET /raft_root_entry/term',
         'rcv_false':'APPLY net_recv_enabled@false\nWHERE /ctl_svc_nodes/net_recv_enabled@true',
         'set_leader_uuid':'APPLY net_recv_enabled@true\nWHERE /ctl_svc_nodes/uuid@',
-        'rcv_true':'APPLY net_recv_enabled@true\nWHERE /ctl_svc_nodes/net_recv_enabled@false'
+        'rcv_true':'APPLY net_recv_enabled@true\nWHERE /ctl_svc_nodes/net_recv_enabled@false',
+        'current_time':'GET /system_info/current_time',
+        'get_key':'GET'
         }
 
     input_fpath = ""
@@ -92,7 +98,7 @@ class CtlRequest:
         self.ctl_cmd_dict["set_leader_uuid"] = cmd_uuid
 
         logging.warning("APPLY cmd=%s ipath=%s", self.cmd, self.input_fpath)
-        self.error = ctl_req_create_cmdfile_and_copy(self)
+        self.error = ctl_req_create_cmdfile_and_copy(self, None)
         if self.error != 0:
             logging.error("Failed to create ctl req object error: %d" % self.Error())
             #Aborting the execution as apply failed
@@ -103,19 +109,20 @@ class CtlRequest:
 
         return self
 
-    def Apply(self):
+    def Apply(self, raft_key):
         logging.warning("APPLY cmd=%s ipath=%s", self.cmd, self.input_fpath)
+        logging.warning("raft_key: %s" % raft_key)
         '''
         Store the return code inside object only so the caller can check for
         the error later.
         '''
-        self.error = ctl_req_create_cmdfile_and_copy(self)
+        self.error = ctl_req_create_cmdfile_and_copy(self, raft_key)
         if self.error != 0:
             logging.error("Failed to create ctl req object error: %d" % self.Error())
             exit()
         return self
 
-    def Apply_and_Wait(self, can_fail):
+    def Apply_and_Wait(self, raft_key, can_fail):
         '''
         To Apply the cmd and Wait for outfile
         Paramter "can_fail" is added so that
@@ -125,7 +132,7 @@ class CtlRequest:
         '''
         retry = 0
         while retry < 5:
-            self.Apply()
+            self.Apply(raft_key)
 
             # Wait for outfile creation
             logging.warning("calling wait for outfile")
