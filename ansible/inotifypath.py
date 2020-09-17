@@ -20,11 +20,11 @@ class InotifyPath:
                 @inotify_is_base_path: Is this NIOVA_INOTIFY_BASE_PATH
                 path? (True/False)
     '''
-    def __init__(self, base_dir_path, inotify_is_base_path):
+    def __init__(self, base_dir_path, inotify_is_base_path, log_path):
         self.inotify_path = "%s/ctl-interface" % base_dir_path
         self.inotify_shared_init_path = "%s/init" % base_dir_path
         self.inotify_is_base_path = inotify_is_base_path
-        
+        logging.basicConfig(filename=log_path, filemode='a', level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
         # Create inotify and init directories
         genericcmdobj = GenericCmds()
         genericcmdobj.make_dir(self.inotify_path)
@@ -93,9 +93,9 @@ class InotifyPath:
             else: # input_base = REGULAR
                 fpath = "%s/%s/%s/%s.%s" % (self.inotify_path, peer_uuid, dir_name, base_fname,
                                             app_uuid)
-            print("Input File path:", fpath)       
+            logging.info("Input File path:%s", fpath)
         else:
             fpath = "%s/%s/%s/%s.%s" % (self.inotify_path, peer_uuid, dir_name, base_fname,
                                     app_uuid)
-            print("Output File Path", fpath)
+            logging.info("Output File Path:%s", fpath)
         return fpath;

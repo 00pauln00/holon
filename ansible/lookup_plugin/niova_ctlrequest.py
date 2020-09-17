@@ -28,12 +28,10 @@ def niova_ctlreq_cmd_create(recipe_conf, ctlreq_dict):
     # Get the peer_uuid from the raft json dictionary
     peer_uuid = recipe_conf['raft_config']['peer_uuid_dict'][str(peer_idx)]
     base_dir =  recipe_conf['raft_config']['base_dir_path']
-
     genericcmdobj = GenericCmds()
     app_uuid = genericcmdobj.generate_uuid()
-
-    inotifyobj = InotifyPath(base_dir, True)
-
+    log_path = recipe_conf['raft_config']['log_path']
+    inotifyobj = InotifyPath(base_dir, True, log_path)
     # For idle_on cmd , input_base would be PRIVATE_INIT.
     if cmd == "idle_on":
         input_base = inotify_input_base.PRIVATE_INIT
@@ -42,18 +40,18 @@ def niova_ctlreq_cmd_create(recipe_conf, ctlreq_dict):
         wait_for_ofile = ctlreq_dict['wait_for_ofile']
 
     if cmd == "set_leader_uuid":
-        print("cmd is set_leader_uuid")
+        logging.info("cmd is set_leader_uuid")
         ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                    input_base).set_leader(ctlreq_dict['set_leader_uuid'])
+                    input_base, log_path).set_leader(ctlreq_dict['set_leader_uuid'])
     else:
         raft_key = ctlreq_dict['raft_key']
         # Prepare the ctlreq object
         if wait_for_ofile == False:
             ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                            input_base).Apply(raft_key)
+                            input_base, log_path).Apply(raft_key)
         else:
             ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                            input_base).Apply_and_Wait(raft_key, False)
+                            input_base, log_path).Apply_and_Wait(raft_key, False)
 
     ctlreq_dict_list = []
     ctlreq_dict_list.append(ctlreqobj.__dict__)
@@ -111,7 +109,7 @@ def niova_raft_lookup_ctlreq(recipe_conf, ctlreq_cmd_dict, raft_keys):
     ctlreq_obj_dict = niova_ctlreq_cmd_create(recipe_conf, ctlreq_cmd_dict)
     raft_values = niova_raft_lookup_values(ctlreq_obj_dict, raft_keys)
 
-    print(raft_values)
+    logging.info(raft_values)
     return raft_values
 
 def niova_set_leader(recipe_conf, ctlreq_dict):
@@ -128,7 +126,6 @@ class LookupModule(LookupBase):
         recipe_params = kwargs['variables']['raft_param']
         ctlreq_cmd_dict['recipe_name'] = kwargs['variables']['recipe_name']
         ctlreq_cmd_dict['stage'] = kwargs['variables']['stage']
-
         operation = terms[0]
         ctlreq_cmd_dict['peer_id'] = terms[1]
 
@@ -138,6 +135,10 @@ class LookupModule(LookupBase):
         if os.path.exists(raft_json_fpath):
             with open(raft_json_fpath, "r+", encoding="utf-8") as json_file:
                 recipe_conf = json.load(json_file)
+
+        #log_path initialization
+        log_path = recipe_conf['raft_config']['log_path']
+        logging.basicConfig(filename=log_path, filemode='a', level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
 
         if operation == "apply_cmd":
             ctlreq_cmd_dict['cmd'] = terms[2]
@@ -161,8 +162,9 @@ class LookupModule(LookupBase):
             result = []
             iter_cnt = 1
             sleep_sec = 0
+
             if iter_info != None:
-                print("Get the dictionary values: %s" % iter_info)
+                logging.info("Get the dictionary values: %s" % iter_info)
                 iter_cnt = int(iter_info['iter'])
                 sleep_sec = int(iter_info['sleep_after_cmd'])
 
@@ -179,4 +181,3 @@ class LookupModule(LookupBase):
                 return result[0]
 
         return result
-

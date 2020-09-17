@@ -7,7 +7,7 @@ from genericcmd import *
 from basicio import *
 from raftconfig import *
 
-def niova_raft_conf_create(recipe_params, conf_params):
+def niova_raft_conf_create(recipe_params, conf_params, log_path):
     base_dir = recipe_params['base_dir']
     raft_uuid = recipe_params['raft_uuid']
 
@@ -22,8 +22,7 @@ def niova_raft_conf_create(recipe_params, conf_params):
     raft_dir = "%s/%s" % (base_dir, raft_uuid)
 
     genericcmdobj = GenericCmds()
-
-    raftconfobj = RaftConfig(raft_dir, raft_uuid, genericcmdobj)
+    raftconfobj = RaftConfig(raft_dir, raft_uuid, genericcmdobj, log_path)
     raftconfobj.generate_raft_conf(genericcmdobj, npeers, "127.0.0.1",
                                        port, client_port)
 
@@ -39,5 +38,10 @@ class LookupModule(LookupBase):
         recipe_params = kwargs['variables']['raft_param']
 
         config_params_dict = terms[0]
-        raftconf_obj_dict = niova_raft_conf_create(recipe_params, config_params_dict)
-        return raftconf_obj_dict
+        log_path = terms[1]
+        '''
+        Create server and raft config files
+        '''
+        raftconfobj_dict = niova_raft_conf_create(recipe_params, config_params_dict, log_path)
+
+        return raftconfobj_dict

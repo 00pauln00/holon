@@ -34,12 +34,13 @@ class RaftProcess:
                             created.
                     @process_type: Type of the process(server or client)
     '''
-    def __init__(self, uuid, process_idx, process_type):
+    def __init__(self, uuid, process_idx, process_type, log_path):
         self.process_uuid = uuid
         self.process_idx = process_idx
         self.process_type = process_type
         self.process_pid = 0
-
+        self.log_path = log_path
+        logging.basicConfig(filename=self.log_path, filemode='a', level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
     '''
         Method: start_process
         Purpose: Start the process of type process_type
@@ -64,9 +65,13 @@ class RaftProcess:
 
     def start_process(self, raft_uuid, peer_uuid):
         server_bin_path = "%s/raft-server" % (self.binary_path)
-        process_popen = subprocess.Popen([server_bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid])
-        
+        with open(self.log_path, "a") as file:
+            process_popen = subprocess.Popen([server_bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid],  stdout = file, stderr = file)
+            file.close()
+        with open(self.log_path, "r") as fp:
+                Lines = fp.readlines()
+                output_label = "raft-%s.%s" % (self.process_type, self.process_idx)
         self.process_pid = process_popen.pid
     
         #To check if process is started
@@ -75,10 +80,14 @@ class RaftProcess:
         
         #Check if child process exited with error
         if process_popen.poll() is None:
-            print("Raft process started successfully")
+            logging.info("Raft process started successfully")
         else:
-            print("Raft process failed to start")
+            logging.info("Raft process failed to start")
             raise subprocess.SubprocessError(self.process_popen.returncode)
+
+        #Print <process_type.peer_index> at the start of raft log messages
+        for line in Lines:
+            logging.warning("<{}>:{}".format(output_label, line.strip()))
 
     '''
         Method: pause_process
@@ -88,7 +97,7 @@ class RaftProcess:
     def pause_process(self, pid):
         self.process_pid = pid
         process_obj = psutil.Process(pid)
-        print("pause the process by sending sigstop")
+        logging.info("pause the process by sending sigstop")
         try:
             process_obj.send_signal(signal.SIGSTOP)
         except subprocess.SubprocessError as e:
@@ -109,7 +118,7 @@ class RaftProcess:
     def resume_process(self, pid):
         self.process_pid = pid
         process_obj = psutil.Process(pid)
-        print("resume the process by sending sigcont")
+        logging.info("resume the process by sending sigcont")
         try:
             process_obj.send_signal(signal.SIGCONT)
         except subprocess.SubprocessError as e:
@@ -126,7 +135,7 @@ class RaftProcess:
     def kill_process(self, pid):
         self.process_pid = pid
         process_obj = psutil.Process(pid)
-        print("kill the process by sending sigterm")
+        logging.info("kill the process by sending sigterm")
         try:
             process_obj.send_signal(signal.SIGTERM)
         except subprocess.SubprocessError as e:

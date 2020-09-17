@@ -68,10 +68,10 @@ class CtlRequest:
     cmd = ""
     error = 0
 
-    def __init__(self, inotifyobj, cmd, peer_uuid, app_uuid, input_base):
+    def __init__(self, inotifyobj, cmd, peer_uuid, app_uuid, input_base, log_path):
 
         self.cmd = cmd
-
+        logging.basicConfig(filename=log_path, filemode='a', level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
         # export the shared init path
         if input_base == inotify_input_base.SHARED_INIT:
             inotifyobj.export_init_path(peer_uuid)

@@ -6,17 +6,18 @@
     - ./cmdline_vars.yml
 
   tasks:
+  - name: "Get Raft UUID"
+    shell: "/usr/bin/uuid"
+    register: cluster_uuid
+
   - name: "Default Values"
     set_fact:
       dir_path: "{{ dir_path | default('/tmp/holon_recipes_run') }}"
       port: "{{ port | default(6000) }}"
       npeers: "{{ npeers | default(5) }}"
       client_port: "{{ client_port | default(13000) }}"
+      log_path: "{{ log_path | default('/tmp/holon.log')}}"
 
-  - name: "Get Raft UUID"
-    shell: "/usr/bin/uuid"
-    register: cluster_uuid
-  
   - name: "Prepare parameter to pass across recipes"
     set_fact:
        raft_param:
@@ -29,7 +30,7 @@
         npeers: "{{ npeers }}"
         port: "{{ port }}"
         client_port: "{{ client_port }}"
-    set_fact: raft_conf="{{lookup('niova_raftconfig', config_params, wantlist=True)}}"
+    set_fact: raft_conf="{{lookup('niova_raftconfig', config_params, log_path, wantlist=True)}}"
 
   - name: "Show the values"
     debug:
@@ -41,6 +42,7 @@
         - "Raft UUID is {{ cluster_uuid.stdout }}"
         - "Recipe: {{ recipe }}"
         - "Raft params: {{ raft_param }}"
+        - "Log_path : {{ log_path }}"
 
 - import_playbook: "{{ recipe }}"
   vars:

@@ -17,8 +17,10 @@ class RaftConfig:
         Constructor:
         Purpose: Initialisation
     '''
-    def __init__(self, base_dir_path, raft_uuid, genericcmdobj):
+    def __init__(self, base_dir_path, raft_uuid, genericcmdobj, log_path):
         self.raft_uuid = raft_uuid
+        self.log_path = log_path
+        logging.basicConfig(filename=log_path, filemode='w', level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
         '''
         All the configs will  be inside test_root/raft_uuid/configs
         '''
@@ -122,7 +124,7 @@ class RaftConfig:
         basicioobj.close_file(raft_fd)
 
         json_string = json.dumps(self.__dict__)
-        print(json_string)
+        logging.info(json_string)
 
     '''
         Method: get_peer_uuid_for_peerno

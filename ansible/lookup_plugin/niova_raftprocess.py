@@ -14,21 +14,24 @@ def niova_raft_process_ops(recipe_conf, peer_idx, operation):
     raft_uuid = recipe_conf['raft_config']['raft_uuid']
     peer_uuid = recipe_conf['raft_config']['peer_uuid_dict'][str(peer_idx)]
     base_dir =  recipe_conf['raft_config']['base_dir_path']
+    log_path = recipe_conf['raft_config']['log_path']
 
     if operation != "start":
         pid = int(recipe_conf['raft_process'][str(peer_idx)]['process_pid'])
 
     process_type ="server"
     binary_path='/home/pauln/raft-builds/latest/'
+    log_path = recipe_conf['raft_config']['log_path']
+    serverproc = RaftProcess(peer_uuid, peer_idx, process_type, log_path)
+    logging.basicConfig(filename=log_path, filemode='a', level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
 
-    serverproc = RaftProcess(peer_uuid, peer_idx, process_type)
     if operation == "start":
 
         ctlsvc_path = "%s/configs" % base_dir
-        print("base dir: %s" % base_dir)
-        print("ctlsvc_path: %s" % ctlsvc_path)
+        logging.info("base dir: %s" % base_dir)
+        logging.info("ctlsvc_path: %s" % ctlsvc_path)
 
-        inotifyobj = InotifyPath(base_dir, True)
+        inotifyobj = InotifyPath(base_dir, True, log_path)
         inotifyobj.export_ctlsvc_path(ctlsvc_path)
         serverproc.start_process(raft_uuid, peer_uuid)
 
@@ -69,6 +72,6 @@ class LookupModule(LookupBase):
 
         niova_obj_dict = niova_raft_process_ops(recipe_conf, peer_id, proc_operation)
         if len(terms) == 3:
-            print("sleep after the operation")
+            logging.info("sleep after the operation")
             sleep_time = int(terms[2])
             time.sleep(sleep_time)
