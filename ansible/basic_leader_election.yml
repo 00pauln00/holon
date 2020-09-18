@@ -5,9 +5,23 @@
   vars:
      recipe_name: "basic_leader_election"
      parent: "term_catch_up"
+
   tasks:
+    - name: "Get the npeer from recipe json"
+      set_fact:
+        nserver={{ raft_conf | json_query('nservers')}}
+
+    - name: "Equation to start npeer"
+      set_fact:
+        total_npeers={{nserver |int/2+1}}
+
+    - name: "get value of npeers to start"
+      set_fact:
+        npeers_start="{{total_npeers |int |int - 1}}"
+
     - name: "Starting peer 2"
-      set_fact: server1="{{lookup('niova_raftprocess', 'start', 2, wantlist=True)}}"
+      set_fact: server1="{{lookup('niova_raftprocess', 'start', item, wantlist=True)}}"
+      with_sequence: start=2 end="{{npeers_start}}"
 
     - name: "Wait until leader election happens"
       vars:
@@ -40,4 +54,4 @@
         (raft_values["/0/last-applied"] != 0) or
         (raft_values["/0/last-applied-cumulative-crc"] != raft_values["/0/newest-entry-crc"]) or
         (raft_values["/0/term"] != raft_values["/0/newest-entry-term"])
-      loop: "{{ range(0, 3) | list}}"
+      with_sequence: start=0 end="{{npeers_start}}"
