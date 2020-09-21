@@ -13,7 +13,7 @@
   - name: "Default Values"
     set_fact:
       dir_path: "{{ dir_path | default('/tmp/holon_recipes_run') }}"
-      port: "{{ srv_port | default(6000) }}"
+      srv_port: "{{ srv_port | default(6000) }}"
       npeers: "{{ npeers | default(5) }}"
       client_port: "{{ client_port | default(13000) }}"
       log_path: "{{ log_path | default('/tmp/holon.log')}}"
@@ -28,7 +28,7 @@
     vars:
       config_params:
         npeers: "{{ npeers }}"
-        port: "{{ srv_port }}"
+        srv_port: "{{ srv_port }}"
         client_port: "{{ client_port }}"
     set_fact: raft_conf="{{lookup('niova_raftconfig', config_params, log_path, wantlist=True)}}"
 

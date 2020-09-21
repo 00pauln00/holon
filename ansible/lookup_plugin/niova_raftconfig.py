@@ -12,7 +12,7 @@ def niova_raft_conf_create(recipe_params, conf_params, log_path):
     raft_uuid = recipe_params['raft_uuid']
 
     npeers = int(conf_params['npeers'])
-    port = int(conf_params['port'])
+    port = int(conf_params['srv_port'])
     client_port = int(conf_params['client_port'])
 
     '''
