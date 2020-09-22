@@ -16,6 +16,7 @@
       srv_port: "{{ srv_port | default(6000) }}"
       npeers: "{{ npeers | default(5) }}"
       client_port: "{{ client_port | default(13000) }}"
+      disable_post_run: "{{ disable_post_run | default(false) | bool }}"
 
   - name: "Prepare parameter to pass across recipes"
     set_fact:
@@ -41,7 +42,13 @@
         - "Raft UUID is {{ cluster_uuid.stdout }}"
         - "Recipe: {{ recipe }}"
         - "Raft params: {{ raft_param }}"
+        - "Disable post run : {{ disable_post_run }}"
 
 - import_playbook: "{{ recipe }}"
   vars:
     recipe_params: "{{ raft_param }}"
+
+- import_playbook: "post_run.yml"
+  vars:
+    recipe_params: "{{ raft_param }}"
+  when: disable_post_run == "False" or disable_post_run == "false" or disable_post_run == false
