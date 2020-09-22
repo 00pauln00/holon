@@ -34,13 +34,12 @@ class RaftProcess:
                             created.
                     @process_type: Type of the process(server or client)
     '''
-    def __init__(self, uuid, process_idx, process_type, log_path):
+    def __init__(self, uuid, process_idx, process_type):
         self.process_uuid = uuid
         self.process_idx = process_idx
         self.process_type = process_type
         self.process_pid = 0
-        self.log_path = log_path
-        logging.basicConfig(filename=self.log_path, filemode='a', level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
+
     '''
         Method: start_process
         Purpose: Start the process of type process_type
@@ -63,21 +62,32 @@ class RaftProcess:
         if rc == 1:
             exit()
 
-    def start_process(self, raft_uuid, peer_uuid):
+    def start_process(self, raft_uuid, peer_uuid, base_dir):
+
         server_bin_path = "%s/raft-server" % (self.binary_path)
-        with open(self.log_path, "a") as file:
-            process_popen = subprocess.Popen([server_bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid],  stdout = file, stderr = file)
-            file.close()
-        with open(self.log_path, "r") as fp:
-                Lines = fp.readlines()
-                output_label = "raft-%s.%s" % (self.process_type, self.process_idx)
+
+        '''
+        We want to append the output of raft-server log into the recipe log
+        adding information about for which peerid the process has started.
+        So first get the raft-server init log into temp file, add the prefix
+        and then write it to recipe log.
+        '''
+        temp_file = "%s/raft_log_%s.txt" % (base_dir, peer_uuid)
+
+        fp = open(temp_file, "w")
+        process_popen = subprocess.Popen([server_bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid],  stdout = fp, stderr = fp)
+        fp.close()
+
+        output_label = "raft-%s.%s" % (self.process_type, self.process_idx)
         self.process_pid = process_popen.pid
     
         #To check if process is started
         
         self.Wait_for_process_status("running", self.process_pid)
-        
+
+
+
         #Check if child process exited with error
         if process_popen.poll() is None:
             logging.info("Raft process started successfully")
@@ -85,9 +95,21 @@ class RaftProcess:
             logging.info("Raft process failed to start")
             raise subprocess.SubprocessError(self.process_popen.returncode)
 
+        # Wait till the raft-server output gets written to the temp file
+        while(1):
+            fsize = os.path.getsize(temp_file)
+            if fsize != 0:
+                break
+
+        with open(temp_file, "r") as fp:
+            Lines = fp.readlines()
+
         #Print <process_type.peer_index> at the start of raft log messages
         for line in Lines:
             logging.warning("<{}>:{}".format(output_label, line.strip()))
+
+        # Delete the temp file
+        shutil.os.remove(temp_file)
 
     '''
         Method: pause_process

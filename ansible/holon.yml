@@ -16,7 +16,6 @@
       srv_port: "{{ srv_port | default(6000) }}"
       npeers: "{{ npeers | default(5) }}"
       client_port: "{{ client_port | default(13000) }}"
-      log_path: "{{ log_path | default('/tmp/holon.log')}}"
 
   - name: "Prepare parameter to pass across recipes"
     set_fact:
@@ -30,7 +29,7 @@
         npeers: "{{ npeers }}"
         srv_port: "{{ srv_port }}"
         client_port: "{{ client_port }}"
-    set_fact: raft_conf="{{lookup('niova_raftconfig', config_params, log_path, wantlist=True)}}"
+    set_fact: raft_conf="{{lookup('niova_raftconfig', config_params, wantlist=True)}}"
 
   - name: "Show the values"
     debug:
@@ -42,7 +41,6 @@
         - "Raft UUID is {{ cluster_uuid.stdout }}"
         - "Recipe: {{ recipe }}"
         - "Raft params: {{ raft_param }}"
-        - "Log_path : {{ log_path }}"
 
 - import_playbook: "{{ recipe }}"
   vars:

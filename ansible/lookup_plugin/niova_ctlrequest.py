@@ -30,8 +30,7 @@ def niova_ctlreq_cmd_create(recipe_conf, ctlreq_dict):
     base_dir =  recipe_conf['raft_config']['base_dir_path']
     genericcmdobj = GenericCmds()
     app_uuid = genericcmdobj.generate_uuid()
-    log_path = recipe_conf['raft_config']['log_path']
-    inotifyobj = InotifyPath(base_dir, True, log_path)
+    inotifyobj = InotifyPath(base_dir, True)
     # For idle_on cmd , input_base would be PRIVATE_INIT.
     if cmd == "idle_on":
         input_base = inotify_input_base.PRIVATE_INIT
@@ -42,16 +41,16 @@ def niova_ctlreq_cmd_create(recipe_conf, ctlreq_dict):
     if cmd == "set_leader_uuid":
         logging.info("cmd is set_leader_uuid")
         ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                    input_base, log_path).set_leader(ctlreq_dict['set_leader_uuid'])
+                    input_base).set_leader(ctlreq_dict['set_leader_uuid'])
     else:
         raft_key = ctlreq_dict['raft_key']
         # Prepare the ctlreq object
         if wait_for_ofile == False:
             ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                            input_base, log_path).Apply(raft_key)
+                            input_base).Apply(raft_key)
         else:
             ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                            input_base, log_path).Apply_and_Wait(raft_key, False)
+                            input_base).Apply_and_Wait(raft_key, False)
 
     ctlreq_dict_list = []
     ctlreq_dict_list.append(ctlreqobj.__dict__)
@@ -137,19 +136,23 @@ class LookupModule(LookupBase):
                 recipe_conf = json.load(json_file)
 
         #log_path initialization
-        log_path = recipe_conf['raft_config']['log_path']
+        log_path = "%s/%s/%s.log" % (recipe_params['base_dir'], recipe_params['raft_uuid'], recipe_params['raft_uuid'])
         logging.basicConfig(filename=log_path, filemode='a', level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
 
+        logging.warning("Ctlrequest for recipe: %s, stage: %s, operation: %s" % (ctlreq_cmd_dict['recipe_name'], ctlreq_cmd_dict['stage'], operation))
         if operation == "apply_cmd":
             ctlreq_cmd_dict['cmd'] = terms[2]
             ctlreq_cmd_dict['wait_for_ofile'] = terms[3]
             ctlreq_cmd_dict['raft_key'] = "None"
+            logging.warning("Apply cmd: %s, wait_for_outfile: %s" % (ctlreq_cmd_dict['cmd'], ctlreq_cmd_dict['wait_for_ofile']))
             result = niova_ctlreq_cmd_create(recipe_conf, ctlreq_cmd_dict)
         elif operation == "set_leader":
+            logging.warning("set_leader cmd: leader-to-be uuid: %s" % terms[2])
             ctlreq_cmd_dict['cmd'] = "set_leader_uuid"
             ctlreq_cmd_dict['set_leader_uuid'] = terms[2]
             result = niova_set_leader(recipe_conf, ctlreq_cmd_dict)
         elif operation == "lookup":
+            logging.warning("Lookup for key: %s" % terms[2])
             raft_key = terms[2]
             ctlreq_cmd_dict['cmd'] = "get_key"
             '''

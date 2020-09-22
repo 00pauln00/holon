@@ -68,10 +68,9 @@ class CtlRequest:
     cmd = ""
     error = 0
 
-    def __init__(self, inotifyobj, cmd, peer_uuid, app_uuid, input_base, log_path):
+    def __init__(self, inotifyobj, cmd, peer_uuid, app_uuid, input_base):
 
         self.cmd = cmd
-        logging.basicConfig(filename=log_path, filemode='a', level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
         # export the shared init path
         if input_base == inotify_input_base.SHARED_INIT:
             inotifyobj.export_init_path(peer_uuid)
@@ -111,7 +110,6 @@ class CtlRequest:
 
     def Apply(self, raft_key):
         logging.warning("APPLY cmd=%s ipath=%s", self.cmd, self.input_fpath)
-        logging.warning("raft_key: %s" % raft_key)
         '''
         Store the return code inside object only so the caller can check for
         the error later.

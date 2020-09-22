@@ -14,16 +14,13 @@ def niova_raft_process_ops(recipe_conf, peer_idx, operation):
     raft_uuid = recipe_conf['raft_config']['raft_uuid']
     peer_uuid = recipe_conf['raft_config']['peer_uuid_dict'][str(peer_idx)]
     base_dir =  recipe_conf['raft_config']['base_dir_path']
-    log_path = recipe_conf['raft_config']['log_path']
 
     if operation != "start":
         pid = int(recipe_conf['raft_process'][str(peer_idx)]['process_pid'])
 
     process_type ="server"
     binary_path='/home/pauln/raft-builds/latest/'
-    log_path = recipe_conf['raft_config']['log_path']
-    serverproc = RaftProcess(peer_uuid, peer_idx, process_type, log_path)
-    logging.basicConfig(filename=log_path, filemode='a', level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
+    serverproc = RaftProcess(peer_uuid, peer_idx, process_type)
 
     if operation == "start":
 
@@ -31,9 +28,9 @@ def niova_raft_process_ops(recipe_conf, peer_idx, operation):
         logging.info("base dir: %s" % base_dir)
         logging.info("ctlsvc_path: %s" % ctlsvc_path)
 
-        inotifyobj = InotifyPath(base_dir, True, log_path)
+        inotifyobj = InotifyPath(base_dir, True)
         inotifyobj.export_ctlsvc_path(ctlsvc_path)
-        serverproc.start_process(raft_uuid, peer_uuid)
+        serverproc.start_process(raft_uuid, peer_uuid, base_dir)
 
     elif operation == "pause":
         serverproc.pause_process(pid)
@@ -63,6 +60,12 @@ class LookupModule(LookupBase):
         recipe_params = kwargs['variables']['raft_param']
         proc_operation = terms[0]
         peer_id = terms[1]
+
+        # Initialize the logger
+        log_path = "%s/%s/%s.log" % (recipe_params['base_dir'], recipe_params['raft_uuid'], recipe_params['raft_uuid'])
+
+        logging.basicConfig(filename=log_path, filemode='a', level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
+
 
         recipe_conf = {}
         raft_json_fpath = "%s/%s/%s.json" % (recipe_params['base_dir'], recipe_params['raft_uuid'], recipe_params['raft_uuid'])

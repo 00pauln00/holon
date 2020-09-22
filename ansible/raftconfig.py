@@ -17,10 +17,8 @@ class RaftConfig:
         Constructor:
         Purpose: Initialisation
     '''
-    def __init__(self, base_dir_path, raft_uuid, genericcmdobj, log_path):
+    def __init__(self, base_dir_path, raft_uuid, genericcmdobj):
         self.raft_uuid = raft_uuid
-        self.log_path = log_path
-        logging.basicConfig(filename=log_path, filemode='w', level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
         '''
         All the configs will  be inside test_root/raft_uuid/configs
         '''
