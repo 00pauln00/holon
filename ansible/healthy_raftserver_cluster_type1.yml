@@ -1,0 +1,124 @@
+- import_playbook: basic_leader_election.yml
+- name: "healthy_raftserver_cluster_type1"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "healthy_raftserver_cluster_type1"
+     parent: "basic_leader_election"
+     follower_idx: []
+     follower_uuid: []
+     
+  tasks:
+  - name: "Get the npeer from recipe json"
+    set_fact:
+      peer_arr="{{ raft_conf | json_query('peer_uuid_dict')}}"
+      nserver={{ raft_conf | json_query('nservers')}}
+
+  - name: "Equation to start npeer"
+    set_fact:
+      total_npeers={{nserver |int/2+1}}
+
+  - name: "get value of npeers to start"
+    set_fact:
+      npeers_start="{{total_npeers |int |int - 1}}"
+
+  - name: "Get the raft values from basic leader election"
+    vars:
+       stage: "stage0_get_all"
+       raft_keys:
+            - "/raft_root_entry/0/leader-uuid"
+            - "/raft_root_entry/0/term"
+            - "/raft_root_entry/0/commit-idx"
+            - "/raft_root_entry/0/newest-entry-idx"
+            - "/raft_root_entry/0/newest-entry-term"
+            - "/raft_root_entry/0/newest-entry-crc"
+            - "/raft_root_entry/0/newest-entry-data-size"
+            - "/raft_root_entry/0/state"
+            - "/raft_root_entry/0/last-applied"
+            - "/raft_root_entry/0/last-applied-cumulative-crc"
+    set_fact:
+        stage0_values="{{lookup('niova_ctlrequest', 'lookup', item, raft_keys, wantlist=True)}}"
+    with_sequence: start=0 end="{{npeers_start}}"
+
+  - name: "Get the peer index for the leader"
+    set_fact:
+        leader_idx: "{{ item.key }}"
+    when: stage0_values["/0/leader-uuid"] == item.value
+    with_dict: "{{ peer_arr }}"
+
+  - name: "Get peer indexes and UUIs for the followers"
+    set_fact:
+        follower_idx: "{{ follower_idx + [item.key] }}"
+        follower_uuid: "{{ follower_uuid + [item.value] }}"
+    when: stage0_values["/0/leader-uuid"] != item.value
+    with_dict: "{{ peer_arr }}"
+
+  - name: "Get the follower information from leader-stats"
+    vars:
+      stage: "get_follower_stats"
+      raft_keys:
+            - "/raft_root_entry/0/follower-stats"
+    set_fact:
+      orig_follower_info="{{lookup('niova_ctlrequest', 'lookup', leader_idx, raft_keys, wantlist=True)}}"
+
+  - name: "Starting remaining peers"
+    set_fact: start_nservers="{{lookup('niova_raftprocess', 'start', item, wantlist=True)}}"
+    with_sequence: start="{{npeers_start |int + 1}}" end="{{nserver |int - 1}}"
+
+  - name: "Verify stage1 for healthy_raftserver_type1"
+    vars:
+      stage: "stage1"
+      raft_keys:
+            - "/raft_root_entry/0/follower-stats"
+    set_fact:
+      curr_follower_info="{{lookup('niova_ctlrequest', 'lookup', leader_idx, raft_keys, wantlist=True)}}"
+    failed_when: >
+      (curr_follower_info['/0/follower-stats'][item]['next-idx'] != 1) or
+      (curr_follower_info['/0/follower-stats'][item]['prev-idx-term'] != stage0_values["/0/term"])  
+    loop: "{{range(0, follower_idx | length) | list}}"
+
+  - name: "Verify stage2 for healthy_raftserver_type1"
+    vars:
+       stage: "stage2"
+       raft_keys:
+            - "/raft_root_entry/0/voted-for-uuid"
+            - "/raft_root_entry/0/follower-reason"
+    set_fact:
+          stage2_values="{{lookup('niova_ctlrequest', 'lookup', item, raft_keys, wantlist=True)}}"
+    failed_when: >
+        (stage2_values["/0/voted-for-uuid"] != "00000000-0000-0000-0000-000000000000") or
+        (stage2_values["/0/follower-reason"] != "leader-already-present")
+    with_sequence: start="{{npeers_start |int + 1}}" end="{{nserver |int - 1}}"
+
+  - name: "Verify stage3 for healthy_raftserver_type1"
+    vars:
+       stage: "stage3"
+       raft_keys:
+            - "/raft_root_entry/0/leader-uuid"
+            - "/raft_root_entry/0/term"
+            - "/raft_root_entry/0/commit-idx"
+            - "/raft_root_entry/0/newest-entry-idx"
+            - "/raft_root_entry/0/newest-entry-term"
+            - "/raft_root_entry/0/newest-entry-crc"
+            - "/raft_root_entry/0/newest-entry-data-size"
+            - "/raft_root_entry/0/state"
+            - "/raft_root_entry/0/last-applied"
+            - "/raft_root_entry/0/last-applied-cumulative-crc"
+    set_fact:
+          stage3_values="{{lookup('niova_ctlrequest', 'lookup', item, raft_keys, wantlist=True)}}"
+    failed_when: >
+        (stage3_values["/0/leader-uuid"] != stage0_values["/0/leader-uuid"]) or
+        ((stage3_values["/0/term"] != stage0_values["/0/term"]) and
+        (stage3_values["/0/term"] != orig_follower_info['/0/follower-stats'][item]['prev-idx-term'])) or
+        ((stage3_values["/0/state"] != "leader") and
+        (stage3_values["/0/state"] != "follower")) or
+        (stage3_values["/0/commit-idx"] != 0) or
+        (stage3_values["/0/last-applied"] != 0) or
+        (stage3_values["/0/last-applied-cumulative-crc"] != stage0_values["/0/last-applied-cumulative-crc"]) or
+        (stage3_values["/0/newest-entry-term"] != stage0_values["/0/term"]) or
+        (stage3_values["/0/newest-entry-idx"] != 0) or
+        (stage3_values["/0/newest-entry-data-size"] != 0) or
+        (stage3_values["/0/newest-entry-crc"] != stage0_values["/0/newest-entry-crc"])
+    with_sequence: start=0 end="{{nserver |int - 1}}"
+
+
