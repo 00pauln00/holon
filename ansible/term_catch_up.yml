@@ -1,0 +1,32 @@
+- import_playbook: term_ticker.yml
+- name: "term_catch_up"
+  hosts: localhost
+  connection: local
+  vars:
+     parent: "term_ticker"
+     recipe_name: "term_catch_up"
+     iterations: 5
+  
+  #Start Peer1
+  tasks:
+    - name: "Starting peer1"
+      set_fact: server0="{{lookup('niova_raftprocess', 'start', 1, wantlist=True)}}"
+
+    #Copy get_term in peer1 and in peer0, Pause and Resume peer0 in loop and compare its term catches up peer1 term
+    - name: "Pause peer0 and resume it after 2sec and make sure it's term value catches up with running peer1"
+      vars:
+        stage: "stage1"
+        iter_info:
+          iter: 1
+          sleep_after_cmd: 2
+        term_key:
+          - "/raft_root_entry/0/term"
+      set_fact:
+         pause_peer0="{{lookup('niova_raftprocess', 'pause', 0, wantlist=True)}}"
+         peer1_term="{{lookup('niova_ctlrequest', 'lookup', 1, '/raft_root_entry/0/term', iter_info, wantlist=True)}}"
+         resume_peer0="{{lookup('niova_raftprocess', 'resume', 0, wantlist=True)}}"
+         peer0_term="{{lookup('niova_ctlrequest', 'lookup', 0, '/raft_root_entry/0/term', wantlist=True)}}"
+      failed_when: peer1_term["/0/term"] > peer0_term["/0/term"]
+      loop: "{{ range(0, iterations)| list }}"
+      loop_control:
+        pause: 2

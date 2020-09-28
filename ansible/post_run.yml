@@ -1,0 +1,31 @@
+- name: "Post Run"
+  hosts: localhost
+
+  tasks:
+  - name: "Get the json path"
+    set_fact:
+        base_dir="{{ recipe_params['base_dir']}}"
+        raft_uuid="{{ recipe_params['raft_uuid']}}"
+
+  - name: "prepare path to read recipe JSON file"
+    shell: cat "{{base_dir}}"/"{{raft_uuid}}"/"{{raft_uuid}}".json
+    register: result
+
+  - name: "Convert output to JSON format"
+    set_fact:
+      jsondata: "{{ result.stdout | from_json }}"
+
+  - name: "Get the running peer id(s) from recipe JSON"
+    set_fact:
+       raftprocess_pid: "{{ jsondata | json_query(jmesquery) }}"
+    vars:
+       jmesquery: 'raft_process.*.process_pid'
+
+  - name: "Get process_pid(s)"
+    set_fact:
+       kill_pid: "{{ raftprocess_pid|length|int -1}}"
+
+  - name: "Kill the processes after recipe execution"
+    set_fact:
+       kill_peer0="{{lookup('niova_raftprocess', 'kill', item, wantlist=True)}}"
+    with_sequence: start=0 end="{{kill_pid}}"

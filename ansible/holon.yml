@@ -1,0 +1,54 @@
+- name: "Holon framework"
+  hosts: localhost
+  connection: local
+
+  vars_files:
+    - ./cmdline_vars.yml
+
+  tasks:
+  - name: "Get Raft UUID"
+    shell: "/usr/bin/uuid"
+    register: cluster_uuid
+
+  - name: "Default Values"
+    set_fact:
+      dir_path: "{{ dir_path | default('/tmp/holon_recipes_run') }}"
+      srv_port: "{{ srv_port | default(6000) }}"
+      npeers: "{{ npeers | default(5) }}"
+      client_port: "{{ client_port | default(13000) }}"
+      disable_post_run: "{{ disable_post_run | default(false) | bool }}"
+
+  - name: "Prepare parameter to pass across recipes"
+    set_fact:
+       raft_param:
+           base_dir: "{{ dir_path }}"
+           raft_uuid: "{{ cluster_uuid.stdout}}"
+
+  - name: "prepare config"
+    vars:
+      config_params:
+        npeers: "{{ npeers }}"
+        srv_port: "{{ srv_port }}"
+        client_port: "{{ client_port }}"
+    set_fact: raft_conf="{{lookup('niova_raftconfig', config_params, wantlist=True)}}"
+
+  - name: "Show the values"
+    debug:
+      msg:
+        - "Directory path: {{ dir_path }}"
+        - "Port is {{ srv_port }}"
+        - "Nservers is: {{ npeers }}"
+        - "client port is {{ client_port }}"
+        - "Raft UUID is {{ cluster_uuid.stdout }}"
+        - "Recipe: {{ recipe }}"
+        - "Raft params: {{ raft_param }}"
+        - "Disable post run : {{ disable_post_run }}"
+
+- import_playbook: "{{ recipe }}"
+  vars:
+    recipe_params: "{{ raft_param }}"
+
+- import_playbook: "post_run.yml"
+  vars:
+    recipe_params: "{{ raft_param }}"
+  when: disable_post_run == "False" or disable_post_run == "false" or disable_post_run == false
