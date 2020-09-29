@@ -52,10 +52,10 @@
           before_reboot="{{lookup('niova_ctlrequest', 'lookup', 0, '/raft_root_entry/0/term', wantlist=True)}}"
 
     - name: "Kill the process"
-      set_fact: server0="{{lookup('niova_raftprocess', 'kill', 0, wantlist=True)}}"
+      set_fact: server0="{{lookup('niova_raftprocess', 'kill', 'server', 0, wantlist=True)}}"
 
     - name: "Restart the peer0 process"
-      set_fact: server0="{{lookup('niova_raftprocess', 'start', 0, wantlist=True)}}"
+      set_fact: server0="{{lookup('niova_raftprocess', 'start', 'server', 0, wantlist=True)}}"
 
     - name: "Make sure raft timer thread is activated after starting the peer"
       vars:

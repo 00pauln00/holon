@@ -13,9 +13,9 @@
       vars:
         stage: "stage0"
       set_fact:
-         pause_peer0="{{lookup('niova_raftprocess', 'pause', 0, wantlist=True)}}"
+         pause_peer0="{{lookup('niova_raftprocess', 'pause', 'server', 0, wantlist=True)}}"
          curr_time_peer0="{{lookup('niova_ctlrequest', 'apply_cmd', 0, 'current_time', False, wantlist=True)}}"
-         resume_peer0="{{lookup('niova_raftprocess', 'resume', 0, wantlist=True)}}"
+         resume_peer0="{{lookup('niova_raftprocess', 'resume', 'server', 0, wantlist=True)}}"
       loop: "{{ range(0, iterations)| list }}"
       loop_control:
         pause: 5

@@ -100,7 +100,7 @@
 
     - name: "Pause number of followers in series"
       set_fact:
-         pause_peer="{{lookup('niova_raftprocess', 'pause', follower_idx[item], wantlist=True)}}"
+         pause_peer="{{lookup('niova_raftprocess', 'pause', 'server', follower_idx[item], wantlist=True)}}"
       loop: "{{ range(0, nfollower_pause|int) | list}}"
 
     - name: "Wait for 5sec"
@@ -141,7 +141,7 @@
           - "/raft_root_entry/0/peer-uuid"
           - "/raft_root_entry/0/newest-entry-term"
       set_fact:
-        resume_peer="{{ lookup('niova_raftprocess', 'resume', follower_idx[item], 5, wantlist=True)}}"
+        resume_peer="{{ lookup('niova_raftprocess', 'resume', 'server', follower_idx[item], 5, wantlist=True)}}"
         leader_info="{{ leader_info + [lookup('niova_ctlrequest', 'lookup', leader_idx, raft_keys, wantlist=True)]}}"
       loop: "{{ range(0, nfollower_pause|int) | list}}"
       loop_control:

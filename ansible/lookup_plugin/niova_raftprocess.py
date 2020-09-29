@@ -9,7 +9,16 @@ from raftconfig import *
 from inotifypath import *
 from raftprocess import RaftProcess
 
-def niova_raft_process_ops(recipe_conf, peer_idx, operation):
+'''
+niova_raft_process_ops: This function perform operations like start, stop,pause
+on the server/client.
+	@recipe_conf: Recipe config parameters.
+	@cluster_type: raft or pumicedb
+	@peer_idx: Peer index.
+	@process_type: server or client.
+	@operation: operation to perform on the peer.
+'''
+def niova_raft_process_ops(recipe_conf, cluster_type, peer_idx, process_type, operation):
 
     raft_uuid = recipe_conf['raft_config']['raft_uuid']
     peer_uuid = recipe_conf['raft_config']['peer_uuid_dict'][str(peer_idx)]
@@ -18,9 +27,7 @@ def niova_raft_process_ops(recipe_conf, peer_idx, operation):
     if operation != "start":
         pid = int(recipe_conf['raft_process'][str(peer_idx)]['process_pid'])
 
-    process_type ="server"
-    binary_path='/home/pauln/raft-builds/latest/'
-    serverproc = RaftProcess(peer_uuid, peer_idx, process_type)
+    serverproc = RaftProcess(cluster_type, peer_uuid, peer_idx, process_type)
 
     if operation == "start":
 
@@ -58,8 +65,10 @@ def niova_raft_process_ops(recipe_conf, peer_idx, operation):
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
         recipe_params = kwargs['variables']['raft_param']
+        cluster_type = recipe_params['ctype']
         proc_operation = terms[0]
-        peer_id = terms[1]
+        proc_type = terms[1]
+        peer_id = terms[2]
 
         # Initialize the logger
         log_path = "%s/%s/%s.log" % (recipe_params['base_dir'], recipe_params['raft_uuid'], recipe_params['raft_uuid'])
@@ -73,8 +82,10 @@ class LookupModule(LookupBase):
             with open(raft_json_fpath, "r+", encoding="utf-8") as json_file:
                 recipe_conf = json.load(json_file)
 
-        niova_obj_dict = niova_raft_process_ops(recipe_conf, peer_id, proc_operation)
-        if len(terms) == 3:
+        # Perform the operation on the peer.
+        niova_obj_dict = niova_raft_process_ops(recipe_conf, cluster_type, peer_id, proc_type, proc_operation)
+        if len(terms) == 4:
             logging.info("sleep after the operation")
-            sleep_time = int(terms[2])
-            time.sleep(sleep_time)
+            sleep_info = terms[3]
+            sleep_nsec = int(sleep_info['sleep_after_cmd'])
+            time.sleep(sleep_nsec)

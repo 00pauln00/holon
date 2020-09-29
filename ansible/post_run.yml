@@ -27,5 +27,5 @@
 
   - name: "Kill the processes after recipe execution"
     set_fact:
-       kill_peer0="{{lookup('niova_raftprocess', 'kill', item, wantlist=True)}}"
+       kill_peer0="{{lookup('niova_raftprocess', 'kill', 'server', item, wantlist=True)}}"
     with_sequence: start=0 end="{{kill_pid}}"
