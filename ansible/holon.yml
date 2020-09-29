@@ -13,6 +13,7 @@
   - name: "Default Values"
     set_fact:
       dir_path: "{{ dir_path | default('/tmp/holon_recipes_run') }}"
+      cluster_type: "{{ cluster_type | default('raft')}}"
       srv_port: "{{ srv_port | default(6000) }}"
       npeers: "{{ npeers | default(5) }}"
       client_port: "{{ client_port | default(13000) }}"
@@ -23,6 +24,7 @@
        raft_param:
            base_dir: "{{ dir_path }}"
            raft_uuid: "{{ cluster_uuid.stdout}}"
+           ctype: "{{ cluster_type }}"
 
   - name: "prepare config"
     vars:

@@ -13,7 +13,7 @@
       set_fact: idle_on="{{lookup('niova_ctlrequest', 'apply_cmd', 0, "idle_on", False, wantlist=True)}}"
 
     - name: "Start peer 0"
-      set_fact: server0="{{lookup('niova_raftprocess', 'start', 0, wantlist=True)}}"
+      set_fact: server0="{{lookup('niova_raftprocess', 'start', 'server', 0, wantlist=True)}}"
 
     - name: "Wait for server to start properly"
       wait_for:

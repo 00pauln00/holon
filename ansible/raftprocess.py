@@ -24,17 +24,20 @@ class RaftProcess:
     process_status = ''
     process_popen = {}
     process_idx = 0
-    binary_path='/home/pauln/raft-builds/latest/'
+    process_cluster_type = 'raft'
+    binary_path='/home/pauln/raft-builds/latest/raft-server'
     process_pid = 0
 
     '''
         Constructor:
         Purpose: Initialisation
-        Parameter:  @uuid: UUID of server or client for which process object is
+        Parameter:  @cluster_type: Cluster is raft cluster or pumiceDB cluster.
+					@uuid: UUID of server or client for which process object is
                             created.
                     @process_type: Type of the process(server or client)
     '''
-    def __init__(self, uuid, process_idx, process_type):
+    def __init__(self, cluster_type, uuid, process_idx, process_type):
+        self.process_cluster_type = cluster_type
         self.process_uuid = uuid
         self.process_idx = process_idx
         self.process_type = process_type
@@ -64,7 +67,17 @@ class RaftProcess:
 
     def start_process(self, raft_uuid, peer_uuid, base_dir):
 
-        server_bin_path = "%s/raft-server" % (self.binary_path)
+        if self.process_cluster_type == "pumicedb":
+            if self.process_type == "server":
+                bin_path = '/home/pauln/raft-builds/latest/pumicedb-server-test'
+            else:
+                bin_path = '/home/pauln/raft-builds/latest/pumicedb-client-test'
+        else:
+            if self.process_type == "server":
+                bin_path = '/home/pauln/raft-builds/latest/raft-server'
+            else:
+                bin_path = '/home/pauln/raft-builds/latest/raft-client'
+
 
         '''
         We want to append the output of raft-server log into the recipe log
@@ -75,7 +88,7 @@ class RaftProcess:
         temp_file = "%s/raft_log_%s.txt" % (base_dir, peer_uuid)
 
         fp = open(temp_file, "w")
-        process_popen = subprocess.Popen([server_bin_path, '-r',
+        process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid],  stdout = fp, stderr = fp)
         fp.close()
 

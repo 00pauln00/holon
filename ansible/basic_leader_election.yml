@@ -20,7 +20,7 @@
         npeers_start="{{total_npeers |int |int - 1}}"
 
     - name: "Starting peer 2"
-      set_fact: server1="{{lookup('niova_raftprocess', 'start', item, wantlist=True)}}"
+      set_fact: server1="{{lookup('niova_raftprocess', 'start', 'server', item, wantlist=True)}}"
       with_sequence: start=2 end="{{npeers_start}}"
 
     - name: "Wait until leader election happens"
