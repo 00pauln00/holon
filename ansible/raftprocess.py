@@ -23,8 +23,7 @@ class RaftProcess:
     process_uuid = ''
     process_status = ''
     process_popen = {}
-    process_idx = 0
-    process_cluster_type = 'raft'
+    process_cluster_type = ''
     binary_path='/home/pauln/raft-builds/latest/raft-server'
     process_pid = 0
 
@@ -36,12 +35,11 @@ class RaftProcess:
                             created.
                     @process_type: Type of the process(server or client)
     '''
-    def __init__(self, cluster_type, uuid, process_idx, process_type):
+    def __init__(self, cluster_type, uuid, process_type):
         self.process_cluster_type = cluster_type
         self.process_uuid = uuid
-        self.process_idx = process_idx
-        self.process_type = process_type
         self.process_pid = 0
+        self.process_type = process_type
 
     '''
         Method: start_process
@@ -92,7 +90,7 @@ class RaftProcess:
                                     raft_uuid, '-u', peer_uuid],  stdout = fp, stderr = fp)
         fp.close()
 
-        output_label = "raft-%s.%s" % (self.process_type, self.process_idx)
+        output_label = "raft-%s.%s" % (self.process_type, self.process_uuid)
         self.process_pid = process_popen.pid
     
         #To check if process is started
