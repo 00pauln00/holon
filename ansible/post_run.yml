@@ -15,17 +15,18 @@
     set_fact:
       jsondata: "{{ result.stdout | from_json }}"
 
-  - name: "Get the running peer id(s) from recipe JSON"
+  - name: "Get the running peer's  UUID(s) from recipe JSON"
     set_fact:
-       raftprocess_pid: "{{ jsondata | json_query(jmesquery) }}"
+       peer_uuid: "{{ jsondata | json_query(jmesquery) }}"
     vars:
-       jmesquery: 'raft_process.*.process_pid'
+       jmesquery: 'raft_process.*.process_uuid'
 
-  - name: "Get process_pid(s)"
+
+  - name: "Get the number of running peers"
     set_fact:
-       kill_pid: "{{ raftprocess_pid|length|int -1}}"
+       running_npeers: "{{ peer_uuid|length}}"
 
   - name: "Kill the processes after recipe execution"
     set_fact:
-       kill_peer0="{{lookup('niova_raftprocess', 'kill', 'server', item, wantlist=True)}}"
-    with_sequence: start=0 end="{{kill_pid}}"
+       kill_peer0="{{lookup('niova_raftprocess', 'kill', peer_uuid[item], wantlist=True)}}"
+    loop: "{{ range(0, running_npeers| int)| list}}"
