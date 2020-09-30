@@ -25,7 +25,7 @@
            iter: 5
            sleep_after_cmd: 3
       set_fact:
-          raft_value="{{ lookup('niova_ctlrequest', 'lookup', 0, raft_keys, iter_info, wantlist=True)}}"
+          raft_value="{{ lookup('niova_ctlrequest', 'lookup', server0_uuid, raft_keys, iter_info, wantlist=True)}}"
 
     - name: "Verify stage0"
       vars:
@@ -49,18 +49,18 @@
       vars:
          stage: "stage1_before_reboot"
       set_fact:
-          before_reboot="{{lookup('niova_ctlrequest', 'lookup', 0, '/raft_root_entry/0/term', wantlist=True)}}"
+          before_reboot="{{lookup('niova_ctlrequest', 'lookup', server0_uuid, '/raft_root_entry/0/term', wantlist=True)}}"
 
     - name: "Kill the process"
-      set_fact: server0="{{lookup('niova_raftprocess', 'kill', 'server', 0, wantlist=True)}}"
+      set_fact: server0="{{lookup('niova_raftprocess', 'kill', server0_uuid, wantlist=True)}}"
 
     - name: "Restart the peer0 process"
-      set_fact: server0="{{lookup('niova_raftprocess', 'start', 'server', 0, wantlist=True)}}"
+      set_fact: server0="{{lookup('niova_raftprocess', 'start', server0_uuid, wantlist=True)}}"
 
     - name: "Make sure raft timer thread is activated after starting the peer"
       vars:
          stage: "idle_off"
-      set_fact: idle_off="{{lookup('niova_ctlrequest', 'apply_cmd', 0, 'idle_off', False, wantlist=True)}}"
+      set_fact: idle_off="{{lookup('niova_ctlrequest', 'apply_cmd', server0_uuid, 'idle_off', False, wantlist=True)}}"
 
     - name: "wait for 5 sec"
       wait_for:
@@ -70,7 +70,7 @@
       vars:
          stage: "stage1_after_reboot"
       set_fact:
-          after_reboot="{{lookup('niova_ctlrequest', 'lookup', 0, '/raft_root_entry/0/term', wantlist=True)}}"
+          after_reboot="{{lookup('niova_ctlrequest', 'lookup', server0_uuid, '/raft_root_entry/0/term', wantlist=True)}}"
 
     - name: "verify stage1, term value should increment after reboot"
       debug:

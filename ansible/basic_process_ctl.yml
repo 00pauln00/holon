@@ -13,9 +13,9 @@
       vars:
         stage: "stage0"
       set_fact:
-         pause_peer0="{{lookup('niova_raftprocess', 'pause', 'server', 0, wantlist=True)}}"
-         curr_time_peer0="{{lookup('niova_ctlrequest', 'apply_cmd', 0, 'current_time', False, wantlist=True)}}"
-         resume_peer0="{{lookup('niova_raftprocess', 'resume', 'server', 0, wantlist=True)}}"
+         pause_peer0="{{lookup('niova_raftprocess', 'pause', server0_uuid, wantlist=True)}}"
+         curr_time_peer0="{{lookup('niova_ctlrequest', 'apply_cmd', server0_uuid, 'current_time', False, wantlist=True)}}"
+         resume_peer0="{{lookup('niova_raftprocess', 'resume', server0_uuid, wantlist=True)}}"
       loop: "{{ range(0, iterations)| list }}"
       loop_control:
         pause: 5
@@ -27,7 +27,7 @@
            iter: 5
            sleep_after_cmd: 2
       set_fact:
-          timestamp="{{ lookup('niova_ctlrequest', 'lookup', 0, '/system_info/current_time', iter_info, wantlist=True)}}"
+          timestamp="{{ lookup('niova_ctlrequest', 'lookup', server0_uuid, '/system_info/current_time', iter_info, wantlist=True)}}"
 
     - name: "verify stage1: timestamp should be incremental in each iteration"
       vars:
