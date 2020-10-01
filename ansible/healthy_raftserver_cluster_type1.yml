@@ -131,7 +131,7 @@
        name: common
        tasks_from: get_server_uuid_info
 
-  - name: "Verify all peers state report as 'follower' except on the leader"
+  - name: "Verify values on all peers"
     vars:
        stage: "stage3"
        raft_keys:
