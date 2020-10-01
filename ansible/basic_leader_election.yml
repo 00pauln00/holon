@@ -8,17 +8,10 @@
      basic_elect_npeer_start: []
 
   tasks:
-    - name: "Get the npeer from recipe json"
-      set_fact:
-        nserver={{ raft_conf | json_query('nservers')}}
-
-    - name: "Get the total number of peers for basic leader election"
-      set_fact:
-        npeers_for_leader_elect={{nserver |int/2+1| int}}
-
-    - name: "get value of number of peers to start now."
-      set_fact:
-        npeers_start="{{npeers_for_leader_elect| int | int - 2}}"
+    - name: "Start number of server for basic leader election."
+      include_role:
+        name: common
+        tasks_from: equation_to_start_basic_leader_election
 
     - name: "Get the list of peer UUIDs to start for basic leader election."
       include_role:
@@ -28,7 +21,6 @@
     - name: "Starting peers for basic leader election"
       set_fact: server1="{{lookup('niova_raftprocess', 'start', non_running_peers[item], wantlist=True)}}"
       loop: "{{ range(0, npeers_start| int) | list}}"
-      #with_sequence: start=0 end="{{npeers_start}}"
 
     - name: "Wait until leader election happens"
       vars:
@@ -45,7 +37,7 @@
         name: common
         tasks_from: get_server_uuid_info
 
-    - name: "Verify stage 1 for basic leader election"
+    - name: "Verify term value is same on all started peers"
       vars:
          stage: "stage0"
          raft_keys:
@@ -62,5 +54,4 @@
         (raft_values["/0/last-applied"] != 0) or
         (raft_values["/0/last-applied-cumulative-crc"] != raft_values["/0/newest-entry-crc"]) or
         (raft_values["/0/term"] != raft_values["/0/newest-entry-term"])
-      loop: "{{ range(0, nrunning_peers|length - 1) | list}}"
-      #with_sequence: start=0 end="{{nrunning_peers|length - 1}}"
+      loop: "{{ range(0, nrunning_peers|length) | list}}"
