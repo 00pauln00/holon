@@ -10,7 +10,7 @@
     - name: "Get the non-running peers list to select first peer to start"
       include_role:
         name: common
-        tasks_from: get_non_running_peers
+        tasks_from: get_server_uuid_info
 
     - name: "The first peer to start"
       set_fact:
