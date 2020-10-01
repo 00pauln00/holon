@@ -5,33 +5,14 @@
   vars:
      recipe_name: "leader_overthrow"
      parent: "basic_leader_election"
-     follower_idx: []
      follower_uuid: []
 
   tasks:
-    - name: "Get the json path"
-      set_fact:
-        base_dir="{{ raft_conf | json_query('base_dir_path')}}"
-        raft_uuid="{{ raft_conf | json_query('raft_uuid')}}"
+    - name: "Get the latest list of running peer UUIDs"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
     
-    - name: "prepare path to read recipe JSON file"
-      shell: cat "{{base_dir}}"/"{{raft_uuid}}".json
-      register: result
-     
-    - name: "Convert output to JSON format"
-      set_fact:
-        jsondata: "{{ result.stdout | from_json }}"
-       
-    - name: "Get the running peer id(s) from recipe JSON"
-      set_fact:
-        npeers: "{{ jsondata | json_query(jmesquery) }}"
-      vars:
-        jmesquery: 'raft_process.*.process_idx'
-
-    - name: "Total number of running peers"
-      set_fact:
-        npeers_started: "{{ npeers|length|int -1}}"
-
     - name: "Get the raft values for all running peers"
       vars:
          stage: "stage0_get_all"
@@ -48,22 +29,21 @@
             - "/raft_root_entry/0/last-applied-cumulative-crc"
             - "/raft_root_entry/0/peer-uuid"
       set_fact:
-          stage0_values="{{lookup('niova_ctlrequest', 'lookup', item, raft_keys, wantlist=True)}}"   
-      with_sequence: start=0 end={{npeers_started}}
+          stage0_values="{{lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True)}}"
+      loop: "{{ range(0, nrunning_peers|length) | list}}"
 
     - name: "Get the list of peers in the cluster"
       set_fact:
         peer_arr="{{ raft_conf | json_query('peer_uuid_dict')}}"    
 
-    - name: "Get peer index for the leader"
+    - name: "Get peer uuid for the leader"
       set_fact:
-        leader_idx: "{{item.key}}"
+        leader_uuid: "{{item.value}}"
       when: stage0_values["/0/leader-uuid"] == item.value 
       with_dict: "{{ peer_arr }}"
 
-    - name: "Get peer indexes and corresponding UUIDs for follower peers"
+    - name: "Get corresponding UUIDs for follower peers"
       set_fact:
-         follower_idx: "{{ follower_idx + [item.key] }}"
          follower_uuid: "{{ follower_uuid + [item.value] }}"
       when: stage0_values["/0/leader-uuid"] != item.value
       with_dict: "{{ peer_arr }}"
@@ -71,8 +51,8 @@
     - name: "Disable message receive on all peers for leader overthrow"
       vars:
          stage: "stage1_rcv_false"
-      set_fact: recv_false="{{lookup('niova_ctlrequest', 'apply_cmd', item, 'rcv_false', False, wantlist=True)}}"
-      with_sequence: start=0 end={{npeers_started}}
+      set_fact: recv_false="{{lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers[item], 'rcv_false', False, wantlist=True)}}"
+      loop: "{{ range(0, nrunning_peers|length) | list}}"
     - pause: seconds=3  
     - name: "Verify that message received is disabled successfully on all peers"
       vars:
@@ -84,7 +64,7 @@
              - "/raft_root_entry/0/client-requests"
              - "/raft_root_entry/0/term"
       set_fact:
-          net_rcv="{{lookup('niova_ctlrequest', 'lookup', item, raft_keys, wantlist=True)}}"
+          net_rcv="{{lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True)}}"
       failed_when: >
            (net_rcv["/*/net_recv_enabled"] != False) or
            (net_rcv["/0/leader-uuid"] != stage0_values["/0/leader-uuid"]) or
@@ -94,8 +74,7 @@
            (net_rcv["/0/client-requests"] != "deny-leader-not-established")) or
            ((net_rcv["/0/term"] != stage0_values["/0/term"]) and
            (net_rcv["/0/term"] <= stage0_values["/0/term"]))
-      with_sequence: start=0 end={{npeers_started}}
-
+      loop: "{{ range(0, nrunning_peers|length) | list}}"
     - name: "Lets sleep for sometime before checking the values"
       wait_for:
         timeout: 5
@@ -103,8 +82,8 @@
     - name: "Set leader-to-be on all peers"
       vars:
          stage: "stage2_set_leader"
-      set_fact: set_leader_id="{{lookup('niova_ctlrequest', 'set_leader', item, follower_uuid[0], wantlist=True)}}"
-      with_sequence: start=0 end={{npeers_started}}
+      set_fact: set_leader_id="{{lookup('niova_ctlrequest', 'set_leader', nrunning_peers[item], follower_uuid[0], wantlist=True)}}"
+      loop: "{{ range(0, nrunning_peers|length) | list}}"
     - pause: seconds=3
     - name: "Verify that leader-to-be is not elected yet"
       vars:
@@ -124,7 +103,7 @@
             - "/raft_root_entry/0/voted-for-uuid"
             - "/raft_root_entry/0/peer-uuid"
       set_fact:
-          set_leader="{{lookup('niova_ctlrequest', 'lookup', item, raft_keys, wantlist=True)}}"
+          set_leader="{{lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True)}}"
       failed_when: >
         (set_leader["/0/leader-uuid"] != stage0_values["/0/leader-uuid"]) or
         (set_leader["/0/commit-idx"] != stage0_values["/0/commit-idx"]) or
@@ -138,13 +117,13 @@
         (set_leader["/0/state"] != "candidate") or
         (set_leader["/0/client-requests"] != "deny-leader-not-established") or
         (set_leader["/0/voted-for-uuid"] != set_leader["/0/peer-uuid"]) 
-      with_sequence: start=0 end={{npeers_started}}
+      loop: "{{ range(0, nrunning_peers|length) | list}}"
     - pause: seconds=3
     - name: "Enable message receive on peer which is leader-to-be"
       vars:
          stage: "stage3_rcv_true"
          peer_id: "{{ set_leader_id }}"
-      set_fact: recv_true="{{lookup('niova_ctlrequest', 'apply_cmd', follower_idx[0], 'rcv_true', False, wantlist=True)}}"
+      set_fact: recv_true="{{lookup('niova_ctlrequest', 'apply_cmd', follower_uuid[0], 'rcv_true', False, wantlist=True)}}"
 
     - name: "Verify new leader is elected successfully"
       vars:
@@ -153,7 +132,7 @@
             - "/raft_root_entry/0/leader-uuid"
             - "/raft_root_entry/0/voted-for-uuid"
       set_fact:
-          new_leader_election="{{lookup('niova_ctlrequest', 'lookup', follower_idx[0], raft_key, wantlist=True)}}"
+          new_leader_election="{{lookup('niova_ctlrequest', 'lookup', follower_uuid[0], raft_key, wantlist=True)}}"
       until: new_leader_election["/0/leader-uuid"] == new_leader_election["/0/voted-for-uuid"]
       retries: 10
       delay: 2
