@@ -65,6 +65,7 @@ class RaftProcess:
 
     def start_process(self, raft_uuid, peer_uuid, base_dir):
 
+        logging.warning("Starting uuid: %s, cluster_type %s" % (peer_uuid, self.process_cluster_type))
         if self.process_cluster_type == "pumicedb":
             if self.process_type == "server":
                 bin_path = '/home/pauln/raft-builds/latest/pumicedb-server-test'

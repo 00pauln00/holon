@@ -96,7 +96,7 @@ class RaftConfig:
         self.peer_uuid_dict = {}
         for i in range(nservers):
             peer_uuid = genericcmdobj.generate_uuid()
-            
+ 
             basicioobj.write_file(raft_fd, "PEER %s\n" % peer_uuid)
 
             peer_config_path = "%s/%s.peer" % (self.server_config_path, peer_uuid)
@@ -138,14 +138,9 @@ class RaftConfig:
         Parameters: @ip_address: IP address for the client.
                     @client_port: Client port number.
     '''
-    def generate_client_conf(self, genericcmdobj, ip_address, client_port):
+    def generate_client_conf(self, genericcmdobj, client_uuid, ip_address, client_port):
         
         basicioobj = BasicIO()
-
-        '''
-        Generate new UUID for the client.
-        '''
-        client_uuid = genericcmdobj.generate_uuid()
 
         '''
         Prepare client config information and right it to client config file.
@@ -158,7 +153,7 @@ class RaftConfig:
         basicioobj.write_file(cl_fd, client_buff)
         # close the file
         basicioobj.close_file(cl_fd)
-        # Append the client uuid into an array
+        # Store the client UUID
         self.client_uuid_arr.append(client_uuid)
 
     '''
