@@ -11,7 +11,7 @@
     - name: "Start number of server for basic leader election."
       include_role:
         name: common
-        tasks_from: equation_to_start_basic_leader_election
+        tasks_from: npeers_for_basic_leader_election
 
     - name: "Get the list of peer UUIDs to start for basic leader election."
       include_role:
@@ -27,7 +27,7 @@
          stage: "leader-election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', server0_uuid, '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | string != "null"
+      until: lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | string != "null"
       loop: "{{ range(0, 4) | list}}"
       loop_control:
         pause: 2
