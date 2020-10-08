@@ -1,0 +1,15 @@
+---
+
+  - name: "Get the npeer from recipe json"
+    set_fact:
+      nserver={{ raft_conf | json_query('nservers')}}
+
+  - name: "Get the total number of peers for basic leader election"
+    set_fact:
+      npeers_for_leader_elect={{nserver |int/2+1| int}}
+
+  - name: "get value of number of peers to start now."
+    set_fact:
+      npeers_start="{{npeers_for_leader_elect| int | int - 2}}"
+
+  - debug: var=npeers_start

@@ -5,7 +5,6 @@
   vars:
      recipe_name: "term_ticker"
      parent: "basic_process_ctl"
-     raft_value: []
   tasks:
     - name: "Get the raft key values for peer0 in a loop with 3sec pause between iterations"
       vars:
@@ -25,7 +24,7 @@
            iter: 5
            sleep_after_cmd: 3
       set_fact:
-          raft_value="{{ lookup('niova_ctlrequest', 'lookup', 0, raft_keys, iter_info, wantlist=True)}}"
+          raft_value="{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, raft_keys, iter_info, wantlist=True)}}"
 
     - name: "Verify stage0"
       vars:
@@ -49,18 +48,22 @@
       vars:
          stage: "stage1_before_reboot"
       set_fact:
-          before_reboot="{{lookup('niova_ctlrequest', 'lookup', 0, '/raft_root_entry/0/term', wantlist=True)}}"
+          before_reboot="{{lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True)}}"
 
     - name: "Kill the process"
-      set_fact: server0="{{lookup('niova_raftprocess', 'kill', 0, wantlist=True)}}"
+      debug:
+       msg: "{{lookup('niova_raftprocess', 'kill', Server0UUID, wantlist=True)}}"
 
     - name: "Restart the peer0 process"
-      set_fact: server0="{{lookup('niova_raftprocess', 'start', 0, wantlist=True)}}"
+      debug:
+       msg: "{{lookup('niova_raftprocess', 'start', Server0UUID, wantlist=True)}}"
 
     - name: "Make sure raft timer thread is activated after starting the peer"
       vars:
          stage: "idle_off"
-      set_fact: idle_off="{{lookup('niova_ctlrequest', 'apply_cmd', 0, 'idle_off', False, wantlist=True)}}"
+         idleoff: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, 'idle_off', False, wantlist=True)}}"
+      debug:
+        msg: "{{idleoff}}"
 
     - name: "wait for 5 sec"
       wait_for:
@@ -70,7 +73,7 @@
       vars:
          stage: "stage1_after_reboot"
       set_fact:
-          after_reboot="{{lookup('niova_ctlrequest', 'lookup', 0, '/raft_root_entry/0/term', wantlist=True)}}"
+          after_reboot="{{lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True)}}"
 
     - name: "verify stage1, term value should increment after reboot"
       debug:

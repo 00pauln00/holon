@@ -71,6 +71,7 @@ class CtlRequest:
     def __init__(self, inotifyobj, cmd, peer_uuid, app_uuid, input_base):
 
         self.cmd = cmd
+        self.peer_uuid = peer_uuid
         # export the shared init path
         if input_base == inotify_input_base.SHARED_INIT:
             inotifyobj.export_init_path(peer_uuid)
