@@ -30,7 +30,7 @@
             - "/raft_root_entry/0/peer-uuid"
       set_fact:
           stage0_values="{{lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True)}}"
-      loop: "{{ range(0, nrunning_peers|length) | list}}"
+      loop: "{{ range(0, nrunning_peers|length) | list }}"
 
     - name: "Get the list of peers in the cluster"
       set_fact:
@@ -51,9 +51,13 @@
     - name: "Disable message receive on all peers for leader overthrow"
       vars:
          stage: "stage1_rcv_false"
-      set_fact: recv_false="{{lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers[item], 'rcv_false', False, wantlist=True)}}"
-      loop: "{{ range(0, nrunning_peers|length) | list}}"
-    - pause: seconds=3  
+         cmd: "net_recv_enabled@false"
+         where: "/ctl_svc_nodes/net_recv_enabled@true"
+      set_fact: recv_false="{{lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers[item], wantlist=True)}}"
+      loop: "{{ range(0, nrunning_peers|length) | list }}"
+
+    - pause: seconds=3
+
     - name: "Verify that message received is disabled successfully on all peers"
       vars:
          stage: "stage1_get_all"
@@ -74,7 +78,7 @@
            (net_rcv["/0/client-requests"] != "deny-leader-not-established")) or
            ((net_rcv["/0/term"] != stage0_values["/0/term"]) and
            (net_rcv["/0/term"] <= stage0_values["/0/term"]))
-      loop: "{{ range(0, nrunning_peers|length) | list}}"
+      loop: "{{ range(0, nrunning_peers|length) | list }}"
     - name: "Lets sleep for sometime before checking the values"
       wait_for:
         timeout: 5
@@ -82,9 +86,13 @@
     - name: "Set leader-to-be on all peers"
       vars:
          stage: "stage2_set_leader"
-      set_fact: set_leader_id="{{lookup('niova_ctlrequest', 'set_leader', nrunning_peers[item], follower_uuid[0], wantlist=True)}}"
-      loop: "{{ range(0, nrunning_peers|length) | list}}"
+         cmd: "net_recv_enabled@true"
+         where: "/ctl_svc_nodes/uuid@ + {{follower_uuid.0}}"
+      set_fact: set_leader_id="{{lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers[item], wantlist=True)}}"
+      loop: "{{ range(0, nrunning_peers|length) | list }}"
+
     - pause: seconds=3
+
     - name: "Verify that leader-to-be is not elected yet"
       vars:
          stage: "stage2_set_leader"
@@ -117,12 +125,13 @@
         (set_leader["/0/state"] != "candidate") or
         (set_leader["/0/client-requests"] != "deny-leader-not-established") or
         (set_leader["/0/voted-for-uuid"] != set_leader["/0/peer-uuid"]) 
-      loop: "{{ range(0, nrunning_peers|length) | list}}"
+      loop: "{{ range(0, nrunning_peers|length) | list }}"
     - pause: seconds=3
     - name: "Enable message receive on peer which is leader-to-be"
       vars:
          stage: "stage3_rcv_true"
-         peer_id: "{{ set_leader_id }}"
+         cmd: "net_recv_enabled@true"
+         where: "/ctl_svc_nodes/net_recv_enabled@false"
       set_fact: recv_true="{{lookup('niova_ctlrequest', 'apply_cmd', follower_uuid[0], 'rcv_true', False, wantlist=True)}}"
 
     - name: "Verify new leader is elected successfully"
@@ -137,6 +146,6 @@
       retries: 10
       delay: 2
       ignore_errors: yes
-      loop: "{{ range(0, 5) | list}}"
+      loop: "{{ range(0, 5) | list }}"
       loop_control:
           pause: 2

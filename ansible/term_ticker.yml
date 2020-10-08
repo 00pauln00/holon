@@ -61,7 +61,9 @@
     - name: "Make sure raft timer thread is activated after starting the peer"
       vars:
          stage: "idle_off"
-         idleoff: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, 'idle_off', False, wantlist=True)}}"
+         cmd: "ignore_timer_events@false"
+         where: "/raft_net_info/ignore_timer_events"
+         idleoff: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, wantlist=True)}}"
       debug:
         msg: "{{idleoff}}"
 

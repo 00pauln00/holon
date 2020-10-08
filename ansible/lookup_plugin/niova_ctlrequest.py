@@ -16,7 +16,9 @@ the cmd on the given peer-uuid.
 '''
 def niova_ctlreq_cmd_send(recipe_conf, ctlreq_dict):
     wait_for_ofile = True
+    operation = ctlreq_dict['operation']
     cmd = ctlreq_dict['cmd']
+    where = ctlreq_dict['where']
     recipe_name = ctlreq_dict['recipe_name']
     peer_uuid = ctlreq_dict['peer_uuid']
     stage = ctlreq_dict['stage']
@@ -29,25 +31,19 @@ def niova_ctlreq_cmd_send(recipe_conf, ctlreq_dict):
     app_uuid = genericcmdobj.generate_uuid()
     inotifyobj = InotifyPath(base_dir, True)
     # For idle_on cmd , input_base would be PRIVATE_INIT.
-    if cmd == "idle_on":
+    if cmd == "ignore_timer_events@true":
         input_base = inotify_input_base.PRIVATE_INIT
 
     if 'wait_for_ofile' in ctlreq_dict:
         wait_for_ofile = ctlreq_dict['wait_for_ofile']
 
-    if cmd == "set_leader_uuid":
-        logging.info("cmd is set_leader_uuid")
-        ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                    input_base).set_leader(ctlreq_dict['set_leader_uuid'])
+    # Prepare the ctlreq object
+    if wait_for_ofile == False:
+        ctlreqobj = CtlRequest(inotifyobj, operation, cmd, where, peer_uuid, app_uuid,
+                            input_base).Apply()
     else:
-        raft_key = ctlreq_dict['raft_key']
-        # Prepare the ctlreq object
-        if wait_for_ofile == False:
-            ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                            input_base).Apply(raft_key)
-        else:
-            ctlreqobj = CtlRequest(inotifyobj, cmd, peer_uuid, app_uuid,
-                            input_base).Apply_and_Wait(raft_key, False)
+        ctlreqobj = CtlRequest(inotifyobj, operation, cmd, where, peer_uuid, app_uuid,
+                            input_base).Apply_and_Wait(False)
 
     ctlreq_dict_list = []
     ctlreq_dict_list.append(ctlreqobj.__dict__)
@@ -104,10 +100,10 @@ def niova_raft_lookup_ctlreq(recipe_conf, ctlreq_cmd_dict):
 
     raft_keys = ctlreq_cmd_dict['lookup_key']
     if isinstance(raft_keys, list):
-        ctlreq_cmd_dict['raft_key'] = "/.*/.*/.*/.*"
+        ctlreq_cmd_dict['cmd'] = "/.*/.*/.*/.*"
     else:
         single_key = re.sub('/0/', '/', raft_keys)
-        ctlreq_cmd_dict['raft_key'] = single_key
+        ctlreq_cmd_dict['cmd'] = single_key
         '''
         If single key is passed by user, niova_raft_lookup_values expects
         the keys are added in a list. So add the key in the list.
@@ -120,22 +116,21 @@ def niova_raft_lookup_ctlreq(recipe_conf, ctlreq_cmd_dict):
     ctlreq_obj_dict = niova_ctlreq_cmd_send(recipe_conf, ctlreq_cmd_dict)
 
     '''
+    If lookup was called with wait_for_ofile = False, the recipe is not
+    looking for output.
+    Example could be, pausing the process and doing lookup which is expected
+    to be failed.
+    '''
+    if 'wait_for_ofile' in ctlreq_cmd_dict and ctlreq_cmd_dict['wait_for_ofile'] == False:
+        return {}
+
+    '''
     Get the values from the output file for these specific raft_keys
     '''
     raft_values = niova_raft_lookup_values(ctlreq_obj_dict, raft_keys)
 
     logging.info(raft_values)
     return raft_values
-
-'''
-ctlrequest cmd for overthrowing the current leader and
-setting the new leader-to-be.
-'''
-def niova_set_leader(recipe_conf, ctlreq_dict):
-
-    ctlreq_obj_dict = niova_ctlreq_cmd_send(recipe_conf, ctlreq_dict)
-    return ctlreq_obj_dict
-
 
 '''
 Load the recipe json file and get the file contents as dictionary.
@@ -174,23 +169,25 @@ def niova_ctlrequest_get_cmdline_input_dict(global_args, local_args):
     ctlreq_cmd_dict['recipe_name'] = global_args['variables']['recipe_name']
     ctlreq_cmd_dict['stage'] = global_args['variables']['stage']
 
+    # If wait_for_ofile is passed explicitly.
+    if 'wait_for_ofile' in global_args['variables']:
+        ctlreq_cmd_dict['wait_for_ofile'] = global_args['variables']['wait_for_ofile']
+
 	# cmdline parameters to the ctlrequest lookup plugin.
     ctlreq_cmd_dict['operation'] = local_args[0]
     ctlreq_cmd_dict['peer_uuid'] = local_args[1]
 
 	# Now get the parameters specific to the operation.
     if ctlreq_cmd_dict['operation'] == "apply_cmd":
-        ctlreq_cmd_dict['cmd'] = local_args[2]
-        ctlreq_cmd_dict['wait_for_ofile'] = local_args[3]
+        ctlreq_cmd_dict['cmd'] = global_args['variables']['cmd']
+        ctlreq_cmd_dict['where'] = global_args['variables']['where']
         ctlreq_cmd_dict['raft_key'] = "None"
 
-    elif ctlreq_cmd_dict['operation'] == "set_leader":
-        ctlreq_cmd_dict['cmd'] = "set_leader_uuid"
-        ctlreq_cmd_dict['set_leader_uuid'] = local_args[2]
 
     elif ctlreq_cmd_dict['operation'] == "lookup":
         ctlreq_cmd_dict['lookup_key'] = local_args[2]
-        ctlreq_cmd_dict['cmd'] = "get_key"
+        ctlreq_cmd_dict['cmd'] = None 
+        ctlreq_cmd_dict['where'] = None
         '''
         If this lookup is gonna run for number of iterations.
         '''
@@ -214,6 +211,7 @@ class LookupModule(LookupBase):
         Initialize the logger for ctlrequest logs.
         '''
         recipe_params = kwargs['variables']['raft_param']
+
         niova_ctlrequest_init_logger(recipe_params)
 
         '''
@@ -230,13 +228,6 @@ class LookupModule(LookupBase):
         if ctlreq_cmd_dict['operation'] == "apply_cmd":
             logging.warning("Apply cmd: %s on peer-uuid: %s" % (ctlreq_cmd_dict['cmd'], ctlreq_cmd_dict['peer_uuid']))
             result = niova_ctlreq_cmd_send(recipe_conf, ctlreq_cmd_dict)
-
-        elif ctlreq_cmd_dict['operation'] == "set_leader":
-            '''
-            This is the ctlrequest operation to overthrow the current leader.
-            '''
-            logging.warning("leader-to-be uuid: %s" % ctlreq_cmd_dict['set_leader_uuid'])
-            result = niova_set_leader(recipe_conf, ctlreq_cmd_dict)
 
         elif ctlreq_cmd_dict['operation'] == "lookup":
             '''
@@ -261,7 +252,6 @@ class LookupModule(LookupBase):
             '''
 
             if iter_info != None:
-                logging.info("Get the dictionary values: %s" % iter_info)
                 iter_cnt = int(iter_info['iter'])
                 sleep_sec = int(iter_info['sleep_after_cmd'])
 

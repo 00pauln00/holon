@@ -18,19 +18,23 @@
     - name: "Disable Raft timer thread"
       vars:
         stage: "idle_on"
-        idle_on: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, 'idle_on', False, wantlist=True)}}"
+        wait_for_ofile: False
+        cmd: "ignore_timer_events@true"
+        where: "/raft_net_info/ignore_timer_events"
+        idle_on: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, False, wantlist=True)}}"
       debug:
         msg: "{{ idle_on }}"
 
     - name: "Start peer which is made idle in previous task"
+      include_role:
+        name: common
+        tasks_from: start_server
       vars:
-       server0: "{{lookup('niova_raftprocess', 'start', Server0UUID, wantlist=True)}}"
-      debug:
-       msg: "{{server0}}"
+        ServerUUID: "{{Server0UUID}}"
 
     - name: "Wait for server to start properly"
       wait_for:
-         timeout: 3
+         timeout: 7
 
     - name: "Verify Initial Idle condition"
       vars:
@@ -55,7 +59,9 @@
     - name: "Activate Raft timer thread"
       vars:
          stage: "idle_off"
-         idle_off: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, 'idle_off', False, wantlist=True)}}i"
+         cmd: "ignore_timer_events@false"
+         where: "/raft_net_info/ignore_timer_events"
+         idle_off: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, wantlist=True)}}"
       debug:
         msg: "{{idle_off}}"
 

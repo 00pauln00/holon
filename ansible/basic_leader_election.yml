@@ -20,7 +20,7 @@
 
     - name: "Starting peers for basic leader election"
       set_fact: server1="{{lookup('niova_raftprocess', 'start', non_running_peers[item], wantlist=True)}}"
-      loop: "{{ range(0, npeers_start| int) | list}}"
+      loop: "{{ range(0, npeers_start| int) | list }}"
 
     - name: "Wait until leader election happens"
       vars:
@@ -28,7 +28,7 @@
       debug:
         msg: "Waiting for leader election"
       until: lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | string != "null"
-      loop: "{{ range(0, 4) | list}}"
+      loop: "{{ range(0, 4) | list }}"
       loop_control:
         pause: 2
 
@@ -54,4 +54,4 @@
         (raft_values["/0/last-applied"] != 0) or
         (raft_values["/0/last-applied-cumulative-crc"] != raft_values["/0/newest-entry-crc"]) or
         (raft_values["/0/term"] != raft_values["/0/newest-entry-term"])
-      loop: "{{ range(0, nrunning_peers|length) | list}}"
+      loop: "{{ range(0, nrunning_peers|length) | list }}"
