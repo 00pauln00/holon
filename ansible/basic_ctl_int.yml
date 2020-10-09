@@ -21,7 +21,7 @@
         wait_for_ofile: False
         cmd: "ignore_timer_events@true"
         where: "/raft_net_info/ignore_timer_events"
-        idle_on: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, False, wantlist=True)}}"
+        idle_on: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, cmd, where, wantlist=True)}}"
       debug:
         msg: "{{ idle_on }}"
 
@@ -61,7 +61,7 @@
          stage: "idle_off"
          cmd: "ignore_timer_events@false"
          where: "/raft_net_info/ignore_timer_events"
-         idle_off: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, wantlist=True)}}"
+         idle_off: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, cmd, where, wantlist=True)}}"
       debug:
         msg: "{{idle_off}}"
 

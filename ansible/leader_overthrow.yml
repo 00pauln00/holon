@@ -53,7 +53,7 @@
          stage: "stage1_rcv_false"
          cmd: "net_recv_enabled@false"
          where: "/ctl_svc_nodes/net_recv_enabled@true"
-      set_fact: recv_false="{{lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers[item], wantlist=True)}}"
+      set_fact: recv_false="{{lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers[item], cmd, where, wantlist=True)}}"
       loop: "{{ range(0, nrunning_peers|length) | list }}"
 
     - pause: seconds=3
@@ -83,12 +83,16 @@
       wait_for:
         timeout: 5
 
+    - name: "Selected leader-to-be"
+      debug:
+        msg: "{{ follower_uuid[0] }}"
+
     - name: "Set leader-to-be on all peers"
       vars:
          stage: "stage2_set_leader"
          cmd: "net_recv_enabled@true"
-         where: "/ctl_svc_nodes/uuid@ + {{follower_uuid.0}}"
-      set_fact: set_leader_id="{{lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers[item], wantlist=True)}}"
+         where: "/ctl_svc_nodes/uuid@{{ follower_uuid[0] }}"
+      set_fact: set_leader_id="{{lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers[item], cmd, where, wantlist=True)}}"
       loop: "{{ range(0, nrunning_peers|length) | list }}"
 
     - pause: seconds=3
@@ -132,7 +136,7 @@
          stage: "stage3_rcv_true"
          cmd: "net_recv_enabled@true"
          where: "/ctl_svc_nodes/net_recv_enabled@false"
-      set_fact: recv_true="{{lookup('niova_ctlrequest', 'apply_cmd', follower_uuid[0], 'rcv_true', False, wantlist=True)}}"
+      set_fact: recv_true="{{lookup('niova_ctlrequest', 'apply_cmd', follower_uuid[0], cmd, where, wantlist=True)}}"
 
     - name: "Verify new leader is elected successfully"
       vars:

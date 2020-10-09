@@ -179,8 +179,8 @@ def niova_ctlrequest_get_cmdline_input_dict(global_args, local_args):
 
 	# Now get the parameters specific to the operation.
     if ctlreq_cmd_dict['operation'] == "apply_cmd":
-        ctlreq_cmd_dict['cmd'] = global_args['variables']['cmd']
-        ctlreq_cmd_dict['where'] = global_args['variables']['where']
+        ctlreq_cmd_dict['cmd'] = local_args[2]
+        ctlreq_cmd_dict['where'] = local_args[3]
         ctlreq_cmd_dict['raft_key'] = "None"
 
 

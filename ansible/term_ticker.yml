@@ -63,7 +63,7 @@
          stage: "idle_off"
          cmd: "ignore_timer_events@false"
          where: "/raft_net_info/ignore_timer_events"
-         idleoff: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, wantlist=True)}}"
+         idleoff: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, cmd, where, wantlist=True)}}"
       debug:
         msg: "{{idleoff}}"
 
