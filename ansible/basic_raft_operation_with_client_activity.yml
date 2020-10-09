@@ -132,7 +132,7 @@
     set_fact:
         leader_follower_stats="{{lookup('niova_ctlrequest', 'lookup', get_values['/0/leader-uuid'], raft_keys, wantlist=True)}}"
     failed_when: >
-          leader_follower_stats['/0/follower-stats'][item]['next-idx'] != (pre_follower_stats['/0/follower-stats'][item]['next-idx'] + num_writes) and
+          leader_follower_stats['/0/follower-stats'][item]['next-idx'] != (pre_follower_stats['/0/follower-stats'][item]['next-idx'] + num_writes +1) and
           leader_follower_stats['/0/follower-stats'][item]['prev-idx-term'] != pre_write_term['/0/term'] 
     loop: "{{ range(0, nrunning_peers | length-1) | list }}"
   
