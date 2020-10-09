@@ -68,7 +68,11 @@
       peers_to_be_started="{{non_running_peers}}"
 
   - name: "Start the remaining peers"
-    set_fact: start_nservers="{{lookup('niova_raftprocess', 'start', peers_to_be_started[item], wantlist=True)}}"
+    include_role:
+      name: common
+      tasks_from: start_server
+    vars:
+      ServerUUID: "{{peers_to_be_started[item]}}"
     loop: "{{ range(0, peers_to_be_started|length) | list }}"
 
   - name: "Get the cluster information again after starting the peers"

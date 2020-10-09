@@ -19,7 +19,11 @@
         tasks_from: get_server_uuid_info
 
     - name: "Starting peers for basic leader election"
-      set_fact: server1="{{lookup('niova_raftprocess', 'start', non_running_peers[item], wantlist=True)}}"
+      include_role:
+        name: common
+        tasks_from: start_server
+      vars:
+        ServerUUID: "{{non_running_peers[item]}}"
       loop: "{{ range(0, npeers_start| int) | list }}"
 
     - name: "Wait until leader election happens"
