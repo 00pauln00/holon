@@ -1,0 +1,190 @@
+- import_playbook: healthy_raftserver_cluster_type2.yml
+- name: "Basic Raft Operation With Client Activity"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "Basic Raft Operation With Client Activity"
+     parent: "Healthy Raftserver Cluster Type-2"
+     client_obj: {}
+     get_values: []
+     raft_root_entry: []
+
+  tasks:
+  - name: "Get cluster information"
+    include_role:
+      name: common
+      tasks_from: get_server_uuid_info
+      
+  - name: "Create UUID for starting the client"
+    shell: "/usr/bin/uuid"
+    register: client_uuid
+
+  - name: "Starting client"
+    vars:
+      client_obj: "{{lookup('niova_raftprocess', 'start', client_uuid.stdout, wantlist=True)}}"
+    debug:
+      msg:
+        - "{{ client_obj }}"
+        - "{{ client_uuid_array }}"
+        - "{{ nrunning_peers }}"
+
+  - pause: seconds=5
+
+  - name: "Get raft_uuid and leader_uuid."
+    vars:
+       stage: "Stage0"
+       raft_keys:
+          - "/raft_root_entry/0/raft-uuid"
+          - "/raft_root_entry/0/leader-uuid"
+    set_fact:
+        get_values: "{{ lookup('niova_ctlrequest','lookup', nrunning_peers[0], raft_keys, wantlist=True)}}"
+
+  - name: "Verify the parameters for client."
+    vars:
+      stage: "stage1"
+      raft_keys:
+          - "/raft_client_root_entry/0/leader-viable"
+          - "/raft_client_root_entry/0/last-request-ack"
+          - "/raft_client_root_entry/0/raft-uuid"
+          - "/raft_client_root_entry/0/state"
+          - "/raft_client_root_entry/0/leader-uuid"
+    set_fact:
+        client_values="{{lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True)}}"
+    failed_when: >
+            client_values['/0/raft-uuid'] != get_values['/0/raft-uuid'] and
+            client_values['/0/state'] != "client" and
+            client_values['/0/leader-uuid'] != get_values['/0/leader-uuid'] and
+            client_values['/raft_client_app/last-request-ack'] != "Thu Jan 01 00:00:00 UTC 1970" and
+            client_values['/raft_client_app/leader-is-viable'] != true
+
+  - name: "Snapshot the State of the Raft Servers before doing any writes on client."
+    vars:
+       stage: "Pre-write-term"
+       raft_keys:
+           - "/raft_root_entry/0/term"
+    set_fact:
+       pre_write_term: "{{ raft_root_entry + [lookup('niova_ctlrequest','lookup', nrunning_peers[item], raft_keys, wantlist=True)] }}"
+    loop: "{{ range(0, nrunning_peers | length) | list }}"
+
+  - name: "Snapshot the follower stats from leader before doing any writes on client."
+    vars:
+       stage: "Pre-write_get_follower_stats"
+       raft_keys:
+           - "/raft_root_entry/0/follower-stats"
+    set_fact:
+       pre_follower_stats: "{{ lookup('niova_ctlrequest','lookup', get_values['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+
+  - name: "Generate App UUID"
+    shell: "/usr/bin/uuid"
+    register: app_uuid
+
+  - name: "Write at seqno 0 and perform the write 100 times."
+    vars:
+      stage: "write"
+      num_writes: 100
+      cmd: "input@{{app_uuid.stdout}}:0:0:0:0.write:0.{{num_writes}}"
+      where: "/pumice_db_test_client/input"
+    set_fact:
+       write_cmd: "{{lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True)}}"
+       num_writes: 100
+
+  - pause: seconds=3
+
+  - name: "Submit read cmd."
+    vars:
+      stage: "read"
+      cmd: "input@{{app_uuid.stdout}}:0:0:0:0.read"
+      where: "/pumice_db_test_client/input"
+      read_cmd: "{{lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True)}}"
+    debug:
+      msg: "{{ read_cmd }}"
+
+  - pause: seconds=5
+  
+  - name: "Verify the client parameters after successful write/read."
+    vars:
+      stage: "lookup"
+      app_uuid_string: "{{app_uuid.stdout}}:0:0:0:0"
+      raft_keys:
+          - "pumice_db_test_client/pmdb-test-apps/0/app-user-id"
+          - "pumice_db_test_client/pmdb-test-apps/0/status"
+          - "pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+          - "pumice_db_test_client/pmdb-test-apps/0/pmdb-write-pending"
+          - "pumice_db_test_client/pmdb-test-apps/0/app-sync"
+          - "pumice_db_test_client/pmdb-test-apps/0/app-seqno"
+    set_fact:
+        client_values_verification="{{lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True)}}"
+    failed_when: >
+            client_values_verification['/0/app-user-id'] != app_uuid_string and
+            client_values_verification['/0/status'] != "Success" and
+            client_values_verification['/0/pmdb-seqno'] != (num_writes - 1) and
+            client_values_verification['/0/pmdb-write-pending'] != false and
+            client_values_verification['/0/app-sync'] != true and
+            client_values_verification['/0/app-seqno'] != num_writes
+  
+  - pause: seconds=5
+
+  - name : "Server side verifications for leader"
+    vars:
+      stage: "leader_verify"
+      raft_keys:
+          - "/raft_root_entry/0/follower-stats"
+    set_fact:
+        leader_follower_stats="{{lookup('niova_ctlrequest', 'lookup', get_values['/0/leader-uuid'], raft_keys, wantlist=True)}}"
+    failed_when: >
+          leader_follower_stats['/0/follower-stats'][item]['next-idx'] != (pre_follower_stats['/0/follower-stats'][item]['next-idx'] + num_writes) and
+          leader_follower_stats['/0/follower-stats'][item]['prev-idx-term'] != pre_write_term['/0/term'] 
+    loop: "{{ range(0, nrunning_peers | length-1) | list }}"
+  
+  - name: "Get follower peer uuids."
+    set_fact:
+        follower_uuids: "{{ nrunning_peers | difference(get_values['/0/leader-uuid']) }}"
+
+  - name: "Get the last-ack for all the followers"
+    vars:
+      last_ack_arr: []
+    set_fact:
+      last_ack_arr="{{last_ack_arr}} + ['{{leader_follower_stats['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y')}}']"
+    loop: "{{ range(0, follower_uuids | length) | list }}"
+
+  - name: "Difference between last-ack of two followers should not be more than 2secs"
+    set_fact:
+      time_diff="{{ ((last_ack_arr[item] | to_datetime) - (last_ack_arr[item + 1] | to_datetime)).total_seconds() | int}}"
+    failed_when: (time_diff | int)  >= 2
+    loop: "{{ range(0, follower_uuids | length - 2) | list }}"
+
+  - name: "Server side verifications for all servers"
+    vars:
+       stage: "server_verify"
+       raft_values_all: []
+       raft_keys:
+           - "/raft_root_entry/0/term"
+           - "/raft_root_entry/0/commit-idx"
+           - "/raft_root_entry/0/last-applied"
+           - "/raft_root_entry/0/last-applied-cumulative-crc"
+           - "/raft_root_entry/0/newest-entry-idx"
+           - "/raft_root_entry/0/newest-entry-term"
+           - "/raft_root_entry/0/newest-entry-data-size"
+           - "/raft_root_entry/0/newest-entry-crc"
+    set_fact:
+        raft_values_all="{{raft_values_all + [lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True)]}}"
+    failed_when: >
+         raft_values_all[item]['/0/term'] != pre_write_term[0]['/0/term'] and
+         raft_values_all[item]['/0/commit-idx'] != num_writes and
+         raft_values_all[item]['/0/last-applied'] != num_writes and
+         raft_values_all[item]['/0/last-entry-idx'] != num_writes and
+         raft_values_all[item]['/0/newest-entry-term'] != pre_write_term[0]['/0/term']
+    loop: "{{ range(0, nrunning_peers | length) | list}}"
+    loop_control:
+        pause: 2
+
+  - name: "Verify that term, last-applied-cumulative-crc, newest-entry-term, newest-entry-data-size and newest-entry-crc are same on all peers"
+    debug:
+       msg: "Verifying that term, last-applied-cumulative-crc, newest-entry-term, newest-entry-data-size and newest-entry-crc are same on all peers"
+    failed_when: >
+          raft_values_all[item]['/0/term'] != raft_values_all[item+1]['/0/term'] and
+          raft_values_all[item]['/0/last-applied-cumulative-crc'] != raft_values_all[item+1]['/0/last-applied-cumulative-crc'] and
+          raft_values_all[item]['/0/newest-entry-term'] != raft_values_all[item+1]['/0/newest-entry-term'] and
+          raft_values_all[item]['/0/newest-entry-data-size'] != raft_values_all[item+1]['/0/newest-entry-data-size'] and
+          raft_values_all[item]['/0/newest-entry-crc'] != raft_values_all[item+1]['/0/newest-entry-crc'] 
+    loop: "{{ range(0, nrunning_peers | length -1 )| list }}"  
