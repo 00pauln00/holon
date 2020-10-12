@@ -25,9 +25,6 @@
       vars:
         ServerUUID: "{{Server1UUID}}"
 
-    - name: "Wait for server to start"
-      wait_for:
-        timeout: 5
     #Copy get_term in peer1 and in peer0, Pause and Resume peer0 in loop and compare its term catches up peer1 term
     - name: "Pause peer0 and resume it after 2sec and make sure it's term value catches up with running peer1"
       vars:

@@ -32,10 +32,6 @@
       vars:
         ServerUUID: "{{Server0UUID}}"
 
-    - name: "Wait for server to start properly"
-      wait_for:
-         timeout: 7
-
     - name: "Verify Initial Idle condition"
       vars:
         stage: "stage0"
