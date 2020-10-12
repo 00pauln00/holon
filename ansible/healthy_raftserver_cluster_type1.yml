@@ -80,14 +80,6 @@
        name: common
        tasks_from: get_server_uuid_info
 
-  - name: "Wait until each raft process is fully started"
-    vars:
-      stage: "stage0_wait_for_peer_start"
-    debug:
-      msg: "Wait until each raft process is fully booted up."
-    until: (lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], '/raft_root_entry', wantlist=True)| dict2items | map(attribute='value') | list | string != "null") and (lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], '/raft_root_entry/0/state', wantlist=True)| dict2items | map(attribute='value') | list | string != "booting")
-    loop: "{{ range(0, nrunning_peers|length) | list }}"
-
   - name: "Get the follower stat from the leader."
     vars:
       stage: "stage1"
