@@ -16,14 +16,14 @@
 
     - name: "Get the UUID for the second peer"
       set_fact:
-       Server1UUID="{{ non_running_peers[0]}}"
+       Server1UUID="{{ non_running_peers[0] }}"
 
     - name: "Start peer which is made idle in previous task"
       include_role:
         name: common
         tasks_from: start_server
       vars:
-        ServerUUID: "{{Server1UUID}}"
+        ServerUUID: "{{ Server1UUID }}"
 
     #Copy get_term in peer1 and in peer0, Pause and Resume peer0 in loop and compare its term catches up peer1 term
     - name: "Pause peer0 and resume it after 2sec and make sure it's term value catches up with running peer1"
@@ -35,10 +35,10 @@
         term_key:
           - "/raft_root_entry/0/term"
       set_fact:
-         pause_peer0="{{lookup('niova_raftprocess', 'pause', Server0UUID, wantlist=True)}}"
-         peer1_term="{{lookup('niova_ctlrequest', 'lookup', Server1UUID, '/raft_root_entry/0/term', iter_info, wantlist=True)}}"
-         resume_peer0="{{lookup('niova_raftprocess', 'resume', Server0UUID, iter_info, wantlist=True)}}"
-         peer0_term="{{lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True)}}"
+         pause_peer0="{{ lookup('niova_raftprocess', 'pause', Server0UUID, wantlist=True) }}"
+         peer1_term="{{ lookup('niova_ctlrequest', 'lookup', Server1UUID, '/raft_root_entry/0/term', iter_info, wantlist=True) }}"
+         resume_peer0="{{ lookup('niova_raftprocess', 'resume', Server0UUID, iter_info, wantlist=True) }}"
+         peer0_term="{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
       failed_when: peer1_term["/0/term"] > peer0_term["/0/term"]
       loop: "{{ range(0, iterations)| list }}"
       loop_control:

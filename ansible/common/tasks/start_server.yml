@@ -4,15 +4,11 @@
       debug:
        msg: "{{lookup('niova_raftprocess', 'start', ServerUUID, wantlist=True)}}"
 
-    - name: "Don't check immediately the status"
-      wait_for:
-        timeout: 2
-
     - name: "Wait for server process to bootup completely"
       debug:
         msg: "Wait till bootup completes."
       vars:
         stage: "start-server"
-      until: lookup('niova_ctlrequest', 'lookup', ServerUUID, '/raft_root_entry/0/state', wantlist=True)| dict2items | map(attribute='value') | list | string != "booting"
+      until: (lookup('niova_ctlrequest', 'lookup', ServerUUID, '/raft_root_entry', wantlist=True)| dict2items | map(attribute='value') | list | string != "null") and (lookup('niova_ctlrequest', 'lookup', ServerUUID, '/raft_root_entry/0/state', wantlist=True)| dict2items | map(attribute='value') | list | string != "booting")
       retries: 5
       delay: 2

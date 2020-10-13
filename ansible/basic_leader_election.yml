@@ -23,7 +23,7 @@
         name: common
         tasks_from: start_server
       vars:
-        ServerUUID: "{{non_running_peers[item]}}"
+        ServerUUID: "{{ non_running_peers[item] }}"
       loop: "{{ range(0, npeers_start| int) | list }}"
 
     - name: "Wait until leader election happens"
@@ -52,7 +52,7 @@
               - "/raft_root_entry/0/term"
               - "/raft_root_entry/0/newest-entry-term"
       set_fact: 
-          raft_values="{{lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True)}}"
+          raft_values="{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True) }}"
       failed_when: >
         (raft_values["/0/commit-idx"] != 0) or
         (raft_values["/0/last-applied"] != 0) or
