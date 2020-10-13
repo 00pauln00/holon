@@ -51,8 +51,11 @@
   - name: "Safe restart: Make peers idle before stopping them"
     vars:
       stage: "stage1_idle_on_before_Stop"
+      cmd: "ignore_timer_events@true"
+      where: "/raft_net_info/ignore_timer_events"
+      wait_for_ofile: False
     set_fact:
-        idle_on: "{{ lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers[item], 'idle_on', False, wantlist=True) }}"
+        idle_on: "{{ lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers[item], cmd, where, wantlist=True) }}"
     loop: "{{ range(0, nrunning_peers|length) | list }}"
 
   - name: "Safe_restart : Kill the processes."
@@ -78,8 +81,10 @@
   - name: "Make sure peers are not in idle state"
     vars:
        stage: "stage2_idle_off"
+       cmd: "ignore_timer_events@false"
+       where: "/raft_net_info/ignore_timer_events"
     set_fact:
-        idle_off: "{{ lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers[item], 'idle_off', False, wantlist=True) }}"
+        idle_off: "{{ lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers[item], cmd, where, wantlist=True) }}"
     loop: "{{ range(0, nrunning_peers|length) | list }}"
 
   - name: "Get start_time of peers after restart"

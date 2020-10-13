@@ -35,7 +35,7 @@
             - "/raft_root_entry/0/last-applied-cumulative-crc"
             - "/raft_root_entry/0/peer-uuid"
       set_fact:
-          stage0_values="{{lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True)}}"
+          stage0_values="{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True) }}"
       loop: "{{ range(0, nrunning_peers|length) | list}}"
       loop_control:
           pause: 2
@@ -64,7 +64,7 @@
             - "/raft_root_entry/0/follower-stats"
             - "/raft_root_entry/*/client-requests"
       set_fact:
-          follower_before_pause="{{lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True)}}"
+          follower_before_pause="{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True) }}"
 
     - name: "Randomly select how mnay peers to pause for leader self depose"
       set_fact:
@@ -76,8 +76,8 @@
 
     - name: "Pause number of followers in series"
       set_fact:
-         pause_peer="{{lookup('niova_raftprocess', 'pause', follower_uuid[item], wantlist=True)}}"
-      loop: "{{ range(0, nfollower_pause|int) | list}}"
+         pause_peer="{{ lookup('niova_raftprocess', 'pause', follower_uuid[item], wantlist=True) }}"
+      loop: "{{ range(0, nfollower_pause|int) | list }}"
 
     - name: "Wait for 5sec"
       wait_for:
@@ -91,7 +91,7 @@
             - "/raft_root_entry/0/follower-stats"
             - "/raft_root_entry/*/client-requests"
       set_fact:
-         follower_after_pause="{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True)}}"
+         follower_after_pause="{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True) }}"
       failed_when: >
           follower_after_pause['/*/client-requests'] != "deny-may-be-deposed"
 
@@ -107,7 +107,7 @@
         after_pause_lack: "{{follower_after_pause['/0/follower-stats'][item]['last-ack']}}"
       failed_when: >
         after_pause_lack < before_pause_lack
-      loop: "{{ range(0, follower_uuid | length) | list}}"
+      loop: "{{ range(0, follower_uuid | length) | list }}"
 
     - name: "Resume the followers one at a time and verify stages"
       vars:
@@ -117,9 +117,9 @@
           - "/raft_root_entry/0/peer-uuid"
           - "/raft_root_entry/0/newest-entry-term"
       set_fact:
-        resume_peer="{{ lookup('niova_raftprocess', 'resume', follower_uuid[item], wantlist=True)}}"
-        leader_info="{{ leader_info + [lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True)]}}"
-      loop: "{{range(0, nfollower_pause|int) | list}}"
+        resume_peer="{{ lookup('niova_raftprocess', 'resume', follower_uuid[item], wantlist=True) }}"
+        leader_info="{{ leader_info + [lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True)] }}"
+      loop: "{{ range(0, nfollower_pause|int) | list }}"
       loop_control:
          pause: 3
 
@@ -131,24 +131,24 @@
     - name: "Check if Case 1 occured ie any of the follower became leader"
       set_fact:
           case1="True"
-          case1_iteration="{{item}}"
+          case1_iteration="{{ item }}"
       when: leader_info[item]['/0/leader-uuid'] == follower_uuid[item]
-      loop: "{{ range(0, nfollower_pause|int) | list}}"
+      loop: "{{ range(0, nfollower_pause|int) | list }}"
 
 
     - name: "Check if Case 2 occured i.e multiple attempts for leader election"
       set_fact:
           case2="True"
-          case2_iteration="{{item}}"
+          case2_iteration="{{ item }}"
       when: leader_info[item]['/0/newest-entry-term'] > 2
-      loop: "{{ range(0, nfollower_pause|int) | list}}"
+      loop: "{{ range(0, nfollower_pause|int) | list }}"
 
     - name: "Check if Case 3 occured i.e leader remained same"
       set_fact:
           case3="True"
-          case3_iteration="{{item}}"
+          case3_iteration="{{ item }}"
       when: leader_info[item]['/0/leader-uuid'] == leader_info[item]['/0/peer-uuid']
-      loop: "{{ range(0, nfollower_pause|int) | list}}"
+      loop: "{{ range(0, nfollower_pause|int) | list }}"
 
     - name: "Print which case occured"
       debug:
