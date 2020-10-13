@@ -37,8 +37,6 @@
         - "{{ client_uuid_array }}"
         - "{{ nrunning_peers }}"
 
-   - pause: seconds=3
-
    - name: "Get raft_uuid and leader_uuid."
      vars:
        stage: "Stage0"
@@ -102,10 +100,10 @@
        - "{{ pre_write_values }}"
        - "{{ pre_follower_stats }}"
 
-   - name: "Write at seqno 0 and perform the write 100 times."
+   - name: "Write at seqno 0 and perform the write {{ num_writes }} times."
      vars:
        stage: "write"
-       cmd: "input@{{ app_uuid }}:0:0:0:0.write:0.100"
+       cmd: "input@{{ app_uuid }}:0:0:0:0.write:0.{{ num_writes }}"
        where: "/pumice_db_test_client/input"
      set_fact:
        write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
@@ -116,7 +114,7 @@
       raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
      debug:
        msg: "Waiting for client to finish writing"
-     until: lookup('niova_ctlrequest', 'lookup', client_uuid, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != "99"
+     until: lookup('niova_ctlrequest', 'lookup', client_uuid, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != (num_writes - 1)
      loop: "{{ range(0, 10) | list }}"
      loop_control:
        pause: 1
