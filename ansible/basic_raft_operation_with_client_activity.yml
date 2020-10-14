@@ -7,6 +7,15 @@
      parent: "Healthy Raftserver Cluster Type-2"
      client_obj: {}
      num_writes: 100
+     peer_raft_keys:
+          - "/raft_root_entry/0/term"
+          - "/raft_root_entry/0/commit-idx"
+          - "/raft_root_entry/0/last-applied"
+          - "/raft_root_entry/0/last-applied-cumulative-crc"
+          - "/raft_root_entry/0/newest-entry-idx"
+          - "/raft_root_entry/0/newest-entry-term"
+          - "/raft_root_entry/0/newest-entry-data-size"
+          - "/raft_root_entry/0/newest-entry-crc"
 
   tasks:
    - name: "Get cluster information"
@@ -28,14 +37,12 @@
        app_uuid: "{{ app_uuid.stdout }}"
        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
 
-   - name: "Start the client"
+   - name: "Start client process"
+     include_role:
+       name: common
+       tasks_from: start_client
      vars:
-       client_obj: "{{ lookup('niova_raftprocess', 'start', client_uuid, wantlist=True) }}"
-     debug:
-       msg:
-        - "{{ client_obj }}"
-        - "{{ client_uuid_array }}"
-        - "{{ nrunning_peers }}"
+       ClientUUID: "{{ client_uuid }}"
 
    - name: "Get raft_uuid and leader_uuid."
      vars:
@@ -44,7 +51,7 @@
           - "/raft_root_entry/0/raft-uuid"
           - "/raft_root_entry/0/leader-uuid"
      set_fact:
-        uuids: "{{ lookup('niova_ctlrequest','lookup', nrunning_peers[0], raft_keys, wantlist=True) }}"
+        uuids: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers[0], raft_keys, wantlist=True) }}"
 
    - debug:
        msg: "{{ uuids }}"
@@ -73,17 +80,8 @@
      vars:
        stage: "Pre-write-values"
        pre_write_values: []
-       raft_keys:
-           - "/raft_root_entry/0/term"
-           - "/raft_root_entry/0/commit-idx"
-           - "/raft_root_entry/0/last-applied"
-           - "/raft_root_entry/0/last-applied-cumulative-crc"
-           - "/raft_root_entry/0/newest-entry-idx"
-           - "/raft_root_entry/0/newest-entry-term"
-           - "/raft_root_entry/0/newest-entry-data-size"
-           - "/raft_root_entry/0/newest-entry-crc"
      set_fact:
-        pre_write_values: "{{ pre_write_values + [lookup('niova_ctlrequest','lookup', nrunning_peers[item], raft_keys, wantlist=True)] }}"
+        pre_write_values: "{{ pre_write_values + [lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], peer_raft_keys, wantlist=True)] }}"
      loop: "{{ range(0, nrunning_peers | length) | list }}"
 
    - name: "Snapshot the follower stats from leader before doing any writes on client."
@@ -92,7 +90,7 @@
        raft_keys:
            - "/raft_root_entry/0/follower-stats"
      set_fact:
-       pre_follower_stats: "{{ lookup('niova_ctlrequest','lookup', uuids['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+       pre_follower_stats: "{{ lookup('niova_ctlrequest', 'lookup', uuids['/0/leader-uuid'], raft_keys, wantlist=True) }}"
 
    - name: "Print values"
      debug:
@@ -133,12 +131,12 @@
      set_fact:
         client_values_verification: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid, raft_keys, wantlist=True) }}"
      failed_when: >
-            client_values_verification['/0/app-user-id'] != app_uuid_string or
-            client_values_verification['/0/status'] != "Success" or
-            client_values_verification['/0/pmdb-seqno'] != (num_writes - 1) or
-            client_values_verification['/0/pmdb-write-pending'] != false or
-            client_values_verification['/0/app-sync'] != true or
-            client_values_verification['/0/app-seqno'] != num_writes
+            (client_values_verification['/0/app-user-id'] != app_uuid_string) or
+            (client_values_verification['/0/status'] != "Success") or
+            (client_values_verification['/0/pmdb-seqno'] != (num_writes - 1)) or
+            (client_values_verification['/0/pmdb-write-pending'] != false) or
+            (client_values_verification['/0/app-sync'] != true) or
+            (client_values_verification['/0/app-seqno'] != num_writes)
   
    - name : "Server side verifications for leader"
      vars:
@@ -160,7 +158,7 @@
      vars:
       last_ack_arr: []
      set_fact:
-        last_ack_arr: "{{ last_ack_arr }} + ['{{leader_follower_stats['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y')}}']"
+        last_ack_arr: "{{ last_ack_arr }} + ['{{ leader_follower_stats['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y') }}']"
      loop: "{{ range(0, follower_uuids | length) | list }}"
 
    - name: "Difference between last-ack of two followers should not be more than 2secs"
@@ -173,17 +171,8 @@
      vars:
        stage: "server_verify"
        peer_values_all: []
-       raft_keys:
-           - "/raft_root_entry/0/term"
-           - "/raft_root_entry/0/commit-idx"
-           - "/raft_root_entry/0/last-applied"
-           - "/raft_root_entry/0/last-applied-cumulative-crc"
-           - "/raft_root_entry/0/newest-entry-idx"
-           - "/raft_root_entry/0/newest-entry-term"
-           - "/raft_root_entry/0/newest-entry-data-size"
-           - "/raft_root_entry/0/newest-entry-crc"
      set_fact:
-        peer_values_all: "{{ peer_values_all + [lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True)] }}"
+        peer_values_all: "{{ peer_values_all + [lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], peer_raft_keys, wantlist=True)] }}"
      failed_when: >
          (peer_values_all[item]['/0/term'] !=  pre_write_values[item]['/0/term']) or
          (peer_values_all[item]['/0/commit-idx'] != (num_writes + pre_write_values[item]['/0/commit-idx'])) or
@@ -198,9 +187,9 @@
      debug:
        msg: "Verifying that term, last-applied-cumulative-crc, newest-entry-term, newest-entry-data-size and newest-entry-crc are same on all peers"
      failed_when: >
-          peer_values_all[item]['/0/term'] != peer_values_all[item+1]['/0/term'] or
-          peer_values_all[item]['/0/last-applied-cumulative-crc'] != peer_values_all[item+1]['/0/last-applied-cumulative-crc'] or
-          peer_values_all[item]['/0/newest-entry-term'] != peer_values_all[item+1]['/0/newest-entry-term'] or
-          peer_values_all[item]['/0/newest-entry-data-size'] != peer_values_all[item+1]['/0/newest-entry-data-size'] or
-          peer_values_all[item]['/0/newest-entry-crc'] != peer_values_all[item+1]['/0/newest-entry-crc']
+          (peer_values_all[item]['/0/term'] != peer_values_all[item+1]['/0/term']) or
+          (peer_values_all[item]['/0/last-applied-cumulative-crc'] != peer_values_all[item+1]['/0/last-applied-cumulative-crc']) or
+          (peer_values_all[item]['/0/newest-entry-term'] != peer_values_all[item+1]['/0/newest-entry-term']) or
+          (peer_values_all[item]['/0/newest-entry-data-size'] != peer_values_all[item+1]['/0/newest-entry-data-size']) or
+          (peer_values_all[item]['/0/newest-entry-crc'] != peer_values_all[item+1]['/0/newest-entry-crc'])
      loop: "{{ range(0, nrunning_peers | length -1 )| list }}"
