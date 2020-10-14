@@ -1,4 +1,4 @@
-import os, logging
+import os, logging, re
 import subprocess
 import time as time_global
 from basicio import BasicIO
@@ -7,21 +7,18 @@ from inotifypath import inotify_input_base
 from os import path
 from func_timeout import func_timeout, FunctionTimedOut
 
-def ctl_req_create_cmdfile_and_copy(ctlreqobj, raft_key):
+def ctl_req_create_cmdfile_and_copy(ctlreqobj, operation, cmd, where):
     basicioobj = BasicIO()
     genericcmdobj = GenericCmds()
 
     o_base = os.path.basename(ctlreqobj.output_fpath)
     i_base = os.path.basename(ctlreqobj.input_fpath)
 
-    if ctlreqobj.cmd == "get_key":
-        ctl_req_string = "%s %s" % (ctlreqobj.ctl_cmd_dict[ctlreqobj.cmd], raft_key)
-
+    # Prepare cmd_string as per the operation (GET or APPLY)
+    if operation == "lookup":
+	    cmd_str = "GET %s\nOUTFILE /%s\n" % (cmd, o_base)
     else:
-        ctl_req_string = ctlreqobj.ctl_cmd_dict[ctlreqobj.cmd]
-
-
-    cmd_str = "%s\nOUTFILE /%s\n" % (ctl_req_string, o_base)
+        cmd_str = "APPLY %s\nWHERE %s\nOUTFILE /%s\n" % (cmd, where, o_base)
 
     # Before copying the cmdfile, remove the output file if it already exits.
     if os.path.exists(ctlreqobj.output_fpath):
@@ -54,74 +51,59 @@ def ctl_req_create_cmdfile_and_copy(ctlreqobj, raft_key):
 
 
 class CtlRequest:
-    ctl_cmd_dict = {'idle_on':'APPLY ignore_timer_events@true\nWHERE /raft_net_info/ignore_timer_events',
-        'idle_off':'APPLY ignore_timer_events@false\nWHERE /raft_net_info/ignore_timer_events',
-        'rcv_false':'APPLY net_recv_enabled@false\nWHERE /ctl_svc_nodes/net_recv_enabled@true',
-        'set_leader_uuid':'APPLY net_recv_enabled@true\nWHERE /ctl_svc_nodes/uuid@',
-        'rcv_true':'APPLY net_recv_enabled@true\nWHERE /ctl_svc_nodes/net_recv_enabled@false',
-        'current_time':'GET /system_info/current_time',
-        'get_key':'GET'
-        }
 
     input_fpath = ""
     output_fpath = ""
+    operation = ""
     cmd = ""
+    where = ""
     error = 0
 
-    def __init__(self, inotifyobj, cmd, peer_uuid, app_uuid, input_base):
+    def __init__(self, inotifyobj, operation, cmd, where, peer_uuid, app_uuid, input_base):
 
+        self.operation = operation
         self.cmd = cmd
+        self.where = where
         self.peer_uuid = peer_uuid
         # export the shared init path
         if input_base == inotify_input_base.SHARED_INIT:
             inotifyobj.export_init_path(peer_uuid)
 
+        '''
+        Replace @ in the command with 'at' to create valid filename.
+        Also if the cmd is to get all keys /.*/.*/.*, use filename
+        as get_all.
+        '''
+        fname = re.sub('@', 'at', cmd)
+        if operation == "lookup":
+            fname = os.path.basename(fname)
+            if fname == ".*":
+               fname = "get_all"
+ 
         self.input_fpath = inotifyobj.prepare_input_output_path(peer_uuid,
-                                                                cmd, True,
+                                                                fname, True,
                                                                 input_base,
                                                                 app_uuid)
 
         self.output_fpath = inotifyobj.prepare_input_output_path(peer_uuid,
-                                                                 cmd, False,
+                                                                 fname, False,
                                                                  input_base,
                                                                  app_uuid)
-        # Add the ctlreqobj on the recipe list.
-        #ctlreq_list.append(self)
 
 
-
-    def set_leader(self, uuid):
-
-        orig_cmd = self.ctl_cmd_dict["set_leader_uuid"]
-        cmd_uuid = orig_cmd + uuid
-
-        self.ctl_cmd_dict["set_leader_uuid"] = cmd_uuid
-
-        logging.warning("APPLY cmd=%s ipath=%s", self.cmd, self.input_fpath)
-        self.error = ctl_req_create_cmdfile_and_copy(self, None)
-        if self.error != 0:
-            logging.error("Failed to create ctl req object error: %d" % self.Error())
-            #Aborting the execution as apply failed
-            exit()
-
-        #Update the dict value to original cmd
-        self.ctl_cmd_dict["set_leader_uuid"] = orig_cmd
-
-        return self
-
-    def Apply(self, raft_key):
-        logging.warning("APPLY cmd=%s ipath=%s", self.cmd, self.input_fpath)
+    def Apply(self):
+        logging.warning("APPLY operation=%s cmd=%s ipath=%s", self.operation, self.cmd, self.input_fpath)
         '''
         Store the return code inside object only so the caller can check for
         the error later.
         '''
-        self.error = ctl_req_create_cmdfile_and_copy(self, raft_key)
+        self.error = ctl_req_create_cmdfile_and_copy(self, self.operation, self.cmd, self.where)
         if self.error != 0:
             logging.error("Failed to create ctl req object error: %d" % self.Error())
             exit()
         return self
 
-    def Apply_and_Wait(self, raft_key, can_fail):
+    def Apply_and_Wait(self, can_fail):
         '''
         To Apply the cmd and Wait for outfile
         Paramter "can_fail" is added so that
@@ -131,7 +113,7 @@ class CtlRequest:
         '''
         retry = 0
         while retry < 5:
-            self.Apply(raft_key)
+            self.Apply()
 
             # Wait for outfile creation
             logging.warning("calling wait for outfile")
