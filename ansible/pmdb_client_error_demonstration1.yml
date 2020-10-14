@@ -1,4 +1,4 @@
-- import_playbook: healthy_raftserver_cluster_type1.yml
+- import_playbook: basic_raft_operation_with_client_activity.yml
 - name: "PMDB Client Error Demonstration 1"
   hosts: localhost
   connection: local
@@ -36,10 +36,11 @@
           - "rncui: {{ rncui }}"
 
     - name: "Start the client"
+      include_role:
+         name: common
+         tasks_from: start_client
       vars:
-        client_obj: "{{ lookup('niova_raftprocess', 'start', client_uuid, wantlist=True) }}"
-      debug:
-       msg: "{{ client_obj }}"
+         ClientUUID: "{{ client_uuid }}"
 
     - name: "Lookup on non-existing object."
       vars:
