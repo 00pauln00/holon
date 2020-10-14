@@ -9,7 +9,6 @@
      raft_values_after_restart: []
      start_time_prev: []
      start_time_after: []
-     follower_uuids_after_restart: []
 
   tasks:
   #Stage0: Pre-restart
@@ -66,7 +65,7 @@
   - name: "Safe_restart : Restart all peers in the cluster"
     set_fact:
         start_peer: "{{ lookup('niova_raftprocess', 'start', nrunning_peers[item], wantlist=True) }}"
-    loop: "{{ range(0, nrunning_peers | length) | list}}"
+    loop: "{{ range(0, nrunning_peers | length) | list }}"
 
   - name: "Wait until each raft process is fully started"
     vars:
@@ -165,13 +164,13 @@
     set_fact:
         raft_values_after_restart: "{{ raft_values_after_restart + [lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True)] }}"
     failed_when: >
-         raft_values_after_restart[item]['/0/term'] <= stage_values['/0/term'] and
-         raft_values_after_restart[item]['/0/commit-idx'] != 1 and
-         raft_values_after_restart[item]['/0/last-applied'] != 1 and
-         raft_values_after_restart[item]['/0/last-entry-idx'] != 1 and
-         raft_values_after_restart[item]['/0/newest-entry-term'] > raft_values_after_restart[item]['/0/term'] and
-         raft_values_after_restart[item]['/0/newest-entry-data-size'] != 0 
-    loop: "{{ range(0, follower_uuids_after_restart | length) | list }}"
+         (raft_values_after_restart[item]['/0/term'] <= stage_values['/0/term']) or
+         (raft_values_after_restart[item]['/0/commit-idx'] != 1) or
+         (raft_values_after_restart[item]['/0/last-applied'] != 1) or
+         (raft_values_after_restart[item]['/0/newest-entry-idx'] != 1) or
+         (raft_values_after_restart[item]['/0/newest-entry-term'] > raft_values_after_restart[item]['/0/term']) or
+         (raft_values_after_restart[item]['/0/newest-entry-data-size'] != 0)
+    loop: "{{ range(0, nrunning_peers | length) | list }}"
     loop_control:
         pause: 2
 
@@ -179,26 +178,22 @@
     vars:
       term_prev: "{{ raft_values_after_restart[item]['/0/term'] }}"
       term_next: "{{ raft_values_after_restart[item+1]['/0/term'] }}"
-      last_applied_cumulative_crc_prev: "{{ raft_values_after_restart[item]['/0/last-applied-cumulative-crc']}}"
-      last_applied_cumulative_crc_next: "{{ raft_values_after_restart[item+1]['/0/last-applied-cumulative-crc']}}"
-      newest_entry_crc_prev: "{{ raft_values_after_restart[item]['/0/newest-entry-crc']}}"
-      newest_entry_crc_next: "{{ raft_values_after_restart[item+1]['/0/newest-entry-crc']}}"
+      last_applied_cumulative_crc_prev: "{{ raft_values_after_restart[item]['/0/last-applied-cumulative-crc'] }}"
+      last_applied_cumulative_crc_next: "{{ raft_values_after_restart[item+1]['/0/last-applied-cumulative-crc'] }}"
+      newest_entry_crc_prev: "{{ raft_values_after_restart[item]['/0/newest-entry-crc'] }}"
+      newest_entry_crc_next: "{{ raft_values_after_restart[item+1]['/0/newest-entry-crc'] }}"
     debug:
        msg: "Compare term values of all peers"
     failed_when: >
-      term_prev != term_next and
-      last_applied_cumulative_crc_prev != last_applied_cumulative_crc_next and
+      term_prev != term_next or
+      last_applied_cumulative_crc_prev != last_applied_cumulative_crc_next or
       newest_entry_crc_prev != newest_entry_crc_next 
-    loop: "{{ range(0, follower_uuids_after_restart | length-1) | list }}"
+    loop: "{{ range(0, nrunning_peers | length-1) | list }}"
 
   - name: "Compare Leader’s follower-stats for all followers"
-    vars: 
-      next_idx: "{{follower_stats_after['/0/follower-stats'][item]['next-idx']}}"
-      prev_idx_term:  "{{follower_stats_after['/0/follower-stats'][item]['prev-idx-term']}}"
-      term: "{{ raft_values_after_restart[item]['/0/term'] }}"
     debug:
-      msg: "Compare next_idx, prev_idx_term and term value"
+      msg: "Comparing Leader’s follower-stats for all followers"
     failed_when: >
-      next_idx != 2 and
-      prev_idx_term != term
+      (follower_stats_after['/0/follower-stats'][item]['next-idx'] != 2) or
+      (follower_stats_after['/0/follower-stats'][item]['prev-idx-term'] != raft_values_after_restart[item]['/0/term'])
     loop: "{{ range(0, follower_uuids_after_restart | length) | list }}"
