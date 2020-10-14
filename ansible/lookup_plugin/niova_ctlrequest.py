@@ -83,7 +83,9 @@ def niova_raft_lookup_values(ctlreq_dict, raft_key_list):
     '''
     for key in raft_key_list:
         value = dpath.util.values(raft_dict, key)
-        if value[0] == "":
+        if len(value) == 0:
+            value.append("null")
+        elif value[0] == "":
             value[0] = "null"
         output_key = "/%s/%s" % (os.path.basename(os.path.dirname(key)), os.path.basename(key))
         raft_values_dict[output_key] = value[0]

@@ -93,7 +93,18 @@ def niova_get_unused_client_port(recipe_params, client_dict):
 
     return new_client_port
 
-def niova_client_config_create(client_uuid, config_params, recipe_params, client_uuid_dict):
+def niova_client_config_create(client_uuid, recipe_conf_dict, config_params, recipe_params):
+
+    # If this is the first client config, declare the client_array.
+    if not 'client_uuid_array' in recipe_conf_dict:
+        recipe_conf_dict['client_uuid_array'] = []
+    elif client_uuid in recipe_conf_dict['client_uuid_array']:
+        # If client_uuid already has config, don't do anything
+        return
+
+    logging.warning("Create client config file for uuid: %s" % client_uuid)
+    client_uuid_array = recipe_conf_dict['client_uuid_array']
+
     base_dir = recipe_params['base_dir']
     raft_uuid = recipe_params['raft_uuid']
     raft_dir = "%s/%s" % (base_dir, raft_uuid)
@@ -114,9 +125,11 @@ def niova_client_config_create(client_uuid, config_params, recipe_params, client
     clients. Get the count of number of servers and already started clients.
     And use the next client port for this new client.
     '''
-    new_client_port = niova_get_unused_client_port(recipe_params, client_uuid_dict)
+    new_client_port = niova_get_unused_client_port(recipe_params, client_uuid_array)
     raftconfobj.generate_client_conf(genericcmdobj, client_uuid, "127.0.0.1", new_client_port)
 
+    # Add the entry of this new client uuid into the client_uuid_array
+    recipe_conf_dict['client_uuid_array'].append(client_uuid)
 
 '''
 Main function for raftprocess lookup.
@@ -125,7 +138,6 @@ class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
         recipe_params = kwargs['variables']['raft_param']
         raft_config = kwargs['variables']['raft_conf']
-        client_uuid_array = kwargs['variables']['client_uuid_array']
         cluster_type = recipe_params['ctype']
         proc_operation = terms[0]
         uuid = terms[1]
@@ -149,11 +161,10 @@ class LookupModule(LookupBase):
         proc_type = niova_raft_process_get_proc_type(uuid, raft_config)
 
         if proc_type == "client" and proc_operation == "start":
+
             # Prepare the client config if it's already not created.
-            logging.warning("Create client config file for uuid: %s" % uuid)
-            niova_client_config_create(uuid, raft_config, recipe_params, client_uuid_array)
-            # Add Client uuid into global client_uuid_array
-            client_uuid_array.append(uuid)
+            niova_client_config_create(uuid, recipe_conf, raft_config, recipe_params)
+
         # Perform the operation on the peer.
         niova_obj_dict = niova_raft_process_ops(recipe_conf, cluster_type, uuid, proc_operation, proc_type)
         if len(terms) == 3:

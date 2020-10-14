@@ -18,7 +18,6 @@
       npeers: "{{ npeers | default(5) }}"
       client_port: "{{ client_port | default(13000) }}"
       disable_post_run: "{{ disable_post_run | default(false) | bool }}"
-      client_uuid_array: []
 
   - name: "Prepare parameter to pass across recipes"
     set_fact:
