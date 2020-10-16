@@ -1,10 +1,13 @@
 - import_playbook: healthy_raftserver_cluster_type2.yml
+  when: raft_param['ctype'] == "pumicedb"
+
 - name: "Basic Raft Operation With Client Activity"
   hosts: localhost
   connection: local
   vars:
      recipe_name: "Basic Raft Operation With Client Activity"
      parent: "Healthy Raftserver Cluster Type-2"
+     requirement: "pumicedb"
      client_obj: {}
      num_writes: 100
      peer_raft_keys:
@@ -18,6 +21,11 @@
           - "/raft_root_entry/0/newest-entry-crc"
 
   tasks:
+   - name: "Verify the holon started with pumicedb cluster"
+     debug:
+       msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed is : {{ raft_param['ctype'] }}"
+     failed_when: requirement != raft_param['ctype']
+
    - name: "Get cluster information"
      include_role:
        name: common
