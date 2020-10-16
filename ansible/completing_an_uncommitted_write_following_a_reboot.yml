@@ -1,0 +1,316 @@
+- import_playbook: healthy_raftserver_cluster_type2.yml
+  when: raft_param['ctype'] == "pumicedb"
+
+- name: "Completing an Uncommitted Write Following a Reboot"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "Completing an Uncommitted Write Following a Reboot"
+     parent: "Healthy Raftserver Cluster Type-2"
+     requirement: "pumicedb"
+     raft_root_entry_all: []
+     raft_root_entry_all_after: []
+     newest_entry_idx_followers_before_write: []
+     newest_entry_idx_followers_after_write: []
+     num_writes: 0
+     num_peer_started_after_reboot: []
+     peer_raft_keys:
+           - "/raft_root_entry/0/term"
+           - "/raft_root_entry/0/commit-idx"
+           - "/raft_root_entry/0/last-applied"
+           - "/raft_root_entry/0/last-applied-cumulative-crc"
+           - "/raft_root_entry/0/newest-entry-idx"
+           - "/raft_root_entry/0/newest-entry-term"
+           - "/raft_root_entry/0/newest-entry-data-size"
+           - "/raft_root_entry/0/newest-entry-crc"
+
+  tasks:
+   - name: "Verify the holon started with pumicedb cluster."
+     debug:
+       msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed: {{ raft_param['ctype'] }}"
+     failed_when: requirement != raft_param['ctype']
+
+   - name: "Generate Client UUID."
+     shell: "/usr/bin/uuid"
+     register: client_uuid
+
+   - name: "Generate App UUID."
+     shell: "/usr/bin/uuid"
+     register: app_uuid
+
+   - name: "Set client_uuid, app_uuid and rncui to use acroos recipes."
+     set_fact:
+        client_uuid: "{{ client_uuid.stdout }}"
+        app_uuid: "{{ app_uuid.stdout }}"
+        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
+
+   #Recipe Preparation
+   - name: "Get raft_root_entry values of all peers before reboot."
+     vars:
+       stage: "Recipe Preparation"
+     set_fact:
+        raft_root_entry_all: "{{ raft_root_entry_all + [lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], peer_raft_keys, wantlist=True)] }}"
+     loop: "{{ range(0, nrunning_peers | length) | list }}"
+     loop_control:
+         pause: 2
+
+   - name: "Compare raft_root_entry values of all peers."
+     debug:
+       msg: "Compare raft_root_entry values of all peers."
+     failed_when: >
+          (raft_root_entry_all[item]['/0/term'] != raft_root_entry_all[item+1]['/0/term']) or
+          (raft_root_entry_all[item]['/0/commit-idx'] != raft_root_entry_all[item+1]['/0/commit-idx']) or
+          (raft_root_entry_all[item]['/0/last-applied'] !=  raft_root_entry_all[item+1]['/0/last-applied']) or
+          (raft_root_entry_all[item]['/0/last-applied-cumulative-crc'] != raft_root_entry_all[item+1]['/0/last-applied-cumulative-crc']) or
+          (raft_root_entry_all[item]['/0/newest-entry-idx'] != raft_root_entry_all[item+1]['/0/newest-entry-idx']) or
+          (raft_root_entry_all[item]['/0/newest-entry-term'] != raft_root_entry_all[item+1]['/0/newest-entry-term']) or
+          (raft_root_entry_all[item]['/0/newest-entry-data-size'] != raft_root_entry_all[item+1]['/0/newest-entry-data-size']) or
+          (raft_root_entry_all[item]['/0/newest-entry-crc'] != raft_root_entry_all[item+1]['/0/newest-entry-crc'])
+     loop: "{{ range(0, nrunning_peers | length-1) | list }}"
+   
+   #Determine leader before reboot
+   - name: "Get leader_uuid before reboot."
+     vars:
+       stage: "before-reboot-leader"
+       raft_keys:
+          - "/raft_root_entry/0/leader-uuid"
+     set_fact:
+        raft_values: "{{ lookup('niova_ctlrequest','lookup', nrunning_peers[0], raft_keys, wantlist=True) }}"
+
+   - name: "Get follower's uuids."
+     set_fact:
+        leader_uuid_before: "{{ raft_values['/0/leader-uuid'] }}" 
+        follower_uuids: "{{ nrunning_peers | difference(raft_values['/0/leader-uuid']) }}"
+
+   - name: "Get newest-entry-idx values for all followers before write."
+     vars:
+       stage: "before-write-followers"
+       raft_keys:
+           - "/raft_root_entry/0/newest-entry-idx"
+     set_fact:
+        newest_entry_idx_followers_before_write: "{{ newest_entry_idx_followers_before_write + [lookup('niova_ctlrequest', 'lookup', follower_uuids[item], raft_keys, wantlist=True)] }}"
+     loop: "{{ range(0, follower_uuids | length) | list }}"
+
+   - name: "Get newest-entry-idx value for leader before write."
+     vars:
+       stage: "before-write-leader"
+       raft_keys:
+           - "/raft_root_entry/0/newest-entry-idx"
+     set_fact:
+        newest_entry_idx_leader_before_write: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, raft_keys, wantlist=True) }}"
+
+   #Set raft_follower_ignores_non_hb_AE_request on the Followers
+   - name: "Set fault injection raft_follower_ignores_non_hb_AE_request on all followers."
+     vars:
+       stage: "fault-injection"
+       cmd: "enabled@true"
+       where: "/fault_injection_points/name@raft_follower_ignores_non_hb_AE_request"
+     set_fact:
+        fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', follower_uuids[item], cmd, where, wantlist=True) }}"
+     loop: "{{ range(0, follower_uuids | length) | list }}"
+
+   - name: "Verify fault is injected correctly on all followers."
+     vars:
+       stage: "fault-injection-check"
+       raft_keys:
+           - "/fault_injection_points"
+     set_fact:
+        fault_injection_points: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids[item], raft_keys, wantlist=True) }}"
+     failed_when:  fault_injection_points['//fault_injection_points'][3]['enabled'] != true
+     loop: "{{ range(0, follower_uuids | length) | list }}"
+
+   - name: "Start client process."
+     include_role:
+       name: common
+       tasks_from: start_client
+     vars:
+       ClientUUID: "{{ client_uuid }}"
+
+   - name: "Decrease client request timeout to 1 sec."
+     vars:
+       stage: "decrease-timeout-timeout"
+       cmd: "default-request-timeout-sec@1"
+       where: "/raft_client_root_entry/default-request-timeout-sec"
+     set_fact:
+        fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
+
+   - name: "Perform write on the client."
+     vars:
+       stage: "write"
+       cmd: "input@{{ app_uuid }}:0:0:0:0.write:0"
+       where: "/pumice_db_test_client/input"
+     set_fact:
+        write: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
+
+   - name: "Wait until all write completes from client."
+     vars:
+      stage: "wait-for-client-write-completion"
+      raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+     debug:
+       msg: "Waiting for client to finish writing."
+     until: lookup('niova_ctlrequest', 'lookup', client_uuid, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first != (num_writes - 1)
+     loop: "{{ range(0, 10) | list }}"
+     loop_control:
+       pause: 1
+
+   - name: "Get newest-entry-idx values for all followers after write."
+     vars:
+       stage: "after-write-followers"
+       raft_keys:
+           - "/raft_root_entry/0/newest-entry-idx"
+     set_fact:
+        newest_entry_idx_followers_after_write: "{{ newest_entry_idx_followers_after_write + [lookup('niova_ctlrequest', 'lookup', follower_uuids[item], raft_keys, wantlist=True)] }}"
+     loop: "{{ range(0, follower_uuids | length) | list }}"
+
+   - name: "Get newest-entry-idx value for leader after write."
+     vars:
+       stage: "after-write-leader"
+       raft_keys:
+           - "/raft_root_entry/0/newest-entry-idx"
+     set_fact:
+        newest_entry_idx_leader_after_write: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, raft_keys, wantlist=True) }}"
+
+   #2a- Verification for newest-entry-idx
+   - name: "Verify that newest-entry-idx of all followers remains same even after successful write."
+     debug:
+       msg: "Verifying that newest-entry-idx of all followers is not advanced"
+     failed_when: newest_entry_idx_followers_before_write[item]["/0/newest-entry-idx"] != newest_entry_idx_followers_after_write[item]["/0/newest-entry-idx"]
+     loop: "{{ range(0, follower_uuids | length) | list }}"
+
+   - name: "Verify that newest-entry-idx of leader is advanced by 1."
+     debug:
+       msg: "Verifying that newest-entry-idx of leader is advanced by 1"
+     when: (newest_entry_idx_leader_after_write["/0/newest-entry-idx"] - newest_entry_idx_leader_before_write["/0/newest-entry-idx"]) == 1
+
+   #3- Stop the processes, first all followers and then leader
+   - name: "Stop all follower processes."
+     set_fact:
+        stop_peers: "{{ lookup('niova_raftprocess', 'kill', follower_uuids[item], wantlist=True) }}"
+     loop: "{{ range(0, follower_uuids | length) | list }}"
+
+   - name: "Stop leader process."
+     set_fact:
+        stop_leader: "{{ lookup('niova_raftprocess', 'kill', leader_uuid_before, wantlist=True) }}"
+
+   #4-  Restart the Peer that was the Leader
+   - name: "Restart leader first."
+     include_role:
+       name: common
+       tasks_from: start_server
+     vars:
+       ServerUUID: "{{ leader_uuid_before }}"
+     
+   - name: "Add the leader to the started peer list."
+     set_fact:
+       num_peer_started_after_reboot: "{{ num_peer_started_after_reboot + [leader_uuid_before] }}"
+
+   #5- Restart the minimum number of Remaining Peers to Create a Quorum
+   - name: "Get number of servers for basic leader election."
+     include_role:
+       name: common
+       tasks_from: npeers_for_basic_leader_election
+
+   - name: "Starting peers for completing quorum."
+     include_role:
+       name: common
+       tasks_from: start_server
+     vars:
+       ServerUUID: "{{ follower_uuids[item] }}"
+     loop: "{{ range(0, npeers_for_leader_elect | int -1) | list }}"
+     
+   - name: "Get the started followers in the running peer list."
+     set_fact:
+       num_peer_started_after_reboot: "{{ num_peer_started_after_reboot + [follower_uuids[item]] }}"
+     loop: "{{ range(0, npeers_for_leader_elect | int -1) | list }}"
+
+   - name: "Activate Raft timer thread on all started peers."
+     vars:
+       stage: "idle_off"
+       cmd: "ignore_timer_events@false"
+       where: "/raft_net_info/ignore_timer_events"
+     set_fact:
+       idle_off_all: "{{ lookup('niova_ctlrequest', 'apply_cmd', num_peer_started_after_reboot[item], cmd, where, wantlist=True) }}"
+     loop: "{{ range(0, num_peer_started_after_reboot | length) | list }}"
+
+   #6 - Wait for an Election to Complete
+   - name: "Wait until leader election happens."
+     vars:
+       stage: "leader-election"
+     debug:
+       msg: "Waiting for leader election"
+     until: lookup('niova_ctlrequest', 'lookup', num_peer_started_after_reboot[0], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+     loop: "{{ range(0, 4) | list }}"
+     loop_control:
+        pause: 2
+
+   #Verify that leader before reboot and after reboot are same
+   - name: "Verify that leader did not change after reboot."
+     vars:
+       stage: "leader-after-reboot"
+       raft_keys:
+              - "/raft_root_entry/0/leader-uuid"
+     set_fact:
+         raft_values_leader_after_reboot: "{{ lookup('niova_ctlrequest', 'lookup', num_peer_started_after_reboot[0], raft_keys, wantlist=True) }}"
+     failed_when: leader_uuid_before != raft_values_leader_after_reboot['/0/leader-uuid']
+   
+   - name: "Get remaining non-running peer uuids for restarting it."
+     set_fact:
+        remaining_followers_to_start: "{{ follower_uuids | difference(num_peer_started_after_reboot) }}" 
+
+   #7 - Startup the Remaining Followers
+   - name: "Restarting remaining followers."
+     include_role:
+       name: common
+       tasks_from: start_server
+     vars:
+       ServerUUID: "{{ remaining_followers_to_start[item] }}"
+     loop: "{{ range(0, remaining_followers_to_start | length) | list }}"
+
+   #7a - Verifications
+   - name: "Get the values for all peers for comparing commit-idx, last-applied and newest-entry-idx."
+     vars:
+       stage: "Verifications-after-reboot"
+     set_fact:
+        raft_root_entry_all_after: "{{ raft_root_entry_all_after + [lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], peer_raft_keys, wantlist=True)] }}"
+     failed_when: >
+           (raft_root_entry_all_after[item]['/0/commit-idx'] != (raft_root_entry_all[item]['/0/commit-idx']+2)) or
+           (raft_root_entry_all_after[item]['/0/last-applied'] !=  (raft_root_entry_all[item]['/0/last-applied']+2)) or
+           (raft_root_entry_all_after[item]['/0/newest-entry-idx'] != (raft_root_entry_all[item]['/0/newest-entry-idx']+2))
+     loop: "{{ range(0, nrunning_peers | length) | list }}"
+     loop_control:
+         pause: 2
+   
+   - name: "Validate term, last-applied-cumulative-crc, newest-entry-term, newest-entry-data-size and newest-entry-crc of all peers after reboot."
+     debug:
+       msg: "Compare raft_root_entry values of all peers"
+     failed_when: >
+          (raft_root_entry_all_after[item]['/0/term'] != raft_root_entry_all_after[item+1]['/0/term']) or
+          (raft_root_entry_all_after[item]['/0/last-applied-cumulative-crc'] != raft_root_entry_all_after[item+1]['/0/last-applied-cumulative-crc']) or
+          (raft_root_entry_all_after[item]['/0/newest-entry-term'] != raft_root_entry_all_after[item+1]['/0/newest-entry-term']) or
+          (raft_root_entry_all[item]['/0/newest-entry-data-size'] != 0) or
+          (raft_root_entry_all_after[item]['/0/newest-entry-crc'] != raft_root_entry_all_after[item+1]['/0/newest-entry-crc'])
+     loop: "{{ range(0, nrunning_peers | length-1) | list }}"
+   
+   #8 - Verify the Application Data
+   - name: "Perform read on the same object."
+     vars:
+       stage: "read"
+       cmd: "input@{{ app_uuid }}:0:0:0:0.read"
+       where: "/pumice_db_test_client/input"
+     set_fact:
+        read: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
+
+   #8a- Verifications
+   - name: "Get values for pmdb-request-history and validate parameters."
+     vars:
+       stage: "pmdb-request-history"
+       raft_keys:
+           - "/pumice_db_test_client/pmdb-request-history"
+     set_fact:
+        pmdb_request_history_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid, raft_keys, wantlist=True) }}"
+     failed_when: >
+           (pmdb_request_history_values['/pumice_db_test_client/pmdb-request-history'][-1]['pmdb-seqno'] != 0) or
+           (pmdb_request_history_values['/pumice_db_test_client/pmdb-request-history'][-1]['app-seqno'] != 1) or
+           (pmdb_request_history_values['/pumice_db_test_client/pmdb-request-history'][-1]['app-user-id'] != rncui) or
+           (pmdb_request_history_values['/pumice_db_test_client/pmdb-request-history'][-1]['op'] != "read") or
+           (pmdb_request_history_values['/pumice_db_test_client/pmdb-request-history'][-1]['status'] != "Success")
