@@ -16,6 +16,7 @@ the cmd on the given peer-uuid.
 '''
 def niova_ctlreq_cmd_send(recipe_conf, ctlreq_dict):
     wait_for_ofile = True
+    copy_to = "input"
     operation = ctlreq_dict['operation']
     cmd = ctlreq_dict['cmd']
     where = ctlreq_dict['where']
@@ -31,7 +32,10 @@ def niova_ctlreq_cmd_send(recipe_conf, ctlreq_dict):
     app_uuid = genericcmdobj.generate_uuid()
     inotifyobj = InotifyPath(base_dir, True)
     # For idle_on cmd , input_base would be PRIVATE_INIT.
-    if cmd == "ignore_timer_events@true":
+    if 'copy_to' in ctlreq_dict:
+       copy_to = ctlreq_dict['copy_to']
+
+    if cmd == "ignore_timer_events@true" and copy_to == "init":
         input_base = inotify_input_base.PRIVATE_INIT
 
     if 'wait_for_ofile' in ctlreq_dict:
@@ -184,6 +188,8 @@ def niova_ctlrequest_get_cmdline_input_dict(global_args, local_args):
         ctlreq_cmd_dict['cmd'] = local_args[2]
         ctlreq_cmd_dict['where'] = local_args[3]
         ctlreq_cmd_dict['raft_key'] = "None"
+        if 'copy_to' in global_args['variables']:
+            ctlreq_cmd_dict['copy_to'] = global_args['variables']['copy_to']
 
 
     elif ctlreq_cmd_dict['operation'] == "lookup":

@@ -21,6 +21,7 @@
         wait_for_ofile: False
         cmd: "ignore_timer_events@true"
         where: "/raft_net_info/ignore_timer_events"
+        copy_to: "init"
         idle_on: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, cmd, where, wantlist=True)}}"
       debug:
         msg: "{{ idle_on }}"
