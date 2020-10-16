@@ -1,10 +1,10 @@
-- import_playbook: healthy_raftserver_cluster_type1.yml
+- import_playbook: pmdb_client_error_demonstration2.yml
 - name: "PMDB Client Request Timeout Modification and Retry"
   hosts: localhost
   connection: local
   vars:
      recipe_name: "pmdb_client_request_timeout_modification_and_retry"
-     parent: "pmdb_client_error_demonstration1"
+     parent: "pmdb_client_error_demonstration2"
      requirement: "pumicedb"
      client_obj: {}
      set_default_time: 20
