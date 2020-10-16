@@ -1,0 +1,56 @@
+---
+
+    - name: "Modify the request timeout for client to {{ item }}"
+      vars:
+         stage: "set_diff_time"
+         cmd: "default-request-timeout-sec@{{ item }}"
+         where: "/raft_client_root_entry/default-request-timeout-sec"
+         set_time: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ set_time }}"
+    
+    - name: "Lookup the object"
+      vars:
+         stage: "lookup_stage"
+         cmd: "input@{{ app_uuid }}:0:0:0:0.lookup"
+         where: "/pumice_db_test_client/input"
+         apply_lookup: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ apply_lookup }}"
+
+    - pause: 
+        seconds: "{{ item + 1 | int }}"
+
+    - name: "Verify parameters after lookup"
+      vars:
+        stage: "stage2"
+        raft_keys:
+            - "/pumice_db_test_client/pmdb-test-apps/0/app-user-id"
+            - "/pumice_db_test_client/pmdb-test-apps/0/status"
+            - "/pumice_db_test_client/pmdb-test-apps/0/last-request-duration-ms"
+      set_fact:
+        additional_msec_value: "{{ item * 1000 | int + 100 | int }}"
+        stage2_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid, raft_keys, wantlist=True) }}"
+      failed_when: >
+        (stage2_values['/0/app-user-id'] != rncui) or
+        (stage2_values['/0/status'] != "Connection timed out") or
+        ((stage2_values['/0/last-request-duration-ms'] | int) > (additional_msec_value | int))
+     
+    - name: "Get last-request time and submitted time for comparison."
+      vars:
+        stage: "check_timestamp"
+        raft_keys:
+            - "/pumice_db_test_client/pmdb-test-apps/0/last-request"
+            - "/raft_client_root_entry/0/recent-ops-rd"
+      set_fact:
+        get_time: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid, raft_keys, wantlist=True) }}"
+
+    - name: "Convert default timestamp format into datetime format for comparison."
+      set_fact:
+        last_request: "{{ get_time['/0/last-request'] | to_datetime('%a %b %d %H:%M:%S %Z %Y') }}"
+        submitted_time: "{{ get_time['/0/recent-ops-rd'][0]['submitted'] | to_datetime('%a %b %d %H:%M:%S %Z %Y') }}"
+   
+    - name: "Difference between submitted time and last-request should not be more than 1secs."
+      set_fact:
+        time_diff="{{ ((submitted_time | to_datetime) - (last_request | to_datetime)).total_seconds() | int}}"
+      failed_when: (time_diff | int)  > 1
