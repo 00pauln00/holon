@@ -9,20 +9,20 @@
      client_obj: {}
      set_default_time: 20
   tasks:
-    - name: "Verify the holon started with pumicedb cluster"
+    - name: "{{ recipe_name }} : Verify the holon started with pumicedb cluster"
       debug:
         msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed: {{ raft_param['ctype'] }}"
       failed_when: requirement != raft_param['ctype']
 
-    - name: "Create UUID for starting the client"
+    - name: "{{ recipe_name }} : Create UUID for starting the client"
       shell: "/usr/bin/uuid"
       register: client_uuid
 
-    - name: "Create app uuid"
+    - name: "{{ recipe_name }} : Create app uuid"
       shell: "/usr/bin/uuid"
       register: app_uuid
 
-    - name: "Prepare parameter to pass across recipes"
+    - name: "{{ recipe_name }} : Prepare parameter to pass across recipes"
       set_fact:
         client_uuid: "{{ client_uuid.stdout }}"
         app_uuid: "{{ app_uuid.stdout }}"
@@ -32,14 +32,14 @@
           - "client uuid: {{ client_uuid }}"
           - "app uuid: {{ app_uuid }}"
   
-    - name: "Start the client"
+    - name: "{{ recipe_name }} : Start the client"
       include_role:
          name: common
          tasks_from: start_client
       vars:
          ClientUUID: "{{ client_uuid }}"
 
-    - name: "Modify the client request timeout to 20sec."
+    - name: "{{ recipe_name }} : Modify the client request timeout to 20sec."
       vars:
          stage: "modify_client_timeout"
          cmd: "default-request-timeout-sec@{{ set_default_time }}"
@@ -48,17 +48,17 @@
       debug:
         msg: "{{ set_timeout }}"
 
-    - name: "Get the list of peers in the cluster"
+    - name: "{{ recipe_name }} : Get the list of peers in the cluster"
       set_fact:
         peer_arr: "{{ raft_conf | json_query('peer_uuid_dict') }}"
 
-    - name: "Get peer uuid for the leader"
+    - name: "{{ recipe_name }} : Get peer uuid for the leader"
       set_fact:
         leader_uuid: "{{ item.value }}"
       when: stage0_values["/0/leader-uuid"] == item.value
       with_dict: "{{ peer_arr }}"
 
-    - name: "Verify leader shoulds accept client requests."
+    - name: "{{ recipe_name }} : Verify leader shoulds accept client requests."
       vars:
         stage: "stage0_client_req"
         raft_key:
@@ -67,7 +67,7 @@
         stage0_values: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_key, wantlist=True) }}"
       failed_when: stage0_values["/0/client-requests"] != "accept"
     
-    - name: "Apply fault injection point on the raft leader 'raft_leader_may_be_deposed'."
+    - name: "{{ recipe_name }} : Apply fault injection point on the raft leader 'raft_leader_may_be_deposed'."
       vars:
          stage: "enable_fault_injection_raft_leader_may_be_deposed"
          cmd: "enabled@true"
@@ -76,7 +76,7 @@
       debug:
         msg: "{{ set_fault_injection }}"
 
-    - name: "Verify Leader should report client-requests: 'deny-may-be-deposed'."
+    - name: "{{ recipe_name }} : Verify Leader should report client-requests: 'deny-may-be-deposed'."
       vars:
         stage: "stage1"
         raft_key:
@@ -85,7 +85,7 @@
         stage1_values: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_key, wantlist=True) }}"
       failed_when: stage1_values["/0/client-requests"] != "deny-may-be-deposed"
 
-    - name: "Apply different timeout values for client requests and observe the behavior."
+    - name: "{{ recipe_name }} : Apply different timeout values for client requests and observe the behavior."
       include_role:
          name: common
          tasks_from: verify_timeout_operates_correctly
@@ -94,7 +94,7 @@
          - 5
          - 10
 
-    - name: "Now remove fault injection point on the raft leader"
+    - name: "{{ recipe_name }} : Now remove fault injection point on the raft leader"
       vars:
          stage: "disable_fault_injection"
          cmd: "enabled@false"
@@ -103,7 +103,7 @@
       debug:
         msg: "{{ remove_fault_injection }}"
 
-    - name: "After removing fault injection, verify client request reported as 'accept'."
+    - name: "{{ recipe_name }} : After removing fault injection, verify client request reported as 'accept'."
       vars:
         stage: "stage3_cli_request"
         raft_key:
@@ -112,7 +112,7 @@
         stage3_values: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_key, wantlist=True) }}"
       failed_when: stage3_values["/0/client-requests"] != "accept"
     
-    - name: "Lookup the object written by parent recipe."
+    - name: "{{ recipe_name }} : Lookup the object written by parent recipe."
       vars:
          stage: "lookup_stage"
          cmd: "input@{{ Demo2Rncui }}:.lookup"
@@ -121,7 +121,7 @@
       debug:
         msg: "{{ lookup_obj }}"
     
-    - name: "Validate pmdb-test-apps array values."
+    - name: "{{ recipe_name }} : Validate pmdb-test-apps array values."
       vars:
         stage: "stage4_lookup_obj"
         lookup_stage_keys:
@@ -133,8 +133,10 @@
             - "/pumice_db_test_client/pmdb-test-apps/0/app-seqno"
       set_fact:
         stage4_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid, lookup_stage_keys, wantlist=True) }}"
+      failed_when:
+        stage4_values["/pumice_db_test_client/pmdb-test-apps"] == "null"
    
-    - name: "Apply fault injection on the client to silently drop non-ping replies from the leader."
+    - name: "{{ recipe_name }} : Apply fault injection on the client to silently drop non-ping replies from the leader."
       vars:
          stage: "client_fault_injection"
          cmd: "enabled@true"
@@ -145,7 +147,7 @@
 
     - pause: seconds=1 
 
-    - name: "Verify that leader is still considered viable by the client."
+    - name: "{{ recipe_name }} : Verify that leader is still considered viable by the client."
       vars:
         stage: "stage5_leader_viable"
         raft_key:
@@ -154,7 +156,7 @@
         stage5_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid, raft_key, wantlist=True) }}"
       failed_when: stage5_values["/0/leader-viable"] != True
 
-    - name: "Perform the lookup operation again on the same object"
+    - name: "{{ recipe_name }} : Perform the lookup operation again on the same object"
       vars:
          stage: "lookup_stage"
          cmd: "input@{{ Demo2Rncui }}:.lookup"
@@ -165,18 +167,18 @@
 
     - pause: seconds=1
 
-    - name: "Disable fault injection on the client."
+    - name: "{{ recipe_name }} : Disable fault injection on the client."
       vars:
          stage: "remove_fault_injection"
          cmd: "enabled@false"
          where: "/fault_injection_points/name@raft_client_udp_recv_handler_process_reply_bypass"
          disable_fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
-      debug:
+      debug: 
         msg: "{{ disable_fault_injection }}"
 
     - pause: seconds=1
 
-    - name: "Verify that last-request-tag matches with tag in recent ops."
+    - name: "{{ recipe_name }} : Verify that last-request-tag matches with tag in recent ops."
       vars:
         stage: "stage6"
         raft_keys:
@@ -185,7 +187,7 @@
       set_fact:
         stage6_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid, raft_keys, wantlist=True) }}"
 
-    - name: "Get the recent-ops-rd array"
+    - name: "{{ recipe_name }} : Get the recent-ops-rd array"
       vars:
         stage: "check_recent_ops"
         raft_keys:
@@ -193,7 +195,7 @@
       set_fact:
         check_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid, raft_keys, wantlist=True) }}"
     
-    - name: "Validate the last request from the recent ops array."
+    - name: "{{ recipe_name }} : Validate the last request from the recent ops array."
       set_fact:
          attempts: "{{ check_values['/0/recent-ops-rd'][-1]['attempts'] }}"
          rpc_user_tag: "{{ check_values['/0/recent-ops-rd'][-1]['rpc-user-tag'] }}"
@@ -204,3 +206,21 @@
         ((attempts | int) < 1) or
         ((completion_time | int) < 1000) and ((completion_time | int) > 2000)
     
+    - name: "{{ recipe_name }} : Set the 'default-request-timeout-sec' to its default value (i.e.60)"
+      vars:
+         stage: "recipe_cleanup_stage"
+         cmd: "default-request-timeout-sec@60"
+         where: "/raft_client_root_entry/default-request-timeout-sec"
+         default_timeout: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ default_timeout }}"
+
+    - name: "{{ recipe_name }} : Verify default request timeout set to '60'."
+      vars:
+        stage: "stage7"
+        raft_key:
+            - "/raft_client_root_entry/0/default-request-timeout-sec"
+      set_fact:
+        stage7_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid, raft_key, wantlist=True) }}"
+      failed_when: stage7_values["/0/default-request-timeout-sec"] != 60
+
