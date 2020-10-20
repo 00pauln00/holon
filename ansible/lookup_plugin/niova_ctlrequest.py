@@ -41,13 +41,20 @@ def niova_ctlreq_cmd_send(recipe_conf, ctlreq_dict):
     if 'wait_for_ofile' in ctlreq_dict:
         wait_for_ofile = ctlreq_dict['wait_for_ofile']
 
+    '''
+    Prepare the file name for input/output files from recipe_name and
+    stage name:
+    for example: recipe_name-stage_name.unique_app_uuid
+    '''
+    fname = "%s-%s" % (recipe_name, stage)
+
     # Prepare the ctlreq object
     if wait_for_ofile == False:
         ctlreqobj = CtlRequest(inotifyobj, operation, cmd, where, peer_uuid, app_uuid,
-                            input_base).Apply()
+                            input_base, fname).Apply()
     else:
         ctlreqobj = CtlRequest(inotifyobj, operation, cmd, where, peer_uuid, app_uuid,
-                            input_base).Apply_and_Wait(False)
+                            input_base, fname).Apply_and_Wait(False)
 
     ctlreq_dict_list = []
     ctlreq_dict_list.append(ctlreqobj.__dict__)

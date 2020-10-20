@@ -59,7 +59,7 @@ class CtlRequest:
     where = ""
     error = 0
 
-    def __init__(self, inotifyobj, operation, cmd, where, peer_uuid, app_uuid, input_base):
+    def __init__(self, inotifyobj, operation, cmd, where, peer_uuid, app_uuid, input_base, fname):
 
         self.operation = operation
         self.cmd = cmd
@@ -69,17 +69,6 @@ class CtlRequest:
         if input_base == inotify_input_base.SHARED_INIT:
             inotifyobj.export_init_path(peer_uuid)
 
-        '''
-        Replace @ in the command with 'at' to create valid filename.
-        Also if the cmd is to get all keys /.*/.*/.*, use filename
-        as get_all.
-        '''
-        fname = re.sub('@', 'at', cmd)
-        if operation == "lookup":
-            fname = os.path.basename(fname)
-            if fname == ".*":
-               fname = "get_all"
- 
         self.input_fpath = inotifyobj.prepare_input_output_path(peer_uuid,
                                                                 fname, True,
                                                                 input_base,

@@ -19,7 +19,7 @@
 
   - name: "Get leader_uuid and term value from all running peers before restart"
     vars:
-       stage: "Pre-restart"
+       stage: "pre_restart"
        raft_keys:
           - "/raft_root_entry/0/leader-uuid"
           - "/raft_root_entry/0/term"
