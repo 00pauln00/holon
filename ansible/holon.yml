@@ -10,6 +10,22 @@
     shell: "/usr/bin/uuid"
     register: cluster_uuid
 
+  - name: "Check if ports are already in use"
+    vars:
+      config_params:
+        startup_check: "port_check"
+        srv_port: "{{ srv_port }}"
+        client_port: "{{ client_port }}"
+    set_fact:
+       ports_check: "{{ lookup('holon_startup', config_params, wantlist=True) }}"
+
+  - name: "Install python modules if not installed previously"
+    vars:
+      config_params:
+        startup_check: "python_module_install"
+    set_fact:
+      installation: "{{ lookup('holon_startup', config_params, wantlist=True) }}"
+
   - name: "Default Values"
     set_fact:
       dir_path: "{{ dir_path | default('/tmp/holon_recipes_run') }}"
