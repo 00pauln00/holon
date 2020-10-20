@@ -20,7 +20,7 @@
   tasks:
     - name: "Verify the holon started with pumicedb cluster"
       debug:
-        msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed: {{ raft_param['ctype'] }}"
+        msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed: {{ raft_param['ctype'] }}"
       failed_when: requirement != raft_param['ctype']
 
     - name: "Create UUID for starting the client"
@@ -58,6 +58,7 @@
          non_existing_obj_lookup: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ non_existing_obj_lookup }}"
+      no_log: True
  
     - name: "Verify parameters after lookup on non-existing object."
       vars:
@@ -84,6 +85,7 @@
          invalid_write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ invalid_write_seq }}"
+      no_log: True
 
     - name: "Verify that write failed for invalid sequence number"
       vars:
@@ -108,6 +110,7 @@
          valid_write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ valid_write_seq }}"
+      no_log: True
 
     - name: "Verify the parameters for successful write operation."
       vars:
@@ -132,6 +135,7 @@
          write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ write_seq }}"
+      no_log: True
 
     - name: "Verify write should again fail with invalid seqno 2."
       vars:

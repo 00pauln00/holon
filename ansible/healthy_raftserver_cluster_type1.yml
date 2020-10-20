@@ -28,12 +28,12 @@
             - "/raft_root_entry/0/last-applied"
             - "/raft_root_entry/0/last-applied-cumulative-crc"
     set_fact:
-        stage0_values="{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True) }}"
+        stage0_values: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True) }}"
     loop: "{{ range(0, nrunning_peers|length) | list }}"
 
   - name: "Get the list of peers in the cluster"
     set_fact:
-      peer_arr="{{ raft_conf | json_query('peer_uuid_dict')}}"
+      peer_arr: "{{ raft_conf | json_query('peer_uuid_dict')}}"
 
   - name: "Get the peer uuid for the leader"
     set_fact:
@@ -53,10 +53,7 @@
       raft_keys:
             - "/raft_root_entry/0/follower-stats"
     set_fact:
-      orig_follower_info="{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True) }}"
-
-  - debug:
-      msg: "{{ orig_follower_info }}"
+      orig_follower_info: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True) }}"
 
   - name: "Get the non-running peers list and select remaining peers to start"
     include_role:
@@ -65,7 +62,7 @@
  
   - name: "Store the UUIDs for peers which needs to be started"
     set_fact:
-      peers_to_be_started="{{ non_running_peers }}"
+      peers_to_be_started: "{{ non_running_peers }}"
 
   - name: "Start the remaining peers"
     include_role:
@@ -86,11 +83,11 @@
       raft_keys:
             - "/raft_root_entry/0/follower-stats"
     set_fact:
-      curr_follower_info="{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True) }}"
+      curr_follower_info: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True) }}"
 
   - name: "Verify consistent next-idx and prev-idx-term values across the cluster."
     debug:
-     msg: "{{ curr_follower_info }}"
+     msg: "Verifying next-idx and prev-idx-term"
     failed_when: >
       (curr_follower_info['/0/follower-stats'][item]['next-idx'] != 1) or
       (curr_follower_info['/0/follower-stats'][item]['prev-idx-term'] != stage0_values["/0/term"])  
@@ -98,16 +95,14 @@
 
   - name: "Get last-ack for all followers to make sure they are almost same"
     set_fact:
-      last_ack_arr="{{last_ack_arr}} + ['{{curr_follower_info['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y')}}']"
+      last_ack_arr: "{{last_ack_arr}} + ['{{curr_follower_info['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y')}}']"
     loop: "{{ range(0, follower_uuid | length) | list }}"
 
   - name: "Difference between last-ack of two followers should not be more than 2secs"
     set_fact:
-      time_diff="{{ ((last_ack_arr[item] | to_datetime) - (last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"
+      time_diff: "{{ ((last_ack_arr[item] | to_datetime) - (last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"
     failed_when: (time_diff | int)  >= 2
     loop: "{{ range(0, follower_uuid | length - 2) | list }}"
-
-  - debug: var=peers_to_be_started
 
   - name: "Verify that newly started peers report as 'leader-already-present'"
     vars:
@@ -116,7 +111,7 @@
             - "/raft_root_entry/0/voted-for-uuid"
             - "/raft_root_entry/0/follower-reason"
     set_fact:
-          stage2_values="{{ lookup('niova_ctlrequest', 'lookup', peers_to_be_started[item], raft_keys, wantlist=True) }}"
+          stage2_values: "{{ lookup('niova_ctlrequest', 'lookup', peers_to_be_started[item], raft_keys, wantlist=True) }}"
     failed_when: >
         (stage2_values["/0/voted-for-uuid"] != "00000000-0000-0000-0000-000000000000") or
         (stage2_values["/0/follower-reason"] != "leader-already-present")
@@ -142,7 +137,7 @@
             - "/raft_root_entry/0/last-applied"
             - "/raft_root_entry/0/last-applied-cumulative-crc"
     set_fact:
-          stage3_values="{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True) }}"
+          stage3_values: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True) }}"
     failed_when: >
         (stage3_values["/0/leader-uuid"] != stage0_values["/0/leader-uuid"]) or
         ((stage3_values["/0/term"] != stage0_values["/0/term"]) and

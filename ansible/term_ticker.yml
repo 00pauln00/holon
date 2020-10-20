@@ -24,7 +24,7 @@
            iter: 5
            sleep_after_cmd: 3
       set_fact:
-          raft_value="{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, raft_keys, iter_info, wantlist=True) }}"
+          raft_value: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, raft_keys, iter_info, wantlist=True) }}"
 
     - name: "Verify stage0"
       vars:
@@ -32,6 +32,7 @@
         curr_values: "{{ raft_value[item + 1] }}"
       debug:
          msg: "Compare term value: {{ orig_values}} with {{ curr_values }}"
+      no_log: True
       failed_when: >
         (orig_values["/0/term"] >= curr_values["/0/term"]) or
         (orig_values["/0/voted-for-uuid"] != orig_values["/0/peer-uuid"]) or
@@ -48,15 +49,17 @@
       vars:
          stage: "stage1_before_reboot"
       set_fact:
-          before_reboot="{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
+          before_reboot: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
 
     - name: "Kill the process"
       debug:
        msg: "{{lookup('niova_raftprocess', 'kill', Server0UUID, wantlist=True)}}"
+      no_log: True
 
     - name: "Restart the peer0 process"
       debug:
        msg: "{{lookup('niova_raftprocess', 'start', Server0UUID, wantlist=True)}}"
+      no_log: True
 
     - name: "Make sure raft timer thread is activated after starting the peer"
       vars:
@@ -66,6 +69,7 @@
          idleoff: "{{ lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ idleoff }}"
+      no_log: True
 
     - name: "wait for 5 sec"
       wait_for:
@@ -75,9 +79,9 @@
       vars:
          stage: "stage1_after_reboot"
       set_fact:
-          after_reboot="{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
+          after_reboot: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
 
     - name: "verify stage1, term value should increment after reboot"
       debug:
-         msg: "Compare term value: {{ before_reboot['/0/term'] }} with {{ after_reboot['/0/term'] }}"
+         msg: "Compare before reboot term value: {{ before_reboot['/0/term'] }} with after reboot term value: {{ after_reboot['/0/term'] }}"
       failed_when: before_reboot["/0/term"] >= after_reboot["/0/term"]
