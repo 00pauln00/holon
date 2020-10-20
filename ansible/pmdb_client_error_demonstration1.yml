@@ -20,7 +20,7 @@
   tasks:
     - name: "Verify the holon started with pumicedb cluster"
       debug:
-        msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed: {{ raft_param['ctype'] }}"
+        msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed: {{ raft_param['ctype'] }}"
       failed_when: requirement != raft_param['ctype']
 
     - name: "Create UUID for starting the client"
