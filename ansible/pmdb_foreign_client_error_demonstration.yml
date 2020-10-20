@@ -1,0 +1,151 @@
+- import_playbook: healthy_raftserver_cluster_type1.yml
+- name: "PMDB Foreign Client Error Demonstration"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "pmdb_foreign_client_error_demonstration"
+     parent: "basic_raft_operation_with_client_activity"
+     requirement: "pumicedb"
+     client_obj: {}
+     set_timeout: 3 
+  tasks:
+  - name: "Verify the holon started with pumicedb cluster"
+    debug:
+      msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed: {{ raft_param['ctype'] }}"
+    failed_when: requirement != raft_param['ctype']
+
+  - name: "Create new Raft UUID"
+    shell: "/usr/bin/uuid"
+    register: cluster_uuid
+
+  - name: "Prepare parameter to pass across recipes"
+    set_fact:
+       raft_param:
+           base_dir: "{{ dir_path }}"
+           raft_uuid: "{{ cluster_uuid.stdout}}"
+           ctype: "{{ cluster_type }}"
+           npeers: "{{ npeers }}"
+           client_port: "{{ client_port }}"
+
+  - name: "Prepare config for new cluster"
+    vars:
+      config_params:
+        npeers: "{{ npeers }}"
+        srv_port: "{{ srv_port }}"
+        client_port: "{{ client_port }}"
+    set_fact: raft_conf="{{lookup('niova_raftconfig', config_params, wantlist=True)}}"
+
+  - name: "Show the values"
+    debug:
+      msg:
+        - "Directory path: {{ dir_path }}"
+        - "Port is {{ srv_port }}"
+        - "Nservers is: {{ npeers }}"
+        - "client port is {{ client_port }}"
+        - "Raft UUID is {{ cluster_uuid.stdout }}"
+        - "Raft params: {{ raft_param }}"
+ 
+  - name: "Create UUID for starting the client"
+    shell: "/usr/bin/uuid"
+    register: client_uuid
+
+  - name: "Create app uuid"
+    shell: "/usr/bin/uuid"
+    register: app_uuid
+
+  - name: "Prepare parameter to pass across recipes"
+    set_fact:
+      client_uuid: "{{ client_uuid.stdout }}"
+      app_uuid: "{{ app_uuid.stdout }}"
+      rncui: "{{ app_uuid.stdout }}:0:0:0:0"
+
+  - debug:
+      msg:
+        - "client uuid: {{ client_uuid }}"
+        - "app uuid: {{ app_uuid }}"
+        - "rncui: {{ rncui }}"
+
+  - name: "Start the client"
+    include_role:
+       name: common
+       tasks_from: start_client
+    vars:
+       ClientUUID: "{{ client_uuid }}"
+
+  - name: "Modify the 'default-request-timeout-sec' value as 3 sec"
+    vars:
+       stage: "modify_timeout"
+       cmd: "default-request-timeout-sec@{{ set_timeout }}"
+       where: "/raft_client_root_entry/default-request-timeout-sec"
+       set_time: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
+    debug:
+      msg: "{{ set_time }}"
+
+  - name: "Verify default request timeout set to '3'"
+    vars:
+      stage: "stage0"
+      raft_key:
+            - "/raft_client_root_entry/0/default-request-timeout-sec"
+    set_fact:
+      stage0_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid, raft_key, wantlist=True) }}"
+    failed_when: stage0_values["/0/default-request-timeout-sec"] != 3
+  - debug: var=stage0_values
+
+  - name: "Apply write cmd"
+    vars:
+      stage: "valid_seq_stage"
+      cmd: "input@{{app_uuid}}:0:0:0:1.write:0"
+      where: "/pumice_db_test_client/input"
+      write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
+    debug:
+      msg: "{{ write_seq }}"
+
+  - pause:
+      seconds: "{{ set_timeout | int + 2 | int }}"
+
+  - name: "Verify the parameters for successful write operation."
+    vars:
+      stage: "stage1"
+      raft_keys:
+            - "/pumice_db_test_client/pmdb-test-apps/0/app-user-id"
+            - "/pumice_db_test_client/pmdb-test-apps/0/status"
+            - "/pumice_db_test_client/pmdb-test-apps/0/last-request-tag"
+            - "/system_info/current_time"
+            - "/raft_client_root_entry/0/recent-ops-wr"
+    set_fact:
+      stage1_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid, raft_keys, wantlist=True) }}"
+    failed_when: >
+        ((stage1_values['/0/recent-ops-wr'][0]['sub-app-user-id'] != rncui) and 
+        (stage1_values['/0/recent-ops-wr'][0]['sub-app-user-id'] != stage1_values['/0/app-user-id'])) or
+        ((stage1_values['/0/recent-ops-wr'][0]['status'] != "Connection timed out") and
+        (stage1_values['/0/recent-ops-wr'][0]['status'] != stage1_values['/0/status'])) or
+        (stage1_values['/0/recent-ops-wr'][0]['server'] != "0.0.0.0:0") or
+        (stage1_values['/0/recent-ops-wr'][0]['rpc-user-tag'] != stage1_values['/0/last-request-tag']) or
+        (stage1_values['/0/recent-ops-wr'][0]['attempts'] != 0)
+  - debug: var=stage1_values
+
+  - name: "Get submitted time and current time for comparison."
+    vars:
+       stage: "check_timestamp"
+       raft_keys:
+            - "/raft_client_root_entry/0/recent-ops-wr"
+            - "/system_info/current_time"
+    set_fact:
+       get_time: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid, raft_keys, wantlist=True) }}"
+
+  - name: "Convert default timestamp format into datetime format for comparison."
+    set_fact:
+       submitted_time: "{{ get_time['/0/recent-ops-wr'][0]['submitted'] | to_datetime('%a %b %d %H:%M:%S %Z %Y') }}"
+       current_time: "{{ get_time['/system_info/current_time'] | to_datetime('%a %b %d %H:%M:%S %Z %Y') }}"
+
+  - debug: 
+      msg:
+        - "{{ submitted_time }}"
+        - "{{ current_time }}"
+
+  - name: "Difference between submitted time and current time should be approximately same."
+    set_fact:
+       time_diff: "{{ ((submitted_time | to_datetime) - (current_time | to_datetime)).total_seconds() | int}}"
+    failed_when: (time_diff | int) > 1
+
+
