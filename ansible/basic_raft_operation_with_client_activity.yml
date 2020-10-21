@@ -61,9 +61,6 @@
      set_fact:
         uuids: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers[0], raft_keys, wantlist=True) }}"
 
-   - debug:
-       msg: "{{ uuids }}"
-
    - name: "Verify the parameters for client."
      vars:
       stage: "stage1"
@@ -99,12 +96,6 @@
            - "/raft_root_entry/0/follower-stats"
      set_fact:
        pre_follower_stats: "{{ lookup('niova_ctlrequest', 'lookup', uuids['/0/leader-uuid'], raft_keys, wantlist=True) }}"
-
-   - name: "Print values"
-     debug:
-      msg:
-       - "{{ pre_write_values }}"
-       - "{{ pre_follower_stats }}"
 
    - name: "Write at seqno 0 and perform the write {{ num_writes }} times."
      vars:

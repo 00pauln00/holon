@@ -3,6 +3,7 @@
     - name: "Start the peer"
       debug:
        msg: "{{lookup('niova_raftprocess', 'start', ServerUUID, wantlist=True)}}"
+      no_log: True
 
     - name: "Wait for server process to bootup completely"
       debug:

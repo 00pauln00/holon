@@ -144,7 +144,7 @@
       next_idx_before: "{{ follower_stats_before['/0/follower-stats'][item]['next-idx'] }}"
       next_idx_after: "{{ follower_stats_after['/0/follower-stats'][item]['next-idx'] }}"
     debug:
-      msg: "Compare next_idx: {{ next_idx_before }} with {{ next_idx_after }}"
+      msg: "Compare next_idx_before: {{ next_idx_before }} with next_idx_after {{ next_idx_after }}"
     failed_when: >
       next_idx_after < next_idx_before
     loop: "{{ range(0, follower_uuids_after_restart | length) | list }}"
