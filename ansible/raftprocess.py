@@ -93,16 +93,15 @@ class RaftProcess:
         else:
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid, '-a'],  stdout = fp, stderr = fp)
-        fp.close()
+
+        #Make sure all the ouput gets flushed to the file before closing it
+        os.fsync(fp)
 
         output_label = "raft-%s.%s" % (self.process_type, self.process_uuid)
         self.process_pid = process_popen.pid
     
         #To check if process is started
-        
         self.Wait_for_process_status("running", self.process_pid)
-
-
 
         #Check if child process exited with error
         if process_popen.poll() is None:
@@ -123,9 +122,6 @@ class RaftProcess:
         #Print <process_type.peer_index> at the start of raft log messages
         for line in Lines:
             logging.warning("<{}>:{}".format(output_label, line.strip()))
-
-        # Delete the temp file
-        shutil.os.remove(temp_file)
 
     '''
         Method: pause_process
