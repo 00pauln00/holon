@@ -23,7 +23,7 @@
   tasks:
    - name: "Verify the holon started with pumicedb cluster"
      debug:
-       msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed is : {{ raft_param['ctype'] }}"
+       msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed is : {{ raft_param['ctype'] }}"
      failed_when: requirement != raft_param['ctype']
 
    - name: "Get cluster information"

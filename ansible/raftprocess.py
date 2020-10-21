@@ -23,7 +23,7 @@ class RaftProcess:
     process_uuid = ''
     process_status = ''
     process_popen = {}
-    process_cluster_type = ''
+    process_backend_type = ''
     binary_path='/home/pauln/raft-builds/latest/raft-server'
     process_pid = 0
 
@@ -35,8 +35,8 @@ class RaftProcess:
                             created.
                     @process_type: Type of the process(server or client)
     '''
-    def __init__(self, cluster_type, uuid, process_type):
-        self.process_cluster_type = cluster_type
+    def __init__(self, backend_type, uuid, process_type):
+        self.process_backend_type = backend_type
         self.process_uuid = uuid
         self.process_pid = 0
         self.process_type = process_type
@@ -65,8 +65,8 @@ class RaftProcess:
 
     def start_process(self, raft_uuid, peer_uuid, base_dir):
 
-        logging.warning("Starting uuid: %s, cluster_type %s" % (peer_uuid, self.process_cluster_type))
-        if self.process_cluster_type == "pumicedb":
+        logging.warning("Starting uuid: %s, cluster_type %s" % (peer_uuid, self.process_backend_type))
+        if self.process_backend_type == "pumicedb":
             if self.process_type == "server":
                 bin_path = '/home/pauln/raft-builds/latest/pumicedb-server-test'
             else:
@@ -87,8 +87,12 @@ class RaftProcess:
         temp_file = "%s/raft_log_%s.txt" % (base_dir, peer_uuid)
 
         fp = open(temp_file, "w")
-        process_popen = subprocess.Popen([bin_path, '-r',
+        if self.process_type =="server":
+            process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid],  stdout = fp, stderr = fp)
+        else:
+            process_popen = subprocess.Popen([bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid, '-a'],  stdout = fp, stderr = fp)
         fp.close()
 
         output_label = "raft-%s.%s" % (self.process_type, self.process_uuid)
