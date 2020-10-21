@@ -28,11 +28,13 @@
 
     - name: "Wait until leader election happens"
       vars:
-         stage: "leader-election"
+         stage: "wait_leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
-      loop: "{{ range(0, 4) | list }}"
+      until: lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+      retries: 4
+      delay: 1
+      loop: "{{ range(0, nrunning_peers | length) | list }}"
       loop_control:
         pause: 2
 
@@ -58,4 +60,4 @@
         (raft_values["/0/last-applied"] != 0) or
         (raft_values["/0/last-applied-cumulative-crc"] != raft_values["/0/newest-entry-crc"]) or
         (raft_values["/0/term"] != raft_values["/0/newest-entry-term"])
-      loop: "{{ range(0, nrunning_peers|length) | list }}"
+      loop: "{{ range(0, nrunning_peers | length) | list }}"
