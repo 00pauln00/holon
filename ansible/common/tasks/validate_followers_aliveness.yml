@@ -13,8 +13,6 @@
     - name: "Get number of followers"
       set_fact: nfollowers="{{ FollowersStat['/0/follower-stats'] | length | int }}"
 
-    - debug:
-       msg: "{{nfollowers}}"
     - name: "Validate the aliveness of the followers"
       debug:
         msg: "Validating ms-since-last-ack <= 3 * (election-timeout-ms / heartbeat-freq-per-election-timeout)"
