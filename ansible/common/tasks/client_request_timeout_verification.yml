@@ -12,7 +12,7 @@
     - name: "{{ recipe_name }} : Lookup the object"
       vars:
          stage: "lookup_stage"
-         cmd: "input@{{ Demo2Rncui }}:.lookup"
+         cmd: "input@{{ Demo2Rncui }}.lookup"
          where: "/pumice_db_test_client/input"
          apply_lookup: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
       debug:
@@ -32,7 +32,7 @@
         additional_msec_value: "{{ item * 1000 | int + 100 | int }}"
         stage2_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid, raft_keys, wantlist=True) }}"
       failed_when: >
-        (stage2_values['/0/app-user-id'] != rncui) or
+        (stage2_values['/0/app-user-id'] != Demo2Rncui) or
         (stage2_values['/0/status'] != "Connection timed out") or
         ((stage2_values['/0/last-request-duration-ms'] | int) > (additional_msec_value | int))
      
