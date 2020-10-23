@@ -11,7 +11,11 @@ class GenericCmds:
     Parameters:
     '''
     def install_python_modules(self):
-            required = ['func_timeout', 'sockets', 'pathlib', 'psutil', 'dpath']
+        required = []
+        with open('./modules', 'r') as fh:
+            lines = fh.readlines()
+            for line in lines:
+                required.append(line)
             for package in required:
                 try:
                     dist = pkg_resources.get_distribution(package)
@@ -19,7 +23,6 @@ class GenericCmds:
                     print('{} is NOT installed'.format(package))
                     print('Installing : {}'.format(package))
                     subprocess.run(['pip3', 'install', package])
-
 
     '''
     Method: generate uuid.
