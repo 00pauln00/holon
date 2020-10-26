@@ -1,10 +1,13 @@
 - import_playbook: healthy_raftserver_cluster_type2.yml
+  when: raft_param['ctype'] == "pumicedb"
+
 - name: "Basic Raft Operation With Client Activity"
   hosts: localhost
   connection: local
   vars:
      recipe_name: "Basic Raft Operation With Client Activity"
      parent: "Healthy Raftserver Cluster Type-2"
+     requirement: "pumicedb"
      client_obj: {}
      num_writes: 100
      peer_raft_keys:
@@ -18,6 +21,11 @@
           - "/raft_root_entry/0/newest-entry-crc"
 
   tasks:
+   - name: "Verify the holon started with pumicedb cluster"
+     debug:
+       msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed is : {{ raft_param['ctype'] }}"
+     failed_when: requirement != raft_param['ctype']
+
    - name: "Get cluster information"
      include_role:
        name: common
@@ -46,15 +54,12 @@
 
    - name: "Get raft_uuid and leader_uuid."
      vars:
-       stage: "Stage0"
+       stage: "stage0"
        raft_keys:
           - "/raft_root_entry/0/raft-uuid"
           - "/raft_root_entry/0/leader-uuid"
      set_fact:
         uuids: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers[0], raft_keys, wantlist=True) }}"
-
-   - debug:
-       msg: "{{ uuids }}"
 
    - name: "Verify the parameters for client."
      vars:
@@ -78,7 +83,7 @@
 
    - name: "Snapshot the State of the Raft Servers before doing any writes on client."
      vars:
-       stage: "Pre-write-values"
+       stage: "pre_write_values"
        pre_write_values: []
      set_fact:
         pre_write_values: "{{ pre_write_values + [lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], peer_raft_keys, wantlist=True)] }}"
@@ -86,17 +91,11 @@
 
    - name: "Snapshot the follower stats from leader before doing any writes on client."
      vars:
-       stage: "Pre-write_get_follower_stats"
+       stage: "pre_write_get_follower_stats"
        raft_keys:
            - "/raft_root_entry/0/follower-stats"
      set_fact:
        pre_follower_stats: "{{ lookup('niova_ctlrequest', 'lookup', uuids['/0/leader-uuid'], raft_keys, wantlist=True) }}"
-
-   - name: "Print values"
-     debug:
-      msg:
-       - "{{ pre_write_values }}"
-       - "{{ pre_follower_stats }}"
 
    - name: "Write at seqno 0 and perform the write {{ num_writes }} times."
      vars:
@@ -108,7 +107,7 @@
 
    - name: "Wait until all write completes from client"
      vars:
-      stage: "wait-for-client-write-comp"
+      stage: "wait_for_client_write_comp"
       raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
      debug:
        msg: "Waiting for client to finish writing"

@@ -11,5 +11,3 @@
   - name: "get value of number of peers to start now."
     set_fact:
       npeers_start="{{npeers_for_leader_elect| int | int - 2}}"
-
-  - debug: var=npeers_start
