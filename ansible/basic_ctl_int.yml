@@ -71,13 +71,17 @@
         iter_info:
            iter: 5
            sleep_after_cmd: 2
-      set_fact:
-        time_stamp: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/system_info/current_time', iter_info, wantlist=True) }}"
+        curr_stamp: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/system_info/current_time', iter_info, wantlist=True) }}"
+      with_items:
+        - "{{ curr_stamp }}"
+      register: time_stamp
+      debug:
+        msg: "Running the lookup cmd in a loop with 2sec between iterations."
 
     - name: "verify stage1, current time should increament in each iteration"
       vars:
-        orig_time: "{{ time_stamp[item]['/system_info/current_time'] }}"
-        curr_time: "{{ time_stamp[item + 1]['/system_info/current_time'] }}"
+        orig_time: "{{ time_stamp['results'][item]['item']['/system_info/current_time'] }}"
+        curr_time: "{{ time_stamp['results'][item + 1]['item']['/system_info/current_time'] }}"
       debug:
          msg: "Compare time stamp: {{ orig_time }} with {{ curr_time }}"
       failed_when: orig_time >= curr_time

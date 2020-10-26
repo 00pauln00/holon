@@ -23,16 +23,21 @@
         iter_info:
            iter: 5
            sleep_after_cmd: 3
-      set_fact:
-          raft_value: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, raft_keys, iter_info, wantlist=True) }}"
+        peer0_vals: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, raft_keys, iter_info, wantlist=True) }}"
+      with_items:
+        - "{{ peer0_vals }}"
+      register: peer0_raft_values
+      debug:
+         msg: "Get different raft values for peer0: peer0_raft_values"
 
+    - debug:
+       msg: "{{ peer0_raft_values }}"
     - name: "Verify stage0"
       vars:
-        orig_values: "{{ raft_value[item] }}"
-        curr_values: "{{ raft_value[item + 1] }}"
+        orig_values: "{{ peer0_raft_values['results'][item]['item'] }}"
+        curr_values: "{{ peer0_raft_values['results'][item + 1]['item'] }}"
       debug:
          msg: "Compare term value: {{ orig_values}} with {{ curr_values }}"
-      no_log: True
       failed_when: >
         (orig_values["/0/term"] >= curr_values["/0/term"]) or
         (orig_values["/0/voted-for-uuid"] != orig_values["/0/peer-uuid"]) or
@@ -48,9 +53,15 @@
     - name: "Get the term value before peer0 reboot"
       vars:
          stage: "stage1_before_reboot"
-      set_fact:
-          before_reboot: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
+         peer0_term: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
+      with_items:
+         - "{{ peer0_term }}"
+      register: before_reboot_term
+      debug:
+        msg: "Got the term value of peer0: {{ Server0UUID }}"
 
+    - debug:
+       msg: "{{ before_reboot_term }}"
     - name: "Kill the process"
       debug:
        msg: "{{lookup('niova_raftprocess', 'kill', Server0UUID, wantlist=True)}}"
@@ -83,5 +94,5 @@
 
     - name: "verify stage1, term value should increment after reboot"
       debug:
-         msg: "Compare before reboot term value: {{ before_reboot['/0/term'] }} with after reboot term value: {{ after_reboot['/0/term'] }}"
-      failed_when: before_reboot["/0/term"] >= after_reboot["/0/term"]
+         msg: "Compare before reboot term value: {{ before_reboot_term['results'][0]['item']['/0/term'] }} with after reboot term value: {{ after_reboot['/0/term'] }}"
+      failed_when: before_reboot_term['results'][0]['item']["/0/term"] >= after_reboot["/0/term"]
