@@ -25,7 +25,7 @@
            - "/raft_root_entry/0/newest-entry-crc"
 
   tasks:
-   - name: "{{ recipe_name }} : Verify the holon started with pumicedb cluster."
+   - name: "{{ recipe_name }} : Verifying recipe compatibility requirements."
      debug:
        msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed: {{ raft_param['ctype'] }}"
      failed_when: requirement != raft_param['ctype']
@@ -38,7 +38,7 @@
      shell: "/usr/bin/uuid"
      register: app_uuid
 
-   - name: "{{ recipe_name }} : Set client_uuid, app_uuid and rncui to use acroos recipes."
+   - name: "{{ recipe_name }} : Set client_uuid, app_uuid and rncui to use across recipes."
      set_fact:
         client_uuid: "{{ client_uuid.stdout }}"
         app_uuid: "{{ app_uuid.stdout }}"
@@ -51,8 +51,6 @@
      set_fact:
         raft_root_entry_all: "{{ raft_root_entry_all + [lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], peer_raft_keys, wantlist=True)] }}"
      loop: "{{ range(0, nrunning_peers | length) | list }}"
-     loop_control:
-         pause: 2
 
    - name: "{{ recipe_name }} : Compare raft_root_entry values of all peers."
      debug:
@@ -75,7 +73,7 @@
        raft_keys:
           - "/raft_root_entry/0/leader-uuid"
      set_fact:
-        raft_values: "{{ lookup('niova_ctlrequest','lookup', nrunning_peers[0], raft_keys, wantlist=True) }}"
+        raft_values: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers[0], raft_keys, wantlist=True) }}"
 
    - name: "{{ recipe_name }} : Get follower's uuids."
      set_fact:
@@ -129,17 +127,6 @@
      set_fact:
         write: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
 
-   - name: "{{ recipe_name }} : Wait until all write completes from client."
-     vars:
-      stage: "wait_for_client_write_completion"
-      raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
-     debug:
-       msg: "Waiting for client to finish writing."
-     until: lookup('niova_ctlrequest', 'lookup', client_uuid, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first != (num_writes - 1)
-     loop: "{{ range(0, 10) | list }}"
-     loop_control:
-       pause: 1
-
    - name: "{{ recipe_name }} : Get newest-entry-idx values for all followers after write."
      vars:
        stage: "after_write_followers"
@@ -157,7 +144,7 @@
      set_fact:
         newest_entry_idx_leader_after_write: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, raft_keys, wantlist=True) }}"
 
-   #2a- Verification for newest-entry-idx
+   #2a- Verification for newest-entry-idx and commit-idx
    - name: "{{ recipe_name }} : Verify that newest-entry-idx of all followers remains same even after successful write."
      debug:
        msg: "Verifying that newest-entry-idx of all followers is not advanced"
@@ -168,6 +155,17 @@
      debug:
        msg: "Verifying that newest-entry-idx of leader is advanced by 1"
      when: (newest_entry_idx_leader_after_write["/0/newest-entry-idx"] - newest_entry_idx_leader_before_write["/0/newest-entry-idx"]) == 1
+
+   - name: "{{ recipe_name }} : Get commit-idx of all running peers after write and validate that commit-idx has not advanced on any peer."
+     vars:
+       get_commit_idx_all_after_write: []
+       stage: "get_commit_idx_all_after_write"
+       raft_keys:
+           - "/raft_root_entry/0/commit-idx"
+     set_fact:
+        get_commit_idx_all_after_write: "{{ get_commit_idx_all_after_write + [lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True)] }}"
+     failed_when:  get_commit_idx_all_after_write[item]['/0/commit-idx'] > raft_root_entry_all[item]['/0/commit-idx']
+     loop: "{{ range(0, nrunning_peers | length) | list }}"
 
    #3- Stop the processes, first all followers and then leader
    - name: "{{ recipe_name }} : Stop all follower processes."
@@ -253,6 +251,16 @@
        ServerUUID: "{{ remaining_followers_to_start[item] }}"
      loop: "{{ range(0, remaining_followers_to_start | length) | list }}"
 
+   - name: "{{ recipe_name }} : Wait until all followers have a last-applied-idx which is equal to the leader's."
+     vars:
+       stage: "poll_for_last_applied_idx"
+     debug:
+       msg: "Waiting for all followers to have a last-applied-idx which is equal to the leader's."
+     until: (lookup('niova_ctlrequest', 'lookup', follower_uuids[item], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first) == (lookup('niova_ctlrequest', 'lookup', raft_values_leader_after_reboot['/0/leader-uuid'], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first)
+     loop: "{{ range(0, follower_uuids | length) | list }}"
+     loop_control:
+        pause: 2
+
    #7a - Verifications
    - name: "{{ recipe_name }} : Get the values for all peers for comparing commit-idx, last-applied and newest-entry-idx."
      vars:
@@ -264,8 +272,6 @@
            (raft_root_entry_all_after[item]['/0/last-applied'] !=  (raft_root_entry_all[item]['/0/last-applied']+2)) or
            (raft_root_entry_all_after[item]['/0/newest-entry-idx'] != (raft_root_entry_all[item]['/0/newest-entry-idx']+2))
      loop: "{{ range(0, nrunning_peers | length) | list }}"
-     loop_control:
-         pause: 2
    
    - name: "{{ recipe_name }} : Validate term, last-applied-cumulative-crc, newest-entry-term, newest-entry-data-size and newest-entry-crc of all peers after reboot."
      debug:
