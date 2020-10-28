@@ -36,10 +36,6 @@
          - "{{ peers_val }}"
       register: stage0_peers_vals
 
-    - name: "Print the values for all_peers_val"
-      debug:
-        msg: "{{ stage0_peers_vals }}"
-
     - name: "{{ recipe_name }}: Get the list of peers in the cluster"
       set_fact:
         peer_arr: "{{ raft_conf | json_query('peer_uuid_dict')}}"    
@@ -96,15 +92,15 @@
            (net_rcv["/0/term"] <= stage0_peers_vals['results'][item]['item']["/0/term"]))
       loop: "{{ range(0, nrunning_peers|length) | list }}"
 
-    - name: "Lets sleep for sometime before checking the values"
+    - name: "{{ recipe_name }}: Lets sleep for sometime before checking the values"
       wait_for:
         timeout: 5
 
-    - name: "Selected leader-to-be"
+    - name: "{{ recipe_name }}: Selected leader-to-be"
       debug:
         msg: "{{ follower_uuid[0] }}"
 
-    - name: "Set leader-to-be on all peers"
+    - name: "{{ recipe_name }}: Enable receive on all peers from the leader-to-be."
       vars:
          stage: "stage2_set_leader"
          cmd: "net_recv_enabled@true"
@@ -116,7 +112,7 @@
 
     - pause: seconds=3
 
-    - name: "Verify that leader-to-be is not elected yet"
+    - name: "{{ recipe_name }}: Get the values to verify leader-to-be is not elected yet"
       vars:
          stage: "stage2_set_leader"
          raft_keys:
@@ -136,11 +132,12 @@
          set_leader: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, raft_keys, wantlist=True) }}"
       debug:
         msg: "Verify leader-to-be not elected on peer"
+      no_log: true
       with_items:
          - "{{ set_leader }}"
       register: set_leader_vals
 
-    - name: "Verify the values"
+    - name: "{{ recipe_name }}: Verify that leader-to-be is not elected yet"
       debug:
         msg: "Verify value for peer: {{ nrunning_peers[item] }}"
       failed_when: >
@@ -148,17 +145,22 @@
         (set_leader_vals['results'][item]['item']["/0/commit-idx"] != stage0_peers_vals['results'][item]['item']["/0/commit-idx"]) or
         (set_leader_vals['results'][item]['item']["/0/last-applied"] != stage0_peers_vals['results'][item]['item']["/0/last-applied"]) or
         (set_leader_vals['results'][item]['item']["/0/last-applied-cumulative-crc"] != stage0_peers_vals['results'][item]['item']["/0/last-applied-cumulative-crc"]) or
-        (set_leader_vals['results'][item]['item']["/0/term"] <= stage0_peers_vals['results'][item]['item']["/0/term"]) or
-        (set_leader_vals['results'][item]['item']["/0/newest-entry-term"] != stage0_peers_vals['results'][item]['item']["/0/newest-entry-term"]) or
+        (set_leader_vals['results'][item]['item']["/0/term"] < stage0_peers_vals['results'][item]['item']["/0/term"]) or
         (set_leader_vals['results'][item]['item']["/0/newest-entry-crc"] != stage0_peers_vals['results'][item]['item']["/0/newest-entry-crc"]) or
         (set_leader_vals['results'][item]['item']["/0/newest-entry-data-size"] != stage0_peers_vals['results'][item]['item']["/0/newest-entry-data-size"]) or
         (set_leader_vals['results'][item]['item']["/0/newest-entry-idx"] != stage0_peers_vals['results'][item]['item']["/0/newest-entry-idx"]) or
-        (set_leader_vals['results'][item]['item']["/0/state"] != "candidate") or
-        (set_leader_vals['results'][item]['item']["/0/client-requests"] != "deny-leader-not-established") or
+        ((set_leader_vals['results'][item]['item']["/0/state"] == "leader") and 
+         (set_leader_vals['results'][item]['item']["/0/client-requests"] != "deny-may-be-deposed") and
+         (set_leader_vals['results'][item]['item']["/0/term"] == stage0_peers_vals['results'][item]['item']["/0/term"])) or
+        ((set_leader_vals['results'][item]['item']["/0/state"] == "candidate") and
+         (set_leader_vals['results'][item]['item']["/0/client-requests"] != "deny-leader-not-established") and
+         (set_leader_vals['results'][item]['item']["/0/term"] <= stage0_peers_vals['results'][item]['item']["/0/term"])) or
         (set_leader_vals['results'][item]['item']["/0/voted-for-uuid"] != set_leader_vals['results'][item]['item']["/0/peer-uuid"]) 
       loop: "{{ range(0, nrunning_peers|length) | list }}"
+
     - pause: seconds=3
-    - name: "Enable message receive on peer which is leader-to-be"
+
+    - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
       vars:
          stage: "stage3_rcv_true"
          cmd: "net_recv_enabled@true"
@@ -168,7 +170,7 @@
        msg: "Enable message receive on peer which is leader-to-be"
       no_log: true
 
-    - name: "Verify new leader is elected successfully"
+    - name: "{{ recipe_name }}: Verify new leader is elected successfully"
       vars:
          stage: "stage4_get_all"
       debug:
