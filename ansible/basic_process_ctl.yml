@@ -8,7 +8,7 @@
      iterations: 5
 
   tasks:
-    - name: "Pause and resume peer0 in a loop"
+    - name: "{{ recipe_name }}: Pause and resume peer0 in a loop"
       vars:
         stage: "stage0"
         wait_for_ofile: False
@@ -21,7 +21,7 @@
       loop_control:
         pause: 5
     
-    - name: "Get the timestamp for peer0 in a loop with gap of 2secs"
+    - name: "{{ recipe_name }}: Get the timestamp for peer0 in a loop with gap of 2secs"
       vars:
         stage: "stage1"
         iter_info:
@@ -34,10 +34,11 @@
       debug:
         msg: "Get the current timestamp in a loop with 2sec sleep between iteration."
 
-    - name: "verify stage1: timestamp should be incremental in each iteration"
+    - name: "{{ recipe_name }}: verify stage1: timestamp should be incremental in each iteration"
       vars:
-        time1: "{{ time_stamp['results'][item]['item']['/system_info/current_time'] }}"
-        time2: "{{ time_stamp['results'][item + 1]['item']['/system_info/current_time'] }}"
+        time_stamp_arr: "{{ time_stamp['results'] }}"
+        time1: "{{ time_stamp_arr[item]['item']['/system_info/current_time'] }}"
+        time2: "{{ time_stamp_arr[item + 1]['item']['/system_info/current_time'] }}"
       debug:
          msg: "Compare time stamp: {{ time1 }} with {{ time2 }}"
       failed_when: time1 >= time2

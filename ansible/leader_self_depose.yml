@@ -108,11 +108,13 @@
       register: fstat_after_pause
 
     - name: "{{ recipe_name }}: Verify leader won't be able to accept client requests."
+      vars:
+        cli_req_after_pause: "{{ fstat_after_pause['results'][0]['item'] }}"
       debug:
         msg: "Verify client-requests is deny-may-be-deposed"
       no_log: true
       failed_when: >
-          fstat_after_pause['results'][0]['item']['/*/client-requests'] != "deny-may-be-deposed"
+          cli_req_after_pause['/*/client-requests'] != "deny-may-be-deposed"
 
     - name: "{{ recipe_name }}: Verify follower's last-ack before and after pausing the followers"
       vars:

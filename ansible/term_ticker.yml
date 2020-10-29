@@ -26,28 +26,29 @@
         peer0_vals: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, raft_keys, iter_info, wantlist=True) }}"
       with_items:
         - "{{ peer0_vals }}"
-      register: peer0_raft_values
+      register: peer0_stats
       debug:
          msg: "Get different raft values for peer0: peer0_raft_values"
 
     - debug:
-       msg: "{{ peer0_raft_values }}"
+       msg: "{{ peer0_stats }}"
     - name: "Verify stage0"
       vars:
-        orig_values: "{{ peer0_raft_values['results'][item]['item'] }}"
-        curr_values: "{{ peer0_raft_values['results'][item + 1]['item'] }}"
+        curr_itr_vals: "{{ peer0_stats['results'][item]['item'] }}"
+        next_itr_vals: "{{ peer0_stats['results'][item + 1]['item'] }}"
       debug:
-         msg: "Compare term value: {{ orig_values}} with {{ curr_values }}"
+         msg: "Compare term value: {{ curr_itr_vals }} with {{ next_itr_vals }}"
+      no_log: true
       failed_when: >
-        (orig_values["/0/term"] >= curr_values["/0/term"]) or
-        (orig_values["/0/voted-for-uuid"] != orig_values["/0/peer-uuid"]) or
-        (orig_values["/0/leader-uuid"] != "null") or
-        (orig_values["/0/commit-idx"] != -1) or
-        (orig_values["/0/last-applied"] != -1) or
-        (orig_values["/0/last-applied-cumulative-crc"] != 0) or
-        (orig_values["/0/state"] != "candidate") or
-        (orig_values["/0/follower-reason"] != "none") or
-        (orig_values["/0/client-requests"] != "deny-leader-not-established")
+        (curr_itr_vals["/0/term"] >= next_itr_vals["/0/term"]) or
+        (curr_itr_vals["/0/voted-for-uuid"] != curr_itr_vals["/0/peer-uuid"]) or
+        (curr_itr_vals["/0/leader-uuid"] != "null") or
+        (curr_itr_vals["/0/commit-idx"] != -1) or
+        (curr_itr_vals["/0/last-applied"] != -1) or
+        (curr_itr_vals["/0/last-applied-cumulative-crc"] != 0) or
+        (curr_itr_vals["/0/state"] != "candidate") or
+        (curr_itr_vals["/0/follower-reason"] != "none") or
+        (curr_itr_vals["/0/client-requests"] != "deny-leader-not-established")
       loop: "{{ range(0, 4)| list }}"
 
     - name: "Get the term value before peer0 reboot"
@@ -59,9 +60,8 @@
       register: before_reboot_term
       debug:
         msg: "Got the term value of peer0: {{ Server0UUID }}"
+      no_log: true
 
-    - debug:
-       msg: "{{ before_reboot_term }}"
     - name: "Kill the process"
       debug:
        msg: "{{lookup('niova_raftprocess', 'kill', Server0UUID, wantlist=True)}}"
@@ -93,6 +93,8 @@
           after_reboot: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
 
     - name: "verify stage1, term value should increment after reboot"
+      vars:
+          before_reboot: "{{ before_reboot_term['results'][0]['item'] }}" 
       debug:
          msg: "Compare before reboot term value: {{ before_reboot_term['results'][0]['item']['/0/term'] }} with after reboot term value: {{ after_reboot['/0/term'] }}"
-      failed_when: before_reboot_term['results'][0]['item']["/0/term"] >= after_reboot["/0/term"]
+      failed_when: before_reboot["/0/term"] >= after_reboot["/0/term"]

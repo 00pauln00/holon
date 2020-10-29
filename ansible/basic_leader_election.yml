@@ -59,15 +59,17 @@
       no_log: true
       with_items:
         - "{{ peer_values }}"
-      register: raft_values
+      register: running_peers_info
 
     - name: "{{ recipe_name }}: Compare the values for successful leader election."
+      vars:
+        peer_info: "{{ running_peers_info['results'][item]['item'] }}"
       debug:
         msg:
         - "Validate the raft values for peer: {{ nrunning_peers[item] }}"
       failed_when: >
-        (raft_values['results'][item]['item']["/0/commit-idx"] != 0) or
-        (raft_values['results'][item]['item']["/0/last-applied"] != 0) or
-        (raft_values['results'][item]['item']["/0/last-applied-cumulative-crc"] != raft_values['results'][item]['item']["/0/newest-entry-crc"]) or
-        (raft_values['results'][item]['item']["/0/term"] != raft_values['results'][item]['item']["/0/newest-entry-term"])
+        (peer_info["/0/commit-idx"] != 0) or
+        (peer_info["/0/last-applied"] != 0) or
+        (peer_info["/0/last-applied-cumulative-crc"] != peer_info["/0/newest-entry-crc"]) or
+        (peer_info["/0/term"] != peer_info["/0/newest-entry-term"])
       loop: "{{ range(0, nrunning_peers | length) | list }}"

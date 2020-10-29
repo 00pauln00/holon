@@ -70,6 +70,7 @@
 
     - name: "{{ recipe_name }}: Verify that message received is disabled successfully on all peers"
       vars:
+         initial_vals: "{{ stage0_peers_vals['results'][item]['item']}}"
          stage: "stage1_get_all"
          raft_keys:
              - "/ctl_svc_nodes/*/net_recv_enabled"
@@ -83,13 +84,13 @@
          - "Verify parameters for peer: {{ nrunning_peers[item] }}"
       failed_when: >
            (net_rcv["/*/net_recv_enabled"] != False) or
-           (net_rcv["/0/leader-uuid"] != stage0_peers_vals['results'][item]['item']["/0/leader-uuid"]) or
+           (net_rcv["/0/leader-uuid"] != initial_vals["/0/leader-uuid"]) or
            ((net_rcv["/0/state"] != "leader") and
            (net_rcv["/0/state"] != "candidate")) or
            ((net_rcv["/0/client-requests"] != "deny-may-be-deposed") and
            (net_rcv["/0/client-requests"] != "deny-leader-not-established")) or
-           ((net_rcv["/0/term"] != stage0_peers_vals['results'][item]['item']["/0/term"]) and
-           (net_rcv["/0/term"] <= stage0_peers_vals['results'][item]['item']["/0/term"]))
+           ((net_rcv["/0/term"] != initial_vals["/0/term"]) and
+           (net_rcv["/0/term"] <= initial_vals["/0/term"]))
       loop: "{{ range(0, nrunning_peers|length) | list }}"
 
     - name: "{{ recipe_name }}: Lets sleep for sometime before checking the values"
@@ -138,26 +139,41 @@
       register: set_leader_vals
 
     - name: "{{ recipe_name }}: Verify that leader-to-be is not elected yet"
+      vars:
+        initial_vals: "{{ stage0_peers_vals['results'][item]['item'] }}"
+        stage2_vals: "{{ set_leader_vals['results'][item]['item'] }}"
       debug:
-        msg: "Verify value for peer: {{ nrunning_peers[item] }}"
+        msg: "Verify value for peer: {{ nrunning_peers[item] }}, initial_vals: {{ initial_vals}} / {{ stage2_vals }}"
       failed_when: >
-        (set_leader_vals['results'][item]['item']["/0/leader-uuid"] != stage0_peers_vals['results'][item]['item']["/0/leader-uuid"]) or
-        (set_leader_vals['results'][item]['item']["/0/commit-idx"] != stage0_peers_vals['results'][item]['item']["/0/commit-idx"]) or
-        (set_leader_vals['results'][item]['item']["/0/last-applied"] != stage0_peers_vals['results'][item]['item']["/0/last-applied"]) or
-        (set_leader_vals['results'][item]['item']["/0/last-applied-cumulative-crc"] != stage0_peers_vals['results'][item]['item']["/0/last-applied-cumulative-crc"]) or
-        (set_leader_vals['results'][item]['item']["/0/term"] < stage0_peers_vals['results'][item]['item']["/0/term"]) or
-        (set_leader_vals['results'][item]['item']["/0/newest-entry-crc"] != stage0_peers_vals['results'][item]['item']["/0/newest-entry-crc"]) or
-        (set_leader_vals['results'][item]['item']["/0/newest-entry-data-size"] != stage0_peers_vals['results'][item]['item']["/0/newest-entry-data-size"]) or
-        (set_leader_vals['results'][item]['item']["/0/newest-entry-idx"] != stage0_peers_vals['results'][item]['item']["/0/newest-entry-idx"]) or
-        ((set_leader_vals['results'][item]['item']["/0/state"] == "leader") and 
-         (set_leader_vals['results'][item]['item']["/0/client-requests"] != "deny-may-be-deposed") and
-         (set_leader_vals['results'][item]['item']["/0/term"] == stage0_peers_vals['results'][item]['item']["/0/term"])) or
-        ((set_leader_vals['results'][item]['item']["/0/state"] == "candidate") and
-         (set_leader_vals['results'][item]['item']["/0/client-requests"] != "deny-leader-not-established") and
-         (set_leader_vals['results'][item]['item']["/0/term"] <= stage0_peers_vals['results'][item]['item']["/0/term"])) or
-        (set_leader_vals['results'][item]['item']["/0/voted-for-uuid"] != set_leader_vals['results'][item]['item']["/0/peer-uuid"]) 
+        (stage2_vals["/0/leader-uuid"] != initial_vals["/0/leader-uuid"]) or
+        (stage2_vals["/0/commit-idx"] != initial_vals["/0/commit-idx"]) or
+        (stage2_vals["/0/last-applied"] != initial_vals["/0/last-applied"]) or
+        (stage2_vals["/0/last-applied-cumulative-crc"] != initial_vals["/0/last-applied-cumulative-crc"]) or
+        (stage2_vals["/0/newest-entry-crc"] != initial_vals["/0/newest-entry-crc"]) or
+        (stage2_vals["/0/newest-entry-data-size"] != initial_vals["/0/newest-entry-data-size"]) or
+        (stage2_vals["/0/newest-entry-idx"] != initial_vals["/0/newest-entry-idx"]) or
+        (stage2_vals["/0/voted-for-uuid"] != stage2_vals["/0/peer-uuid"]) or
+        (stage2_vals["/0/state"] != "leader" and
+         stage2_vals["/0/state"] != "candidate") or
+        (stage2_vals["/0/client-requests"] != "deny-may-be-deposed" and
+         stage2_vals["/0/client-requests"] != "deny-leader-not-established") or
+        (stage2_vals["/0/term"] < initial_vals["/0/term"])
       loop: "{{ range(0, nrunning_peers|length) | list }}"
 
+        #(stage2_vals["/0/leader-uuid"] != initial_vals["/0/leader-uuid"]) or
+        #(stage2_vals["/0/commit-idx"] != initial_vals["/0/commit-idx"]) or
+        #(stage2_vals["/0/last-applied"] != initial_vals["/0/last-applied"]) or
+        #(stage2_vals["/0/last-applied-cumulative-crc"] != initial_vals["/0/last-applied-cumulative-crc"]) or
+        #(stage2_vals["/0/newest-entry-crc"] != initial_vals["/0/newest-entry-crc"]) or
+        #(stage2_vals["/0/newest-entry-data-size"] != initial_vals["/0/newest-entry-data-size"]) or
+        #(stage2_vals["/0/newest-entry-idx"] != initial_vals["/0/newest-entry-idx"]) or
+        #(((stage2_vals["/0/state"] == "leader") and 
+        # (stage2_vals["/0/client-requests"] != "deny-may-be-deposed") and
+        # (stage2_vals["/0/term"] == initial_vals["/0/term"])) or
+        #((stage2_vals["/0/state"] == "candidate") and
+        # (stage2_vals["/0/client-requests"] != "deny-leader-not-established") and
+        # (stage2_vals"/0/term"] <= initial_vals["/0/term"]))) or
+        #(stage2_vals["/0/voted-for-uuid"] != stage2_vals["/0/peer-uuid"])
     - pause: seconds=3
 
     - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
