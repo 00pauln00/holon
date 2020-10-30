@@ -145,7 +145,7 @@
         newest_entry_idx_leader_after_write: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, raft_keys, wantlist=True) }}"
 
    #2a- Verification for newest-entry-idx and commit-idx
-   - name: "{{ recipe_name }} : Verify that newest-entry-idx of all followers remains same even after successful write."
+   - name: "{{ recipe_name }} : Verify that newest-entry-idx of all followers remains same."
      debug:
        msg: "Verifying that newest-entry-idx of all followers is not advanced"
      failed_when: newest_entry_idx_followers_before_write[item]["/0/newest-entry-idx"] != newest_entry_idx_followers_after_write[item]["/0/newest-entry-idx"]
