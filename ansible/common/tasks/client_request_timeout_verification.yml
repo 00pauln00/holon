@@ -5,19 +5,21 @@
          stage: "set_diff_time"
          cmd: "default-request-timeout-sec@{{ item }}"
          where: "/raft_client_root_entry/default-request-timeout-sec"
-         set_time: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
+         set_time: "{{ lookup('niova_ctlrequest', 'apply_cmd', pcrtm_client_uuid.stdout, cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ set_time }}"
-    
+      no_log: True
+      
     - name: "{{ recipe_name }} : Lookup the object"
       vars:
          stage: "lookup_stage"
          cmd: "input@{{ Demo2Rncui }}.lookup"
          where: "/pumice_db_test_client/input"
-         apply_lookup: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
+         apply_lookup: "{{ lookup('niova_ctlrequest', 'apply_cmd', pcrtm_client_uuid.stdout, cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ apply_lookup }}"
-
+      no_log: True
+     
     - pause: 
         seconds: "{{ item + 1 | int }}"
 
@@ -30,7 +32,7 @@
             - "/pumice_db_test_client/pmdb-test-apps/0/last-request-duration-ms"
       set_fact:
         additional_msec_value: "{{ item * 1000 | int + 100 | int }}"
-        stage2_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid, raft_keys, wantlist=True) }}"
+        stage2_values: "{{ lookup('niova_ctlrequest', 'lookup', pcrtm_client_uuid.stdout, raft_keys, wantlist=True) }}"
       failed_when: >
         (stage2_values['/0/app-user-id'] != Demo2Rncui) or
         (stage2_values['/0/status'] != "Connection timed out") or
@@ -43,7 +45,7 @@
             - "/pumice_db_test_client/pmdb-test-apps/0/last-request"
             - "/raft_client_root_entry/0/recent-ops-rd"
       set_fact:
-        get_time: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid, raft_keys, wantlist=True) }}"
+        get_time: "{{ lookup('niova_ctlrequest', 'lookup', pcrtm_client_uuid.stdout, raft_keys, wantlist=True) }}"
 
     - name: "{{ recipe_name }} : Convert default timestamp format into datetime format for comparison."
       set_fact:
@@ -52,5 +54,5 @@
    
     - name: "{{ recipe_name }} : Difference between submitted time and last-request should not be more than 1secs."
       set_fact:
-        time_diff="{{ ((submitted_time | to_datetime) - (last_request | to_datetime)).total_seconds() | int}}"
+        time_diff: "{{ ((submitted_time | to_datetime) - (last_request | to_datetime)).total_seconds() | int }}"
       failed_when: (time_diff | int)  > 1
