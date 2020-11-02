@@ -1,5 +1,4 @@
 func_timeout
 sockets
-pathlib
 psutil
 dpath
