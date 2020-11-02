@@ -5,8 +5,8 @@
   vars:
      recipe_name: "healthy_raftserver_cluster_type1"
      parent: "basic_leader_election"
-     follower_uuid: []
-     last_ack_arr: []
+     type1_follower_uuid: []
+     type1_last_ack_arr: []
   tasks:
   - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
     include_role:
@@ -37,26 +37,26 @@
 
   - name: "{{ recipe_name }}: Get the list of peers in the cluster"
     set_fact:
-      peer_arr: "{{ raft_conf | json_query('peer_uuid_dict')}}"
+      type1_peer_arr: "{{ raft_conf | json_query('peer_uuid_dict')}}"
 
   - name: "Get the peer uuid for the leader"
     set_fact:
-        leader_uuid: "{{ item.value }}"
+        type1_leader_uuid: "{{ item.value }}"
     when: stage0_values['results'][0]['item']["/0/leader-uuid"] == item.value
-    with_dict: "{{ peer_arr }}"
+    with_dict: "{{ type1_peer_arr }}"
 
   - name: "{{ recipe_name }}: Get peer UUIDs for the followers"
     set_fact:
-        follower_uuid: "{{ follower_uuid + [item.value] }}"
+        type1_follower_uuid: "{{ type1_follower_uuid + [item.value] }}"
     when: stage0_values['results'][0]['item']["/0/leader-uuid"] != item.value
-    with_dict: "{{ peer_arr }}"
+    with_dict: "{{ type1_peer_arr }}"
 
   - name: "{{ recipe_name }}: Get the follower-stats from leader"
     vars:
       stage: "get_follower_stats"
       raft_keys:
             - "/raft_root_entry/0/follower-stats"
-      orig_finfo: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True) }}"
+      orig_finfo: "{{ lookup('niova_ctlrequest', 'lookup', type1_leader_uuid, raft_keys, wantlist=True) }}"
     debug:
       msg: "Get the followers stat"
     no_log: true
@@ -91,7 +91,7 @@
       stage: "stage1"
       raft_keys:
             - "/raft_root_entry/0/follower-stats"
-      curr_finfo: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True) }}"
+      curr_finfo: "{{ lookup('niova_ctlrequest', 'lookup', type1_leader_uuid, raft_keys, wantlist=True) }}"
     debug:
      msg: "Collect the follower stat"
     no_log: true
@@ -106,20 +106,20 @@
     failed_when: >
       (curr_follower_info['results'][0]['item']['/0/follower-stats'][item]['next-idx'] != 1) or
       (curr_follower_info['results'][0]['item']['/0/follower-stats'][item]['prev-idx-term'] != stage0_values['results'][0]['item']["/0/term"])
-    loop: "{{ range(0, follower_uuid | length) | list }}"
+    loop: "{{ range(0, type1_follower_uuid | length) | list }}"
 
   - name: "{{ recipe_name }}: Get last-ack for all followers to make sure they are almost same"
     set_fact:
-      last_ack_arr: "{{last_ack_arr}} + ['{{curr_follower_info['results'][0]['item']['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y')}}']"
-    loop: "{{ range(0, follower_uuid | length) | list }}"
+      type1_last_ack_arr: "{{ type1_last_ack_arr}} + ['{{curr_follower_info['results'][0]['item']['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y')}}']"
+    loop: "{{ range(0, type1_follower_uuid | length) | list }}"
 
   - name: "{{ recipe_name }}: Difference between last-ack of two followers should not be more than 2secs"
     vars:
-      time_diff: "{{ ((last_ack_arr[item] | to_datetime) - (last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"
+      time_diff: "{{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"
     debug:
       msg: "Time difference should not be more than 2 sec"
     failed_when: (time_diff | int)  >= 2
-    loop: "{{ range(0, follower_uuid | length - 2) | list }}"
+    loop: "{{ range(0, type1_follower_uuid | length - 2) | list }}"
 
   - name: "{{ recipe_name }}: Get the values for newly started peers"
     vars:

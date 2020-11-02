@@ -5,7 +5,7 @@
   vars:
      recipe_name: "leader_self_depose"
      parent: "basic_leader_election"
-     follower_uuid: []
+     self_depose_follower_uuid: []
      self_depose_leader_info: []
      self_depose_case1: False
      self_depose_case2: False
@@ -44,19 +44,19 @@
 
     - name: "{{ recipe_name }}: Get the peer list in the raft cluster"
       set_fact:
-        peer_arr: "{{ raft_conf | json_query('peer_uuid_dict')}}"
+        self_depose_peer_arr: "{{ raft_conf | json_query('peer_uuid_dict')}}"
 
     - name: "{{ recipe_name }}: Get the peer uuid for the leader"
       set_fact:
-        leader_uuid: "{{item.value}}"
+        self_depose_leader_uuid: "{{item.value}}"
       when: stage0_values['results'][0]['item']["/0/leader-uuid"] == item.value
-      with_dict: "{{ peer_arr }}"
+      with_dict: "{{ self_depose_peer_arr }}"
 
     - name: "{{ recipe_name }}: Get peer UUIDs for the follower"
       set_fact:
-         follower_uuid: "{{ follower_uuid + [item.value] }}"
+         self_depose_follower_uuid: "{{ self_depose_follower_uuid + [item.value] }}"
       when: stage0_values['results'][0]['item']["/0/leader-uuid"] != item.value
-      with_dict: "{{ peer_arr }}"
+      with_dict: "{{ self_depose_peer_arr }}"
 
     - name: "{{ recipe_name }}: Get the follower information from leader peer"
       vars:
@@ -65,9 +65,9 @@
             - "/raft_root_entry/0/leader-uuid"
             - "/raft_root_entry/0/follower-stats"
             - "/raft_root_entry/*/client-requests"
-        follower_bf_pause: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True) }}"
+        follower_bf_pause: "{{ lookup('niova_ctlrequest', 'lookup', self_depose_leader_uuid, raft_keys, wantlist=True) }}"
       debug:
-       msg: "Get follower stats from leader: {{ leader_uuid }}"
+       msg: "Get follower stats from leader: {{ self_depose_leader_uuid }}"
       no_log: true
       with_items:
         - "{{ follower_bf_pause}}"
@@ -85,7 +85,7 @@
 
     - name: "{{ recipe_name }}: Pause number of followers in series"
       set_fact:
-         pause_peer: "{{ lookup('niova_raftprocess', 'pause', follower_uuid[item], wantlist=True) }}"
+         self_depose_pause_peer: "{{ lookup('niova_raftprocess', 'pause', self_depose_follower_uuid[item], wantlist=True) }}"
       loop: "{{ range(0, nfollower_pause.stdout | int) | list }}"
 
     - name: "Wait for 5sec"
@@ -99,7 +99,7 @@
             - "/raft_root_entry/0/leader-uuid"
             - "/raft_root_entry/0/follower-stats"
             - "/raft_root_entry/*/client-requests"
-         fstat: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True) }}"
+         fstat: "{{ lookup('niova_ctlrequest', 'lookup', self_depose_leader_uuid, raft_keys, wantlist=True) }}"
       debug:
         msg: "Get the follower stat after pausing follower(s)"
       no_log: true
@@ -125,7 +125,7 @@
       no_log: true
       failed_when: >
         after_pause_lack < before_pause_lack
-      loop: "{{ range(0, follower_uuid | length) | list }}"
+      loop: "{{ range(0, self_depose_follower_uuid | length) | list }}"
 
     - name: "{{ recipe_name }}: Resume the followers one at a time and verify stages"
       vars:
@@ -135,8 +135,8 @@
           - "/raft_root_entry/0/peer-uuid"
           - "/raft_root_entry/0/newest-entry-term"
       set_fact:
-        self_depose_resume_peer: "{{ lookup('niova_raftprocess', 'resume', follower_uuid[item], wantlist=True) }}"
-        self_depose_leader_info: "{{ self_depose_leader_info + [lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True)] }}"
+        self_depose_resume_peer: "{{ lookup('niova_raftprocess', 'resume', self_depose_follower_uuid[item], wantlist=True) }}"
+        self_depose_leader_info: "{{ self_depose_leader_info + [lookup('niova_ctlrequest', 'lookup', self_depose_leader_uuid, raft_keys, wantlist=True)] }}"
       loop: "{{ range(0, nfollower_pause.stdout | int) | list }}"
       loop_control:
          pause: 3
@@ -145,7 +145,7 @@
       set_fact:
           self_depose_case1: "True"
           self_depose_case1_iteration: "{{ item }}"
-      when: self_depose_leader_info[item]['/0/leader-uuid'] == follower_uuid[item]
+      when: self_depose_leader_info[item]['/0/leader-uuid'] == self_depose_follower_uuid[item]
       loop: "{{ range(0, nfollower_pause.stdout | int) | list }}"
 
     - name: "{{ recipe_name }}: Check if Case 2 occured i.e multiple attempts for leader election"
