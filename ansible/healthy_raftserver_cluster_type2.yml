@@ -3,7 +3,7 @@
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "Healthy_Raftserver_Cluster_Type_2"
+     recipe_name: "healthy_raftserver_cluster_type2"
      parent: "Healthy Raftserver Cluster Type-1"
      raft_values_after_restart: []
 

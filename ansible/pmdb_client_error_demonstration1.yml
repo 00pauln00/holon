@@ -48,7 +48,7 @@
         msg: "{{ non_existing_obj_lookup }}"
       no_log: True
  
-    - name: "{{ recipe_name }}: Lookup on non-existing object."
+    - name: "{{ recipe_name }}: Get the values from client for comparison."
       vars:
         stage: "stage0"
         lookup_stage_keys:
@@ -56,14 +56,14 @@
             - "/pumice_db_test_client/pmdb-test-apps/0/app-user-id"
             - "/pumice_db_test_client/pmdb-test-apps/0/status"
             - "/pumice_db_test_client/pmdb-test-apps/0/last-request-tag"
-        stage0_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_stage_keys, wantlist=True) }}"
+        demo1_lookup_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_stage_keys, wantlist=True) }}"
       debug:
         msg: "Lookup should fail on non-existing object."
       with_items:
-        - "{{ stage0_values }}"
+        - "{{ demo1_lookup_vals }}"
       register: non_existing_obj
 
-    - name: "Verify the parameters after lookup on non-existing object"
+    - name: "{{ recipe_name }}: Verify the parameters after lookup on non-existing object"
       vars:
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
         invalid_wr_vals: "{{ non_existing_obj['results'][0]['item']}}"
@@ -119,19 +119,19 @@
       vars:
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
         stage: "stage2"
-        stage2_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+        demo1_valid_wr: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
       debug:
         msg: "Verify parameters after successful write operation."
       no_log: true
       failed_when: >
-        (stage2_values['/0/app-user-id'] != rncui) or
-        (stage2_values['/0/status'] != "Success") or
-        (stage2_values['/0/pmdb-seqno'] != 0) or
-        (stage2_values['/0/pmdb-write-pending'] != False) or
-        (stage2_values['/0/app-sync'] != True) or
-        (stage2_values['/0/app-seqno'] != 1) or
-        (stage2_values['/0/recent-ops-wr'][0]['sub-app-user-id'] != rncui) or
-        (stage2_values['/0/recent-ops-wr'][0]['status'] != "Success")
+        (demo1_valid_wr['/0/app-user-id'] != rncui) or
+        (demo1_valid_wr['/0/status'] != "Success") or
+        (demo1_valid_wr['/0/pmdb-seqno'] != 0) or
+        (demo1_valid_wr['/0/pmdb-write-pending'] != False) or
+        (demo1_valid_wr['/0/app-sync'] != True) or
+        (demo1_valid_wr['/0/app-seqno'] != 1) or
+        (demo1_valid_wr['/0/recent-ops-wr'][0]['sub-app-user-id'] != rncui) or
+        (demo1_valid_wr['/0/recent-ops-wr'][0]['status'] != "Success")
 
     - name: "{{ recipe_name }}: Apply invalid write seqno again i.e 2 (valid seqno would be 1)"
       vars:
@@ -143,21 +143,32 @@
         msg: "{{ write_seq }}"
       no_log: True
 
-    - name: "{{ recipe_name }}: Verify write should again fail with invalid seqno 2."
+    - name: "{{ recipe_name }}: Lookup object with invalid seqno 2."
       vars:
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
         stage: "stage3"
-        stage3_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+        invalid_wr: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
       debug:
         msg: "Write should again fail with invalid seqno"
       no_log: true
+      with_items:
+         - "{{ invalid_wr }}"
+      register: demo1_invalid_wr
+
+    - name: "{{ recipe_name }}: Verify write should again fail with invalid seqno 2."
+      vars:
+        invalid_wr: "{{ demo1_invalid_wr['results'][0]['item'] }}"
+        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
+      debug:
+        msg: "Validate write failed with invalid seqno: 2 {{ invalid_wr }}"
+      no_log: true
       failed_when: >
-        (stage3_values['/0/app-user-id'] != rncui) or
-        (stage3_values['/0/status'] != "Invalid exchange") or
-        (stage3_values['/0/pmdb-seqno'] != 0) or
-        (stage3_values['/0/pmdb-write-pending'] != False) or
-        (stage3_values['/0/app-sync'] != False) or
-        (stage3_values['/0/app-seqno'] != 3) or
-        (stage3_values['/0/recent-ops-wr'][0]['sub-app-user-id'] != rncui) or
-        (stage3_values['/0/recent-ops-wr'][0]['status'] != "Success")
+        (invalid_wr['/0/app-user-id'] != rncui) or
+        (invalid_wr['/0/status'] != "Invalid exchange") or
+        (invalid_wr['/0/pmdb-seqno'] != 0) or
+        (invalid_wr['/0/pmdb-write-pending'] != False) or
+        (invalid_wr['/0/app-sync'] != False) or
+        (invalid_wr['/0/app-seqno'] != 3) or
+        (invalid_wr['/0/recent-ops-wr'][0]['sub-app-user-id'] != rncui) or
+        (invalid_wr['/0/recent-ops-wr'][0]['status'] != "Success")
 
