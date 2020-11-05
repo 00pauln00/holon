@@ -6,9 +6,8 @@
   connection: local
   vars:
      recipe_name: "rb_during_start"
-     parent: "Completing an Uncommitted Write Following a Reboot"
+     parent: "Healthy Raftserver Cluster Type2"
      requirement: "pumicedb"
-     client_uuids: []
      peer_raft_keys:
            - "/raft_root_entry/0/term"
            - "/raft_root_entry/0/commit-idx"
@@ -20,19 +19,19 @@
            - "/raft_root_entry/0/newest-entry-crc"
 
   tasks:
-   - name: "{{ recipe_name }} : Verifying recipe compatibility requirements."
+   - name: "{{ recipe_name }}: Verifying recipe compatibility requirements."
      debug:
        msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed: {{ raft_param['ctype'] }}"
      failed_when: requirement != raft_param['ctype']
 
-   #Recipe-Preparation and step 1 to step 3
-   - name: "{{ recipe_name }} : Perform step1 to step3 from commmon task."
+   #Recipe-Preparation and step 1 to step 3.
+   - name: "{{ recipe_name }}: Perform step1 to step3 from commmon task."
      include_role:
         name: common
         tasks_from: recipe_preparation_write_and_stop_servers
     
-   #Step 4 - Poll for the Client Request to Timeout
-   - name: "{{ recipe_name }} : Get values for pmdb-test-apps, pmdb-request-history and validate paramters."
+   #Step 4 - Poll for the Client Request to Timeout.
+   - name: "{{ recipe_name }}: Get values for pmdb-test-apps, pmdb-request-history and validate paramters."
      vars:
        stage: "pmdb_tapps"
        raft_keys:
@@ -46,8 +45,8 @@
             pmdb_client_values['//pumice_db_test_client']['pmdb-test-apps'][0]['last-request-tag'] != pmdb_client_values['//pumice_db_test_client']['pmdb-request-history'][0]['last-request-tag'] or
             pmdb_client_values['//pumice_db_test_client']['pmdb-request-history'][0]['status'] !=  "Connection timed out"
   
-   #Step 5 -Start all peers except leader
-   - name: "{{ recipe_name }} : Starting all followers."
+   #Step 5 - Start all peers except leader.
+   - name: "{{ recipe_name }}: Starting all followers."
      include_role:
        name: common
        tasks_from: start_server
@@ -55,7 +54,7 @@
        ServerUUID: "{{ follower_uuids[item] }}"
      loop: "{{ range(0, follower_uuids | length) | list }}"
 
-   - name: "{{ recipe_name }} : Activate Raft timer thread on all started peers."
+   - name: "{{ recipe_name }}: Activate Raft timer thread on all started peers."
      vars:
        stage: "idle_off"
        cmd: "ignore_timer_events@false"
@@ -64,8 +63,8 @@
        idle_off_all: "{{ lookup('niova_ctlrequest', 'apply_cmd', follower_uuids[item], cmd, where, wantlist=True) }}"
      loop: "{{ range(0, follower_uuids | length) | list }}"
 
-   #Wait for an Election to Complete
-   - name: "{{ recipe_name }} : Wait until leader election happens."
+   #Wait for an election to complete.
+   - name: "{{ recipe_name }}: Wait until leader election happens."
      vars:
        stage: "lea_elect"
      debug:
@@ -75,8 +74,8 @@
      loop_control:
         pause: 2
    
-   #Get new leader_uuid and term value after step 5
-   - name: "{{ recipe_name }} : Get new leader_uuid and term value."
+   #Get new leader_uuid and term value after step 5.
+   - name: "{{ recipe_name }}: Get new leader_uuid and term value."
      vars:
        stage: "get_lea_vals"
        raft_keys:
@@ -85,8 +84,8 @@
      set_fact:
          raft_values_leader_after: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids[0], raft_keys, wantlist=True) }}"
   
-   #Verify that the cluster is in a same state
-   - name: "{{ recipe_name }} : Get raft_root_entry values after starting all followers."
+   #Verify that the cluster is in a same state.
+   - name: "{{ recipe_name }}: Get raft_root_entry values after starting all followers."
      vars:
        stage: "get_clstate"
        peer_values_all: []
@@ -96,7 +95,7 @@
      loop_control:
          pause: 2
 
-   - name: "{{ recipe_name }} : Compare raft_root_entry values of all started peers."
+   - name: "{{ recipe_name }}: Compare raft_root_entry values of all started peers."
      debug:
        msg: "Compare raft_root_entry values of all started peers."
      failed_when: >
@@ -110,15 +109,15 @@
           (peer_values_all[item]['/0/newest-entry-crc'] != peer_values_all[item+1]['/0/newest-entry-crc'])
      loop: "{{ range(0, follower_uuids | length-1) | list }}"
 
-   #Step 6 -Start remainning peer (which was leader prebiously)
-   - name: "{{ recipe_name }} : Starting remaining peer."
+   #Step 6 - Start remaining peer (which was leader previously).
+   - name: "{{ recipe_name }}: Starting remaining peer."
      include_role:
        name: common
        tasks_from: start_server
      vars:
        ServerUUID: "{{ leader_uuid_before }}"
 
-   - name: "{{ recipe_name }} : Get commit-idx of leader after new leader election."
+   - name: "{{ recipe_name }}: Get commit-idx of leader after new leader election."
      vars:
        stage: "get_lea_commit_idx"
        peer_raft_keys:
@@ -126,7 +125,7 @@
      set_fact:
         leader_values_after_election: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, peer_raft_keys, wantlist=True) }}"
 
-   - name: "{{ recipe_name }} : Wait for previous leader to become follower and it's commit-idx should be greater than previous commit-idx by 1."
+   - name: "{{ recipe_name }}: Wait for previous leader to become follower and it's commit-idx should be greater than previous commit-idx by 1."
      vars:
        stage: "poll_leader_vals"
      debug:
@@ -136,7 +135,7 @@
      loop_control:
         pause: 2
 
-   - name: "{{ recipe_name }} : Get raft_root_entry values for previous leader and validate parameters."
+   - name: "{{ recipe_name }}: Get raft_root_entry values for previous leader and validate parameters."
      vars:
        stage: "get_clvalues"
        raft_keys:       
@@ -152,17 +151,17 @@
            (prev_leader['/0/follower-reason'] != "leader-already-present") or
            (prev_leader['/0/client-requests'] != "redirect-to-leader")
 
-   - name: "{{ recipe_name }} : Get cluster information."
+   - name: "{{ recipe_name }}: Get cluster information."
      include_role:
        name: common
        tasks_from: get_server_uuid_info
    
-   - name: "{{ recipe_name }} : Get number of running servers processes."
+   - name: "{{ recipe_name }}: Get number of running servers processes."
      set_fact:
         num_running_servers: "{{ nrunning_peers | difference(client_uuid) }}"
 
-   #6a- Verify that the cluster is in a same state after starting all peers
-   - name: "{{ recipe_name }} : Get raft_root_entry values after starting all peers including previous leader."
+   #6a- Verify that the cluster is in a same state after starting all peers.
+   - name: "{{ recipe_name }}: Get raft_root_entry values after starting all peers including previous leader."
      vars:
        stage: "get_clstate"
        peer_all: []
@@ -172,7 +171,7 @@
      loop_control:
          pause: 2
 
-   - name: "{{ recipe_name }} : Compare raft_root_entry values of all started peers."
+   - name: "{{ recipe_name }}: Compare raft_root_entry values of all started peers."
      debug:
        msg: "Compare raft_root_entry values of all started peers."
      failed_when: >
@@ -186,8 +185,8 @@
           (peer_all[item]['/0/newest-entry-crc'] != peer_all[item+1]['/0/newest-entry-crc'])
      loop: "{{ range(0, num_running_servers | length-1) | list }}"
 
-   #6b - Ensure that the leader and term from step #5 have not changed
-   - name: "{{ recipe_name }} : Get leader_uuid and term value."
+   #6b - Ensure that the leader and term from step #5 have not changed.
+   - name: "{{ recipe_name }}: Get leader_uuid and term value."
      vars:
        stage: "get_lea_values"
        raft_keys:
@@ -196,15 +195,15 @@
      set_fact:
          raft_values_leader_after_reboot: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids[0], raft_keys, wantlist=True) }}"
 
-   - name: "{{ recipe_name }} : Ensure that the leader and term from step #5 have not changed."
+   - name: "{{ recipe_name }}: Ensure that the leader and term from step #5 have not changed."
      failed_when: >
            (raft_values_leader_after['/0/leader-uuid'] != raft_values_leader_after_reboot['/0/leader-uuid']) or
            (raft_values_leader_after['/0/term'] != raft_values_leader_after_reboot['/0/term'])
      debug:
        msg: "Verifying that leader and term value are same after step 5 and step 6."
 
-   #7 - Issue a Read on the RNCUI used in Timed-Out Write Operation
-   - name: "{{ recipe_name }} : Perform read on the same object."
+   #7 - Issue a Read on the RNCUI used in Timed-Out Write Operation.
+   - name: "{{ recipe_name }}: Perform read on the same object."
      vars:
        stage: "read"
        cmd: "input@{{ app_uuid }}:0:0:0:0.read"
@@ -212,8 +211,8 @@
      set_fact:
         read_after_reboot: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid, cmd, where, wantlist=True) }}"
    
-   #7a - Verifications
-   - name: "{{ recipe_name }} : Get values for pmdb-request-history and validate parameters."
+   #7a - Verifications.
+   - name: "{{ recipe_name }}: Get values for pmdb-request-history and validate parameters."
      vars:
        stage: "get_pmdbrh"
        raft_keys:
