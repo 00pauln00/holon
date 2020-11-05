@@ -6,16 +6,16 @@
      parent: None
 
   tasks:
-    - name: "Get the non-running peers list to select first peer to start"
+    - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
       include_role:
         name: common
         tasks_from: get_server_uuid_info
 
-    - name: "The first peer to start"
+    - name: "{{ recipe_name }}: The first peer to start"
       set_fact:
        Server0UUID: "{{ non_running_peers[0] }}"
 
-    - name: "Disable Raft timer thread"
+    - name: "{{ recipe_name }}: Disable Raft timer thread"
       vars:
         stage: "idle_on"
         wait_for_ofile: False
@@ -27,14 +27,14 @@
         msg: "{{ idle_on }}"
       no_log:  True
 
-    - name: "Start peer which is made idle in previous task"
+    - name: "{{ recipe_name }}: Start peer which is made idle in previous task"
       include_role:
         name: common
         tasks_from: start_server
       vars:
         ServerUUID: "{{ Server0UUID }}"
 
-    - name: "Verify Initial Idle condition"
+    - name: "{{ recipe_name }}: Verify Initial Idle condition"
       vars:
         stage: "stage0"
         raft_keys:
@@ -55,7 +55,7 @@
          (raft_values["/0/last-applied"] != -1) or
          (raft_values["/raft_net_info/ignore_timer_events"] == False)
 
-    - name: "Activate Raft timer thread"
+    - name: "{{ recipe_name }}: Activate Raft timer thread"
       vars:
          stage: "idle_off"
          cmd: "ignore_timer_events@false"
@@ -65,19 +65,24 @@
         msg: "{{ idle_off }}"
       no_log:  True
 
-    - name: "Get the current time for the peer in loop"
+    - name: "{{ recipe_name }}: Get the current time for the peer in loop"
       vars:
         stage: "stage1"
         iter_info:
            iter: 5
            sleep_after_cmd: 2
-      set_fact:
-        time_stamp: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/system_info/current_time', iter_info, wantlist=True) }}"
+        curr_stamp: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/system_info/current_time', iter_info, wantlist=True) }}"
+      with_items:
+        - "{{ curr_stamp }}"
+      register: time_stamp
+      debug:
+        msg: "Running the lookup cmd in a loop with 2sec between iterations."
 
-    - name: "verify stage1, current time should increament in each iteration"
+    - name: "{{ recipe_name }}: Verify stage1, current time should increament in each iteration"
       vars:
-        orig_time: "{{ time_stamp[item]['/system_info/current_time'] }}"
-        curr_time: "{{ time_stamp[item + 1]['/system_info/current_time'] }}"
+        time_stamp_arr: "{{ time_stamp['results'] }}"
+        orig_time: "{{ time_stamp_arr[item]['item']['/system_info/current_time'] }}"
+        curr_time: "{{ time_stamp_arr[item + 1]['item']['/system_info/current_time'] }}"
       debug:
          msg: "Compare time stamp: {{ orig_time }} with {{ curr_time }}"
       failed_when: orig_time >= curr_time

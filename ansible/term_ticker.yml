@@ -6,7 +6,7 @@
      recipe_name: "term_ticker"
      parent: "basic_process_ctl"
   tasks:
-    - name: "Get the raft key values for peer0 in a loop with 3sec pause between iterations"
+    - name: "{{ recipe_name }}: Get the raft key values for peer0 in a loop with 3sec pause between iterations"
       vars:
         stage: "stage0"
         raft_keys:
@@ -23,45 +23,56 @@
         iter_info:
            iter: 5
            sleep_after_cmd: 3
-      set_fact:
-          raft_value: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, raft_keys, iter_info, wantlist=True) }}"
-
-    - name: "Verify stage0"
-      vars:
-        orig_values: "{{ raft_value[item] }}"
-        curr_values: "{{ raft_value[item + 1] }}"
+        peer0_vals: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, raft_keys, iter_info, wantlist=True) }}"
+      with_items:
+        - "{{ peer0_vals }}"
+      register: peer0_stats
       debug:
-         msg: "Compare term value: {{ orig_values}} with {{ curr_values }}"
-      no_log: True
+         msg: "Get different raft values for peer0: peer0_raft_values"
+
+    - debug:
+       msg: "{{ peer0_stats }}"
+    - name: "{{ recipe_name }}: Verify stage0"
+      vars:
+        curr_itr_vals: "{{ peer0_stats['results'][item]['item'] }}"
+        next_itr_vals: "{{ peer0_stats['results'][item + 1]['item'] }}"
+      debug:
+         msg: "Compare term value: {{ curr_itr_vals }} with {{ next_itr_vals }}"
+      no_log: true
       failed_when: >
-        (orig_values["/0/term"] >= curr_values["/0/term"]) or
-        (orig_values["/0/voted-for-uuid"] != orig_values["/0/peer-uuid"]) or
-        (orig_values["/0/leader-uuid"] != "null") or
-        (orig_values["/0/commit-idx"] != -1) or
-        (orig_values["/0/last-applied"] != -1) or
-        (orig_values["/0/last-applied-cumulative-crc"] != 0) or
-        (orig_values["/0/state"] != "candidate") or
-        (orig_values["/0/follower-reason"] != "none") or
-        (orig_values["/0/client-requests"] != "deny-leader-not-established")
+        (curr_itr_vals["/0/term"] >= next_itr_vals["/0/term"]) or
+        (curr_itr_vals["/0/voted-for-uuid"] != curr_itr_vals["/0/peer-uuid"]) or
+        (curr_itr_vals["/0/leader-uuid"] != "null") or
+        (curr_itr_vals["/0/commit-idx"] != -1) or
+        (curr_itr_vals["/0/last-applied"] != -1) or
+        (curr_itr_vals["/0/last-applied-cumulative-crc"] != 0) or
+        (curr_itr_vals["/0/state"] != "candidate") or
+        (curr_itr_vals["/0/follower-reason"] != "none") or
+        (curr_itr_vals["/0/client-requests"] != "deny-leader-not-established")
       loop: "{{ range(0, 4)| list }}"
 
-    - name: "Get the term value before peer0 reboot"
+    - name: "{{ recipe_name }}: Get the term value before peer0 reboot"
       vars:
          stage: "stage1_before_reboot"
-      set_fact:
-          before_reboot: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
+         peer0_term: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
+      with_items:
+         - "{{ peer0_term }}"
+      register: before_reboot_term
+      debug:
+        msg: "Got the term value of peer0: {{ Server0UUID }}"
+      no_log: true
 
-    - name: "Kill the process"
+    - name: "{{ recipe_name }}: Kill the process"
       debug:
        msg: "{{lookup('niova_raftprocess', 'kill', Server0UUID, wantlist=True)}}"
       no_log: True
 
-    - name: "Restart the peer0 process"
+    - name: "{{ recipe_name }}: Restart the peer0 process"
       debug:
        msg: "{{lookup('niova_raftprocess', 'start', Server0UUID, wantlist=True)}}"
       no_log: True
 
-    - name: "Make sure raft timer thread is activated after starting the peer"
+    - name: "{{ recipe_name }}: Make sure raft timer thread is activated after starting the peer"
       vars:
          stage: "idle_off"
          cmd: "ignore_timer_events@false"
@@ -71,17 +82,26 @@
         msg: "{{ idleoff }}"
       no_log: True
 
-    - name: "wait for 5 sec"
+    - name: "{{ recipe_name }}: wait for 5 sec"
       wait_for:
         timeout: 5
 
-    - name: "Get the term value after reboot"
+    - name: "{{ recipe_name }}: Get the term value after reboot"
       vars:
          stage: "stage1_after_reboot"
-      set_fact:
-          after_reboot: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
-
-    - name: "verify stage1, term value should increment after reboot"
+         after_reboot: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
       debug:
-         msg: "Compare before reboot term value: {{ before_reboot['/0/term'] }} with after reboot term value: {{ after_reboot['/0/term'] }}"
-      failed_when: before_reboot["/0/term"] >= after_reboot["/0/term"]
+        msg: "Get the peer0 term after reboot"
+      with_items:
+        - "{{ after_reboot }}"
+      register: term_after_reboot
+
+    - debug:
+        msg: "{{ term_after_reboot }}"
+
+    - name: "{{ recipe_name }}: Verify stage1, term value should increment after reboot"
+      vars:
+          before_reboot: "{{ before_reboot_term['results'][0]['item'] }}" 
+      debug:
+         msg: "Compare before reboot term: {{ before_reboot_term['results'][0]['item']['/0/term'] }} with after reboot term: {{ term_after_reboot['results'][0]['item']['/0/term'] }}"
+      failed_when: before_reboot["/0/term"] >= term_after_reboot['results'][0]['item']["/0/term"]
