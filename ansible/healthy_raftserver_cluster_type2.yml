@@ -174,10 +174,10 @@
            - "/raft_root_entry/0/commit-idx"
            - "/raft_root_entry/0/last-applied"
            - "/raft_root_entry/0/last-applied-cumulative-crc"
-           - "/raft_root_entry/0/newest-entry-idx"
-           - "/raft_root_entry/0/newest-entry-term"
-           - "/raft_root_entry/0/newest-entry-data-size"
-           - "/raft_root_entry/0/newest-entry-crc"
+           - "/raft_root_entry/0/sync-entry-idx"
+           - "/raft_root_entry/0/sync-entry-term"
+           - "/raft_root_entry/0/sync-entry-data-size"
+           - "/raft_root_entry/0/sync-entry-crc"
        values_after_restart: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, raft_keys, wantlist=True) }}"
     debug:
       msg: "Get the values of the peers after restart"
@@ -195,26 +195,26 @@
          (type2_vals_after_restart['/0/term'] <= type2_vals_before_restart['/0/term']) or
          (type2_vals_after_restart['/0/commit-idx'] < 1) or
          (type2_vals_after_restart['/0/last-applied'] < 1) or
-         (type2_vals_after_restart['/0/newest-entry-idx'] < 1) or
-         (type2_vals_after_restart['/0/newest-entry-term'] < type2_vals_before_restart['/0/term']) or
-         (type2_vals_after_restart['/0/newest-entry-data-size'] != 0)
+         (type2_vals_after_restart['/0/sync-entry-idx'] < 1) or
+         (type2_vals_after_restart['/0/sync-entry-term'] < type2_vals_before_restart['/0/term']) or
+         (type2_vals_after_restart['/0/sync-entry-data-size'] != 0)
     loop: "{{ range(0, nrunning_peers | length) | list }}"
 
-  - name: "{{ recipe_name }}: Compare term, last_applied_cumulative_crc and newest_entry_crc of all peers"
+  - name: "{{ recipe_name }}: Compare term, last_applied_cumulative_crc and sync_entry_crc of all peers"
     vars:
       term_prev: "{{ peers_info_after_restart['results'][item]['item']['/0/term'] }}"
       term_next: "{{ peers_info_after_restart['results'][item + 1]['item']['/0/term'] }}"
       last_applied_cumulative_crc_prev: "{{ peers_info_after_restart['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
       last_applied_cumulative_crc_next: "{{ peers_info_after_restart['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
-      newest_entry_crc_prev: "{{ peers_info_after_restart['results'][item]['item']['/0/newest-entry-crc'] }}"
-      newest_entry_crc_next: "{{ peers_info_after_restart['results'][item + 1]['item']['/0/newest-entry-crc'] }}"
+      sync_entry_crc_prev: "{{ peers_info_after_restart['results'][item]['item']['/0/sync-entry-crc'] }}"
+      sync_entry_crc_next: "{{ peers_info_after_restart['results'][item + 1]['item']['/0/sync-entry-crc'] }}"
     debug:
        msg: "Compare term values of all peers"
     no_log: true
     failed_when: >
       term_prev != term_next or
       last_applied_cumulative_crc_prev != last_applied_cumulative_crc_next or
-      newest_entry_crc_prev != newest_entry_crc_next 
+      sync_entry_crc_prev != sync_entry_crc_next
     loop: "{{ range(0, nrunning_peers | length-1) | list }}"
 
   - name: "{{ recipe_name }}: Compare Leader’s follower-stats for all followers"

@@ -20,10 +20,10 @@
             - "/raft_root_entry/0/leader-uuid"
             - "/raft_root_entry/0/term"
             - "/raft_root_entry/0/commit-idx"
-            - "/raft_root_entry/0/newest-entry-idx"
-            - "/raft_root_entry/0/newest-entry-term"
-            - "/raft_root_entry/0/newest-entry-crc"
-            - "/raft_root_entry/0/newest-entry-data-size"
+            - "/raft_root_entry/0/sync-entry-idx"
+            - "/raft_root_entry/0/sync-entry-term"
+            - "/raft_root_entry/0/sync-entry-crc"
+            - "/raft_root_entry/0/sync-entry-data-size"
             - "/raft_root_entry/0/state"
             - "/raft_root_entry/0/last-applied"
             - "/raft_root_entry/0/last-applied-cumulative-crc"
@@ -122,10 +122,10 @@
             - "/raft_root_entry/0/last-applied"
             - "/raft_root_entry/0/last-applied-cumulative-crc"
             - "/raft_root_entry/0/term"
-            - "/raft_root_entry/0/newest-entry-term"
-            - "/raft_root_entry/0/newest-entry-crc"
-            - "/raft_root_entry/0/newest-entry-data-size"
-            - "/raft_root_entry/0/newest-entry-idx"
+            - "/raft_root_entry/0/sync-entry-term"
+            - "/raft_root_entry/0/sync-entry-crc"
+            - "/raft_root_entry/0/sync-entry-data-size"
+            - "/raft_root_entry/0/sync-entry-idx"
             - "/raft_root_entry/0/state"
             - "/raft_root_entry/0/client-requests"
             - "/raft_root_entry/0/voted-for-uuid"
@@ -149,9 +149,9 @@
         (stage2_vals["/0/commit-idx"] != initial_vals["/0/commit-idx"]) or
         (stage2_vals["/0/last-applied"] != initial_vals["/0/last-applied"]) or
         (stage2_vals["/0/last-applied-cumulative-crc"] != initial_vals["/0/last-applied-cumulative-crc"]) or
-        (stage2_vals["/0/newest-entry-crc"] != initial_vals["/0/newest-entry-crc"]) or
-        (stage2_vals["/0/newest-entry-data-size"] != initial_vals["/0/newest-entry-data-size"]) or
-        (stage2_vals["/0/newest-entry-idx"] != initial_vals["/0/newest-entry-idx"]) or
+        (stage2_vals["/0/sync-entry-crc"] != initial_vals["/0/sync-entry-crc"]) or
+        (stage2_vals["/0/sync-entry-data-size"] != initial_vals["/0/sync-entry-data-size"]) or
+        (stage2_vals["/0/sync-entry-idx"] != initial_vals["/0/sync-entry-idx"]) or
         (stage2_vals["/0/voted-for-uuid"] != stage2_vals["/0/peer-uuid"]) or
         (stage2_vals["/0/state"] != "leader" and
          stage2_vals["/0/state"] != "candidate") or
@@ -160,21 +160,7 @@
         (stage2_vals["/0/term"] < initial_vals["/0/term"])
       loop: "{{ range(0, nrunning_peers|length) | list }}"
 
-        #(stage2_vals["/0/leader-uuid"] != initial_vals["/0/leader-uuid"]) or
-        #(stage2_vals["/0/commit-idx"] != initial_vals["/0/commit-idx"]) or
-        #(stage2_vals["/0/last-applied"] != initial_vals["/0/last-applied"]) or
-        #(stage2_vals["/0/last-applied-cumulative-crc"] != initial_vals["/0/last-applied-cumulative-crc"]) or
-        #(stage2_vals["/0/newest-entry-crc"] != initial_vals["/0/newest-entry-crc"]) or
-        #(stage2_vals["/0/newest-entry-data-size"] != initial_vals["/0/newest-entry-data-size"]) or
-        #(stage2_vals["/0/newest-entry-idx"] != initial_vals["/0/newest-entry-idx"]) or
-        #(((stage2_vals["/0/state"] == "leader") and 
-        # (stage2_vals["/0/client-requests"] != "deny-may-be-deposed") and
-        # (stage2_vals["/0/term"] == initial_vals["/0/term"])) or
-        #((stage2_vals["/0/state"] == "candidate") and
-        # (stage2_vals["/0/client-requests"] != "deny-leader-not-established") and
-        # (stage2_vals"/0/term"] <= initial_vals["/0/term"]))) or
-        #(stage2_vals["/0/voted-for-uuid"] != stage2_vals["/0/peer-uuid"])
-    - pause: seconds=3
+    #- pause: seconds=3
 
     - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
       vars:
