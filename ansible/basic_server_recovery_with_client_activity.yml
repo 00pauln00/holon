@@ -7,7 +7,7 @@
      parent: "healthy_raftserver_cluster_type2"
      requirement: "pumicedb"
      num_writes: 100
-     raft_root_entry_keys: []
+    
   tasks:
   - name: "{{ recipe_name }}: Verify holon started with pumicedb cluster."
     debug:
@@ -28,20 +28,16 @@
        get_orig_values: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, raft_keys, wantlist=True) }}"
     debug:
       msg: "Getting orignal values."
+    no_log: True
     with_items:
         - "{{ get_orig_values }}"
     register: stage0_value
-
-  - debug: 
-      msg: 
-        - "{{ stage0_value }}"
-        - "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
 
   - name: "{{ recipe_name }}: Get follower's uuids."
     vars:
        bsrwca_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
     set_fact:
-       follower_uuids: "{{ nrunning_peers | difference( bsrwca_leader_uuid) }}"
+       bsrwca_follower_uuids: "{{ nrunning_peers | difference(bsrwca_leader_uuid) }}"
      
   - name: "{{ recipe_name }}: Get the follower-stats from leader"
     vars:
@@ -52,32 +48,14 @@
       follower_info: "{{ lookup('niova_ctlrequest', 'lookup', bsrwca_leader_uuid, raft_key, wantlist=True) }}"
     debug:
      msg: "Collect the follower stat"
-    no_log: true
+    no_log: True
     with_items:
       - "{{ follower_info }}"
     register: get_fstats
-  
-  - debug: var=get_fstats
-
-  #- name: "{{ recipe_name }} : Store original next-idx value."
-  #  set_fact:
-  #    orig_next_idx: "{{ orig_next_idx + [get_fstats['results'][0]['item']['/0/follower-stats'][item]['next-idx']] }}"
-  
-  - name: "{{ recipe_name }}: Select follower to pause"
-    vars:
-      pause_follower: "{{ follower_uuids[0] }}"
-    debug:
-      msg: "Getting follower which will be pause."
-    with_items:
-        - "{{ pause_follower }}"
-    register: stage1_value
-
-  - debug:
-      msg: "{{ stage1_value['results'][0]['item'] }}"
-
+    
   - name: "{{ recipe_name }}: Apply fault injection on follower which will be pause."
     vars:
-      follower0: "{{ stage1_value['results'][0]['item'] }}"
+      follower0: "{{ bsrwca_follower_uuids[0] }}"
       stage: "disable_candidate_mode"
       cmd: "enabled@true"
       where: "/fault_injection_points/name@raft_candidate_state_disabled"
@@ -88,40 +66,41 @@
   
   - name: "{{ recipe_name }}: Get fault_injection_points array."
     vars:
-      follower0: "{{ stage1_value['results'][0]['item'] }}"
+      follower0: "{{ bsrwca_follower_uuids[0] }}"
       stage: "stage2"
       raft_key:
          - "/fault_injection_points"
       get_fi: "{{ lookup('niova_ctlrequest', 'lookup', follower0, raft_key, wantlist=True) }}"
     debug:
       msg: "Getting fault_injection_points array."
+    no_log: True
     with_items:
         - "{{ get_fi }}"
     register: stage2_value
-
-  - debug: var=stage2_value 
 
   - name: "{{ recipe_name }}: Get 'enabled' value for 'raft_candidate_state_disabled' to check it set to 'true'."
     vars:
       fi_value: "{{ stage2_value['results'][0]['item'] }}"
     set_fact:
        Basic_Recovery_fi_check: "{{ fi_value['//fault_injection_points'][item]['enabled'] }}"
-    when: (fi_value['//fault_injection_points'][item]['name'] == "raft_candidate_state_disabled")
+    when: fi_value['//fault_injection_points'][item]['name'] == "raft_candidate_state_disabled"
     loop: "{{  range(0, fi_value['//fault_injection_points'] | length) | list }}"
     
   - name: "{{ recipe_name }}: Verify fault is injected correctly on follower which will be pause."
     debug:
       msg: "{{ Basic_Recovery_fi_check }}"
+    no_log: True
     failed_when: Basic_Recovery_fi_check != True
 
   - name: "{{ recipe_name }}: Pause one follower"
     vars:
-      follower0: "{{ stage1_value['results'][0]['item'] }}"
+      follower0: "{{ bsrwca_follower_uuids[0] }}"
       stage: "pause_follower"
       wait_for_ofile: False
       pause_follower0: "{{ lookup('niova_raftprocess', 'pause', follower0, wantlist=True) }}"
     debug: 
       msg: "{{ pause_follower0 }}"
+    no_log: True
 
   - name: "{{ recipe_name }}: After pausing one follower, get the follower-stats from leader"
     vars:
@@ -135,14 +114,13 @@
     set_fact:
       curr_follower_info: "{{ lookup('niova_ctlrequest', 'lookup', bsrwca_leader_uuid, raft_key, iter_info, wantlist=True) }}"
    
-  - debug: var=curr_follower_info
-      
-  - name: "{{ recipe_name }}: 'ms-since-last-ack' should be incremental in each iteration"
+  - name: "{{ recipe_name }}: 'ms-since-last-ack' should increment in each iteration"
     vars:
       time1: "{{ curr_follower_info[item]['/0/follower-stats'][0]['ms-since-last-ack'] }}"
       time2: "{{ curr_follower_info[item + 1]['/0/follower-stats'][0]['ms-since-last-ack'] }}"
     debug:
       msg: "Compare ms-since-last-ack: {{ time1 | int }} with {{ time2 | int }}"
+    no_log: True
     failed_when: (time1 | int) >= (time2 | int)
     loop: "{{ range(0, 4)| list }}"
 
@@ -154,16 +132,10 @@
     shell: "/usr/bin/uuid"
     register: bsrca_app_uuid
 
-  - name: "{{ recipe_name }}: Prepare parameter to pass across recipes."
-    set_fact:
-      bsrca_rncui: "{{ bsrca_app_uuid.stdout }}:0:0:0:0"
-
   - debug:
       msg:
         - "client uuid: {{ bsrca_client_uuid.stdout }}"
-        - "app uuid: {{ bsrca_app_uuid.stdout }}"
-        - "rncui: {{ bsrca_rncui }}"
-
+     
   - name: "{{ recipe_name }}: Start the client."
     include_role:
        name: common
@@ -171,6 +143,10 @@
     vars:
       ClientUUID: "{{ bsrca_client_uuid.stdout }}"
 
+  - name: "Recovery Client."
+    set_fact: 
+      RecoveryClient: "{{ bsrca_client_uuid.stdout }}"
+    
   - name: "{{ recipe_name }}: Perform the write {{ num_writes }} times."
     vars:
       stage: "num_writes"
@@ -205,16 +181,19 @@
       client_write_verification: "{{ lookup('niova_ctlrequest', 'lookup', bsrca_client_uuid.stdout, raft_keys, wantlist=True) }}"
     debug:
       msg: "Getting client-requests from leader."
+    no_log: True
     with_items:
         - "{{ client_write_verification }}"
     register: stage3_value
 
   - name: "{{ recipe_name }}: Verify the client parameters after 100 num_writes."
     vars:
+      bsrca_rncui: "{{ bsrca_app_uuid.stdout }}:0:0:0:0"
       get_stage3: "{{ stage3_value['results'][0]['item'] }}"
     debug:
       msg:
         - "Verifying parameter after 100 num_writes."
+    no_log: True
     failed_when: >
       (get_stage3['/0/app-user-id'] != bsrca_rncui) or
       (get_stage3['/0/status'] != "Success") or
@@ -230,99 +209,123 @@
             - "/raft_root_entry/0/follower-stats"
       recheck_follower_info: "{{ lookup('niova_ctlrequest', 'lookup', bsrwca_leader_uuid, raft_key, wantlist=True) }}"
     debug:
-     msg: "Collect the follower stat"
+      msg: "Collect the follower stat"
+    no_log: True
     with_items:
       - "{{ recheck_follower_info }}"
     register: recheck_fstats
 
-  - name: "{{ recipe_name }}: Get alive followers."
-    vars:
-      follower0: "{{ stage1_value['results'][0]['item'] }}"
-    set_fact:
-      alive_followers: "{{ follower_uuids | difference(follower0) }}"
-    
   - name: "{{ recipe_name }}: Verify next-idx for alive followers, it should be (original-next-idx + NumWrites)."
     vars:
-       initial_next_idx: "{{ get_fstats['results'][item]['item']['/0/follower-stats'][item]['next-idx'] }}"
-       get_curr_fstats: "{{ recheck_fstats['results'][item]['item'] }}"
+      follower0: "{{ bsrwca_follower_uuids[0] }}"
+      alive_followers: "{{ bsrwca_follower_uuids | difference(follower0) }}"
+      initial_next_idx: "{{ get_fstats['results'][0]['item']['/0/follower-stats'][item]['next-idx'] }}"
+      get_curr_fstats: "{{ recheck_fstats['results'][0]['item'] }}"
+      alive_peer_uuid: "{{ alive_followers | select('search', get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) | list }}"
     debug:
-      msg: 
-        - "Check next-idx for alive follower"
+      msg:
+        - "{{ alive_peer_uuid }}"
+        - "{{ get_curr_fstats['/0/follower-stats'][item]['peer-uuid'] }}"
+        - "{{ get_curr_fstats['/0/follower-stats'][item]['next-idx'] }}"
+    no_log: True
     failed_when: >
-      (alive_followers[item] != get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) and
+      (alive_peer_uuid == get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) and
       get_curr_fstats['/0/follower-stats'][item]['next-idx'] != ((initial_next_idx | int) + (num_writes | int))
-    loop: "{{ range(0, alive_followers[item] | length) | list }}"
-  
+    loop: "{{ range(0, bsrwca_follower_uuids | length) | list }}"
+
   - name: "{{ recipe_name }}: Verify next-idx for paused follower, it should be same as original-next-idx."
     vars: 
-      initial_next_idx: "{{ get_fstats['results'][item]['item']['/0/follower-stats'][item]['next-idx'] }}"
+      initial_next_idx: "{{ get_fstats['results'][0]['item']['/0/follower-stats'][0]['next-idx'] }}"
+      get_curr_fstats: "{{ recheck_fstats['results'][0]['item'] ['/0/follower-stats'][0]['next-idx'] }}"
     debug:
-      msg: "{{ recheck_follower_info['/0/follower-stats'][0]['next-idx'] }}"
+      msg: "{{ get_curr_fstats }}"
+    no_log: True
     failed_when:
-      recheck_follower_info['/0/follower-stats'][0]['next-idx'] != (orig_next_idx[0] | int)
+      (get_curr_fstats | int) != (initial_next_idx | int)
 
   - name: "{{ recipe_name }}: Unpause the paused follower."
     vars:
+      follower0: "{{ bsrwca_follower_uuids[0] }}"
       stage: "unpause_follower"
       wait_for_ofile: False
-      unpause_follower0: "{{ lookup('niova_raftprocess', 'resume', stage1_value['results'][0]['item'], wantlist=True) }}"
+      unpause_follower0: "{{ lookup('niova_raftprocess', 'resume', follower0, wantlist=True) }}"
     debug:
       msg: "{{ unpause_follower0 }}"
+    no_log: True
 
-  - name: "{{ recipe_name }}: Get running peers."
-    set_fact:
-        running_peers: "{{ nrunning_peers | difference(client_uuid) }}"
-
-  - name: "{{ recipe_name }}: Verify term value has not changed."
+  - name: "{{ recipe_name }}: Get term value."
     vars:
-      initial_values: "{{ stage0_value['results'][item]['item'] }}"
+      running_peers: "{{ nrunning_peers | difference(bsrca_client_uuid.stdout) }}"
       stage: "stage4"
       raft_keys:
               - "/raft_root_entry/0/commit-idx"
               - "/raft_root_entry/0/last-applied"
               - "/raft_root_entry/0/term"
               - "/raft_root_entry/0/newest-entry-idx"
-    set_fact:
-      stage4_values: "{{ lookup('niova_ctlrequest', 'lookup', running_peers[item], raft_keys, wantlist=True) }}"
+      stage4_values: "{{ lookup('niova_ctlrequest', 'lookup', running_peers, raft_keys, wantlist=True) }}"
+    debug:
+      msg: "Verify term value."
+    no_log: True
+    with_items:
+        - "{{ stage4_values }}"
+    register: check_term
+   
+  - name: "{{ recipe_name }}: Verify term value has not changed."
+    vars:
+      initial_term: "{{ stage0_value['results'][0]['item']['/0/term'] }}"
+      after_resume_follower: "{{ check_term['results'][0]['item'] }}"
+    debug:
+      msg:
+        - "Verifying term value {{ after_resume_follower }}."
+    no_log: True
     failed_when: >
-      (stage4_values["/0/term"] != (initial_values["/0/term"] | int)) or
-      (stage4_values["/0/commit-idx"] != (num_writes + 1)) or
-      (stage4_values["/0/last-applied"] != (num_writes + 1)) or
-      (stage4_values["/0/newest-entry-idx"] != (num_writes + 1))
-    loop: "{{ range(0, running_peers | length) | list }}"
- 
+      (after_resume_follower["/0/term"] != (initial_term | int)) or
+      (after_resume_follower["/0/commit-idx"] != (num_writes + 1)) or
+      (after_resume_follower["/0/last-applied"] != (num_writes + 1)) or
+      (after_resume_follower["/0/newest-entry-idx"] != (num_writes + 1))
+  
   - name: "{{ recipe_name }}: Get the last-applied-cumulative-crc and newest-entry-crc."
     vars:
+       running_peers: "{{ nrunning_peers | difference(bsrca_client_uuid.stdout) }}"
        stage: "check_same_values"
        peer_raft_keys:
               - "/raft_root_entry/0/last-applied-cumulative-crc"
               - "/raft_root_entry/0/newest-entry-crc"
-       raft_root_entry_keys: "{{ raft_root_entry_keys + [lookup('niova_ctlrequest', 'lookup', running_peers, peer_raft_keys, wantlist=True)] }}"
+       raft_root_entry_keys: "{{ lookup('niova_ctlrequest', 'lookup', running_peers, peer_raft_keys, wantlist=True) }}"
     debug:
-      msg: "Getting running peers."
+      msg: 
+        - "Getting last-applied-cumulative-crc and newest-entry-crc."
+    no_log: True
     with_items:
         - "{{ raft_root_entry_keys }}"
     register: all_running_peers
  
   - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and newest-entry-crc is same on all peers."
+    vars:
+      running_peers: "{{ nrunning_peers | difference(bsrca_client_uuid.stdout) }}"
+      last_applied_cum_crc: "{{ all_running_peers['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
+      last_applied_cum_crc_next: "{{ all_running_peers['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
+      newest_entry_crc: "{{ all_running_peers['results'][item]['item']['/0/newest-entry-crc'] }}"
+      newest_entry_crc_next: "{{ all_running_peers['results'][item + 1]['item']['/0/newest-entry-crc'] }}"
     debug:
       msg: "Compare last-applied-cumulative-crc and newest-entry-crc on all peers."
+    no_log: True
     failed_when: >
-      (raft_root_entry_keys[item]['/0/last-applied-cumulative-crc'] != raft_root_entry_keys[item+1]['/0/last-applied-cumulative-crc']) or
-      (raft_root_entry_keys[item]['/0/newest-entry-crc'] != raft_root_entry_keys[item+1]['/0/newest-entry-crc'])
+      (last_applied_cum_crc != last_applied_cum_crc_next ) or
+      (newest_entry_crc != newest_entry_crc_next)
     loop: "{{ range(0, running_peers | length - 1) | list }}"
   
   - name: "{{ recipe_name }}: Perform and Verify Client Read."
     vars:
       stage: "read_client"
-      cmd: "input@{{ app_uuid }}:0:0:0:0.read"
+      cmd: "input@{{ bsrca_app_uuid.stdout }}:0:0:0:0.read"
       where: "/pumice_db_test_client/input"
       read_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', bsrca_client_uuid.stdout, cmd, where, wantlist=True) }}"
     debug:
       msg: "{{ read_cmd }}"
     no_log: True
 
-  - name: "{{ recipe_name }}: Verify that last-request-tag value changed after successful read."
+  - name: "{{ recipe_name }}: Read the client parameters."
     vars:
       stage: "stage5"
       raft_keys:
@@ -330,42 +333,65 @@
           - "/pumice_db_test_client/pmdb-test-apps/0/status"
           - "/pumice_db_test_client/pmdb-test-apps/0/app-validated-seqno"
           - "/pumice_db_test_client/pmdb-request-history"
-    set_fact:
-        client_read_verification: "{{ lookup('niova_ctlrequest', 'lookup', bsrca_client_uuid.stdout, raft_keys, wantlist=True) }}"
-    failed_when: >
-      (client_read_verification['/0/last-request-tag'] == client_write_verification['/0/last-request-tag']) or
-      (client_read_verification['/0/status'] != "Success") or
-      (client_read_verification['/0/app-validated-seqno'] != num_writes) or
-      (client_read_verification['/pumice_db_test_client/pmdb-request-history'][-1]['last-request-tag'] != client_read_verification['/0/last-request-tag']) or
-      (client_read_verification['/pumice_db_test_client/pmdb-request-history'][-1]['op'] != "read") or
-      (client_read_verification['/pumice_db_test_client/pmdb-request-history'][-1]['status'] != "Success")
-  
-  - name: "{{ recipe_name }}: Remove fault injection from the paused follower."
+      client_read_verification: "{{ lookup('niova_ctlrequest', 'lookup', bsrca_client_uuid.stdout, raft_keys, wantlist=True) }}"
+    debug:
+      msg: "Getting last-request-tag."
+    no_log: True
+    with_items:
+        - "{{ client_read_verification }}"
+    register: stage5_value
+
+  - name: "{{ recipe_name }}: Verify that last-request-tag value changed after successful read."
     vars:
+      running_peers: "{{ nrunning_peers | difference(client_uuid) }}"
+      get_stage3: "{{ stage3_value['results'][0]['item']['/0/last-request-tag'] }}"
+      get_stage5: "{{ stage5_value['results'][0]['item'] }}"
+    debug:
+      msg: "Verifying last-request-tag value changed or not."
+    no_log: True
+    failed_when: >
+      (get_stage5['/0/last-request-tag'] == (get_stage3 | int)) or
+      (get_stage5['/0/status'] != "Success") or
+      (get_stage5['/0/app-validated-seqno'] != num_writes) or
+      (get_stage5['/pumice_db_test_client/pmdb-request-history'][-1]['last-request-tag'] != get_stage5['/0/last-request-tag']) or
+      (get_stage5['/pumice_db_test_client/pmdb-request-history'][-1]['op'] != "read") or
+      (get_stage5['/pumice_db_test_client/pmdb-request-history'][-1]['status'] != "Success")
+  
+  - name: "{{ recipe_name }}: Apply cmd to remove fault injection from the paused follower."
+    vars:
+      follower0: "{{ bsrwca_follower_uuids[0] }}"
       stage: "recipe_cleanup"
       cmd: "enabled@false"
       where: "/fault_injection_points/name@raft_candidate_state_disabled"
-      remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', pause_follower, cmd, where, wantlist=True) }}"
+      remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', follower0, cmd, where, wantlist=True) }}"
     debug:
       msg: "{{ remove_fault_inject }}"
     no_log: True
 
-  - name: "{{ recipe_name }}: Verify fault injection removed from the paused follower."
+  - name: "{{ recipe_name }}: Get fault_injection_points array to remove fault injection."
     vars:
-      stage: "stage6"
+      follower0: "{{ bsrwca_follower_uuids[0] }}"
+      stage: "stage2"
       raft_key:
          - "/fault_injection_points"
-    set_fact:
-      stage6_values: "{{ lookup('niova_ctlrequest', 'lookup', stage1_value['results'][0]['item'], raft_key, wantlist=True) }}"
-  
-  - name: "{{ recipe_name }}: Get 'enabled' value for 'raft_candidate_state_disabled' to check it set to 'false'."
-    set_fact:
-       remove_fault_injection: "{{ stage6_values['//fault_injection_points'][item]['enabled'] }}"
-    when: (stage6_values['//fault_injection_points'][item]['name'] == "raft_candidate_state_disabled")
-    loop: "{{  range(0, stage1_values['//fault_injection_points'] | length) | list }}"
-  - debug: var=remove_fault_injection
+      remove_fi: "{{ lookup('niova_ctlrequest', 'lookup', follower0, raft_key, wantlist=True) }}"
+    debug:
+      msg: "Getting fault_injection_points array."
+    no_log: True
+    with_items:
+        - "{{ remove_fi }}"
+    register: stage6_value
 
-  - debug:
-      msg: "Verify fault injection is removed from follower which paused."
-    failed_when: remove_fault_injection != False
- 
+  - name: "{{ recipe_name }}: Get 'enabled' value for 'raft_candidate_state_disabled' to remove fault injection."
+    vars:
+      fi_value: "{{ stage6_value['results'][0]['item'] }}"
+    set_fact:
+       Basic_Recovery_remove_fi: "{{ fi_value['//fault_injection_points'][item]['enabled'] }}"
+    when: (fi_value['//fault_injection_points'][item]['name'] == "raft_candidate_state_disabled")
+    loop: "{{  range(0, fi_value['//fault_injection_points'] | length) | list }}"
+
+  - name: "{{ recipe_name }}: Verify fault injection is removed from paused follower."
+    debug:
+      msg: "{{ Basic_Recovery_remove_fi }}"
+    no_log: True
+    failed_when: Basic_Recovery_remove_fi != False
