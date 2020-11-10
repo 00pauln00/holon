@@ -9,7 +9,7 @@
      parent: "Healthy Raftserver Cluster Type-2"
      requirement: "pumicedb"
      num_writes: 0
-     num_peer_started_after_reboot: []
+     cuwr_num_peer_started_after_reboot: []
      peer_raft_keys:
            - "/raft_root_entry/0/term"
            - "/raft_root_entry/0/commit-idx"
@@ -21,21 +21,21 @@
            - "/raft_root_entry/0/newest-entry-crc"
 
   tasks:
-   - name: "{{ recipe_name }} : Verifying recipe compatibility requirements."
+   - name: "{{ recipe_name }}: Verifying recipe compatibility requirements."
      debug:
        msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed: {{ raft_param['ctype'] }}"
      failed_when: requirement != raft_param['ctype']
 
-   - name: "{{ recipe_name }} : Generate Client UUID."
+   - name: "{{ recipe_name }}: Generate Client UUID."
      shell: "/usr/bin/uuid"
      register: client_uuid
 
-   - name: "{{ recipe_name }} : Generate App UUID."
+   - name: "{{ recipe_name }}: Generate App UUID."
      shell: "/usr/bin/uuid"
      register: app_uuid
 
    #Recipe Preparation
-   - name: "{{ recipe_name }} : Get raft_root_entry values of all peers before reboot."
+   - name: "{{ recipe_name }}: Get raft_root_entry values of all peers before reboot."
      vars:
        stage: "recipe_preparation"
        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, peer_raft_keys, wantlist=True) }}"
@@ -46,7 +46,7 @@
         - "{{ raft_root_entry }}"
      register: raft_root_entry_all
 
-   - name: "{{ recipe_name }} : Compare raft_root_entry values of all peers."
+   - name: "{{ recipe_name }}: Compare raft_root_entry values of all peers."
      vars:
        term: "{{ raft_root_entry_all['results'][item]['item']['/0/term'] }}"
        term_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/term'] }}"
@@ -78,7 +78,7 @@
      loop: "{{ range(0, nrunning_peers | length-1) | list }}"
    
    #Determine leader before reboot
-   - name: "{{ recipe_name }} : Get leader_uuid before reboot."
+   - name: "{{ recipe_name }}: Get leader_uuid before reboot."
      vars:
        stage: "before_reboot_leader"
        raft_keys:
@@ -90,29 +90,29 @@
          - "{{ lead_values }}"
      register: leader_values
 
-   - name: "{{ recipe_name }} : Get leader uuid and follower's uuids."
+   - name: "{{ recipe_name }}: Get leader uuid and follower's uuids."
      set_fact:
-       leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
-       follower_uuids: "{{ nrunning_peers | difference(leader_values['results'][0]['item']['/0/leader-uuid']) }}"
+       cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
+       cuwr_follower_uuids: "{{ nrunning_peers | difference(leader_values['results'][0]['item']['/0/leader-uuid']) }}"
 
-   - name: "{{ recipe_name }}:Get newest-entry-idx values for all followers before write."
+   - name: "{{ recipe_name }}: Get newest-entry-idx values for all followers before write."
      vars:
        stage: "before_write_followers"
        raft_keys:
            - "/raft_root_entry/0/newest-entry-idx"
-       new_ent_idx_follo_before_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids, raft_keys, wantlist=True) }}"
+       new_ent_idx_follo_before_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_follower_uuids, raft_keys, wantlist=True) }}"
      debug:
        msg: "Getting newest-entry-idx values for all followers before write."
      with_items:
          - "{{ new_ent_idx_follo_before_write_vals }}"
      register: newest_entry_idx_followers_before_write
 
-   - name: "{{ recipe_name }}:Get newest-entry-idx value for leader before write."
+   - name: "{{ recipe_name }}: Get newest-entry-idx value for leader before write."
      vars:
        stage: "before_write_leader"
        raft_keys:
            - "/raft_root_entry/0/newest-entry-idx"
-       new_ent_idx_lead_before_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, raft_keys, wantlist=True) }}"
+       new_ent_idx_lead_before_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_leader_uuid_before, raft_keys, wantlist=True) }}"
      debug:
        msg: "Getting newest-entry-idx value for leader before write."
      with_items:
@@ -120,20 +120,22 @@
      register: newest_entry_idx_leader_before_write
 
    #Set raft_follower_ignores_non_hb_AE_request on the Followers
-   - name: "{{ recipe_name }}:Ignore writes on all followers using fault injection."
+   - name: "{{ recipe_name }}: Ignore writes on all followers using fault injection."
      include_role:
        name: common
        tasks_from: set_fault_injection_on_all_followers_and_verify
-     loop: "{{ range(0, follower_uuids | length) | list }}"
+     vars:
+       ServerUUID: "{{ cuwr_follower_uuids[item] }}"
+     loop: "{{ range(0, cuwr_follower_uuids | length) | list }}"
 
-   - name: "{{ recipe_name }}:Start client process."
+   - name: "{{ recipe_name }}: Start client process."
      include_role:
        name: common
        tasks_from: start_client
      vars:
        ClientUUID: "{{ client_uuid.stdout }}"
 
-   - name: "{{ recipe_name }}:Decrease client request timeout to 1 sec."
+   - name: "{{ recipe_name }}: Decrease client request timeout to 1 sec."
      vars:
        stage: "decrease_client_timeout"
        cmd: "default-request-timeout-sec@1"
@@ -141,7 +143,7 @@
      debug:
        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
 
-   - name: "{{ recipe_name }}:Perform write on the client."
+   - name: "{{ recipe_name }}: Perform write on the client."
      vars:
        stage: "write"
        cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0"
@@ -149,24 +151,24 @@
      debug:
        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
 
-   - name: "{{ recipe_name }}:Get newest-entry-idx values for all followers after write."
+   - name: "{{ recipe_name }}: Get newest-entry-idx values for all followers after write."
      vars:
        stage: "after_write_followers"
        raft_keys:
            - "/raft_root_entry/0/newest-entry-idx"
-       new_ent_idx_followers_after_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids, raft_keys, wantlist=True) }}"
+       new_ent_idx_followers_after_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_follower_uuids, raft_keys, wantlist=True) }}"
      debug:
        msg: "Getting newest-entry-idx values for all followers after write."
      with_items:
          - "{{ new_ent_idx_followers_after_write_vals }}"
      register: newest_entry_idx_followers_after_write
 
-   - name: "{{ recipe_name }}:Get newest-entry-idx value for leader after write."
+   - name: "{{ recipe_name }}: Get newest-entry-idx value for leader after write."
      vars:
        stage: "after_write_leader"
        raft_keys:
            - "/raft_root_entry/0/newest-entry-idx"
-       new_ent_idx_lead_after_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, raft_keys, wantlist=True) }}"
+       new_ent_idx_lead_after_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_leader_uuid_before, raft_keys, wantlist=True) }}"
      debug:
        msg: "Getting newest-entry-idx value for leader after write."
      with_items:
@@ -174,16 +176,16 @@
      register: newest_entry_idx_leader_after_write
 
    #2a- Verification for newest-entry-idx and commit-idx
-   - name: "{{ recipe_name }}:Verify that newest-entry-idx of all followers remains same."
+   - name: "{{ recipe_name }}: Verify that newest-entry-idx of all followers remains same."
      vars:
        newest_entry_idx_before: "{{ newest_entry_idx_followers_before_write['results'][item]['item'] }}"
        newest_entry_idx_after: "{{ newest_entry_idx_followers_after_write['results'][item]['item'] }}"
      debug:
        msg: "Verifying that newest-entry-idx of all followers remains same"
      failed_when: newest_entry_idx_before['/0/newest-entry-idx'] != newest_entry_idx_after['/0/newest-entry-idx']
-     loop: "{{ range(0, follower_uuids | length) | list }}"
+     loop: "{{ range(0, cuwr_follower_uuids | length) | list }}"
 
-   - name: "{{ recipe_name }}:Verify that newest-entry-idx of leader is advanced by 1."
+   - name: "{{ recipe_name }}: Verify that newest-entry-idx of leader is advanced by 1."
      vars:
        leader_newest_entry_idx_before: "{{ newest_entry_idx_leader_before_write['results'][0]['item'] }}"
        leader_newest_entry_idx_after: "{{ newest_entry_idx_leader_after_write['results'][0]['item'] }}"
@@ -191,7 +193,7 @@
        msg: "Verifying that newest-entry-idx of leader is advanced by 1."
      failed_when: (leader_newest_entry_idx_after['/0/newest-entry-idx'] - leader_newest_entry_idx_before['/0/newest-entry-idx']) != 1
 
-   - name: "{{ recipe_name }}:Get commit-idx of all running peers after write."
+   - name: "{{ recipe_name }}: Get commit-idx of all running peers after write."
      vars:
        stage: "get_commit_idx_all_after_write"
        raft_keys:
@@ -203,7 +205,7 @@
          - "{{ get_commit_idx_all_after_write_vals }}"
      register: get_commit_idx_all_after_write
 
-   - name: "{{ recipe_name }}:Verify that commit-idx has not advanced on any peer."
+   - name: "{{ recipe_name }}: Verify that commit-idx has not advanced on any peer."
      vars:
        commit_idx: "{{ raft_root_entry_all['results'][item]['item']['/0/commit-idx'] }}"
        commit_idx_after: "{{ get_commit_idx_all_after_write['results'][item]['item']['/0/commit-idx'] }}"
@@ -213,108 +215,108 @@
      loop: "{{ range(0, nrunning_peers | length) | list }}"
 
    #3- Stop the processes, first all followers and then leader
-   - name: "{{ recipe_name }}:Stop all follower processes."
+   - name: "{{ recipe_name }}: Stop all follower processes."
      debug:
-       msg: "{{ lookup('niova_raftprocess', 'kill', follower_uuids[item], wantlist=True) }}"
-     loop: "{{ range(0, follower_uuids | length) | list }}"
+       msg: "{{ lookup('niova_raftprocess', 'kill', cuwr_follower_uuids[item], wantlist=True) }}"
+     loop: "{{ range(0, cuwr_follower_uuids | length) | list }}"
 
-   - name: "{{ recipe_name }}:Stop leader process."
+   - name: "{{ recipe_name }}: Stop leader process."
      debug:
-       msg: "{{ lookup('niova_raftprocess', 'kill', leader_uuid_before, wantlist=True) }}"
+       msg: "{{ lookup('niova_raftprocess', 'kill', cuwr_leader_uuid_before, wantlist=True) }}"
 
    #4-  Restart the Peer that was the Leader
-   - name: "{{ recipe_name }}:Restart leader first."
+   - name: "{{ recipe_name }}: Restart leader first."
      include_role:
        name: common
        tasks_from: start_server
      vars:
-       ServerUUID: "{{ leader_uuid_before }}"
+       ServerUUID: "{{ cuwr_leader_uuid_before }}"
      
-   - name: "{{ recipe_name }}:Add the leader to the started peer list."
+   - name: "{{ recipe_name }}: Add the leader to the started peer list."
      set_fact:
-       num_peer_started_after_reboot: "{{ num_peer_started_after_reboot + [leader_uuid_before] }}"
+       cuwr_num_peer_started_after_reboot: "{{ cuwr_num_peer_started_after_reboot + [cuwr_leader_uuid_before] }}"
 
    #5- Restart the minimum number of Remaining Peers to Create a Quorum
-   - name: "{{ recipe_name }}:Get number of servers for basic leader election."
+   - name: "{{ recipe_name }}: Get number of servers for basic leader election."
      include_role:
        name: common
        tasks_from: npeers_for_basic_leader_election
 
-   - name: "{{ recipe_name }}:Starting peers for completing quorum."
+   - name: "{{ recipe_name }}: Starting peers for completing quorum."
      include_role:
        name: common
        tasks_from: start_server
      vars:
-       ServerUUID: "{{ follower_uuids[item] }}"
+       ServerUUID: "{{ cuwr_follower_uuids[item] }}"
      loop: "{{ range(0, npeers_for_leader_elect | int - 1) | list }}"
      
-   - name: "{{ recipe_name }}:Get the started followers in the running peer list."
+   - name: "{{ recipe_name }}: Get the started followers in the running peer list."
      set_fact:
-       num_peer_started_after_reboot: "{{ num_peer_started_after_reboot + [follower_uuids[item]] }}"
+       cuwr_num_peer_started_after_reboot : "{{ cuwr_num_peer_started_after_reboot + [cuwr_follower_uuids[item]] }}"
      loop: "{{ range(0, npeers_for_leader_elect | int - 1) | list }}"
 
-   - name: "{{ recipe_name }}:Activate Raft timer thread on all started peers."
+   - name: "{{ recipe_name }}: Activate Raft timer thread on all started peers."
      vars:
        stage: "idle_off"
        cmd: "ignore_timer_events@false"
        where: "/raft_net_info/ignore_timer_events"
      debug:
-       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', num_peer_started_after_reboot, cmd, where, wantlist=True) }}"
+       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', cuwr_num_peer_started_after_reboot, cmd, where, wantlist=True) }}"
 
-   #6 - Wait for an Election to Complete
-   - name: "{{ recipe_name }}:Wait until leader election happens."
+   #6 - Wait for an Election to Complete.
+   - name: "{{ recipe_name }}: Wait until leader election happens."
      vars:
        stage: "leader_election"
      debug:
        msg: "Waiting for leader election"
-     until: lookup('niova_ctlrequest', 'lookup', num_peer_started_after_reboot[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
-     loop: "{{ range(0, num_peer_started_after_reboot | length) | list }}"
+     until: lookup('niova_ctlrequest', 'lookup', cuwr_num_peer_started_after_reboot[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+     loop: "{{ range(0, cuwr_num_peer_started_after_reboot | length) | list }}"
      loop_control:
         pause: 2
 
-   #Verify that leader before reboot and after reboot are same
-   - name: "{{ recipe_name }}:Get leader_uuid after reboot."
+   #Verify that leader before reboot and after reboot are same.
+   - name: "{{ recipe_name }}: Get leader_uuid after reboot."
      vars:
        stage: "leader_after_reboot"
        raft_keys:
               - "/raft_root_entry/0/leader-uuid"
-       raft_values_leader_after_reboot: "{{ lookup('niova_ctlrequest', 'lookup', num_peer_started_after_reboot[0], raft_keys, wantlist=True) }}"
+       raft_values_leader_after_reboot: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_num_peer_started_after_reboot[0], raft_keys, wantlist=True) }}"
      with_items:
          - "{{ raft_values_leader_after_reboot }}"
      debug:
        msg: "Getting leader_uuid after reboot."
      register: leader_uuid_after
 
-   - name: "{{ recipe_name }}:Verify that leader did not change after reboot."
+   - name: "{{ recipe_name }}: Verify that leader did not change after reboot."
      debug:
        msg: "Verifying that leader did not change after reboot."
-     failed_when: leader_uuid_before != leader_uuid_after['results'][0]['item']['/0/leader-uuid']
+     failed_when: cuwr_leader_uuid_before != leader_uuid_after['results'][0]['item']['/0/leader-uuid']
    
    - name: "{{ recipe_name }}:Get remaining non-running peer uuids for restarting it."
      set_fact:
-        remaining_followers_to_start: "{{ follower_uuids | difference(num_peer_started_after_reboot) }}" 
+        cuwr_remaining_followers_to_start: "{{ cuwr_follower_uuids | difference(cuwr_num_peer_started_after_reboot) }}"
 
    #7 - Startup the Remaining Followers
-   - name: "{{ recipe_name }}:Restarting remaining followers."
+   - name: "{{ recipe_name }}: Restarting remaining followers."
      include_role:
        name: common
        tasks_from: start_server
      vars:
-       ServerUUID: "{{ remaining_followers_to_start[item] }}"
-     loop: "{{ range(0, remaining_followers_to_start | length) | list }}"
+       ServerUUID: "{{ cuwr_remaining_followers_to_start[item] }}"
+     loop: "{{ range(0, cuwr_remaining_followers_to_start | length) | list }}"
 
-   - name: "{{ recipe_name }}:Wait until all followers have a last-applied-idx which is equal to the leader's."
+   - name: "{{ recipe_name }}: Wait until all followers have a last-applied-idx which is equal to the leader's."
      vars:
        stage: "poll_for_last_applied_idx"
      debug:
        msg: "Waiting for all followers to have a last-applied-idx which is equal to the leader's."
-     until: (lookup('niova_ctlrequest', 'lookup', follower_uuids[item], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first) == (lookup('niova_ctlrequest', 'lookup', leader_uuid_after['results'][0]['item']['/0/leader-uuid'], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first)
-     loop: "{{ range(0, follower_uuids | length) | list }}"
+     until: (lookup('niova_ctlrequest', 'lookup', cuwr_follower_uuids[item], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first) == (lookup('niova_ctlrequest', 'lookup', leader_uuid_after['results'][0]['item']['/0/leader-uuid'], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first)
+     loop: "{{ range(0, cuwr_follower_uuids | length) | list }}"
      loop_control:
         pause: 2
 
    #7a - Verifications
-   - name: "{{ recipe_name }}:Get the values for comparing commit-idx, last-applied and newest-entry-idx for all servers."
+   - name: "{{ recipe_name }}: Get the values for comparing commit-idx, last-applied and newest-entry-idx for all servers."
      vars:
        stage: "verifications_after_reboot"
        raft_root_entry_all_after_vals: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, peer_raft_keys, wantlist=True) }}"
@@ -324,7 +326,7 @@
          - "{{ raft_root_entry_all_after_vals }}"
      register: raft_root_entry_all_after
 
-   - name: "{{ recipe_name }}:Verify values for commit-idx, last-applied and newest-entry-idx for all servers."
+   - name: "{{ recipe_name }}: Verify values for commit-idx, last-applied and newest-entry-idx for all servers."
      vars:
        commit_idx: "{{ raft_root_entry_all_after['results'][item]['item'] }}"
        last_applied: "{{ raft_root_entry_all_after['results'][item]['item'] }}"
@@ -340,7 +342,7 @@
            (newest_entry_idx['/0/newest-entry-idx'] != (newest_entry_idx_prev['/0/newest-entry-idx'] + 2))
      loop: "{{ range(0, nrunning_peers | length) | list }}"
    
-   - name: "{{ recipe_name }}:Validate term, last-applied-cumulative-crc, newest-entry-term, newest-entry-data-size and newest-entry-crc of all peers after reboot."
+   - name: "{{ recipe_name }}: Validate term, last-applied-cumulative-crc, newest-entry-term, newest-entry-data-size and newest-entry-crc of all peers after reboot."
      vars:
        term: "{{ raft_root_entry_all_after['results'][item]['item']['/0/term'] }}"
        last_applied_cum_crc: "{{ raft_root_entry_all_after['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
@@ -362,8 +364,8 @@
            (newest_entry_crc != newest_entry_crc_next)
      loop: "{{ range(0, nrunning_peers | length-1) | list }}"
    
-   #8 - Verify the Application Data
-   - name: "{{ recipe_name }}:Perform read on the same object."
+   #8 - Verify the Application Data.
+   - name: "{{ recipe_name }}: Perform read on the same object."
      vars:
        stage: "read"
        cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.read"
@@ -371,8 +373,8 @@
      debug:
        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
 
-   #8a- Verifications
-   - name: "{{ recipe_name }}:Get values for pmdb-request-history"
+   #8a- Get values for pmdb-request-history.
+   - name: "{{ recipe_name }}: Get values for pmdb-request-history."
      vars:
        stage: "pmdb_request_history"
        raft_keys:
@@ -384,8 +386,8 @@
          - "{{ pmdb_req_history_vals }}"
      register: pmdb_request_history
 
-   #8a- Verifications
-   - name: "{{ recipe_name }}:Validate pmdb-request-history parameters."
+   #8a- Verifications.
+   - name: "{{ recipe_name }}: Validate pmdb-request-history parameters."
      vars:
        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
        pmdb_seqno: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][-1] }}"
