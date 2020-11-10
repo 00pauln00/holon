@@ -1,6 +1,6 @@
 ---
 
-  - name: "Get fault_injection_points array."
+  - name: "{{ recipe_name }}: Get fault_injection_points array."
     vars:
       stage: "stage1"
       raft_key:
@@ -8,7 +8,7 @@
     set_fact:
       fault_inject_array: "{{ lookup('niova_ctlrequest', 'lookup', running_servers[item], raft_key, wantlist=True) }}"
 
-  - name: "Get 'enabled' value from fault_injection_points array on all peerrs."
+  - name: "{{ recipe_name }}: Get 'enabled' value from fault_injection_points array on all peerrs."
     set_fact:
        fault_injection_value: "{{ fault_inject_array['//fault_injection_points'][itr]['enabled'] }}"
     when: "'raft' in fault_inject_array['//fault_injection_points'][itr]['name']"
