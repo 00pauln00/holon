@@ -1,0 +1,25 @@
+---
+
+  - name: "{{ recipe_name }}: After pausing one follower, get the follower-stats from leader"
+    vars:
+      pmqp_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
+      stage: "after_pause_follower"
+      raft_key:
+         - "/raft_root_entry/0/follower-stats"
+      iter_info:
+         iter: 5
+         sleep_after_cmd: 0.5
+    set_fact:
+       get_follower_stats: "{{ lookup('niova_ctlrequest', 'lookup', pmqp_leader_uuid, raft_key, iter_info, wantlist=True) }}"
+
+  - name: "{{ recipe_name }}: 'ms-since-last-ack' should increment in each iteration"
+    vars:
+      raft_quorum: "{{ get_largest_value['results'][0]['item'] }}"
+      check_time1: "{{ get_follower_stats[item]['/0/follower-stats'][inner_itr]['ms-since-last-ack'] }}"
+      check_time2: "{{ get_follower_stats[item + 1]['/0/follower-stats'][inner_itr]['ms-since-last-ack'] }}"
+    debug:
+      msg: "Compare ms-since-last-ack: {{ check_time1 | int }} with {{ check_time2 | int }}"
+    failed_when: (check_time1 | int) >= (check_time2 | int)
+    loop: "{{ range(0, raft_quorum | int) | list }}"
+    loop_control:
+       loop_var: inner_itr
