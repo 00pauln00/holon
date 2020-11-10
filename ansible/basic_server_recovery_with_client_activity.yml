@@ -14,11 +14,6 @@
        name: common
        tasks_from: recipe_compatibility_requirement
 
-  - name: "{{ recipe_name }}: Verify holon started with pumicedb cluster."
-    debug:
-      msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed: {{ raft_param['ctype'] }}"
-    failed_when: requirement != raft_param['ctype']
-
   - name: "{{ recipe_name }}: Get the list of all running peer UUIDs"
     include_role:
        name: common
