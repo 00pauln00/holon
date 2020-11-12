@@ -5,15 +5,15 @@
   vars:
      recipe_name: "healthy_raftserver_cluster_type1"
      parent: "basic_leader_election"
-     follower_uuid: []
-     last_ack_arr: []
+     type1_follower_uuid: []
+     type1_last_ack_arr: []
   tasks:
-  - name: "Get the latest list of running peer UUIDs"
+  - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
     include_role:
        name: common
        tasks_from: get_server_uuid_info
-     
-  - name: "Get the raft values from basic leader election"
+
+  - name: "{{ recipe_name }}: Get the raft values from basic leader election"
     vars:
        stage: "stage0_get_all"
        raft_keys:
@@ -27,107 +27,128 @@
             - "/raft_root_entry/0/state"
             - "/raft_root_entry/0/last-applied"
             - "/raft_root_entry/0/last-applied-cumulative-crc"
-    set_fact:
-        stage0_values="{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True) }}"
-    loop: "{{ range(0, nrunning_peers|length) | list }}"
+       peer_values: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, raft_keys, wantlist=True) }}"
+    debug:
+      msg: "Get the raft values for running peers"
+    no_log: true
+    with_items:
+     - "{{ peer_values }}"
+    register: stage0_values
 
-  - name: "Get the list of peers in the cluster"
+  - name: "{{ recipe_name }}: Get the list of peers in the cluster"
     set_fact:
-      peer_arr="{{ raft_conf | json_query('peer_uuid_dict')}}"
+      type1_peer_arr: "{{ raft_conf | json_query('peer_uuid_dict')}}"
 
   - name: "Get the peer uuid for the leader"
     set_fact:
-        leader_uuid: "{{ item.value }}"
-    when: stage0_values["/0/leader-uuid"] == item.value
-    with_dict: "{{ peer_arr }}"
+        type1_leader_uuid: "{{ item.value }}"
+    when: stage0_values['results'][0]['item']["/0/leader-uuid"] == item.value
+    with_dict: "{{ type1_peer_arr }}"
 
-  - name: "Get peer UUIDs for the followers"
+  - name: "{{ recipe_name }}: Get peer UUIDs for the followers"
     set_fact:
-        follower_uuid: "{{ follower_uuid + [item.value] }}"
-    when: stage0_values["/0/leader-uuid"] != item.value
-    with_dict: "{{ peer_arr }}"
+        type1_follower_uuid: "{{ type1_follower_uuid + [item.value] }}"
+    when: stage0_values['results'][0]['item']["/0/leader-uuid"] != item.value
+    with_dict: "{{ type1_peer_arr }}"
 
-  - name: "Get the follower-stats from leader"
+  - name: "{{ recipe_name }}: Get the follower-stats from leader"
     vars:
       stage: "get_follower_stats"
       raft_keys:
             - "/raft_root_entry/0/follower-stats"
-    set_fact:
-      orig_follower_info="{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True) }}"
+      orig_finfo: "{{ lookup('niova_ctlrequest', 'lookup', type1_leader_uuid, raft_keys, wantlist=True) }}"
+    debug:
+      msg: "Get the followers stat"
+    no_log: true
+    with_items:
+      - "{{ orig_finfo }}"
+    register: orig_follower_info
 
-  - debug:
-      msg: "{{ orig_follower_info }}"
-
-  - name: "Get the non-running peers list and select remaining peers to start"
+  - name: "{{ recipe_name }}: Get the non-running peers list and select remaining peers to start"
     include_role:
        name: common
        tasks_from: get_server_uuid_info
  
-  - name: "Store the UUIDs for peers which needs to be started"
+  - name: "{{ recipe_name }}: Store the UUIDs for peers which needs to be started"
     set_fact:
-      peers_to_be_started="{{ non_running_peers }}"
+     type1_peers_to_be_started : "{{ non_running_peers }}"
 
-  - name: "Start the remaining peers"
+  - name: "{{ recipe_name }}: Start the remaining peers"
     include_role:
       name: common
       tasks_from: start_server
     vars:
-      ServerUUID: "{{ peers_to_be_started[item] }}"
-    loop: "{{ range(0, peers_to_be_started|length) | list }}"
+      ServerUUID: "{{ type1_peers_to_be_started[item] }}"
+    loop: "{{ range(0, type1_peers_to_be_started | length) | list }}"
 
-  - name: "Get the cluster information again after starting the peers"
+  - name: "{{ recipe_name }}: Get the cluster information again after starting the peers"
     include_role:
        name: common
        tasks_from: get_server_uuid_info
 
-  - name: "Get the follower stat from the leader."
+  - name: "{{ recipe_name }}: Get the follower stat from the leader."
     vars:
       stage: "stage1"
       raft_keys:
             - "/raft_root_entry/0/follower-stats"
-    set_fact:
-      curr_follower_info="{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_keys, wantlist=True) }}"
-
-  - name: "Verify consistent next-idx and prev-idx-term values across the cluster."
+      curr_finfo: "{{ lookup('niova_ctlrequest', 'lookup', type1_leader_uuid, raft_keys, wantlist=True) }}"
     debug:
-     msg: "{{ curr_follower_info }}"
+     msg: "Collect the follower stat"
+    no_log: true
+    with_items:
+      - "{{ curr_finfo }}"
+    register: curr_follower_info
+
+  - name: "{{ recipe_name }}: Verify consistent next-idx and prev-idx-term values across the cluster."
+    debug:
+     msg: "Verifying next-idx and prev-idx-term"
+    no_log: true
     failed_when: >
-      (curr_follower_info['/0/follower-stats'][item]['next-idx'] != 1) or
-      (curr_follower_info['/0/follower-stats'][item]['prev-idx-term'] != stage0_values["/0/term"])  
-    loop: "{{ range(0, follower_uuid | length) | list }}"
+      (curr_follower_info['results'][0]['item']['/0/follower-stats'][item]['next-idx'] != 1) or
+      (curr_follower_info['results'][0]['item']['/0/follower-stats'][item]['prev-idx-term'] != stage0_values['results'][0]['item']["/0/term"])
+    loop: "{{ range(0, type1_follower_uuid | length) | list }}"
 
-  - name: "Get last-ack for all followers to make sure they are almost same"
+  - name: "{{ recipe_name }}: Get last-ack for all followers to make sure they are almost same"
     set_fact:
-      last_ack_arr="{{last_ack_arr}} + ['{{curr_follower_info['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y')}}']"
-    loop: "{{ range(0, follower_uuid | length) | list }}"
+      type1_last_ack_arr: "{{ type1_last_ack_arr}} + ['{{curr_follower_info['results'][0]['item']['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y')}}']"
+    loop: "{{ range(0, type1_follower_uuid | length) | list }}"
 
-  - name: "Difference between last-ack of two followers should not be more than 2secs"
-    set_fact:
-      time_diff="{{ ((last_ack_arr[item] | to_datetime) - (last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"
+  - name: "{{ recipe_name }}: Difference between last-ack of two followers should not be more than 2secs"
+    vars:
+      time_diff: "{{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"
+    debug:
+      msg: "Time difference should not be more than 2 sec"
     failed_when: (time_diff | int)  >= 2
-    loop: "{{ range(0, follower_uuid | length - 2) | list }}"
+    loop: "{{ range(0, type1_follower_uuid | length - 2) | list }}"
 
-  - debug: var=peers_to_be_started
-
-  - name: "Verify that newly started peers report as 'leader-already-present'"
+  - name: "{{ recipe_name }}: Get the values for newly started peers"
     vars:
        stage: "stage2"
        raft_keys:
             - "/raft_root_entry/0/voted-for-uuid"
             - "/raft_root_entry/0/follower-reason"
-    set_fact:
-          stage2_values="{{ lookup('niova_ctlrequest', 'lookup', peers_to_be_started[item], raft_keys, wantlist=True) }}"
+       new_peer_vals: "{{ lookup('niova_ctlrequest', 'lookup', type1_peers_to_be_started, raft_keys, wantlist=True) }}"
+    debug:
+      msg: "Verify values for peers"
+    no_log: true
+    with_items:
+      - "{{ new_peer_vals }}"
+    register: stage2_values
+
+  - name: "{{ recipe_name }}: Verify that newly started peers report as 'leader-already-present'"
+    debug:
+      msg: "Comparing values for peer: {{ type1_peers_to_be_started[item] }}"
     failed_when: >
-        (stage2_values["/0/voted-for-uuid"] != "00000000-0000-0000-0000-000000000000") or
-        (stage2_values["/0/follower-reason"] != "leader-already-present")
-    loop: "{{ range(0, peers_to_be_started|length) | list }}"
+        (stage2_values['results'][item]['item']["/0/voted-for-uuid"] != "00000000-0000-0000-0000-000000000000") or
+        (stage2_values['results'][item]['item']["/0/follower-reason"] != "leader-already-present")
+    loop: "{{ range(0, type1_peers_to_be_started|length) | list }}"
     
-  - name: "Get the list of all running peer UUIDs"
+  - name: "{{ recipe_name }}: Get the list of all running peer UUIDs"
     include_role:
        name: common
        tasks_from: get_server_uuid_info
 
-  - name: "Verify values on all peers"
+  - name: "{{ recipe_name }}: Get the values from all peers"
     vars:
        stage: "stage3"
        raft_keys:
@@ -141,19 +162,29 @@
             - "/raft_root_entry/0/state"
             - "/raft_root_entry/0/last-applied"
             - "/raft_root_entry/0/last-applied-cumulative-crc"
-    set_fact:
-          stage3_values="{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True) }}"
+       peer_values: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, raft_keys, wantlist=True) }}"
+    debug:
+       msg: "Get the values for all running peers"
+    no_log: true
+    with_items:
+      - "{{ peer_values }}"
+    register: stage3_values
+
+
+  - name: "{{ recipe_name }}: Verify values on all peers"
+    debug:
+      msg: "Verify values for peer: {{ nrunning_peers[item] }}"
     failed_when: >
-        (stage3_values["/0/leader-uuid"] != stage0_values["/0/leader-uuid"]) or
-        ((stage3_values["/0/term"] != stage0_values["/0/term"]) and
-        (stage3_values["/0/term"] != orig_follower_info['/0/follower-stats'][item]['prev-idx-term'])) or
-        ((stage3_values["/0/state"] != "leader") and
-        (stage3_values["/0/state"] != "follower")) or
-        (stage3_values["/0/commit-idx"] != 0) or
-        (stage3_values["/0/last-applied"] != 0) or
-        (stage3_values["/0/last-applied-cumulative-crc"] != stage0_values["/0/last-applied-cumulative-crc"]) or
-        (stage3_values["/0/newest-entry-term"] != stage0_values["/0/term"]) or
-        (stage3_values["/0/newest-entry-idx"] != 0) or
-        (stage3_values["/0/newest-entry-data-size"] != 0) or
-        (stage3_values["/0/newest-entry-crc"] != stage0_values["/0/newest-entry-crc"])
+        (stage3_values['results'][item]['item']["/0/leader-uuid"] != stage0_values['results'][0]['item']["/0/leader-uuid"]) or
+        ((stage3_values['results'][item]['item']["/0/term"] != stage0_values['results'][0]['item']["/0/term"]) and
+        (stage3_values['results'][item]['item']["/0/term"] != orig_follower_info['results'][0]['item']['/0/follower-stats'][item]['prev-idx-term'])) or
+        ((stage3_values['results'][item]['item']["/0/state"] != "leader") and
+        (stage3_values['results'][item]['item']["/0/state"] != "follower")) or
+        (stage3_values['results'][item]['item']["/0/commit-idx"] != 0) or
+        (stage3_values['results'][item]['item']["/0/last-applied"] != 0) or
+        (stage3_values['results'][item]['item']["/0/last-applied-cumulative-crc"] != stage0_values['results'][0]['item']["/0/last-applied-cumulative-crc"]) or
+        (stage3_values['results'][item]['item']["/0/newest-entry-term"] != stage0_values['results'][0]['item']["/0/term"]) or
+        (stage3_values['results'][item]['item']["/0/newest-entry-idx"] != 0) or
+        (stage3_values['results'][item]['item']["/0/newest-entry-data-size"] != 0) or
+        (stage3_values['results'][item]['item']["/0/newest-entry-crc"] != stage0_values['results'][0]['item']["/0/newest-entry-crc"])
     loop: "{{ range(0, nrunning_peers|length) | list }}"

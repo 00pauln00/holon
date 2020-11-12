@@ -10,30 +10,24 @@
   tasks:
   - name: "Extract the Base directory path and Raft UUID."
     set_fact:
-      raft_uuid: "{{ raft_conf | json_query('raft_uuid') }}"
+      pmdb_standalone_raft_uuid: "{{ raft_conf | json_query('raft_uuid') }}"
 
   - name: "Generate client UUID"
     shell: "/usr/bin/uuid"
-    register: cuuid
-
-  - name: "Get client uuid"
-    set_fact:
-      client_uuid: "{{ cuuid.stdout }}"
+    register: client_uuid
 
   - debug:
       msg:
-        - "{{ raft_uuid }}"
-        - "{{ client_uuid }}"
-
-  - name: "Get truncated UUIDs"
-    set_fact:
-      truncate_ruuid: "{{ raft_uuid[:-1] }}"
-      truncate_cuuid: "{{ client_uuid[:-1] }}" 
+        - "{{ pmdb_standalone_raft_uuid }}"
+        - "{{ client_uuid.stdout }}"
 
   - debug: var=truncate_ruuid
   - debug: var=truncate_cuuid
     
   - name: "Starting the Raft client with wrong Raft UUID and Client UUID."
+    vars:
+      truncate_ruuid: "{{ pmdb_standalone_raft_uuid[:-1] }}"
+      truncate_cuuid: "{{ client_uuid.stdout[:-1] }}" 
     command:
       argv:
         - "{{ raft_client_path }}"
@@ -46,6 +40,9 @@
   - debug: var=raft_output.rc
 
   - name: "Starting the pumicedb client with wrong Raft UUID and Client UUID."
+    vars:
+      truncate_ruuid: "{{ pmdb_standalone_raft_uuid[:-1] }}"
+      truncate_cuuid: "{{ client_uuid.stdout[:-1] }}" 
     command:
       argv:
         - "{{ pmdb_client_path }}"
@@ -62,7 +59,7 @@
       argv:
         - "{{ raft_client_path }}"
         - -r
-        - "{{ raft_uuid }}"
+        - "{{ pmdb_standalone_raft_uuid }}"
     register: ruuid_result
     failed_when: ruuid_result.rc == 0
   - debug: var=ruuid_result.rc
@@ -72,7 +69,7 @@
       argv:
         - "{{ raft_client_path }}"
         - -u
-        - "{{ client_uuid }}"
+        - "{{ client_uuid.stdout }}"
     register: cuuid_result
     failed_when: cuuid_result.rc == 0
   - debug: var=cuuid_result.rc
@@ -82,7 +79,7 @@
       argv:
         - "{{ pmdb_client_path }}"
         - -r
-        - "{{ raft_uuid }}"
+        - "{{ pmdb_standalone_raft_uuid }}"
     register: ruuid_return
     failed_when: ruuid_return.rc == 0
   - debug: var=ruuid_return.rc
@@ -92,7 +89,7 @@
       argv:
         - "{{ pmdb_client_path }}"
         - -u
-        - "{{ client_uuid }}"
+        - "{{ client_uuid.stdout }}"
     register: cuuid_return
     failed_when: cuuid_return.rc == 0
   - debug: var=cuuid_return.rc
@@ -102,9 +99,9 @@
       argv:
         - "{{ raft_client_path }}"
         - -r
-        - "{{ raft_uuid }}"
+        - "{{ pmdb_standalone_raft_uuid }}"
         - -u
-        - "{{ client_uuid }}"
+        - "{{ client_uuid.stdout }}"
     register: raftclient_output
     failed_when: raftclient_output.rc != 2
   - debug: var=raftclient_output.rc
@@ -114,9 +111,9 @@
       argv:
         - "{{ pmdb_client_path }}"
         - -r
-        - "{{ raft_uuid }}"
+        - "{{ pmdb_standalone_raft_uuid }}"
         - -u
-        - "{{client_uuid}}"
+        - "{{ client_uuid.stdout }}"
     register: pmdbclient_output
     failed_when: pmdbclient_output.rc == 0
   - debug: var=pmdbclient_output.rc
