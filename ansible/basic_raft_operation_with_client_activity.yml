@@ -212,20 +212,19 @@
         time_diff: "{{ ((bca_last_ack_arr[item] | to_datetime) - (bca_last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"
      debug:
        msg: "Time difference between last-ack of two followers should not be > 2sec"
-     #no_log: true
+     no_log: true
      failed_when: (time_diff | int)  >= 2
      loop: "{{ range(0, follower_uuids | length - 2) | list }}"
 
    - name: "{{ recipe_name}}: Get the server information for all running servers."
      vars:
        stage: "server_verify"
-       peer_values_all: []
        peer_values_all: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, peer_raft_keys, wantlist=True) }}"
      debug:
        msg: "Get the values for all running servers."
      no_log: true
      with_items:
-       - "{{ peer_values_all}}"
+       - "{{ peer_values_all }}"
      register: running_srv_vals
 
    - name: "{{ recipe_name}}: Verify the values for running peers."
