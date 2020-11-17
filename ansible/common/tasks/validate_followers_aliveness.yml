@@ -17,4 +17,6 @@
         msg: "Validating ms-since-last-ack <= 3 * (election-timeout-ms / heartbeat-freq-per-election-timeout)"
       failed_when:
         (FollowersStat['/0/follower-stats'][item]['ms-since-last-ack'] | int > (3 * (FollowersStat['/raft_net_info/election-timeout-ms'] | int / FollowersStat['/raft_net_info/heartbeat-freq-per-election-timeout'] | int)))
+  
       loop: "{{ range(0, num_followers | int) | list }}"
+
