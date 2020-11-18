@@ -32,21 +32,21 @@
 
     - name: "Get the list of all peers"
       set_fact:
-        total_peers_dict="{{ raft_conf | json_query('peer_uuid_dict')}}"
+        TotalNServersDict: "{{ raft_conf | json_query('peer_uuid_dict')}}"
     - name: "Convert dictionary values into list"
       set_fact:
-        total_peers_list="{{ total_peers_dict.values() | list }}"
+        TotalNServersList: "{{ TotalNServersDict.values() | list }}"
 
     - name: "Print the lists"
       debug:
         msg:
-         - "Total Peers: {{ total_peers_list }}"
+         - "Total Peers: {{ TotalNServersList }}"
          - "Running peers: {{ NRunningPeers }}"
 
     - name: "Get the non-running peer list"
       set_fact:
-       non_running_peers="{{ total_peers_list | difference(NRunningPeers) }}"
+       NonRunningServers: "{{ TotalNServersList | difference(NRunningPeers) }}"
 
     - name: "Print non-running peers"
       debug:
-       msg: "{{ non_running_peers}}"
+       msg: "{{ NonRunningServers }}"

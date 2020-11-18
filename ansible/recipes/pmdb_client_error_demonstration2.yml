@@ -1,4 +1,4 @@
-- import_playbook: healthy_raftserver_cluster_type1.yml
+- import_playbook: pmdb_client_error_demonstration1.yml
   when: raft_param['ctype'] == "pumicedb"
 
 - name: "pmdb_client_error_demonstration2"
@@ -6,7 +6,7 @@
   connection: local
   vars:
      recipe_name: "pmdb_client_error_demonstration2"
-     parent: "healthy_raftserver_cluster_type1"
+     parent: "pmdb_client_error_demonstration1"
      requirement: "pumicedb"
      demo2_followers_uuid: []
      client_keys:

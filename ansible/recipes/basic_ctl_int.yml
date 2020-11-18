@@ -13,7 +13,7 @@
 
     - name: "{{ recipe_name }}: The first peer to start"
       set_fact:
-       Server0UUID: "{{ non_running_peers[0] }}"
+       Server0UUID: "{{ NonRunningServers[0] }}"
 
     - name: "{{ recipe_name }}: Disable Raft timer thread"
       vars:

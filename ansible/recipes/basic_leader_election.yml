@@ -23,7 +23,7 @@
         name: common
         tasks_from: start_server
       vars:
-        ServerUUID: "{{ non_running_peers[item] }}"
+        ServerUUID: "{{ NonRunningServers[item] }}"
       loop: "{{ range(0, npeers_start| int) | list }}"
 
     - name: "{{ recipe_name }}: Wait until leader election happens"
