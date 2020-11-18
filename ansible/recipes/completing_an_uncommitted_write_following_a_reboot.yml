@@ -15,10 +15,10 @@
            - "/raft_root_entry/0/commit-idx"
            - "/raft_root_entry/0/last-applied"
            - "/raft_root_entry/0/last-applied-cumulative-crc"
-           - "/raft_root_entry/0/newest-entry-idx"
-           - "/raft_root_entry/0/newest-entry-term"
-           - "/raft_root_entry/0/newest-entry-data-size"
-           - "/raft_root_entry/0/newest-entry-crc"
+           - "/raft_root_entry/0/sync-entry-idx"
+           - "/raft_root_entry/0/sync-entry-term"
+           - "/raft_root_entry/0/sync-entry-data-size"
+           - "/raft_root_entry/0/sync-entry-crc"
 
   tasks:
    - name: "{{ recipe_name }}: Verifying recipe compatibility requirements."
@@ -56,14 +56,14 @@
        last_applied_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/last-applied'] }}"
        last_applied_cum_crc: "{{ raft_root_entry_all['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
        last_applied_cum_crc_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/last-applied-cumulative-crc'] }}"
-       newest_entry_idx: "{{ raft_root_entry_all['results'][item]['item']['/0/newest-entry-idx'] }}"
-       newest_entry_idx_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/newest-entry-idx'] }}"
-       newest_entry_term: "{{ raft_root_entry_all['results'][item]['item']['/0/newest-entry-term'] }}"
-       newest_entry_term_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/newest-entry-term'] }}"
-       newest_entry_data_size: "{{ raft_root_entry_all['results'][item]['item']['/0/newest-entry-data-size'] }}"
-       newest_entry_data_size_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/newest-entry-data-size'] }}"
-       newest_entry_crc: "{{ raft_root_entry_all['results'][item]['item']['/0/newest-entry-crc'] }}"
-       newest_entry_crc_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/newest-entry-crc'] }}"
+       sync_entry_idx: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-idx'] }}"
+       sync_entry_idx_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-idx'] }}"
+       sync_entry_term: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-term'] }}"
+       sync_entry_term_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-term'] }}"
+       sync_entry_data_size: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-data-size'] }}"
+       sync_entry_data_size_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-data-size'] }}"
+       sync_entry_crc: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-crc'] }}"
+       sync_entry_crc_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-crc'] }}"
      debug:
        msg: "Compare raft_root_entry values of all peers."
      failed_when: >
@@ -71,10 +71,10 @@
           (commit_idx != commit_idx_next) or
           (last_applied != last_applied_next) or
           (last_applied_cum_crc != last_applied_cum_crc_next) or
-          (newest_entry_idx != newest_entry_idx_next) or
-          (newest_entry_term != newest_entry_term_next) or
-          (newest_entry_data_size != newest_entry_data_size_next) or
-          (newest_entry_crc != newest_entry_crc_next)
+          (sync_entry_idx != sync_entry_idx_next) or
+          (sync_entry_term != sync_entry_term_next) or
+          (sync_entry_data_size != sync_entry_data_size_next) or
+          (sync_entry_crc != sync_entry_crc_next)
      loop: "{{ range(0, nrunning_peers | length-1) | list }}"
    
    #Determine leader before reboot
@@ -95,29 +95,29 @@
        cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
        cuwr_follower_uuids: "{{ nrunning_peers | difference(leader_values['results'][0]['item']['/0/leader-uuid']) }}"
 
-   - name: "{{ recipe_name }}: Get newest-entry-idx values for all followers before write."
+   - name: "{{ recipe_name }}: Get sync-entry-idx values for all followers before write."
      vars:
        stage: "before_write_followers"
        raft_keys:
-           - "/raft_root_entry/0/newest-entry-idx"
-       new_ent_idx_follo_before_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_follower_uuids, raft_keys, wantlist=True) }}"
+           - "/raft_root_entry/0/sync-entry-idx"
+       sync_ent_idx_follo_before_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_follower_uuids, raft_keys, wantlist=True) }}"
      debug:
-       msg: "Getting newest-entry-idx values for all followers before write."
+       msg: "Getting sync-entry-idx values for all followers before write."
      with_items:
-         - "{{ new_ent_idx_follo_before_write_vals }}"
-     register: newest_entry_idx_followers_before_write
+         - "{{ sync_ent_idx_follo_before_write_vals }}"
+     register: sync_entry_idx_followers_before_write
 
-   - name: "{{ recipe_name }}: Get newest-entry-idx value for leader before write."
+   - name: "{{ recipe_name }}: Get sync-entry-idx value for leader before write."
      vars:
        stage: "before_write_leader"
        raft_keys:
-           - "/raft_root_entry/0/newest-entry-idx"
-       new_ent_idx_lead_before_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_leader_uuid_before, raft_keys, wantlist=True) }}"
+           - "/raft_root_entry/0/sync-entry-idx"
+       sync_ent_idx_lead_before_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_leader_uuid_before, raft_keys, wantlist=True) }}"
      debug:
-       msg: "Getting newest-entry-idx value for leader before write."
+       msg: "Getting sync-entry-idx value for leader before write."
      with_items:
-         - "{{ new_ent_idx_lead_before_write_vals }}"
-     register: newest_entry_idx_leader_before_write
+         - "{{ sync_ent_idx_lead_before_write_vals }}"
+     register: sync_entry_idx_leader_before_write
 
    #Set raft_follower_ignores_non_hb_AE_request on the Followers
    - name: "{{ recipe_name }}: Ignore writes on all followers using fault injection."
@@ -151,47 +151,47 @@
      debug:
        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
 
-   - name: "{{ recipe_name }}: Get newest-entry-idx values for all followers after write."
+   - name: "{{ recipe_name }}: Get sync-entry-idx values for all followers after write."
      vars:
        stage: "after_write_followers"
        raft_keys:
-           - "/raft_root_entry/0/newest-entry-idx"
+           - "/raft_root_entry/0/sync-entry-idx"
        new_ent_idx_followers_after_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_follower_uuids, raft_keys, wantlist=True) }}"
      debug:
-       msg: "Getting newest-entry-idx values for all followers after write."
+       msg: "Getting sync-entry-idx values for all followers after write."
      with_items:
-         - "{{ new_ent_idx_followers_after_write_vals }}"
-     register: newest_entry_idx_followers_after_write
+         - "{{ sync_ent_idx_followers_after_write_vals }}"
+     register: sync_entry_idx_followers_after_write
 
-   - name: "{{ recipe_name }}: Get newest-entry-idx value for leader after write."
+   - name: "{{ recipe_name }}: Get sync-entry-idx value for leader after write."
      vars:
        stage: "after_write_leader"
        raft_keys:
-           - "/raft_root_entry/0/newest-entry-idx"
-       new_ent_idx_lead_after_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_leader_uuid_before, raft_keys, wantlist=True) }}"
+           - "/raft_root_entry/0/sync-entry-idx"
+       sync_ent_idx_lead_after_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_leader_uuid_before, raft_keys, wantlist=True) }}"
      debug:
        msg: "Getting newest-entry-idx value for leader after write."
      with_items:
-         - "{{ new_ent_idx_lead_after_write_vals }}"
-     register: newest_entry_idx_leader_after_write
+         - "{{ sync_ent_idx_lead_after_write_vals }}"
+     register: sync_entry_idx_leader_after_write
 
    #2a- Verification for newest-entry-idx and commit-idx
-   - name: "{{ recipe_name }}: Verify that newest-entry-idx of all followers remains same."
+   - name: "{{ recipe_name }}: Verify that sync-entry-idx of all followers remains same."
      vars:
-       newest_entry_idx_before: "{{ newest_entry_idx_followers_before_write['results'][item]['item'] }}"
-       newest_entry_idx_after: "{{ newest_entry_idx_followers_after_write['results'][item]['item'] }}"
+       sync_entry_idx_before: "{{ sync_entry_idx_followers_before_write['results'][item]['item'] }}"
+       sync_entry_idx_after: "{{ sync_entry_idx_followers_after_write['results'][item]['item'] }}"
      debug:
        msg: "Verifying that newest-entry-idx of all followers remains same"
-     failed_when: newest_entry_idx_before['/0/newest-entry-idx'] != newest_entry_idx_after['/0/newest-entry-idx']
+     failed_when: sync_entry_idx_before['/0/sync-entry-idx'] != sync_entry_idx_after['/0/sync-entry-idx']
      loop: "{{ range(0, cuwr_follower_uuids | length) | list }}"
 
-   - name: "{{ recipe_name }}: Verify that newest-entry-idx of leader is advanced by 1."
+   - name: "{{ recipe_name }}: Verify that sync-entry-idx of leader is advanced by 1."
      vars:
-       leader_newest_entry_idx_before: "{{ newest_entry_idx_leader_before_write['results'][0]['item'] }}"
-       leader_newest_entry_idx_after: "{{ newest_entry_idx_leader_after_write['results'][0]['item'] }}"
+       leader_sync_entry_idx_before: "{{ sync_entry_idx_leader_before_write['results'][0]['item'] }}"
+       leader_sync_entry_idx_after: "{{ sync_entry_idx_leader_after_write['results'][0]['item'] }}"
      debug:
        msg: "Verifying that newest-entry-idx of leader is advanced by 1."
-     failed_when: (leader_newest_entry_idx_after['/0/newest-entry-idx'] - leader_newest_entry_idx_before['/0/newest-entry-idx']) != 1
+     failed_when: (leader_sync_entry_idx_after['/0/sync-entry-idx'] - leader_sync_entry_idx_before['/0/sync-entry-idx']) != 1
 
    - name: "{{ recipe_name }}: Get commit-idx of all running peers after write."
      vars:
@@ -330,38 +330,38 @@
      vars:
        commit_idx: "{{ raft_root_entry_all_after['results'][item]['item'] }}"
        last_applied: "{{ raft_root_entry_all_after['results'][item]['item'] }}"
-       newest_entry_idx: "{{  raft_root_entry_all_after['results'][item]['item'] }}"
+       sync_entry_idx: "{{  raft_root_entry_all_after['results'][item]['item'] }}"
        commit_idx_prev: "{{ raft_root_entry_all['results'][item]['item'] }}"
        last_applied_prev: "{{ raft_root_entry_all['results'][item]['item'] }}"
-       newest_entry_idx_prev: "{{  raft_root_entry_all['results'][item]['item'] }}"
+       sync_entry_idx_prev: "{{  raft_root_entry_all['results'][item]['item'] }}"
      debug:
        msg: "Verifying values for commit-idx, last-applied and newest-entry-idx for all servers."
      failed_when: >
            (commit_idx['/0/commit-idx'] != (commit_idx_prev['/0/commit-idx'] + 2)) or
            (last_applied['/0/last-applied'] != (last_applied_prev['/0/last-applied'] + 2)) or
-           (newest_entry_idx['/0/newest-entry-idx'] != (newest_entry_idx_prev['/0/newest-entry-idx'] + 2))
+           (sync_entry_idx['/0/sync-entry-idx'] != (sync_entry_idx_prev['/0/sync-entry-idx'] + 2))
      loop: "{{ range(0, nrunning_peers | length) | list }}"
    
    - name: "{{ recipe_name }}: Validate term, last-applied-cumulative-crc, newest-entry-term, newest-entry-data-size and newest-entry-crc of all peers after reboot."
      vars:
        term: "{{ raft_root_entry_all_after['results'][item]['item']['/0/term'] }}"
        last_applied_cum_crc: "{{ raft_root_entry_all_after['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
-       newest_entry_term: "{{ raft_root_entry_all_after['results'][item]['item']['/0/newest-entry-term'] }}"
-       newest_entry_data_size: "{{ raft_root_entry_all_after['results'][item]['item']['/0/newest-entry-data-size'] }}"
-       newest_entry_crc: "{{ raft_root_entry_all_after['results'][item]['item']['/0/newest-entry-crc'] }}"
+       sync_entry_term: "{{ raft_root_entry_all_after['results'][item]['item']['/0/sync-entry-term'] }}"
+       sync_entry_data_size: "{{ raft_root_entry_all_after['results'][item]['item']['/0/sync-entry-data-size'] }}"
+       sync_entry_crc: "{{ raft_root_entry_all_after['results'][item]['item']['/0/sync-entry-crc'] }}"
        term_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/term'] }}"
        last_applied_cum_crc_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
-       newest_entry_term_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/newest-entry-term'] }}"
-       newest_entry_data_size_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/newest-entry-data-size'] }}"
-       newest_entry_crc_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/newest-entry-crc'] }}"
+       sync_entry_term_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/sync-entry-term'] }}"
+       sync_entry_data_size_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/sync-entry-data-size'] }}"
+       sync_entry_crc_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/sync-entry-crc'] }}"
      debug:
        msg: "Compare raft_root_entry values of all peers"
      failed_when: >
            (term != term_next) or
            (last_applied_cum_crc != last_applied_cum_crc_next) or
-           (newest_entry_term != newest_entry_term_next) or
-           (newest_entry_data_size != newest_entry_data_size_next) or
-           (newest_entry_crc != newest_entry_crc_next)
+           (sync_entry_term != sync_entry_term_next) or
+           (sync_entry_data_size != sync_entry_data_size_next) or
+           (sync_entry_crc != sync_entry_crc_next)
      loop: "{{ range(0, nrunning_peers | length-1) | list }}"
    
    #8 - Verify the Application Data.

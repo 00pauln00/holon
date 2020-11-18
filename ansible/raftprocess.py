@@ -68,14 +68,14 @@ class RaftProcess:
         logging.warning("Starting uuid: %s, cluster_type %s" % (peer_uuid, self.process_backend_type))
         if self.process_backend_type == "pumicedb":
             if self.process_type == "server":
-                bin_path = '/home/pauln/raft-builds/latest/pumicedb-server-test'
+                bin_path = '/home/manisha/niova/nov18/niovad/pumicedb-server-test'
             else:
-                bin_path = '/home/pauln/raft-builds/latest/pumicedb-client-test'
+                bin_path = '/home/manisha/niova/nov18/niovad/pumicedb-client-test'
         else:
             if self.process_type == "server":
-                bin_path = '/home/pauln/raft-builds/latest/raft-server'
+                bin_path = '/home/manisha/niova/nov18/niovad/raft-server'
             else:
-                bin_path = '/home/pauln/raft-builds/latest/raft-client'
+                bin_path = '/home/manisha/niova/nov18/niovad/raft-client'
 
 
         '''
