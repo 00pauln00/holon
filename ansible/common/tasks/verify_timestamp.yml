@@ -1,0 +1,31 @@
+---
+
+    - debug:
+        msg: "{{ ServerUUID }}"
+
+    - name: "{{ recipe_name }}: Get the current time for the peer in loop"
+      vars:
+        stage: "get_curr_timestamp"
+        iter_info:
+          iter: 5
+          sleep_after_cmd: 2
+        curr_stamp: "{{ lookup('niova_ctlrequest', 'lookup', ServerUUID, '/system_info/current_time', iter_info, wantlist=True) }}"
+      with_items:
+          - "{{ curr_stamp }}"
+      register: time_stamp
+      debug:
+        msg: "Running the lookup cmd in a loop with 2sec between iterations."
+      no_log: True
+
+    - name: "{{ recipe_name }}: Verify that current time should increament in each iteration"
+      vars:
+        time_stamp_arr: "{{ time_stamp['results'] }}"
+        orig_time: "{{ time_stamp_arr[index]['item']['/system_info/current_time'] }}"
+        curr_time: "{{ time_stamp_arr[index + 1]['item']['/system_info/current_time'] }}"
+      debug:
+        msg: "Compare time stamp: {{ orig_time }} with {{ curr_time }}"
+      no_log: True
+      failed_when: orig_time >= curr_time
+      loop: "{{ range(0, 4)| list }}"
+      loop_control:
+          loop_var: index

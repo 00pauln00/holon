@@ -1,0 +1,22 @@
+---
+
+    - name: "{{ recipe_name }}: Get the information to check followers aliveness."
+      vars:
+        stage: "get_followers_stat"
+        raft_keys:
+            - "/raft_net_info/heartbeat-freq-per-election-timeout"
+            - "/raft_net_info/election-timeout-ms"
+            - "/raft_root_entry/0/follower-stats"
+      set_fact:
+        FollowersStat: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID, raft_keys, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Validate the aliveness of the followers."
+      vars:
+        num_followers: "{{ FollowersStat['/0/follower-stats'] | length | int }}"
+      debug:
+        msg: "Validating ms-since-last-ack <= 3 * (election-timeout-ms / heartbeat-freq-per-election-timeout)"
+      failed_when:
+        (FollowersStat['/0/follower-stats'][item]['ms-since-last-ack'] | int > (3 * (FollowersStat['/raft_net_info/election-timeout-ms'] | int / FollowersStat['/raft_net_info/heartbeat-freq-per-election-timeout'] | int)))
+  
+      loop: "{{ range(0, num_followers | int) | list }}"
+
