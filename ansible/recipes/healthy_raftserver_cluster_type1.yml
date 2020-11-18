@@ -71,7 +71,7 @@
  
   - name: "{{ recipe_name }}: Store the UUIDs for peers which needs to be started"
     set_fact:
-     type1_peers_to_be_started : "{{ non_running_peers }}"
+     type1_peers_to_be_started : "{{ NonRunningServers }}"
 
   - name: "{{ recipe_name }}: Start the remaining peers"
     include_role:
