@@ -9,16 +9,16 @@
   
   #Start Peer1
   tasks:
-    - name: "Get the non-running peers list to select the second peer to start"
+    - name: "{{ recipe_name }}: Get the non-running peers list to select the second peer to start"
       include_role:
         name: common
         tasks_from: get_server_uuid_info
 
-    - name: "Get the UUID for the second peer"
+    - name: "{{ recipe_name }}: Get the UUID for the second peer"
       set_fact:
        Server1UUID: "{{ non_running_peers[0] }}"
 
-    - name: "Start peer which is made idle in previous task"
+    - name: "{{ recipe_name }}: Start peer which is made idle in previous task"
       include_role:
         name: common
         tasks_from: start_server
@@ -26,7 +26,7 @@
         ServerUUID: "{{ Server1UUID }}"
 
     #Copy get_term in peer1 and in peer0, Pause and Resume peer0 in loop and compare its term catches up peer1 term
-    - name: "Pause peer0 and resume it after 2sec and make sure it's term value catches up with running peer1"
+    - name: "{{ recipe_name }}: Pause peer0 and resume it after 2sec and make sure it's term value catches up with running peer1"
       vars:
         stage: "stage1"
         iter_info:

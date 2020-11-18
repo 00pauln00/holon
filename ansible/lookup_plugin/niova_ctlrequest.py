@@ -14,14 +14,13 @@ Send the ctlrequest cmd to the peer.
 This will create the ctlrequest python object to apply
 the cmd on the given peer-uuid.
 '''
-def niova_ctlreq_cmd_send(recipe_conf, ctlreq_dict):
+def niova_ctlreq_cmd_send(recipe_conf, ctlreq_dict, peer_uuid):
     wait_for_ofile = True
     copy_to = "input"
     operation = ctlreq_dict['operation']
     cmd = ctlreq_dict['cmd']
     where = ctlreq_dict['where']
     recipe_name = ctlreq_dict['recipe_name']
-    peer_uuid = ctlreq_dict['peer_uuid']
     stage = ctlreq_dict['stage']
     peerno = "peer%s" % peer_uuid
     input_base = inotify_input_base.REGULAR
@@ -109,7 +108,7 @@ Lookup the raft keys for the given peer, first by sending
 the ctlrequest to the peer and then reading the values
 from the output JSON file.
 '''
-def niova_raft_lookup_ctlreq(recipe_conf, ctlreq_cmd_dict):
+def niova_raft_lookup_ctlreq(recipe_conf, ctlreq_cmd_dict, peer_uuid):
 
     raft_keys = ctlreq_cmd_dict['lookup_key']
     if isinstance(raft_keys, list):
@@ -126,7 +125,7 @@ def niova_raft_lookup_ctlreq(recipe_conf, ctlreq_cmd_dict):
     '''
     Send the ctlrequest cmd to get the values of the raft keys.
     '''
-    ctlreq_obj_dict = niova_ctlreq_cmd_send(recipe_conf, ctlreq_cmd_dict)
+    ctlreq_obj_dict = niova_ctlreq_cmd_send(recipe_conf, ctlreq_cmd_dict, peer_uuid)
 
     '''
     If lookup was called with wait_for_ofile = False, the recipe is not
@@ -188,7 +187,12 @@ def niova_ctlrequest_get_cmdline_input_dict(global_args, local_args):
 
 	# cmdline parameters to the ctlrequest lookup plugin.
     ctlreq_cmd_dict['operation'] = local_args[0]
-    ctlreq_cmd_dict['peer_uuid'] = local_args[1]
+
+    if not isinstance(local_args[1], list):
+        ctlreq_cmd_dict['peer_uuid_list'] = [local_args[1]]
+    else:
+        ctlreq_cmd_dict['peer_uuid_list'] = local_args[1]
+        
 
 	# Now get the parameters specific to the operation.
     if ctlreq_cmd_dict['operation'] == "apply_cmd":
@@ -234,53 +238,68 @@ class LookupModule(LookupBase):
         '''
         recipe_conf = niova_get_recipe_json_data(recipe_params)
 
-        logging.warning("Ctlrequest for recipe: %s, stage: %s, operation: %s, peer_uuid: %s" % (ctlreq_cmd_dict['recipe_name'], ctlreq_cmd_dict['stage'], ctlreq_cmd_dict['operation'], ctlreq_cmd_dict['peer_uuid']))
+        logging.warning("Ctlrequest for recipe: %s, stage: %s, operation: %s, peer_uuid_list: %s" % (ctlreq_cmd_dict['recipe_name'], ctlreq_cmd_dict['stage'], ctlreq_cmd_dict['operation'], ctlreq_cmd_dict['peer_uuid_list']))
 
 
-        '''
-        Operation is to simply apply the ctlrequest cmd to the peer.
-        '''
-        if ctlreq_cmd_dict['operation'] == "apply_cmd":
-            logging.warning("Apply cmd: %s on peer-uuid: %s" % (ctlreq_cmd_dict['cmd'], ctlreq_cmd_dict['peer_uuid']))
-            result = niova_ctlreq_cmd_send(recipe_conf, ctlreq_cmd_dict)
-
-        elif ctlreq_cmd_dict['operation'] == "lookup":
+        result_array = []
+        logging.warning("operation: %s" % ctlreq_cmd_dict['operation'])
+        for peer_uuid in ctlreq_cmd_dict['peer_uuid_list']:
             '''
-            Operation to send the ctlrequest cmd first and then read the values for
-            the given raft keys from the output JSON file.
+            Operation is to simply apply the ctlrequest cmd to the peer.
             '''
-            logging.warning("Lookup for key: %s" % ctlreq_cmd_dict['lookup_key'])
+            if ctlreq_cmd_dict['operation'] == "apply_cmd":
+                logging.warning("Apply cmd: %s on peer-uuid_list: %s" % (ctlreq_cmd_dict['cmd'], ctlreq_cmd_dict['peer_uuid_list']))
+                result = niova_ctlreq_cmd_send(recipe_conf, ctlreq_cmd_dict, peer_uuid)
 
-            iter_info = None
-            if ctlreq_cmd_dict['iter_info'] != None:
-                iter_info = ctlreq_cmd_dict['iter_info']
+            elif ctlreq_cmd_dict['operation'] == "lookup":
+                '''
+                Operation to send the ctlrequest cmd first and then read the values for
+                the given raft keys from the output JSON file.
+                '''
+                logging.warning("Lookup for key: %s on peers: %s" % (ctlreq_cmd_dict['lookup_key'], ctlreq_cmd_dict['peer_uuid_list']))
 
-            result = []
-            iter_cnt = 1
-            sleep_sec = 0
-            '''
-            If this lookup is gonna run for number of iterations.
-            This iteration option will send the ctlrequest cmd to the peer
-            specific number of times and could sleep between the iterations if
-            sleep time is specified by the recipe author.
-            Note: The result would be added in a list for all the iterations.
-            '''
+                iter_info = None
+                if ctlreq_cmd_dict['iter_info'] != None:
+                    iter_info = ctlreq_cmd_dict['iter_info']
 
-            if iter_info != None:
-                iter_cnt = int(iter_info['iter'])
-                sleep_sec = int(iter_info['sleep_after_cmd'])
+                result = []
+                iter_cnt = 1
+                sleep_sec = 0
+                '''
+                If this lookup is gonna run for number of iterations.
+                This iteration option will send the ctlrequest cmd to the peer
+                specific number of times and could sleep between the iterations if
+                sleep time is specified by the recipe author.
+                Note: The result would be added in a list for all the iterations.
+                '''
 
-            for i in range(iter_cnt):
-                values = niova_raft_lookup_ctlreq(recipe_conf, ctlreq_cmd_dict)
-                time.sleep(sleep_sec)
-                result.append(values)
+                if iter_info != None:
+                    iter_cnt = int(iter_info['iter'])
+                    sleep_sec = int(iter_info['sleep_after_cmd'])
 
-            '''
-            If only one element in present in the result array, return only
-            first element rather than returning array of array even if
-            single result in present for this cmd.
-            '''
-            if iter_cnt == 1:
-                return result[0]
+                for i in range(iter_cnt):
+                    logging.warning("Sending lookup for itr: %d" % i)
+                    values = niova_raft_lookup_ctlreq(recipe_conf, ctlreq_cmd_dict, peer_uuid)
+                    time.sleep(sleep_sec)
+                    result.append(values)
 
-        return result
+                '''
+                If only one element in present in the result array, return only
+                first element rather than returning array of array even if
+                single result in present for this cmd.
+                '''
+                if iter_cnt == 1:
+                    result =  result[0]
+                    logging.warning("Only one element in the array: %s" % result)
+                     
+            logging.warning("Result is: %s" % result)
+            result_array.append(result)
+            logging.warning("result array: %s" % result_array)
+            logging.warning("Result array size: %d" % len(result_array)) 
+
+        if len(result_array)  == 1:
+            logging.warning("Now sending only 1st element: %s" % result_array[0])
+            result_array = result_array[0]
+
+        logging.warning("Final result array: %s" % result_array)
+        return result_array

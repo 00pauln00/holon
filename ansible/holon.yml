@@ -10,6 +10,19 @@
     shell: "/usr/bin/uuid"
     register: cluster_uuid
 
+  - name: "Default Values"
+    set_fact:
+      dir_path: "{{ dir_path | default('/tmp/holon_recipes_run') }}"
+      backend_type: "{{ backend_type | default('raft')}}"
+      srv_port: "{{ srv_port | default(6000) }}"
+      npeers: "{{ npeers | default(5) }}"
+      client_port: "{{ client_port | default(13000) }}"
+      disable_post_run: "{{ disable_post_run | default(false) | bool }}"
+    failed_when: >
+      ((srv_port | int) >= 65536) or
+      ((client_port | int) >= 65536) or
+      ((backend_type != "raft") and (backend_type != "pumicedb"))
+
   - name: "Check if ports are already in use"
     vars:
       config_params:
@@ -25,19 +38,6 @@
         startup_check: "python_module_install"
     set_fact:
       installation: "{{ lookup('holon_startup', config_params, wantlist=True) }}"
-
-  - name: "Default Values"
-    set_fact:
-      dir_path: "{{ dir_path | default('/tmp/holon_recipes_run') }}"
-      backend_type: "{{ backend_type | default('raft')}}"
-      srv_port: "{{ srv_port | default(6000) }}"
-      npeers: "{{ npeers | default(5) }}"
-      client_port: "{{ client_port | default(13000) }}"
-      disable_post_run: "{{ disable_post_run | default(false) | bool }}"
-    failed_when: >
-      ((srv_port | int) >= 65536) or
-      ((client_port | int) >= 65536) or
-      ((backend_type != "raft") and (backend_type != "pumicedb"))
 
   - name: "Prepare parameter to pass across recipes"
     set_fact:
@@ -68,7 +68,7 @@
         - "Raft params: {{ raft_param }}"
         - "Disable post run : {{ disable_post_run }}"
 
-- import_playbook: "{{ recipe }}"
+- import_playbook: recipes/"{{ recipe }}"
   vars:
     recipe_params: "{{ raft_param }}"
 
