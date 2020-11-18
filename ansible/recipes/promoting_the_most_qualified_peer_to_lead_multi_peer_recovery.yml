@@ -61,11 +61,11 @@
        name: common
        tasks_from: validate_followers_aliveness
     vars:
-       LeaderUUID: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"    
-    #loop: "{{ range(0, Promoting_Followers_List | length) | list }}"
-    #loop_control:
-    #   loop_var: outer_index
-    
+       LeaderUUID: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
+    loop: "{{ range(0, Promoting_Followers_List | length) | list }}"
+    loop_control:
+       loop_var: outer_index
+
   #Recipe Setup: Ensure all fault injections with “raft” in the name are disabled on all peers.
   - name: "{{ recipe_name }}: Check fault injection on all followers through common task."
     vars:
