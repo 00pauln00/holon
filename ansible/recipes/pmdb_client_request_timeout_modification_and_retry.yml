@@ -20,7 +20,7 @@
 
     - name: "{{ recipe_name }}: Get running peers."
       vars:
-        all_running_servers: "{{ nrunning_peers | difference(client_uuid) }}"
+        all_running_servers: "{{ NRunningPeers }}"
       debug:
         msg: "Getting running peers."
       no_log: True
