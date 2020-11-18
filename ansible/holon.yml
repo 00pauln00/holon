@@ -68,7 +68,7 @@
         - "Raft params: {{ raft_param }}"
         - "Disable post run : {{ disable_post_run }}"
 
-- import_playbook: recipes/"{{ recipe }}"
+- import_playbook: "{{ recipe }}"
   vars:
     recipe_params: "{{ raft_param }}"
 
