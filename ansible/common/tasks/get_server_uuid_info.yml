@@ -1,5 +1,4 @@
 ---
-
     - name: "Get the json path"
       set_fact:
         base_dir="{{ raft_conf | json_query('base_dir_path')}}"
@@ -15,9 +14,21 @@
 
     - name: "Get the running peer UUID(s) from recipe JSON"
       set_fact:
-        nrunning_peers: "{{ jsondata | json_query(jmesquery) }}"
+        raft_processes: "{{ jsondata | json_query(jmesquery) }}"
       vars:
-        jmesquery: 'raft_process.*.process_uuid'
+        jmesquery: 'raft_process.*'
+
+    - name: "Initialize the running peers array"
+      set_fact:
+        NRunningPeers: []
+
+    - name: "Get the running server uuids"
+      vars:
+        process_uuid: "{{ raft_processes[item]['process_uuid'] }}"
+      set_fact:
+        NRunningPeers: "{{ NRunningPeers + [raft_processes[item]['process_uuid']] }}"
+      when: raft_processes[item]['process_type'] == "server"
+      loop: "{{ range(0, raft_processes | length) | list }}"
 
     - name: "Get the list of all peers"
       set_fact:
@@ -29,11 +40,12 @@
     - name: "Print the lists"
       debug:
         msg:
-         - "{{total_peers_list}}"
-         - "{{nrunning_peers}}"
+         - "Total Peers: {{ total_peers_list }}"
+         - "Running peers: {{ NRunningPeers }}"
+
     - name: "Get the non-running peer list"
       set_fact:
-       non_running_peers="{{ total_peers_list | difference(nrunning_peers)}}"
+       non_running_peers="{{ total_peers_list | difference(NRunningPeers) }}"
 
     - name: "Print non-running peers"
       debug:
