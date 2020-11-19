@@ -8,6 +8,7 @@
      iterations: 5
 
   tasks:
+  - block:
     - name: "{{ recipe_name }}: Pause and resume peer0 in a loop"
       vars:
         stage: "stage0"
@@ -43,3 +44,6 @@
          msg: "Compare time stamp: {{ time1 }} with {{ time2 }}"
       failed_when: time1 >= time2
       loop: "{{ range(0, (iterations - 1))| list }}"
+
+    rescue:
+      - debug: msg="Recipe failed"

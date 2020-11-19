@@ -8,6 +8,7 @@
      follower_uuid: []
 
   tasks:
+  - block:
     - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
       include_role:
         name: common
@@ -195,3 +196,6 @@
       retries: 10
       delay: 2
       loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    rescue:
+      - debug: msg="Recipe failed"

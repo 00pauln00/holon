@@ -9,6 +9,7 @@
   
   #Start Peer1
   tasks:
+  - block:
     - name: "{{ recipe_name }}: Get the non-running peers list to select the second peer to start"
       include_role:
         name: common
@@ -44,3 +45,6 @@
       loop: "{{ range(0, iterations)| list }}"
       loop_control:
         pause: 2
+
+    rescue:
+      - debug: msg="Recipe failed"

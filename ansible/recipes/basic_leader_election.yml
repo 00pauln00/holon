@@ -8,6 +8,7 @@
      basic_elect_npeer_start: []
 
   tasks:
+  - block:
     - name: "{{ recipe_name }}: Start number of server for basic leader election."
       include_role:
         name: common
@@ -73,3 +74,6 @@
         (peer_info["/0/last-applied-cumulative-crc"] != peer_info["/0/newest-entry-crc"]) or
         (peer_info["/0/term"] != peer_info["/0/newest-entry-term"])
       loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    rescue:
+      - debug: msg="Recipe failed"
