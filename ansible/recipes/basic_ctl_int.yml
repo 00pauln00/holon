@@ -51,7 +51,7 @@
       # Lookup the  value in the result using last two keys from the complete key path
       failed_when: >
          (raft_values["/0/leader-uuid"] != "null") or
-         (raft_values["/0/commit-idx"] != -1) or
+         (raft_values["/0/commit-idx"] == -1) or
          (raft_values["/0/last-applied-cumulative-crc"] != 0) or
          (raft_values["/0/last-applied"] != -1) or
          (raft_values["/raft_net_info/ignore_timer_events"] == False)
@@ -90,4 +90,6 @@
       loop: "{{ range(0, 4)| list }}"
 
     rescue:
-      - debug: msg="Recipe failed"
+      - name: "Receip failed"
+        set_fact:
+          terminate_recipe: true
