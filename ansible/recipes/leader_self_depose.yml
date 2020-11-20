@@ -25,10 +25,10 @@
             - "/raft_root_entry/0/leader-uuid"
             - "/raft_root_entry/0/term"
             - "/raft_root_entry/0/commit-idx"
-            - "/raft_root_entry/0/newest-entry-idx"
-            - "/raft_root_entry/0/newest-entry-term"
-            - "/raft_root_entry/0/newest-entry-crc"
-            - "/raft_root_entry/0/newest-entry-data-size"
+            - "/raft_root_entry/0/sync-entry-idx"
+            - "/raft_root_entry/0/sync-entry-term"
+            - "/raft_root_entry/0/sync-entry-crc"
+            - "/raft_root_entry/0/sync-entry-data-size"
             - "/raft_root_entry/0/state"
             - "/raft_root_entry/0/last-applied"
             - "/raft_root_entry/0/last-applied-cumulative-crc"
@@ -121,7 +121,7 @@
         raft_keys:
           - "/raft_root_entry/0/leader-uuid"
           - "/raft_root_entry/0/peer-uuid"
-          - "/raft_root_entry/0/newest-entry-term"
+          - "/raft_root_entry/0/sync-entry-term"
       set_fact:
         self_depose_resume_peer: "{{ lookup('niova_raftprocess', 'resume', FollowerUUIDs[item], wantlist=True) }}"
         self_depose_leader_info: "{{ self_depose_leader_info + [lookup('niova_ctlrequest', 'lookup', LeaderUUID[0]['/0/leader-uuid'], raft_keys, wantlist=True)] }}"
@@ -140,7 +140,7 @@
       set_fact:
           self_depose_case2: "True"
           self_depose_case2_iteration: "{{ item }}"
-      when: self_depose_leader_info[item]['/0/newest-entry-term'] > 2
+      when: self_depose_leader_info[item]['/0/sync-entry-term'] > 2
       loop: "{{ range(0, nfollower_pause.stdout | int) | list }}"
 
     - name: "{{ recipe_name }}: Check if Case 3 occured i.e leader remained same"
