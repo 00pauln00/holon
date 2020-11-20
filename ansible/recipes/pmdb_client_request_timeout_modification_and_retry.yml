@@ -43,23 +43,14 @@
       vars:
          ClientUUID: "{{ pcrtm_client_uuid.stdout }}"
 
-    - name: "{{ recipe_name }}: Get the leader-uuid."
-      vars:
-         no_of_running_peers: "{{ get_running_peers['results'][0]['item'] }}"
-         stage: "stage0_get_leader"
-         raft_keys:
-            - "/raft_root_entry/0/leader-uuid"
-         get_leader: "{{ lookup('niova_ctlrequest', 'lookup', no_of_running_peers, raft_keys, wantlist=True) }}"
-      debug:
-        msg: "Getting leader-uuid."
-      no_log: True
-      with_items:
-        - "{{ get_leader }}"
-      register: stage0_value
+    - name: "{{ recipe_name }}: Get Leader UUID."
+      include_role:
+         name: common
+         tasks_from: get_follower_stats
       
     - name: "{{ recipe_name }}: Get leader's client-requests."
       vars:
-        pcrtm_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
+        pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         stage: "stage1"
         raft_key:
             - "/raft_root_entry/0/client-requests"
@@ -82,7 +73,7 @@
       
     - name: "{{ recipe_name }}: Apply fault injection point on the raft leader 'raft_leader_may_be_deposed'."
       vars:
-         pcrtm_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
+         pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
          stage: "fi_leader_may_be_dep"
          cmd: "enabled@true"
          where: "/fault_injection_points/name@raft_leader_may_be_deposed"
@@ -93,7 +84,7 @@
 
     - name: "{{ recipe_name }}: Verify Leader should report client-requests: 'deny-may-be-deposed'."
       vars:
-        pcrtm_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
+        pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         stage: "stage2"
         raft_key:
             - "/raft_root_entry/0/client-requests"
@@ -125,7 +116,7 @@
 
     - name: "{{ recipe_name }}: Now remove fault injection point on the raft leader"
       vars:
-         pcrtm_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
+         pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
          stage: "disable_fault_injection"
          cmd: "enabled@false"
          where: "/fault_injection_points/name@raft_leader_may_be_deposed"
@@ -136,7 +127,7 @@
 
     - name: "{{ recipe_name }}: After removing fault injection, Get client request from leader."
       vars:
-        pcrtm_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
+        pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         stage: "stage3"
         raft_key:
             - "/raft_root_entry/0/client-requests"

@@ -5,8 +5,7 @@
   vars:
      recipe_name: "leader_overthrow"
      parent: "basic_leader_election"
-     follower_uuid: []
-
+    
   tasks:
     - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
       include_role:
@@ -36,21 +35,10 @@
          - "{{ peers_val }}"
       register: stage0_peers_vals
 
-    - name: "{{ recipe_name }}: Get the list of peers in the cluster"
-      set_fact:
-        peer_arr: "{{ raft_conf | json_query('peer_uuid_dict')}}"    
-
-    - name: "{{ recipe_name }}: Get UUID of the leader"
-      set_fact:
-        leader_uuid: "{{item.value}}"
-      when: stage0_peers_vals['results'][0]['item']["/0/leader-uuid"] == item.value 
-      with_dict: "{{ peer_arr }}"
-
-    - name: "{{ recipe_name }}: Get corresponding UUIDs for follower peers"
-      set_fact:
-         follower_uuid: "{{ follower_uuid + [item.value] }}"
-      when: stage0_peers_vals['results'][0]['item']["/0/leader-uuid"] != item.value
-      with_dict: "{{ peer_arr }}"
+    - name: "{{ recipe_name }}: Get the leader and follower uuids."
+      include_role:
+         name: common
+         tasks_from: get_follower_stats
 
     - name: "{{ recipe_name }}: Disable message receive on all peers for leader overthrow"
       vars:
@@ -99,13 +87,13 @@
 
     - name: "{{ recipe_name }}: Selected leader-to-be"
       debug:
-        msg: "{{ follower_uuid[0] }}"
+        msg: "{{ FollowerUUIDs[0] }}"
 
     - name: "{{ recipe_name }}: Enable receive on all peers from the leader-to-be."
       vars:
          stage: "stage2_set_leader"
          cmd: "net_recv_enabled@true"
-         where: "/ctl_svc_nodes/uuid@{{ follower_uuid[0] }}"
+         where: "/ctl_svc_nodes/uuid@{{ FollowerUUIDs[0] }}"
          set_leader_id: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers[item], cmd, where, wantlist=True) }}"
       debug:
         msg: "Setting leader-to-be uuid on peer: {{ NRunningPeers[item] }}"
@@ -167,7 +155,7 @@
          stage: "stage3_rcv_true"
          cmd: "net_recv_enabled@true"
          where: "/ctl_svc_nodes/net_recv_enabled@false"
-         recv_true: "{{ lookup('niova_ctlrequest', 'apply_cmd', follower_uuid[0], cmd, where, wantlist=True) }}"
+         recv_true: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[0], cmd, where, wantlist=True) }}"
       debug:
        msg: "Enable message receive on peer which is leader-to-be"
       no_log: true
@@ -177,7 +165,7 @@
          stage: "stage4_get_all"
       debug:
         msg: "Waiting for new leader election"
-      until: (lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first) != follower_uuid[0]
+      until: (lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first) != FollowerUUIDs[0]
       retries: 10
       delay: 2
       loop: "{{ range(0, NRunningPeers | length) | list }}"

@@ -43,20 +43,21 @@
       - "{{ stime_prev }}"
     register: start_time_prerestart
   
-  - name: "{{ recipe_name }}: Get follower-stats from leader peer before restart"
+  - name: "{{ recipe_name }}: Get follower-stats from leader peer before restart."
+    include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+  - name: "Assign follower-stats before reboot."
     vars:
-      type2_leader_uuid: "{{ pre_restart_vals['results'][0]['item']['/0/leader-uuid'] }}"
-      stage: "pre_restart_follower_stat"
-      raft_keys:
-          - "/raft_root_entry/0/follower-stats"
-      follower_stats: "{{ lookup('niova_ctlrequest', 'lookup', type2_leader_uuid, raft_keys, wantlist=True) }}"
+      follower_stats: "{{ GetFollowerStatsInfo }}"
     debug:
       msg: "Get the follower stat before restart"
     no_log: true
     with_items:
       - "{{ follower_stats }}"
     register: fstats_before_restart
-  
+
   #Stage1: Restart
   - name: "{{ recipe_name }}: Safe restart: Make peers idle before stopping them"
     vars:
@@ -138,24 +139,21 @@
       - "{{ after_restart }}"
     register: type2_vals_after_restart
 
-  - name: "{{ recipe_name }}: Get follower's uuids after restart"
-    set_fact:
-        type2_follower_uuids_after_restart: "{{ NRunningPeers | difference(type2_vals_after_restart['results'][0]['item']['/0/leader-uuid']) }}"
-
-  - name: "{{ recipe_name }}: Get follower-stats from leader peer after restart"
+  - name: "{{ recipe_name }}: Get follower-stats from leader peer after restart."
+    include_role:
+         name: common
+         tasks_from: get_follower_stats
+    
+  - name: "Assign follower-stats after reboot."  
     vars:
-      type2_leader_uuid: "{{ type2_vals_after_restart['results'][0]['item']['/0/leader-uuid'] }}"
-      stage: "stage2_get_follower_stats"
-      raft_keys:
-          - "/raft_root_entry/0/follower-stats"
-      follower_stats: "{{ lookup('niova_ctlrequest', 'lookup', type2_leader_uuid, raft_keys, wantlist=True) }}"
+      follower_stats: "{{ GetFollowerStatsInfo }}"
     debug:
       msg: "Get follower-stat after restart"
     no_log: true
     with_items:
       - "{{ follower_stats }}"
     register: follower_stats_after_restart
-        
+
   - name: "{{ recipe_name }}: Verify next-idx value before and after restart"
     vars:
       next_idx_before: "{{ fstats_before_restart['results'][0]['item']['/0/follower-stats'][item]['next-idx'] }}"
@@ -164,7 +162,7 @@
       msg: "Compare next_idx_before: {{ next_idx_before }} with next_idx_after {{ next_idx_after }}"
     failed_when: >
       next_idx_after < next_idx_before
-    loop: "{{ range(0, type2_follower_uuids_after_restart | length) | list }}"
+    loop: "{{ range(0, FollowerUUIDs | length) | list }}"
   
   - name: "{{ recipe_name }}: Get values from all peers after restart and compare parameters"
     vars:
@@ -185,7 +183,6 @@
     with_items:
       - "{{ values_after_restart }}"
     register: peers_info_after_restart
-
 
   - name: "{{ recipe_name }}: Compare the values after restart with pre-restart."
     set_fact:
@@ -224,4 +221,4 @@
     failed_when: >
       (type2_fstats_after_restart['/0/follower-stats'][item]['next-idx'] != 2) or
       (type2_fstats_after_restart['/0/follower-stats'][item]['prev-idx-term'] != type2_term_after_restart['/0/term'])
-    loop: "{{ range(0, type2_follower_uuids_after_restart | length) | list }}"
+    loop: "{{ range(0, FollowerUUIDs | length) | list }}"

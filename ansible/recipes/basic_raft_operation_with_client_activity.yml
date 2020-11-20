@@ -105,17 +105,19 @@
        - "{{ snapshot_values }}"
      register: snapshot_before_write
 
+   - name: "{{ recipe_name }}: Get follower-stats from leader."
+     include_role:
+         name: common
+         tasks_from: get_follower_stats
+
    - name: "{{ recipe_name}}: Snapshot the follower stats from leader before doing any writes on client."
      vars:
-       stage: "pre_write_get_follower_stats"
-       raft_keys:
-           - "/raft_root_entry/0/follower-stats"
-       snapshot_fstat: "{{ lookup('niova_ctlrequest', 'lookup', raft_leader_uuids['results'][0]['item']['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+       snapshot_fstat: "{{ GetFollowerStatsInfo }}"
      debug:
        msg: "Get the follower stat before write."
      no_log: true
      with_items:
-       - "{{ snapshot_fstat}}"
+       - "{{ snapshot_fstat }}"
      register: snapshot_fstat_before_wr
 
    - name: "{{ recipe_name}}: Write at seqno 0 and perform the write {{ num_writes }} times."
@@ -171,12 +173,14 @@
             (client_vals_after_wr['results'][0]['item']['/0/app-sync'] != true) or
             (client_vals_after_wr['results'][0]['item']['/0/app-seqno'] != num_writes)
   
-   - name: "{{ recipe_name}}: Get follower-stats from leader."
+   - name: "{{ recipe_name }}: Get follower-stats from leader."
+     include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+   - name: "{{ recipe_name}}: Assign follower-stats in variable."
      vars:
-       stage: "leader_verify"
-       raft_keys:
-          - "/raft_root_entry/0/follower-stats"
-       fstats: "{{ lookup('niova_ctlrequest', 'lookup', raft_leader_uuids['results'][0]['item']['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+       fstats: "{{ GetFollowerStatsInfo }}"
      debug:
        msg: "Get the follower stats"
      no_log: true
@@ -194,18 +198,14 @@
      failed_when: >
          (follower_stats_after_wr['/0/follower-stats'][item]['next-idx'] != (follower_stats_before_wr['/0/follower-stats'][item]['next-idx'] + num_writes)) or
          (follower_stats_after_wr['/0/follower-stats'][item]['prev-idx-term'] != term_before_wr['/0/term']) 
-     loop: "{{ range(0, NRunningPeers | length-1) | list }}"
+     loop: "{{ range(0, FollowerUUIDs | length) | list }}"
   
-   - name: "{{ recipe_name}}: Get follower peer uuids."
-     set_fact:
-        follower_uuids: "{{ NRunningPeers | difference(raft_leader_uuids['results'][0]['item']['/0/leader-uuid']) }}"
-
    - name: "{{ recipe_name}}: Get the last-ack for all the followers"
      vars:
       bca_last_ack_arr: []
      set_fact:
         bca_last_ack_arr: "{{ bca_last_ack_arr }} + ['{{ follower_stats['results'][0]['item']['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y') }}']"
-     loop: "{{ range(0, follower_uuids | length) | list }}"
+     loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
    - name: "{{ recipe_name}}: Difference between last-ack of two followers should not be more than 2secs"
      vars:
@@ -214,7 +214,7 @@
        msg: "Time difference between last-ack of two followers should not be > 2sec"
      no_log: true
      failed_when: (time_diff | int)  >= 2
-     loop: "{{ range(0, follower_uuids | length - 2) | list }}"
+     loop: "{{ range(0, FollowerUUIDs | length - 2) | list }}"
 
    - name: "{{ recipe_name}}: Get the server information for all running servers."
      vars:
