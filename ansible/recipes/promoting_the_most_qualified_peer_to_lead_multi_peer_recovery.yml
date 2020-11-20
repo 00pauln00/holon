@@ -11,594 +11,604 @@
      nresume_peers: []
      nwrites: 100
   tasks:
-  - name: "{{ recipe_name }}: Verifying recipe compatibility requirements."
-    include_role:
-       name: common
-       tasks_from: recipe_compatibility_requirement
+  - block:
+          - name: "Check if parent recipe failed"
+            debug: msg="Check if parent recipe {{ parent }} failed"
+            failed_when: terminate_recipe == true
 
-  - name: "{{ recipe_name }}: Get the list of all running peer UUIDs"
-    include_role:
-       name: common
-       tasks_from: get_server_uuid_info
+          - name: "{{ recipe_name }}: Verifying recipe compatibility requirements."
+            include_role:
+               name: common
+               tasks_from: recipe_compatibility_requirement
 
-  #Recipe Setup: If the cluster is not booted, the recipe should abort.
-  - name: "{{ recipe_name }}: Get the state from all peers."
-    vars:
-       running_servers: "{{ NRunningPeers }}"
-       stage: "check_booting_stage"
-       state_key:
-          - "/raft_root_entry/0/state"
-          - "/raft_root_entry/0/leader-uuid"
-       verify_cluster_requirement: "{{ lookup('niova_ctlrequest', 'lookup', running_servers, state_key, wantlist=True) }}"
-    debug:
-      msg: "Getting orignal values."
-    no_log: True
-    with_items:
-        - "{{ verify_cluster_requirement }}"
-    register: stage0_value
+          - name: "{{ recipe_name }}: Get the list of all running peer UUIDs"
+            include_role:
+               name: common
+               tasks_from: get_server_uuid_info
 
-  - name: "{{ recipe_name }}: Verify if the cluster is not booted, the recipe should abort."
-    vars:
-      get_stage0: "{{ stage0_value['results'][0]['item'] }}"
-    debug:
-      msg:
-        - "Verifying all peers are up and running."
-    no_log: True
-    failed_when: get_stage0['/0/state'] == "booting"
-    
-  - name: "{{ recipe_name }}: Get corresponding UUIDs for follower peers"
-    vars:
-      peer_arr: "{{ raft_conf | json_query('peer_uuid_dict') }}"
-      pmqp_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
-    set_fact:
-      Promoting_Followers_List: "{{ Promoting_Followers_List + [item.value] }}"
-    when: pmqp_leader_uuid != item.value
-    with_dict: "{{ peer_arr }}"
+          #Recipe Setup: If the cluster is not booted, the recipe should abort.
+          - name: "{{ recipe_name }}: Get the state from all peers."
+            vars:
+               running_servers: "{{ NRunningPeers }}"
+               stage: "check_booting_stage"
+               state_key:
+                  - "/raft_root_entry/0/state"
+                  - "/raft_root_entry/0/leader-uuid"
+               verify_cluster_requirement: "{{ lookup('niova_ctlrequest', 'lookup', running_servers, state_key, wantlist=True) }}"
+            debug:
+              msg: "Getting orignal values."
+            no_log: True
+            with_items:
+                - "{{ verify_cluster_requirement }}"
+            register: stage0_value
 
-  #Recipe Setup: Ensure followers aliveness.
-  - name: "{{ recipe_name }}: Validate followers are alive."
-    include_role:
-       name: common
-       tasks_from: validate_followers_aliveness
-    vars:
-       LeaderUUID: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
-    #loop: "{{ range(0, Promoting_Followers_List | length) | list }}"
-    #loop_control:
-    #   loop_var: outer_index
+          - name: "{{ recipe_name }}: Verify if the cluster is not booted, the recipe should abort."
+            vars:
+              get_stage0: "{{ stage0_value['results'][0]['item'] }}"
+            debug:
+              msg:
+                - "Verifying all peers are up and running."
+            no_log: True
+            failed_when: get_stage0['/0/state'] == "booting"
 
-  #Recipe Setup: Ensure all fault injections with “raft” in the name are disabled on all peers.
-  - name: "{{ recipe_name }}: Check fault injection on all followers through common task."
-    vars:
-      running_servers: "{{ NRunningPeers }}"
-    include_role:
-       name: common
-       tasks_from: verify_fault_injection_disabled_on_all_peers
-    loop: "{{ range(0, running_servers | length) | list }}"
+          - name: "{{ recipe_name }}: Get corresponding UUIDs for follower peers"
+            vars:
+              peer_arr: "{{ raft_conf | json_query('peer_uuid_dict') }}"
+              pmqp_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
+            set_fact:
+              Promoting_Followers_List: "{{ Promoting_Followers_List + [item.value] }}"
+            when: pmqp_leader_uuid != item.value
+            with_dict: "{{ peer_arr }}"
 
-  #Recipe Setup: Capture the current term and commit index.
-  - name: "{{ recipe_name }}: Get the current term value and commit-idx value."
-    vars:
-       running_servers: "{{ NRunningPeers }}"
-       stage: "store_values"
-       raft_keys:
-          - "/raft_root_entry/0/term"
-          - "/raft_root_entry/0/commit-idx"
-       get_values: "{{ lookup('niova_ctlrequest', 'lookup', running_servers, raft_keys, wantlist=True) }}"
-    debug:
-      msg: "Getting orignal values."
-    no_log: True
-    with_items:
-        - "{{ get_values }}"
-    register: stage1_value
+          #Recipe Setup: Ensure followers aliveness.
+          - name: "{{ recipe_name }}: Validate followers are alive."
+            include_role:
+               name: common
+               tasks_from: validate_followers_aliveness
+            vars:
+               LeaderUUID: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
+            #loop: "{{ range(0, Promoting_Followers_List | length) | list }}"
+            #loop_control:
+            #   loop_var: outer_index
 
-  - name: "{{ recipe_name }}: Get the follower-stats from leader"
-    vars:
-      pmqp_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
-      stage: "get_follower_stats"
-      raft_key:
-            - "/raft_root_entry/0/follower-stats"
-      followers_stats_info: "{{ lookup('niova_ctlrequest', 'lookup', pmqp_leader_uuid, raft_key, wantlist=True) }}"
-    debug:
-     msg: "Collect the follower stat"
-    no_log: True
-    with_items:
-      - "{{ followers_stats_info }}"
-    register: get_fstats
+          #Recipe Setup: Ensure all fault injections with “raft” in the name are disabled on all peers.
+          - name: "{{ recipe_name }}: Check fault injection on all followers through common task."
+            vars:
+              running_servers: "{{ NRunningPeers }}"
+            include_role:
+               name: common
+               tasks_from: verify_fault_injection_disabled_on_all_peers
+            loop: "{{ range(0, running_servers | length) | list }}"
 
-  #Recipe Setup: Identify a subset of followers to be paused, the number of which should be the largest number which allows the raft quorum to persist.
-  - name: "{{ recipe_name }}: Get odd and even number of cluster peers."
-    vars:
-      no_of_server: "{{ raft_conf | json_query('nservers') }}"
-    set_fact:
-      Promoting_Odd_nfollowers: "{{ no_of_server | int / 2 | int }}"
-      Promoting_Even_nfollowers: "{{ no_of_server | int / 2 - 1 | int }}"
-    loop: "{{ range(0, Promoting_Followers_List | length) | list }}"
-    
-  - name: "{{ recipe_name }}: Set the list to get largest value."
-    vars:
-      odd_followers: "{{ Promoting_Odd_nfollowers | int }}"
-      even_followers: "{{ Promoting_Even_nfollowers | int }}"
-      largest_value:
-         - "{{ odd_followers }}"
-         - "{{ even_followers }}"
-    debug:
-      msg: "Get the list of largest value {{ largest_value }}."
-    no_log: True
-    with_items:
-      - "{{ largest_value }}"
-    register: largest_number
+          #Recipe Setup: Capture the current term and commit index.
+          - name: "{{ recipe_name }}: Get the current term value and commit-idx value."
+            vars:
+               running_servers: "{{ NRunningPeers }}"
+               stage: "store_values"
+               raft_keys:
+                  - "/raft_root_entry/0/term"
+                  - "/raft_root_entry/0/commit-idx"
+               get_values: "{{ lookup('niova_ctlrequest', 'lookup', running_servers, raft_keys, wantlist=True) }}"
+            debug:
+              msg: "Getting orignal values."
+            no_log: True
+            with_items:
+                - "{{ get_values }}"
+            register: stage1_value
 
-  - name: "{{ recipe_name }}: Get the number of which should be the largest number which allows the raft quorum to persist."
-    vars:
-      large_value: "{{ largest_number['results'][0]['item'] }}"
-      raft_quorum_value: "{{ large_value | sort | last | int }}"
-    debug:
-      msg: "raft quorum is: {{ raft_quorum_value }}."
-    no_log: True
-    with_items:
-      - "{{ raft_quorum_value }}"
-    register: get_largest_value
+          - name: "{{ recipe_name }}: Get the follower-stats from leader"
+            vars:
+              pmqp_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
+              stage: "get_follower_stats"
+              raft_key:
+                    - "/raft_root_entry/0/follower-stats"
+              followers_stats_info: "{{ lookup('niova_ctlrequest', 'lookup', pmqp_leader_uuid, raft_key, wantlist=True) }}"
+            debug:
+             msg: "Collect the follower stat"
+            no_log: True
+            with_items:
+              - "{{ followers_stats_info }}"
+            register: get_fstats
 
-  - name: "{{ recipe_name }}: Get the followers list which are to be paused."
-    vars:
-      Promoting_Selected_Followers: []
-      raft_quorum: "{{ get_largest_value['results'][0]['item'] }}"
-    set_fact:
-      Promoting_Selected_Followers: "{{ Promoting_Selected_Followers + [Promoting_Followers_List[item]] }}"
-    loop: "{{ range(0, raft_quorum | int) | list }}"
+          #Recipe Setup: Identify a subset of followers to be paused, the number of which should be the largest number which allows the raft quorum to persist.
+          - name: "{{ recipe_name }}: Get odd and even number of cluster peers."
+            vars:
+              no_of_server: "{{ raft_conf | json_query('nservers') }}"
+            set_fact:
+              Promoting_Odd_nfollowers: "{{ no_of_server | int / 2 | int }}"
+              Promoting_Even_nfollowers: "{{ no_of_server | int / 2 - 1 | int }}"
+            loop: "{{ range(0, Promoting_Followers_List | length) | list }}"
 
-  - debug: 
-      msg: "Step #1 Selected followers list for pausing: {{ Promoting_Selected_Followers }}."
-    
-  #1 - Pause the Selected Followers.
-  - name: "{{ recipe_name }}: Pause the selected followers."
-    vars:
-      pause_followers: "{{ lookup('niova_raftprocess', 'pause', Promoting_Selected_Followers[item], wantlist=True) }}"
-    debug:
-      msg: "{{ pause_followers }}"
-    no_log: True
-    loop: "{{ range(0, Promoting_Selected_Followers | length) | list }}"
+          - name: "{{ recipe_name }}: Set the list to get largest value."
+            vars:
+              odd_followers: "{{ Promoting_Odd_nfollowers | int }}"
+              even_followers: "{{ Promoting_Even_nfollowers | int }}"
+              largest_value:
+                 - "{{ odd_followers }}"
+                 - "{{ even_followers }}"
+            debug:
+              msg: "Get the list of largest value {{ largest_value }}."
+            no_log: True
+            with_items:
+              - "{{ largest_value }}"
+            register: largest_number
 
-  - name: "{{ recipe_name }}: Ensure that the paused followers are not responding to the leader by observing the increase of their ms-last-ack-ms value."
-    include_role:
-       name: common
-       tasks_from: no_response_from_paused_followers 
-    loop: "{{ range(0, 4)| list }}"
+          - name: "{{ recipe_name }}: Get the number of which should be the largest number which allows the raft quorum to persist."
+            vars:
+              large_value: "{{ largest_number['results'][0]['item'] }}"
+              raft_quorum_value: "{{ large_value | sort | last | int }}"
+            debug:
+              msg: "raft quorum is: {{ raft_quorum_value }}."
+            no_log: True
+            with_items:
+              - "{{ raft_quorum_value }}"
+            register: get_largest_value
 
-  - name: "{{ recipe_name }}: Create UUID for starting the client."
-    shell: "/usr/bin/uuid"
-    register: pmqp_client_uuid
+          - name: "{{ recipe_name }}: Get the followers list which are to be paused."
+            vars:
+              Promoting_Selected_Followers: []
+              raft_quorum: "{{ get_largest_value['results'][0]['item'] }}"
+            set_fact:
+              Promoting_Selected_Followers: "{{ Promoting_Selected_Followers + [Promoting_Followers_List[item]] }}"
+            loop: "{{ range(0, raft_quorum | int) | list }}"
 
-  - name: "{{ recipe_name }}: Create app uuid."
-    shell: "/usr/bin/uuid"
-    register: pmqp_app_uuid
+          - debug:
+              msg: "Step #1 Selected followers list for pausing: {{ Promoting_Selected_Followers }}."
 
-  - debug:
-      msg:
-        - "client uuid: {{ pmqp_client_uuid.stdout }}"
-        
-  - name: "{{ recipe_name }}: Start the client."
-    include_role:
-       name: common
-       tasks_from: start_client
-    vars:
-      ClientUUID: "{{ pmqp_client_uuid.stdout }}"
+          #1 - Pause the Selected Followers.
+          - name: "{{ recipe_name }}: Pause the selected followers."
+            vars:
+              pause_followers: "{{ lookup('niova_raftprocess', 'pause', Promoting_Selected_Followers[item], wantlist=True) }}"
+            debug:
+              msg: "{{ pause_followers }}"
+            no_log: True
+            loop: "{{ range(0, Promoting_Selected_Followers | length) | list }}"
 
-  #2 - Perform Some Client Writes.
-  - name: "{{ recipe_name }}: Perform the write {{ nwrites }} times."
-    vars:
-      stage: "num_writes"
-      cmd: "input@{{ pmqp_app_uuid.stdout }}:0:0:0:0.write:0.{{ nwrites }}"
-      where: "/pumice_db_test_client/input"
-      write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', pmqp_client_uuid.stdout, cmd, where, wantlist=True) }}"
-    debug:
-      msg: "{{ write_cmd }}"
-    no_log: True
+          - name: "{{ recipe_name }}: Ensure that the paused followers are not responding to the leader by observing the increase of their ms-last-ack-ms value."
+            include_role:
+               name: common
+               tasks_from: no_response_from_paused_followers
+            loop: "{{ range(0, 4)| list }}"
 
-  - name: "{{ recipe_name }}: Wait until all write completes from client."
-    vars:
-      stage: "wait_for_client_write_completes"
-      raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
-    debug:
-      msg: "Waiting for client to finish writing"
-    until: lookup('niova_ctlrequest', 'lookup', pmqp_client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != (nwrites - 1)
-    loop: "{{ range(0, 10) | list }}"
-    loop_control:
-       pause: 1
+          - name: "{{ recipe_name }}: Create UUID for starting the client."
+            shell: "/usr/bin/uuid"
+            register: pmqp_client_uuid
 
-  - name: "{{ recipe_name }}: Recheck the follower-stats from leader."
-    vars:
-      pmqp_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
-      stage: "recheck_follower_stats"
-      raft_key:
-            - "/raft_root_entry/0/follower-stats"
-      curr_follower_stats: "{{ lookup('niova_ctlrequest', 'lookup', pmqp_leader_uuid, raft_key, wantlist=True) }}"
-    debug:
-     msg: "Collect the follower stat"
-    no_log: True
-    with_items:
-      - "{{ curr_follower_stats }}"
-    register: recheck_fstats
+          - name: "{{ recipe_name }}: Create app uuid."
+            shell: "/usr/bin/uuid"
+            register: pmqp_app_uuid
 
-  - name: "{{ recipe_name }}: Verify next-idx for alive followers, it should be (original-next-idx + NumWrites)."
-    vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
-      initial_next_idx: "{{ get_fstats['results'][0]['item']['/0/follower-stats'][item]['next-idx'] }}"
-      get_curr_fstats: "{{ recheck_fstats['results'][0]['item'] }}"
-      alive_peer_uuid: "{{ alive_followers | select('search', get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) | list }}"
-    debug:
-      msg:
-        - "{{ alive_peer_uuid }}"
-        - "{{ get_curr_fstats['/0/follower-stats'][item]['peer-uuid'] }}"
-        - "{{ get_curr_fstats['/0/follower-stats'][item]['next-idx'] }}"
-    failed_when: >
-      (alive_peer_uuid == get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) and
-      get_curr_fstats['/0/follower-stats'][item]['next-idx'] != ((initial_next_idx | int) + (num_writes | int))
-    loop: "{{ range(0, Promoting_Followers_List | length) | list }}"
+          - debug:
+              msg:
+                - "client uuid: {{ pmqp_client_uuid.stdout }}"
 
-  #2a - Additional Verifications.
-  - name: "{{ recipe_name }}: Get all values from alive peers."
-    vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
-      stage: "stage4"
-      raft_keys:
-              - "/raft_root_entry/0/commit-idx"
-              - "/raft_root_entry/0/last-applied"
-              - "/raft_root_entry/0/term"
-              - "/raft_root_entry/0/newest-entry-idx"
-              - "/raft_root_entry/0/last-applied-cumulative-crc"
-      stage4_values: "{{ lookup('niova_ctlrequest', 'lookup', alive_followers, raft_keys, wantlist=True) }}"
-    debug:
-      msg:
-        - "Getting last-applied-cumulative-crc and newest-entry-crc."
-    no_log: True
-    with_items:
-        - "{{ stage4_values }}"
-    register: alive_peers_value
+          - name: "{{ recipe_name }}: Start the client."
+            include_role:
+               name: common
+               tasks_from: start_client
+            vars:
+              ClientUUID: "{{ pmqp_client_uuid.stdout }}"
 
-  - name: "{{ recipe_name }}: Verify all alive peers should have the same values."
-    vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
-      inital_commit_idx: "{{ stage1_value['results'][item]['item']['/0/commit-idx'] }}" 
-      get_stage4: "{{ alive_peers_value['results'][item]['item'] }}"
-      last_applied_cum_crc: "{{ alive_peers_value['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
-      last_applied_cum_crc_next: "{{ alive_peers_value['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
-      term: "{{ alive_peers_value['results'][item]['item']['/0/term'] }}"
-      term_next: "{{ alive_peers_value['results'][item + 1]['item']['/0/term'] }}"
-    debug:
-      msg: "Verifying all peers value."
-    no_log: True
-    failed_when: >
-      (term != term_next) or
-      (last_applied_cum_crc != last_applied_cum_crc_next) or
-      (get_stage4["/0/commit-idx"] != (inital_commit_idx | int) + (nwrites | int)) or
-      (get_stage4["/0/last-applied"] != (inital_commit_idx | int) + (nwrites | int)) or
-      (get_stage4["/0/newest-entry-idx"] != (inital_commit_idx | int) + (nwrites | int))
-    loop: "{{ range(0, alive_followers | length - 1) | list }}"
+          #2 - Perform Some Client Writes.
+          - name: "{{ recipe_name }}: Perform the write {{ nwrites }} times."
+            vars:
+              stage: "num_writes"
+              cmd: "input@{{ pmqp_app_uuid.stdout }}:0:0:0:0.write:0.{{ nwrites }}"
+              where: "/pumice_db_test_client/input"
+              write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', pmqp_client_uuid.stdout, cmd, where, wantlist=True) }}"
+            debug:
+              msg: "{{ write_cmd }}"
+            no_log: True
 
-  #3a - Choose the leader-to-be from the set of running followers.
-  - name: "{{ recipe_name }}: Selected leader-to-be."
-    vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
-    debug:
-      msg: "{{ alive_followers[0] }}"
-    no_log: True
-  
-  #3b - Prep all running servers, except leader-to-be.
-  - name: "{{ recipe_name }}: Prepare all running servers."
-    vars:
-      no_of_fi: []
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
-      leader_to_be: "{{ alive_followers[0] }}"
-      pmqp_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
-      nalive_follower: "{{ alive_followers | difference(leader_to_be) }}"
-    set_fact:
-      No_of_Fi: "{{ no_of_fi + nalive_follower + [pmqp_leader_uuid] }}"
-   
-  - name: "{{ recipe_name }}: Apply fault injection on running servers except leader-to-be."
-    vars:
-      stage: "disable_candidate_mode"
-      cmd: "enabled@true"
-      where: "/fault_injection_points/name@raft_candidate_state_disabled"
-      disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', No_of_Fi, cmd, where, wantlist=True) }}"
-    debug:
-      msg: "{{ disable_mode }}"
-    no_log: True
-   
-  - name: "{{ recipe_name }}: Get fault_injection_points array."
-    vars:
-      stage: "get_fi_array"
-      raft_key:
-         - "/fault_injection_points"
-      get_fi: "{{ lookup('niova_ctlrequest', 'lookup', No_of_Fi, raft_key, wantlist=True) }}"
-    debug:
-      msg: "Getting fault_injection_points array."
-    no_log: True
-    with_items:
-        - "{{ get_fi }}"
-    register: fi_array
+          - name: "{{ recipe_name }}: Wait until all write completes from client."
+            vars:
+              stage: "wait_for_client_write_completes"
+              raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+            debug:
+              msg: "Waiting for client to finish writing"
+            until: lookup('niova_ctlrequest', 'lookup', pmqp_client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != (nwrites - 1)
+            loop: "{{ range(0, 10) | list }}"
+            loop_control:
+               pause: 1
 
-  - name: "{{ recipe_name }}: Get 'enabled' value for 'raft_candidate_state_disabled' to check it set to 'true'."
-    vars:
-      fi_value: "{{ fi_array['results'][0]['item'] }}"
-    set_fact:
-       Promoting_fi_check: "{{ fi_value['//fault_injection_points'][item]['enabled'] }}"
-    when: (fi_value['//fault_injection_points'][item]['name'] == "raft_candidate_state_disabled")
-    loop: "{{  range(0, fi_value['//fault_injection_points'] | length) | list }}"
+          - name: "{{ recipe_name }}: Recheck the follower-stats from leader."
+            vars:
+              pmqp_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
+              stage: "recheck_follower_stats"
+              raft_key:
+                    - "/raft_root_entry/0/follower-stats"
+              curr_follower_stats: "{{ lookup('niova_ctlrequest', 'lookup', pmqp_leader_uuid, raft_key, wantlist=True) }}"
+            debug:
+             msg: "Collect the follower stat"
+            no_log: True
+            with_items:
+              - "{{ curr_follower_stats }}"
+            register: recheck_fstats
 
-  - name: "{{ recipe_name }}: Verify fault is injected correctly on follower which will be pause."
-    debug:
-      msg: "{{ Promoting_fi_check }}"
-    no_log: True
-    failed_when: Promoting_fi_check != True
+          - name: "{{ recipe_name }}: Verify next-idx for alive followers, it should be (original-next-idx + NumWrites)."
+            vars:
+              alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+              initial_next_idx: "{{ get_fstats['results'][0]['item']['/0/follower-stats'][item]['next-idx'] }}"
+              get_curr_fstats: "{{ recheck_fstats['results'][0]['item'] }}"
+              alive_peer_uuid: "{{ alive_followers | select('search', get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) | list }}"
+            debug:
+              msg:
+                - "{{ alive_peer_uuid }}"
+                - "{{ get_curr_fstats['/0/follower-stats'][item]['peer-uuid'] }}"
+                - "{{ get_curr_fstats['/0/follower-stats'][item]['next-idx'] }}"
+            failed_when: >
+              (alive_peer_uuid == get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) and
+              get_curr_fstats['/0/follower-stats'][item]['next-idx'] != ((initial_next_idx | int) + (num_writes | int))
+            loop: "{{ range(0, Promoting_Followers_List | length) | list }}"
 
-  - name: "{{ recipe_name }}: Get fault_injection_points array to check 'leader-to-be' does not get fault injection applied."
-    vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
-      leader_to_be: "{{ alive_followers[0] }}"
-      stage: "leader_to_be_fi_array"
-      raft_key:
-         - "/fault_injection_points"
-      get_fi_on_leader_to_be: "{{ lookup('niova_ctlrequest', 'lookup', leader_to_be, raft_key, wantlist=True) }}"
-    debug:
-      msg: "Getting fault_injection_points array."
-    no_log: True
-    with_items:
-        - "{{ get_fi_on_leader_to_be }}"
-    register: ensure_fi
+          #2a - Additional Verifications.
+          - name: "{{ recipe_name }}: Get all values from alive peers."
+            vars:
+              alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+              stage: "stage4"
+              raft_keys:
+                      - "/raft_root_entry/0/commit-idx"
+                      - "/raft_root_entry/0/last-applied"
+                      - "/raft_root_entry/0/term"
+                      - "/raft_root_entry/0/newest-entry-idx"
+                      - "/raft_root_entry/0/last-applied-cumulative-crc"
+              stage4_values: "{{ lookup('niova_ctlrequest', 'lookup', alive_followers, raft_keys, wantlist=True) }}"
+            debug:
+              msg:
+                - "Getting last-applied-cumulative-crc and newest-entry-crc."
+            no_log: True
+            with_items:
+                - "{{ stage4_values }}"
+            register: alive_peers_value
 
-  - name: "{{ recipe_name }}: Get 'enabled' value for 'raft_candidate_state_disabled' to check 'leader-to-be'."
-    vars:
-      ensure_fi_on_leader_to_be: "{{ ensure_fi['results'][0]['item'] }}"
-    set_fact:
-       Promoting_fi_on_leader_to_be: "{{ ensure_fi_on_leader_to_be['//fault_injection_points'][item]['enabled'] }}"
-    when: (ensure_fi_on_leader_to_be['//fault_injection_points'][item]['name'] == "raft_candidate_state_disabled")
-    loop: "{{  range(0, ensure_fi_on_leader_to_be['//fault_injection_points'] | length) | list }}"
+          - name: "{{ recipe_name }}: Verify all alive peers should have the same values."
+            vars:
+              alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+              inital_commit_idx: "{{ stage1_value['results'][item]['item']['/0/commit-idx'] }}"
+              get_stage4: "{{ alive_peers_value['results'][item]['item'] }}"
+              last_applied_cum_crc: "{{ alive_peers_value['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
+              last_applied_cum_crc_next: "{{ alive_peers_value['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
+              term: "{{ alive_peers_value['results'][item]['item']['/0/term'] }}"
+              term_next: "{{ alive_peers_value['results'][item + 1]['item']['/0/term'] }}"
+            debug:
+              msg: "Verifying all peers value."
+            no_log: True
+            failed_when: >
+              (term != term_next) or
+              (last_applied_cum_crc != last_applied_cum_crc_next) or
+              (get_stage4["/0/commit-idx"] != (inital_commit_idx | int) + (nwrites | int)) or
+              (get_stage4["/0/last-applied"] != (inital_commit_idx | int) + (nwrites | int)) or
+              (get_stage4["/0/newest-entry-idx"] != (inital_commit_idx | int) + (nwrites | int))
+            loop: "{{ range(0, alive_followers | length - 1) | list }}"
 
-  - name: "{{ recipe_name }}: Verify 'leader-to-be' does not get fault injected."
-    debug:
-      msg: "{{ Promoting_fi_on_leader_to_be }}"
-    no_log: True
-    failed_when: Promoting_fi_on_leader_to_be == True
-  
-  #3c - Pause all running servers.
-  - name: "{{ recipe_name }}: Pause all running servers, (this includes the current leader, leader-to-be, etc)."
-    vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
-      leader_to_be: "{{ alive_followers[0] }}"
-      peers_to_be_pause: "{{ No_of_Fi + [leader_to_be] }}"
-      pause_all_peers: "{{ lookup('niova_raftprocess', 'pause', peers_to_be_pause[item], wantlist=True) }}"
-    debug:
-      msg: 
-        - "{{ pause_all_peers }}"
-        - "{{ peers_to_be_pause }}"
-    no_log: True
-    loop: "{{ range(0, peers_to_be_pause | length) | list }}"
-  
-  #3d - Resume the followers which were paused in Step #1.
-  - name: "{{ recipe_name }}: Resume the selected followers(i.e. paused followers in step 1)."
-    vars:
-      resume_followers_from_step1: "{{ lookup('niova_raftprocess', 'resume', Promoting_Selected_Followers[item], wantlist=True) }}"
-    debug:
-      msg: "{{ resume_followers_from_step1 }}"
-    no_log: True
-    loop: "{{ range(0, Promoting_Selected_Followers | length) | list }}"
- 
-  - name: "{{ recipe_name }}: Verify timestamp advancing for resumed followers."
-    include_role:
-      name: common
-      tasks_from: verify_timestamp
-    vars:
-      ServerUUID: "{{ Promoting_Selected_Followers[outer_idx] }}"
-    loop: "{{ range(0, Promoting_Selected_Followers | length) | list }}"
-    loop_control:
-       loop_var: outer_idx    
+          #3a - Choose the leader-to-be from the set of running followers.
+          - name: "{{ recipe_name }}: Selected leader-to-be."
+            vars:
+              alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+            debug:
+              msg: "{{ alive_followers[0] }}"
+            no_log: True
 
-  - name: "{{ recipe_name }}: Get the 'state' from resumed followers."
-    vars:
-      stage: "state_of_resumed_followers"
-      state_key:
-          - "/raft_root_entry/0/state"
-      get_state: "{{ lookup('niova_ctlrequest', 'lookup', Promoting_Selected_Followers, state_key, wantlist=True) }}"
-    debug:
-      msg: "Getting state for resumed followers."
-    no_log: True
-    with_items:
-        - "{{ get_state }}"
-    register: state_value
+          #3b - Prep all running servers, except leader-to-be.
+          - name: "{{ recipe_name }}: Prepare all running servers."
+            vars:
+              no_of_fi: []
+              alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+              leader_to_be: "{{ alive_followers[0] }}"
+              pmqp_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
+              nalive_follower: "{{ alive_followers | difference(leader_to_be) }}"
+            set_fact:
+              No_of_Fi: "{{ no_of_fi + nalive_follower + [pmqp_leader_uuid] }}"
 
-  - name: "{{ recipe_name }}: Verify 'state' for resumed followers must be either 'candidate' or 'follower'."
-    vars:
-      followers_state: "{{ state_value['results'][0]['item'] }}"
-    debug:
-      msg:
-        - "Verifying state for resumed followers."
-    no_log: True
-    failed_when: >
-      (followers_state['/0/state'] != "candidate") and
-      (followers_state['/0/state'] != "follower")
-    
-  #4-Unpause the Leader-to-Be from Step #3.
-  - name: "{{ recipe_name }}: Unpause the 'Leader-to-Be' from Step #3."
-    vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
-      leader_to_be: "{{ alive_followers[0] }}"
-      resume_leader_to_be: "{{ lookup('niova_raftprocess', 'resume', leader_to_be, wantlist=True) }}"
-    debug:
-      msg: "{{ resume_leader_to_be }}"
-    no_log: True
+          - name: "{{ recipe_name }}: Apply fault injection on running servers except leader-to-be."
+            vars:
+              stage: "disable_candidate_mode"
+              cmd: "enabled@true"
+              where: "/fault_injection_points/name@raft_candidate_state_disabled"
+              disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', No_of_Fi, cmd, where, wantlist=True) }}"
+            debug:
+              msg: "{{ disable_mode }}"
+            no_log: True
 
-  - name: "{{ recipe_name }}: Wait until 'leader-to-be' becomes leader."
-    vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
-      leader_to_be: "{{ alive_followers[0] }}"
-      nresume_peers: "{{ Promoting_Selected_Followers + [leader_to_be] }}"
-      stage: "wait_leader_election"
-      raft_key: "/raft_root_entry/0/leader-uuid"
-    debug:
-      msg: "Wait to until 'leader-to-be' becomes leader."
-    until: lookup('niova_ctlrequest', 'lookup', nresume_peers[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (leader_to_be)
-    retries: 60
-    delay: 1
-    loop: "{{ range(0, nresume_peers | length) | list }}" 
+          - name: "{{ recipe_name }}: Get fault_injection_points array."
+            vars:
+              stage: "get_fi_array"
+              raft_key:
+                 - "/fault_injection_points"
+              get_fi: "{{ lookup('niova_ctlrequest', 'lookup', No_of_Fi, raft_key, wantlist=True) }}"
+            debug:
+              msg: "Getting fault_injection_points array."
+            no_log: True
+            with_items:
+                - "{{ get_fi }}"
+            register: fi_array
 
-  - name: "{{ recipe_name }}: Get last-applied value from followers which are unpaused in Step #3."
-    vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
-      leader_to_be: "{{ alive_followers[0] }}"
-      nresume_peers: "{{ Promoting_Selected_Followers + [leader_to_be] }}"
-      stage: "state_of_resumed_followers"
-      raft_key:
-          - "/raft_root_entry/0/commit-idx"
-          - "/raft_root_entry/0/last-applied"
-          - "/raft_root_entry/0/term"
-          - "/raft_root_entry/0/newest-entry-idx"
-          - "/raft_root_entry/0/last-applied-cumulative-crc"
-      get_raft_value : "{{ lookup('niova_ctlrequest', 'lookup', nresume_peers, raft_key, wantlist=True) }}"
-    debug:
-      msg: "Getting last-applied for resumed followers."
-    no_log: True
-    with_items:
-        - "{{ get_raft_value }}"
-    register: all_values
+          - name: "{{ recipe_name }}: Get 'enabled' value for 'raft_candidate_state_disabled' to check it set to 'true'."
+            vars:
+              fi_value: "{{ fi_array['results'][0]['item'] }}"
+            set_fact:
+               Promoting_fi_check: "{{ fi_value['//fault_injection_points'][item]['enabled'] }}"
+            when: (fi_value['//fault_injection_points'][item]['name'] == "raft_candidate_state_disabled")
+            loop: "{{  range(0, fi_value['//fault_injection_points'] | length) | list }}"
 
-  - name: "{{ recipe_name }}: Verify followers unpaused in Step #3 are recovered."
-    vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
-      leader_to_be: "{{ alive_followers[0] }}"
-      nresume_peers: "{{ Promoting_Selected_Followers + [leader_to_be] }}"
-      initial_commit_idx: "{{ stage1_value['results'][0]['item']['/0/commit-idx'] }}"
-      initial_term: "{{ stage1_value['results'][0]['item']['/0/term'] }}"
-      collect_all_values: "{{ all_values['results'][0]['item'] }}"
-    debug:
-      msg:
-        - "Verifying all values after electing new leader {{ collect_all_values }}."
-    no_log: True
-    failed_when: >
-      (collect_all_values['/0/last-applied'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
-      (collect_all_values['/0/commit-idx'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
-      (collect_all_values['/0/newest-entry-idx'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
-      (collect_all_values['/0/term'] < (initial_term | int))
-    
-  - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and newest-entry-crc is same on all peers."
-    vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
-      leader_to_be: "{{ alive_followers[0] }}"
-      nresume_peers: "{{ Promoting_Selected_Followers + [leader_to_be] }}"
-      last_applied_cum_crc: "{{ all_values['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
-      last_applied_cum_crc_next: "{{ all_values['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
-    debug:
-      msg: "Compare last-applied-cumulative-crc and newest-entry-crc on all peers."
-    no_log: True
-    failed_when: (last_applied_cum_crc != last_applied_cum_crc_next)
-    loop: "{{ range(0, nresume_peers | length - 1) | list }}"
- 
-  - name: "{{ recipe_name }}: Unpause the Remaining Paused Peers."
-    vars:
-      resume_followers: "{{ lookup('niova_raftprocess', 'resume', No_of_Fi[item], wantlist=True) }}"
-    debug:
-      msg: "{{ resume_followers }}"
-    no_log: True
-    loop: "{{ range(0, No_of_Fi | length) | list }}"
+          - name: "{{ recipe_name }}: Verify fault is injected correctly on follower which will be pause."
+            debug:
+              msg: "{{ Promoting_fi_check }}"
+            no_log: True
+            failed_when: Promoting_fi_check != True
 
-  - name: "{{ recipe_name }}: Verify last-applied should be <initial-commit-idx + NumWrites + 1>."
-    vars:
-      initial_commit_idx: "{{ stage1_value['results'][0]['item']['/0/commit-idx'] }}"
-      stage: "wait_last_applied"
-      raft_key: "/raft_root_entry/0/last-applied"
-    debug:
-      msg: "Wait until last-applied should be <initial-commit-idx + NumWrites + 1>"
-    until: lookup('niova_ctlrequest', 'lookup', No_of_Fi[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == ((initial_commit_idx | int) + (nwrites | int) + 1)
-    retries: 5
-    delay: 1
-    loop: "{{ range(0, No_of_Fi | length) | list }}"
-  
-  - name: "{{ recipe_name }}: Get last-applied value from followers which are unpaused in Step #3."
-    vars:     
-      stage: "state_of_resumed_followers"
-      raft_key:
-          - "/raft_root_entry/0/commit-idx"
-          - "/raft_root_entry/0/last-applied"
-          - "/raft_root_entry/0/term"
-          - "/raft_root_entry/0/newest-entry-idx"
-          - "/raft_root_entry/0/last-applied-cumulative-crc"
-          - "/raft_root_entry/0/newest-entry-crc"
-          - "/raft_root_entry/0/newest-entry-data-size"
-          - "/raft_root_entry/0/newest-entry-term"
-      get_raft_key : "{{ lookup('niova_ctlrequest', 'lookup', No_of_Fi, raft_key, wantlist=True) }}"
-    debug:
-      msg: "Getting last-applied for resumed followers."
-    no_log: True
-    with_items:
-        - "{{ get_raft_key }}"
-    register: stage_raft_values
+          - name: "{{ recipe_name }}: Get fault_injection_points array to check 'leader-to-be' does not get fault injection applied."
+            vars:
+              alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+              leader_to_be: "{{ alive_followers[0] }}"
+              stage: "leader_to_be_fi_array"
+              raft_key:
+                 - "/fault_injection_points"
+              get_fi_on_leader_to_be: "{{ lookup('niova_ctlrequest', 'lookup', leader_to_be, raft_key, wantlist=True) }}"
+            debug:
+              msg: "Getting fault_injection_points array."
+            no_log: True
+            with_items:
+                - "{{ get_fi_on_leader_to_be }}"
+            register: ensure_fi
 
-  - name: "{{ recipe_name }}: Verify all values from remaining peers."
-    vars:
-      initial_commit_idx: "{{ stage1_value['results'][0]['item']['/0/commit-idx'] }}"
-      after_resume_all: "{{ stage_raft_values['results'][0]['item'] }}"
-    debug:
-      msg:
-        - "Verifying all raft root entry for remaining peers."
-    no_log: True
-    failed_when: >
-      (after_resume_all['/0/last-applied'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
-      (after_resume_all['/0/commit-idx'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
-      (after_resume_all['/0/newest-entry-idx'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
-      (after_resume_all['/0/newest-entry-data-size'] != 0) or
-      (after_resume_all['/0/newest-entry-term'] != after_resume_all['/0/term'])
+          - name: "{{ recipe_name }}: Get 'enabled' value for 'raft_candidate_state_disabled' to check 'leader-to-be'."
+            vars:
+              ensure_fi_on_leader_to_be: "{{ ensure_fi['results'][0]['item'] }}"
+            set_fact:
+               Promoting_fi_on_leader_to_be: "{{ ensure_fi_on_leader_to_be['//fault_injection_points'][item]['enabled'] }}"
+            when: (ensure_fi_on_leader_to_be['//fault_injection_points'][item]['name'] == "raft_candidate_state_disabled")
+            loop: "{{  range(0, ensure_fi_on_leader_to_be['//fault_injection_points'] | length) | list }}"
 
-  - name: "{{ recipe_name }}: Verify term, last-applied-crc, newest_entry_crc on all peers."
-    vars: 
-      last_applied_cum_crc: "{{ stage_raft_values['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
-      last_applied_cum_crc_next: "{{ stage_raft_values['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
-      newest_entry_crc: "{{ stage_raft_values['results'][item]['item']['/0/newest-entry-crc'] }}"
-      newest_entry_crc_next: "{{ stage_raft_values['results'][item + 1]['item']['/0/newest-entry-crc'] }}"
-      term: "{{ stage_raft_values['results'][item]['item']['/0/term'] }}"
-      term_next: "{{ stage_raft_values['results'][item + 1]['item']['/0/term'] }}"
-    debug:
-      msg:
-        - "Verifying term, last-applied-crc, newest_entry_crc."
-    no_log: True
-    failed_when: >
-      (last_applied_cum_crc != last_applied_cum_crc_next) or
-      (newest_entry_crc != newest_entry_crc_next) or
-      (term != term_next)
-    loop: "{{ range(0, No_of_Fi | length - 1) | list }}"
+          - name: "{{ recipe_name }}: Verify 'leader-to-be' does not get fault injected."
+            debug:
+              msg: "{{ Promoting_fi_on_leader_to_be }}"
+            no_log: True
+            failed_when: Promoting_fi_on_leader_to_be == True
 
-  - name: "{{ recipe_name }}: Remove fault injection peers where it was applied."
-    vars:
-      stage: "disable_candidate_mode"
-      cmd: "enabled@false"
-      where: "/fault_injection_points/name@raft_candidate_state_disabled"
-      rm_fi: "{{ lookup('niova_ctlrequest', 'apply_cmd', No_of_Fi, cmd, where, wantlist=True) }}"
-    debug:
-      msg: "{{ rm_fi }}"
-    no_log: True
+          #3c - Pause all running servers.
+          - name: "{{ recipe_name }}: Pause all running servers, (this includes the current leader, leader-to-be, etc)."
+            vars:
+              alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+              leader_to_be: "{{ alive_followers[0] }}"
+              peers_to_be_pause: "{{ No_of_Fi + [leader_to_be] }}"
+              pause_all_peers: "{{ lookup('niova_raftprocess', 'pause', peers_to_be_pause[item], wantlist=True) }}"
+            debug:
+              msg:
+                - "{{ pause_all_peers }}"
+                - "{{ peers_to_be_pause }}"
+            no_log: True
+            loop: "{{ range(0, peers_to_be_pause | length) | list }}"
 
-  - name: "{{ recipe_name }}: Get fault_injection_points array."
-    vars:
-      stage: "get_fi_array"
-      raft_key:
-         - "/fault_injection_points"
-      disable_fi: "{{ lookup('niova_ctlrequest', 'lookup', No_of_Fi, raft_key, wantlist=True) }}"
-    debug:
-      msg: "Getting fault_injection_points array."
-    no_log: True
-    with_items:
-        - "{{ disable_fi }}"
-    register: rm_fi_from_peers
+          #3d - Resume the followers which were paused in Step #1.
+          - name: "{{ recipe_name }}: Resume the selected followers(i.e. paused followers in step 1)."
+            vars:
+              resume_followers_from_step1: "{{ lookup('niova_raftprocess', 'resume', Promoting_Selected_Followers[item], wantlist=True) }}"
+            debug:
+              msg: "{{ resume_followers_from_step1 }}"
+            no_log: True
+            loop: "{{ range(0, Promoting_Selected_Followers | length) | list }}"
 
-  - name: "{{ recipe_name }}: Get 'enabled' value for 'raft_candidate_state_disabled' to remove it."
-    vars:
-      get_fi_value: "{{ rm_fi_from_peers['results'][0]['item'] }}"
-    set_fact:
-       Promoting_fi_remove: "{{ get_fi_value['//fault_injection_points'][item]['enabled'] }}"
-    when: (get_fi_value['//fault_injection_points'][item]['name'] == "raft_candidate_state_disabled")
-    loop: "{{  range(0, get_fi_value['//fault_injection_points'] | length) | list }}"
+          - name: "{{ recipe_name }}: Verify timestamp advancing for resumed followers."
+            include_role:
+              name: common
+              tasks_from: verify_timestamp
+            vars:
+              ServerUUID: "{{ Promoting_Selected_Followers[outer_idx] }}"
+            loop: "{{ range(0, Promoting_Selected_Followers | length) | list }}"
+            loop_control:
+               loop_var: outer_idx
 
-  - name: "{{ recipe_name }}: Verify fault is injection is removed."
-    debug:
-      msg: "{{ Promoting_fi_remove }}"
-    no_log: True
-    failed_when: Promoting_fi_remove != False
+          - name: "{{ recipe_name }}: Get the 'state' from resumed followers."
+            vars:
+              stage: "state_of_resumed_followers"
+              state_key:
+                  - "/raft_root_entry/0/state"
+              get_state: "{{ lookup('niova_ctlrequest', 'lookup', Promoting_Selected_Followers, state_key, wantlist=True) }}"
+            debug:
+              msg: "Getting state for resumed followers."
+            no_log: True
+            with_items:
+                - "{{ get_state }}"
+            register: state_value
+
+          - name: "{{ recipe_name }}: Verify 'state' for resumed followers must be either 'candidate' or 'follower'."
+            vars:
+              followers_state: "{{ state_value['results'][0]['item'] }}"
+            debug:
+              msg:
+                - "Verifying state for resumed followers."
+            no_log: True
+            failed_when: >
+              (followers_state['/0/state'] != "candidate") and
+              (followers_state['/0/state'] != "follower")
+
+          #4-Unpause the Leader-to-Be from Step #3.
+          - name: "{{ recipe_name }}: Unpause the 'Leader-to-Be' from Step #3."
+            vars:
+              alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+              leader_to_be: "{{ alive_followers[0] }}"
+              resume_leader_to_be: "{{ lookup('niova_raftprocess', 'resume', leader_to_be, wantlist=True) }}"
+            debug:
+              msg: "{{ resume_leader_to_be }}"
+            no_log: True
+
+          - name: "{{ recipe_name }}: Wait until 'leader-to-be' becomes leader."
+            vars:
+              alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+              leader_to_be: "{{ alive_followers[0] }}"
+              nresume_peers: "{{ Promoting_Selected_Followers + [leader_to_be] }}"
+              stage: "wait_leader_election"
+              raft_key: "/raft_root_entry/0/leader-uuid"
+            debug:
+              msg: "Wait to until 'leader-to-be' becomes leader."
+            until: lookup('niova_ctlrequest', 'lookup', nresume_peers[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (leader_to_be)
+            retries: 60
+            delay: 1
+            loop: "{{ range(0, nresume_peers | length) | list }}"
+
+          - name: "{{ recipe_name }}: Get last-applied value from followers which are unpaused in Step #3."
+            vars:
+              alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+              leader_to_be: "{{ alive_followers[0] }}"
+              nresume_peers: "{{ Promoting_Selected_Followers + [leader_to_be] }}"
+              stage: "state_of_resumed_followers"
+              raft_key:
+                  - "/raft_root_entry/0/commit-idx"
+                  - "/raft_root_entry/0/last-applied"
+                  - "/raft_root_entry/0/term"
+                  - "/raft_root_entry/0/newest-entry-idx"
+                  - "/raft_root_entry/0/last-applied-cumulative-crc"
+              get_raft_value : "{{ lookup('niova_ctlrequest', 'lookup', nresume_peers, raft_key, wantlist=True) }}"
+            debug:
+              msg: "Getting last-applied for resumed followers."
+            no_log: True
+            with_items:
+                - "{{ get_raft_value }}"
+            register: all_values
+
+          - name: "{{ recipe_name }}: Verify followers unpaused in Step #3 are recovered."
+            vars:
+              alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+              leader_to_be: "{{ alive_followers[0] }}"
+              nresume_peers: "{{ Promoting_Selected_Followers + [leader_to_be] }}"
+              initial_commit_idx: "{{ stage1_value['results'][0]['item']['/0/commit-idx'] }}"
+              initial_term: "{{ stage1_value['results'][0]['item']['/0/term'] }}"
+              collect_all_values: "{{ all_values['results'][0]['item'] }}"
+            debug:
+              msg:
+                - "Verifying all values after electing new leader {{ collect_all_values }}."
+            no_log: True
+            failed_when: >
+              (collect_all_values['/0/last-applied'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
+              (collect_all_values['/0/commit-idx'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
+              (collect_all_values['/0/newest-entry-idx'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
+              (collect_all_values['/0/term'] < (initial_term | int))
+
+          - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and newest-entry-crc is same on all peers."
+            vars:
+              alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+              leader_to_be: "{{ alive_followers[0] }}"
+              nresume_peers: "{{ Promoting_Selected_Followers + [leader_to_be] }}"
+              last_applied_cum_crc: "{{ all_values['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
+              last_applied_cum_crc_next: "{{ all_values['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
+            debug:
+              msg: "Compare last-applied-cumulative-crc and newest-entry-crc on all peers."
+            no_log: True
+            failed_when: (last_applied_cum_crc != last_applied_cum_crc_next)
+            loop: "{{ range(0, nresume_peers | length - 1) | list }}"
+
+          - name: "{{ recipe_name }}: Unpause the Remaining Paused Peers."
+            vars:
+              resume_followers: "{{ lookup('niova_raftprocess', 'resume', No_of_Fi[item], wantlist=True) }}"
+            debug:
+              msg: "{{ resume_followers }}"
+            no_log: True
+            loop: "{{ range(0, No_of_Fi | length) | list }}"
+
+          - name: "{{ recipe_name }}: Verify last-applied should be <initial-commit-idx + NumWrites + 1>."
+            vars:
+              initial_commit_idx: "{{ stage1_value['results'][0]['item']['/0/commit-idx'] }}"
+              stage: "wait_last_applied"
+              raft_key: "/raft_root_entry/0/last-applied"
+            debug:
+              msg: "Wait until last-applied should be <initial-commit-idx + NumWrites + 1>"
+            until: lookup('niova_ctlrequest', 'lookup', No_of_Fi[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == ((initial_commit_idx | int) + (nwrites | int) + 1)
+            retries: 5
+            delay: 1
+            loop: "{{ range(0, No_of_Fi | length) | list }}"
+
+          - name: "{{ recipe_name }}: Get last-applied value from followers which are unpaused in Step #3."
+            vars:
+              stage: "state_of_resumed_followers"
+              raft_key:
+                  - "/raft_root_entry/0/commit-idx"
+                  - "/raft_root_entry/0/last-applied"
+                  - "/raft_root_entry/0/term"
+                  - "/raft_root_entry/0/newest-entry-idx"
+                  - "/raft_root_entry/0/last-applied-cumulative-crc"
+                  - "/raft_root_entry/0/newest-entry-crc"
+                  - "/raft_root_entry/0/newest-entry-data-size"
+                  - "/raft_root_entry/0/newest-entry-term"
+              get_raft_key : "{{ lookup('niova_ctlrequest', 'lookup', No_of_Fi, raft_key, wantlist=True) }}"
+            debug:
+              msg: "Getting last-applied for resumed followers."
+            no_log: True
+            with_items:
+                - "{{ get_raft_key }}"
+            register: stage_raft_values
+
+          - name: "{{ recipe_name }}: Verify all values from remaining peers."
+            vars:
+              initial_commit_idx: "{{ stage1_value['results'][0]['item']['/0/commit-idx'] }}"
+              after_resume_all: "{{ stage_raft_values['results'][0]['item'] }}"
+            debug:
+              msg:
+                - "Verifying all raft root entry for remaining peers."
+            no_log: True
+            failed_when: >
+              (after_resume_all['/0/last-applied'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
+              (after_resume_all['/0/commit-idx'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
+              (after_resume_all['/0/newest-entry-idx'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
+              (after_resume_all['/0/newest-entry-data-size'] != 0) or
+              (after_resume_all['/0/newest-entry-term'] != after_resume_all['/0/term'])
+
+          - name: "{{ recipe_name }}: Verify term, last-applied-crc, newest_entry_crc on all peers."
+            vars:
+              last_applied_cum_crc: "{{ stage_raft_values['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
+              last_applied_cum_crc_next: "{{ stage_raft_values['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
+              newest_entry_crc: "{{ stage_raft_values['results'][item]['item']['/0/newest-entry-crc'] }}"
+              newest_entry_crc_next: "{{ stage_raft_values['results'][item + 1]['item']['/0/newest-entry-crc'] }}"
+              term: "{{ stage_raft_values['results'][item]['item']['/0/term'] }}"
+              term_next: "{{ stage_raft_values['results'][item + 1]['item']['/0/term'] }}"
+            debug:
+              msg:
+                - "Verifying term, last-applied-crc, newest_entry_crc."
+            no_log: True
+            failed_when: >
+              (last_applied_cum_crc != last_applied_cum_crc_next) or
+              (newest_entry_crc != newest_entry_crc_next) or
+              (term != term_next)
+            loop: "{{ range(0, No_of_Fi | length - 1) | list }}"
+
+          - name: "{{ recipe_name }}: Remove fault injection peers where it was applied."
+            vars:
+              stage: "disable_candidate_mode"
+              cmd: "enabled@false"
+              where: "/fault_injection_points/name@raft_candidate_state_disabled"
+              rm_fi: "{{ lookup('niova_ctlrequest', 'apply_cmd', No_of_Fi, cmd, where, wantlist=True) }}"
+            debug:
+              msg: "{{ rm_fi }}"
+            no_log: True
+
+          - name: "{{ recipe_name }}: Get fault_injection_points array."
+            vars:
+              stage: "get_fi_array"
+              raft_key:
+                 - "/fault_injection_points"
+              disable_fi: "{{ lookup('niova_ctlrequest', 'lookup', No_of_Fi, raft_key, wantlist=True) }}"
+            debug:
+              msg: "Getting fault_injection_points array."
+            no_log: True
+            with_items:
+                - "{{ disable_fi }}"
+            register: rm_fi_from_peers
+
+          - name: "{{ recipe_name }}: Get 'enabled' value for 'raft_candidate_state_disabled' to remove it."
+            vars:
+              get_fi_value: "{{ rm_fi_from_peers['results'][0]['item'] }}"
+            set_fact:
+               Promoting_fi_remove: "{{ get_fi_value['//fault_injection_points'][item]['enabled'] }}"
+            when: (get_fi_value['//fault_injection_points'][item]['name'] == "raft_candidate_state_disabled")
+            loop: "{{  range(0, get_fi_value['//fault_injection_points'] | length) | list }}"
+
+          - name: "{{ recipe_name }}: Verify fault is injection is removed."
+            debug:
+              msg: "{{ Promoting_fi_remove }}"
+            no_log: True
+            failed_when: Promoting_fi_remove != False
+
+    rescue:
+      - name: "Recipe failed"
+        set_fact:
+          terminate_recipe: true

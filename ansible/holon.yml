@@ -6,6 +6,10 @@
     - ./cmdline_vars.yml
 
   tasks:
+  - name: "{{ recipe_name }}: Set terminate_recipe as false."
+    set_fact:
+       terminate_recipe: false
+
   - name: "Get Raft UUID"
     shell: "/usr/bin/uuid"
     register: cluster_uuid

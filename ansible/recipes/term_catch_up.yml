@@ -7,44 +7,50 @@
      recipe_name: "term_catch_up"
      iterations: 5
   
-  #Start Peer1
   tasks:
   - block:
-    - name: "{{ recipe_name }}: Get the non-running peers list to select the second peer to start"
-      include_role:
-        name: common
-        tasks_from: get_server_uuid_info
+            - name: "Check if parent recipe failed"
+              debug: msg="Check if parent recipe {{ parent }} failed"
+              failed_when: terminate_recipe == true
 
-    - name: "{{ recipe_name }}: Get the UUID for the second peer"
-      set_fact:
-       Server1UUID: "{{ NonRunningServers[0] }}"
+            - name: "{{ recipe_name }}: Get the non-running peers list to select the second peer to start"
+              include_role:
+                name: common
+                tasks_from: get_server_uuid_info
 
-    - name: "{{ recipe_name }}: Start peer which is made idle in previous task"
-      include_role:
-        name: common
-        tasks_from: start_server
-      vars:
-        ServerUUID: "{{ Server1UUID }}"
+            - name: "{{ recipe_name }}: Get the UUID for the second peer"
+              set_fact:
+               Server1UUID: "{{ NonRunningServers[0] }}"
 
-    #Copy get_term in peer1 and in peer0, Pause and Resume peer0 in loop and compare its term catches up peer1 term
-    - name: "{{ recipe_name }}: Pause peer0 and resume it after 2sec and make sure it's term value catches up with running peer1"
-      vars:
-        stage: "stage1"
-        iter_info:
-          iter: 1
-          sleep_after_cmd: 2
-        term_key:
-          - "/raft_root_entry/0/term"
-        pause_peer0: "{{ lookup('niova_raftprocess', 'pause', Server0UUID, wantlist=True) }}"
-        peer1_term: "{{ lookup('niova_ctlrequest', 'lookup', Server1UUID, '/raft_root_entry/0/term', iter_info, wantlist=True) }}"
-        resume_peer0: "{{ lookup('niova_raftprocess', 'resume', Server0UUID, iter_info, wantlist=True) }}"
-        peer0_term: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
-      debug:
-         msg: "Compare peer1 term value: {{ peer1_term['/0/term'] }} with peer0 term value: {{ peer0_term['/0/term'] }}"
-      failed_when: peer1_term["/0/term"] > peer0_term["/0/term"]
-      loop: "{{ range(0, iterations)| list }}"
-      loop_control:
-        pause: 2
+            #Start Peer1
+            - name: "{{ recipe_name }}: Start peer which is made idle in previous task"
+              include_role:
+                name: common
+                tasks_from: start_server
+              vars:
+                ServerUUID: "{{ Server1UUID }}"
+
+            #Copy get_term in peer1 and in peer0, Pause and Resume peer0 in loop and compare its term catches up peer1 term
+            - name: "{{ recipe_name }}: Pause peer0 and resume it after 2sec and make sure it's term value catches up with running peer1"
+              vars:
+                stage: "stage1"
+                iter_info:
+                  iter: 1
+                  sleep_after_cmd: 2
+                term_key:
+                  - "/raft_root_entry/0/term"
+                pause_peer0: "{{ lookup('niova_raftprocess', 'pause', Server0UUID, wantlist=True) }}"
+                peer1_term: "{{ lookup('niova_ctlrequest', 'lookup', Server1UUID, '/raft_root_entry/0/term', iter_info, wantlist=True) }}"
+                resume_peer0: "{{ lookup('niova_raftprocess', 'resume', Server0UUID, iter_info, wantlist=True) }}"
+                peer0_term: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
+              debug:
+                 msg: "Compare peer1 term value: {{ peer1_term['/0/term'] }} with peer0 term value: {{ peer0_term['/0/term'] }}"
+              failed_when: peer1_term["/0/term"] > peer0_term["/0/term"]
+              loop: "{{ range(0, iterations)| list }}"
+              loop_control:
+                pause: 2
 
     rescue:
-      - debug: msg="Recipe failed"
+      - name: "Recipe failed"
+        set_fact:
+          terminate_recipe: true
