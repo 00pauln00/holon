@@ -294,13 +294,13 @@
        raft_root_entry_keys: "{{ lookup('niova_ctlrequest', 'lookup', running_peers, peer_raft_keys, wantlist=True) }}"
     debug:
       msg: 
-        - "Getting last-applied-cumulative-crc and newest-entry-crc."
+        - "Getting last-applied-cumulative-crc and sync-entry-crc."
     no_log: True
     with_items:
         - "{{ raft_root_entry_keys }}"
     register: all_running_peers
  
-  - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and newest-entry-crc is same on all peers."
+  - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and sync-entry-crc is same on all peers."
     vars:
       running_peers: "{{ NRunningPeers }}"
       last_applied_cum_crc: "{{ all_running_peers['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
@@ -308,7 +308,7 @@
       sync_entry_crc: "{{ all_running_peers['results'][item]['item']['/0/sync-entry-crc'] }}"
       sync_entry_crc_next: "{{ all_running_peers['results'][item + 1]['item']['/0/sync-entry-crc'] }}"
     debug:
-      msg: "Compare last-applied-cumulative-crc and newest-entry-crc on all peers."
+      msg: "Compare last-applied-cumulative-crc and sync-entry-crc on all peers."
     no_log: True
     failed_when: >
       (last_applied_cum_crc != last_applied_cum_crc_next ) or

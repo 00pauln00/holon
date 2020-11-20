@@ -480,7 +480,7 @@
       (collect_all_values['/0/sync-entry-idx'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
       (collect_all_values['/0/term'] < (initial_term | int))
     
-  - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and newest-entry-crc is same on all peers."
+  - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and sync-entry-crc is same on all peers."
     vars:
       alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
       leader_to_be: "{{ alive_followers[0] }}"
@@ -488,7 +488,7 @@
       last_applied_cum_crc: "{{ all_values['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
       last_applied_cum_crc_next: "{{ all_values['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
     debug:
-      msg: "Compare last-applied-cumulative-crc and newest-entry-crc on all peers."
+      msg: "Compare last-applied-cumulative-crc and sync-entry-crc on all peers."
     no_log: True
     failed_when: (last_applied_cum_crc != last_applied_cum_crc_next)
     loop: "{{ range(0, nresume_peers | length - 1) | list }}"
