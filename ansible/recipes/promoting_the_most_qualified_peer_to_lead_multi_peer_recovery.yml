@@ -6,7 +6,7 @@
      recipe_name: "promoting_qualified_peer_to_lead"
      parent: "basic_server_recovery_with_client_activity"
      requirement: "pumicedb"
-     Promoting_Followers_List: []
+     FollowerUUIDs: []
      peers_to_be_pause: []
      nresume_peers: []
      nwrites: 100
@@ -28,7 +28,6 @@
        stage: "check_booting_stage"
        state_key:
           - "/raft_root_entry/0/state"
-          - "/raft_root_entry/0/leader-uuid"
        verify_cluster_requirement: "{{ lookup('niova_ctlrequest', 'lookup', running_servers, state_key, wantlist=True) }}"
     debug:
       msg: "Getting orignal values."
@@ -47,14 +46,10 @@
     failed_when: get_stage0['/0/state'] == "booting"
     
   - name: "{{ recipe_name }}: Get corresponding UUIDs for follower peers"
-    vars:
-      peer_arr: "{{ raft_conf | json_query('peer_uuid_dict') }}"
-      pmqp_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
-    set_fact:
-      Promoting_Followers_List: "{{ Promoting_Followers_List + [item.value] }}"
-    when: pmqp_leader_uuid != item.value
-    with_dict: "{{ peer_arr }}"
-
+    include_role:
+       name: common
+       tasks_from: get_follower_stats
+    
   #Recipe Setup: Ensure followers aliveness.
   - name: "{{ recipe_name }}: Validate followers are alive."
     include_role:
@@ -62,10 +57,7 @@
        tasks_from: validate_followers_aliveness
     vars:
        LeaderUUID: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
-    #loop: "{{ range(0, Promoting_Followers_List | length) | list }}"
-    #loop_control:
-    #   loop_var: outer_index
-
+  
   #Recipe Setup: Ensure all fault injections with “raft” in the name are disabled on all peers.
   - name: "{{ recipe_name }}: Check fault injection on all followers through common task."
     vars:
@@ -93,11 +85,7 @@
 
   - name: "{{ recipe_name }}: Get the follower-stats from leader"
     vars:
-      pmqp_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
-      stage: "get_follower_stats"
-      raft_key:
-            - "/raft_root_entry/0/follower-stats"
-      followers_stats_info: "{{ lookup('niova_ctlrequest', 'lookup', pmqp_leader_uuid, raft_key, wantlist=True) }}"
+      followers_stats_info: "{{ GetFollowerStatsInfo }}"
     debug:
      msg: "Collect the follower stat"
     no_log: True
@@ -112,7 +100,7 @@
     set_fact:
       Promoting_Odd_nfollowers: "{{ no_of_server | int / 2 | int }}"
       Promoting_Even_nfollowers: "{{ no_of_server | int / 2 - 1 | int }}"
-    loop: "{{ range(0, Promoting_Followers_List | length) | list }}"
+    loop: "{{ range(0, FollowerUUIDs | length) | list }}"
     
   - name: "{{ recipe_name }}: Set the list to get largest value."
     vars:
@@ -144,7 +132,7 @@
       Promoting_Selected_Followers: []
       raft_quorum: "{{ get_largest_value['results'][0]['item'] }}"
     set_fact:
-      Promoting_Selected_Followers: "{{ Promoting_Selected_Followers + [Promoting_Followers_List[item]] }}"
+      Promoting_Selected_Followers: "{{ Promoting_Selected_Followers + [FollowerUUIDs[item]] }}"
     loop: "{{ range(0, raft_quorum | int) | list }}"
 
   - debug: 
@@ -208,11 +196,7 @@
 
   - name: "{{ recipe_name }}: Recheck the follower-stats from leader."
     vars:
-      pmqp_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
-      stage: "recheck_follower_stats"
-      raft_key:
-            - "/raft_root_entry/0/follower-stats"
-      curr_follower_stats: "{{ lookup('niova_ctlrequest', 'lookup', pmqp_leader_uuid, raft_key, wantlist=True) }}"
+      curr_follower_stats: "{{ GetFollowerStatsInfo }}"
     debug:
      msg: "Collect the follower stat"
     no_log: True
@@ -222,7 +206,7 @@
 
   - name: "{{ recipe_name }}: Verify next-idx for alive followers, it should be (original-next-idx + NumWrites)."
     vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+      alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
       initial_next_idx: "{{ get_fstats['results'][0]['item']['/0/follower-stats'][item]['next-idx'] }}"
       get_curr_fstats: "{{ recheck_fstats['results'][0]['item'] }}"
       alive_peer_uuid: "{{ alive_followers | select('search', get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) | list }}"
@@ -234,12 +218,12 @@
     failed_when: >
       (alive_peer_uuid == get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) and
       get_curr_fstats['/0/follower-stats'][item]['next-idx'] != ((initial_next_idx | int) + (num_writes | int))
-    loop: "{{ range(0, Promoting_Followers_List | length) | list }}"
+    loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
   #2a - Additional Verifications.
   - name: "{{ recipe_name }}: Get all values from alive peers."
     vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+      alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
       stage: "stage4"
       raft_keys:
               - "/raft_root_entry/0/commit-idx"
@@ -258,7 +242,7 @@
 
   - name: "{{ recipe_name }}: Verify all alive peers should have the same values."
     vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+      alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
       inital_commit_idx: "{{ stage1_value['results'][item]['item']['/0/commit-idx'] }}" 
       get_stage4: "{{ alive_peers_value['results'][item]['item'] }}"
       last_applied_cum_crc: "{{ alive_peers_value['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
@@ -279,7 +263,7 @@
   #3a - Choose the leader-to-be from the set of running followers.
   - name: "{{ recipe_name }}: Selected leader-to-be."
     vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+      alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
     debug:
       msg: "{{ alive_followers[0] }}"
     no_log: True
@@ -288,7 +272,7 @@
   - name: "{{ recipe_name }}: Prepare all running servers."
     vars:
       no_of_fi: []
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+      alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
       leader_to_be: "{{ alive_followers[0] }}"
       pmqp_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
       nalive_follower: "{{ alive_followers | difference(leader_to_be) }}"
@@ -334,7 +318,7 @@
 
   - name: "{{ recipe_name }}: Get fault_injection_points array to check 'leader-to-be' does not get fault injection applied."
     vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+      alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
       leader_to_be: "{{ alive_followers[0] }}"
       stage: "leader_to_be_fi_array"
       raft_key:
@@ -364,7 +348,7 @@
   #3c - Pause all running servers.
   - name: "{{ recipe_name }}: Pause all running servers, (this includes the current leader, leader-to-be, etc)."
     vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+      alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
       leader_to_be: "{{ alive_followers[0] }}"
       peers_to_be_pause: "{{ No_of_Fi + [leader_to_be] }}"
       pause_all_peers: "{{ lookup('niova_raftprocess', 'pause', peers_to_be_pause[item], wantlist=True) }}"
@@ -421,7 +405,7 @@
   #4-Unpause the Leader-to-Be from Step #3.
   - name: "{{ recipe_name }}: Unpause the 'Leader-to-Be' from Step #3."
     vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+      alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
       leader_to_be: "{{ alive_followers[0] }}"
       resume_leader_to_be: "{{ lookup('niova_raftprocess', 'resume', leader_to_be, wantlist=True) }}"
     debug:
@@ -430,7 +414,7 @@
 
   - name: "{{ recipe_name }}: Wait until 'leader-to-be' becomes leader."
     vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+      alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
       leader_to_be: "{{ alive_followers[0] }}"
       nresume_peers: "{{ Promoting_Selected_Followers + [leader_to_be] }}"
       stage: "wait_leader_election"
@@ -444,7 +428,7 @@
 
   - name: "{{ recipe_name }}: Get last-applied value from followers which are unpaused in Step #3."
     vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+      alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
       leader_to_be: "{{ alive_followers[0] }}"
       nresume_peers: "{{ Promoting_Selected_Followers + [leader_to_be] }}"
       stage: "state_of_resumed_followers"
@@ -464,7 +448,7 @@
 
   - name: "{{ recipe_name }}: Verify followers unpaused in Step #3 are recovered."
     vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+      alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
       leader_to_be: "{{ alive_followers[0] }}"
       nresume_peers: "{{ Promoting_Selected_Followers + [leader_to_be] }}"
       initial_commit_idx: "{{ stage1_value['results'][0]['item']['/0/commit-idx'] }}"
@@ -482,7 +466,7 @@
     
   - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and sync-entry-crc is same on all peers."
     vars:
-      alive_followers: "{{ Promoting_Followers_List | difference(Promoting_Selected_Followers) }}"
+      alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
       leader_to_be: "{{ alive_followers[0] }}"
       nresume_peers: "{{ Promoting_Selected_Followers + [leader_to_be] }}"
       last_applied_cum_crc: "{{ all_values['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"

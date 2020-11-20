@@ -75,7 +75,7 @@
           (sync_entry_term != sync_entry_term_next) or
           (sync_entry_data_size != sync_entry_data_size_next) or
           (sync_entry_crc != sync_entry_crc_next)
-     loop: "{{ range(0, NrunningPeers | length-1) | list }}"
+     loop: "{{ range(0, NRunningPeers | length-1) | list }}"
    
    #Determine leader before reboot
    - name: "{{ recipe_name }}: Get leader_uuid before reboot."
@@ -91,16 +91,16 @@
      register: leader_values
 
    - name: "{{ recipe_name }}: Get leader uuid and follower's uuids."
-     set_fact:
-       cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
-       cuwr_follower_uuids: "{{ NRunningPeers | difference(leader_values['results'][0]['item']['/0/leader-uuid']) }}"
+     include_role:
+        name: common
+        tasks_from: get_follower_stats
 
    - name: "{{ recipe_name }}: Get sync-entry-idx values for all followers before write."
      vars:
        stage: "before_write_followers"
        raft_keys:
            - "/raft_root_entry/0/sync-entry-idx"
-       sync_ent_idx_follo_before_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_follower_uuids, raft_keys, wantlist=True) }}"
+       sync_ent_idx_follo_before_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, raft_keys, wantlist=True) }}"
      debug:
        msg: "Getting sync-entry-idx values for all followers before write."
      with_items:
@@ -109,6 +109,7 @@
 
    - name: "{{ recipe_name }}: Get sync-entry-idx value for leader before write."
      vars:
+       cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
        stage: "before_write_leader"
        raft_keys:
            - "/raft_root_entry/0/sync-entry-idx"
@@ -125,8 +126,8 @@
        name: common
        tasks_from: set_fault_injection_on_all_followers_and_verify
      vars:
-       ServerUUID: "{{ cuwr_follower_uuids[item] }}"
-     loop: "{{ range(0, cuwr_follower_uuids | length) | list }}"
+       ServerUUID: "{{ FollowerUUIDs[item] }}"
+     loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
    - name: "{{ recipe_name }}: Start client process."
      include_role:
@@ -156,7 +157,7 @@
        stage: "after_write_followers"
        raft_keys:
            - "/raft_root_entry/0/sync-entry-idx"
-       new_ent_idx_followers_after_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_follower_uuids, raft_keys, wantlist=True) }}"
+       sync_ent_idx_followers_after_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, raft_keys, wantlist=True) }}"
      debug:
        msg: "Getting sync-entry-idx values for all followers after write."
      with_items:
@@ -165,6 +166,7 @@
 
    - name: "{{ recipe_name }}: Get sync-entry-idx value for leader after write."
      vars:
+       cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
        stage: "after_write_leader"
        raft_keys:
            - "/raft_root_entry/0/sync-entry-idx"
@@ -183,7 +185,7 @@
      debug:
        msg: "Verifying that sync-entry-idx of all followers remains same"
      failed_when: sync_entry_idx_before['/0/sync-entry-idx'] != sync_entry_idx_after['/0/sync-entry-idx']
-     loop: "{{ range(0, cuwr_follower_uuids | length) | list }}"
+     loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
    - name: "{{ recipe_name }}: Verify that sync-entry-idx of leader is advanced by 1."
      vars:
@@ -217,10 +219,12 @@
    #3- Stop the processes, first all followers and then leader
    - name: "{{ recipe_name }}: Stop all follower processes."
      debug:
-       msg: "{{ lookup('niova_raftprocess', 'kill', cuwr_follower_uuids[item], wantlist=True) }}"
-     loop: "{{ range(0, cuwr_follower_uuids | length) | list }}"
+       msg: "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[item], wantlist=True) }}"
+     loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
    - name: "{{ recipe_name }}: Stop leader process."
+     vars:
+       cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
      debug:
        msg: "{{ lookup('niova_raftprocess', 'kill', cuwr_leader_uuid_before, wantlist=True) }}"
 
@@ -233,6 +237,8 @@
        ServerUUID: "{{ cuwr_leader_uuid_before }}"
      
    - name: "{{ recipe_name }}: Add the leader to the started peer list."
+     vars:
+       cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
      set_fact:
        cuwr_num_peer_started_after_reboot: "{{ cuwr_num_peer_started_after_reboot + [cuwr_leader_uuid_before] }}"
 
@@ -247,12 +253,12 @@
        name: common
        tasks_from: start_server
      vars:
-       ServerUUID: "{{ cuwr_follower_uuids[item] }}"
+       ServerUUID: "{{ FollowerUUIDs[item] }}"
      loop: "{{ range(0, npeers_for_leader_elect | int - 1) | list }}"
      
    - name: "{{ recipe_name }}: Get the started followers in the running peer list."
      set_fact:
-       cuwr_num_peer_started_after_reboot : "{{ cuwr_num_peer_started_after_reboot + [cuwr_follower_uuids[item]] }}"
+       cuwr_num_peer_started_after_reboot : "{{ cuwr_num_peer_started_after_reboot + [FollowerUUIDs[item]] }}"
      loop: "{{ range(0, npeers_for_leader_elect | int - 1) | list }}"
 
    - name: "{{ recipe_name }}: Activate Raft timer thread on all started peers."
@@ -294,7 +300,7 @@
    
    - name: "{{ recipe_name }}:Get remaining non-running peer uuids for restarting it."
      set_fact:
-        cuwr_remaining_followers_to_start: "{{ cuwr_follower_uuids | difference(cuwr_num_peer_started_after_reboot) }}"
+        cuwr_remaining_followers_to_start: "{{ FollowerUUIDs | difference(cuwr_num_peer_started_after_reboot) }}"
 
    #7 - Startup the Remaining Followers
    - name: "{{ recipe_name }}: Restarting remaining followers."
@@ -310,8 +316,8 @@
        stage: "poll_for_last_applied_idx"
      debug:
        msg: "Waiting for all followers to have a last-applied-idx which is equal to the leader's."
-     until: (lookup('niova_ctlrequest', 'lookup', cuwr_follower_uuids[item], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first) == (lookup('niova_ctlrequest', 'lookup', leader_uuid_after['results'][0]['item']['/0/leader-uuid'], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first)
-     loop: "{{ range(0, cuwr_follower_uuids | length) | list }}"
+     until: (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[item], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first) == (lookup('niova_ctlrequest', 'lookup', leader_uuid_after['results'][0]['item']['/0/leader-uuid'], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first)
+     loop: "{{ range(0, FollowerUUIDs | length) | list }}"
      loop_control:
         pause: 2
 

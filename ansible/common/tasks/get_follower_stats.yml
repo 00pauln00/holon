@@ -34,7 +34,7 @@
       vars:
         stage: "get_leader_uuid"
       set_fact:
-        LeaderUUID: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/leader-uuid', wantlist=True) }}"
+        LeaderUUID: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], '/raft_root_entry/0/leader-uuid', wantlist=True) }}"
       
     - name: "{{ recipe_name }}: Print Leader UUID."
       debug:
@@ -42,7 +42,7 @@
 
     - name: "Get the FollowerUUIDs list."
       set_fact:
-        FollowerUUIDs: "{{ NRunningPeers | difference(LeaderUUID[0]['/0/leader-uuid']) }}"
+        FollowerUUIDs: "{{ NRunningPeers | difference(LeaderUUID['/0/leader-uuid']) }}"
 
     - name: "{{ recipe_name }}: Print Follower UUIDs."
       debug:
@@ -54,9 +54,4 @@
         raft_key:
             - "/raft_root_entry/0/follower-stats"
       set_fact:
-        GetFollowerStatsInfo: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID[0]['/0/leader-uuid'], raft_key, wantlist=True) }}"
-
-    - name: "{{ recipe_name }}: Print Follower-Stats."
-      debug:
-        msg: "{{ GetFollowerStatsInfo }}"
-
+        GetFollowerStatsInfo: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
