@@ -28,7 +28,7 @@
             - "/raft_root_entry/0/last-applied"
             - "/raft_root_entry/0/last-applied-cumulative-crc"
             - "/raft_root_entry/0/peer-uuid"
-         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, raft_keys, wantlist=True) }}"
+         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
       debug:
         msg: "Getting stats for all running peers"
       no_log: true
@@ -57,7 +57,7 @@
          stage: "stage1_rcv_false"
          cmd: "net_recv_enabled@false"
          where: "/ctl_svc_nodes/net_recv_enabled@true"
-         recv_false: "{{ lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers, cmd, where, wantlist=True) }}"
+         recv_false: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       debug:
         msg: "Disable message receive on peer: "
       with_items:
@@ -78,10 +78,10 @@
              - "/raft_root_entry/0/state"
              - "/raft_root_entry/0/client-requests"
              - "/raft_root_entry/0/term"
-         net_rcv: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], raft_keys, wantlist=True) }}"
+         net_rcv: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_keys, wantlist=True) }}"
       debug:
         msg: 
-         - "Verify parameters for peer: {{ nrunning_peers[item] }}"
+         - "Verify parameters for peer: {{ NRunningPeers[item] }}"
       failed_when: >
            (net_rcv["/*/net_recv_enabled"] != False) or
            (net_rcv["/0/leader-uuid"] != initial_vals["/0/leader-uuid"]) or
@@ -91,7 +91,7 @@
            (net_rcv["/0/client-requests"] != "deny-leader-not-established")) or
            ((net_rcv["/0/term"] != initial_vals["/0/term"]) and
            (net_rcv["/0/term"] <= initial_vals["/0/term"]))
-      loop: "{{ range(0, nrunning_peers|length) | list }}"
+      loop: "{{ range(0, NRunningPeers|length) | list }}"
 
     - name: "{{ recipe_name }}: Lets sleep for sometime before checking the values"
       wait_for:
@@ -106,10 +106,10 @@
          stage: "stage2_set_leader"
          cmd: "net_recv_enabled@true"
          where: "/ctl_svc_nodes/uuid@{{ follower_uuid[0] }}"
-         set_leader_id: "{{ lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers[item], cmd, where, wantlist=True) }}"
+         set_leader_id: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers[item], cmd, where, wantlist=True) }}"
       debug:
-        msg: "Setting leader-to-be uuid on peer: {{ nrunning_peers[item] }}"
-      loop: "{{ range(0, nrunning_peers|length) | list }}"
+        msg: "Setting leader-to-be uuid on peer: {{ NRunningPeers[item] }}"
+      loop: "{{ range(0, NRunningPeers|length) | list }}"
 
     - pause: seconds=3
 
@@ -130,7 +130,7 @@
             - "/raft_root_entry/0/client-requests"
             - "/raft_root_entry/0/voted-for-uuid"
             - "/raft_root_entry/0/peer-uuid"
-         set_leader: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, raft_keys, wantlist=True) }}"
+         set_leader: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
       debug:
         msg: "Verify leader-to-be not elected on peer"
       no_log: true
@@ -143,7 +143,7 @@
         initial_vals: "{{ stage0_peers_vals['results'][item]['item'] }}"
         stage2_vals: "{{ set_leader_vals['results'][item]['item'] }}"
       debug:
-        msg: "Verify value for peer: {{ nrunning_peers[item] }}, initial_vals: {{ initial_vals}} / {{ stage2_vals }}"
+        msg: "Verify value for peer: {{ NRunningPeers[item] }}, initial_vals: {{ initial_vals}} / {{ stage2_vals }}"
       failed_when: >
         (stage2_vals["/0/leader-uuid"] != initial_vals["/0/leader-uuid"]) or
         (stage2_vals["/0/commit-idx"] != initial_vals["/0/commit-idx"]) or
@@ -158,7 +158,7 @@
         (stage2_vals["/0/client-requests"] != "deny-may-be-deposed" and
          stage2_vals["/0/client-requests"] != "deny-leader-not-established") or
         (stage2_vals["/0/term"] < initial_vals["/0/term"])
-      loop: "{{ range(0, nrunning_peers|length) | list }}"
+      loop: "{{ range(0, NRunningPeers|length) | list }}"
 
     #- pause: seconds=3
 
@@ -177,7 +177,7 @@
          stage: "stage4_get_all"
       debug:
         msg: "Waiting for new leader election"
-      until: (lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first) != follower_uuid[0]
+      until: (lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first) != follower_uuid[0]
       retries: 10
       delay: 2
-      loop: "{{ range(0, nrunning_peers | length) | list }}"
+      loop: "{{ range(0, NRunningPeers | length) | list }}"

@@ -16,7 +16,7 @@
 
     - name: "{{ recipe_name }}: Get the UUID for the second peer"
       set_fact:
-       Server1UUID: "{{ non_running_peers[0] }}"
+       Server1UUID: "{{ NonRunningServers[0] }}"
 
     - name: "{{ recipe_name }}: Start peer which is made idle in previous task"
       include_role:

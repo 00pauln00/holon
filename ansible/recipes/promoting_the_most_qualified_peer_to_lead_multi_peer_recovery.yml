@@ -24,7 +24,7 @@
   #Recipe Setup: If the cluster is not booted, the recipe should abort.
   - name: "{{ recipe_name }}: Get the state from all peers."
     vars:
-       running_servers: "{{ nrunning_peers | difference(RecoveryClient) }}"
+       running_servers: "{{ NRunningPeers }}"
        stage: "check_booting_stage"
        state_key:
           - "/raft_root_entry/0/state"
@@ -69,7 +69,7 @@
   #Recipe Setup: Ensure all fault injections with “raft” in the name are disabled on all peers.
   - name: "{{ recipe_name }}: Check fault injection on all followers through common task."
     vars:
-      running_servers: "{{ nrunning_peers | difference(RecoveryClient) }}"
+      running_servers: "{{ NRunningPeers }}"
     include_role:
        name: common
        tasks_from: verify_fault_injection_disabled_on_all_peers
@@ -78,7 +78,7 @@
   #Recipe Setup: Capture the current term and commit index.
   - name: "{{ recipe_name }}: Get the current term value and commit-idx value."
     vars:
-       running_servers: "{{ nrunning_peers | difference(RecoveryClient) }}"
+       running_servers: "{{ NRunningPeers }}"
        stage: "store_values"
        raft_keys:
           - "/raft_root_entry/0/term"
