@@ -15,10 +15,10 @@
           - "/raft_root_entry/0/commit-idx"
           - "/raft_root_entry/0/last-applied"
           - "/raft_root_entry/0/last-applied-cumulative-crc"
-          - "/raft_root_entry/0/newest-entry-idx"
-          - "/raft_root_entry/0/newest-entry-term"
-          - "/raft_root_entry/0/newest-entry-data-size"
-          - "/raft_root_entry/0/newest-entry-crc"
+          - "/raft_root_entry/0/sync-entry-idx"
+          - "/raft_root_entry/0/sync-entry-term"
+          - "/raft_root_entry/0/sync-entry-data-size"
+          - "/raft_root_entry/0/sync-entry-crc"
 
   tasks:
    - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
@@ -52,7 +52,7 @@
        raft_keys:
           - "/raft_root_entry/0/raft-uuid"
           - "/raft_root_entry/0/leader-uuid"
-       uuids: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers[0], raft_keys, wantlist=True) }}"
+       uuids: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], raft_keys, wantlist=True) }}"
      debug:
        msg: "Get the leader uuid and raft-uuid"
      no_log: true
@@ -77,7 +77,7 @@
      with_items:
        - "{{ cli_vals }}"
      register: client_values
-
+  
    - name: "{{ recipe_name }}: Verify the client parameters"
      vars:
        client_info: "{{ client_values['results'][0]['item'] }}"
@@ -97,7 +97,7 @@
      vars:
        stage: "snapshot_before_write"
        pre_write_values: []
-       snapshot_values: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, peer_raft_keys, wantlist=True) }}"
+       snapshot_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, peer_raft_keys, wantlist=True) }}"
      debug:
        msg: "Snapshot the raft server state before write operaiton."
      no_log: true
@@ -194,11 +194,11 @@
      failed_when: >
          (follower_stats_after_wr['/0/follower-stats'][item]['next-idx'] != (follower_stats_before_wr['/0/follower-stats'][item]['next-idx'] + num_writes)) or
          (follower_stats_after_wr['/0/follower-stats'][item]['prev-idx-term'] != term_before_wr['/0/term']) 
-     loop: "{{ range(0, nrunning_peers | length-1) | list }}"
+     loop: "{{ range(0, NRunningPeers | length-1) | list }}"
   
    - name: "{{ recipe_name}}: Get follower peer uuids."
      set_fact:
-        follower_uuids: "{{ nrunning_peers | difference(raft_leader_uuids['results'][0]['item']['/0/leader-uuid']) }}"
+        follower_uuids: "{{ NRunningPeers | difference(raft_leader_uuids['results'][0]['item']['/0/leader-uuid']) }}"
 
    - name: "{{ recipe_name}}: Get the last-ack for all the followers"
      vars:
@@ -219,7 +219,7 @@
    - name: "{{ recipe_name}}: Get the server information for all running servers."
      vars:
        stage: "server_verify"
-       peer_values_all: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, peer_raft_keys, wantlist=True) }}"
+       peer_values_all: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, peer_raft_keys, wantlist=True) }}"
      debug:
        msg: "Get the values for all running servers."
      no_log: true
@@ -238,20 +238,20 @@
          (srv_latest_vals['/0/term'] !=  srv_before_wr_vals['/0/term']) or
          (srv_latest_vals['/0/commit-idx'] != (num_writes + srv_before_wr_vals['/0/commit-idx'])) or
          (srv_latest_vals['/0/last-applied'] != (num_writes + srv_before_wr_vals['/0/last-applied'])) or
-         (srv_latest_vals['/0/newest-entry-idx'] != (num_writes + srv_before_wr_vals['/0/newest-entry-idx'])) or
-         (srv_latest_vals['/0/newest-entry-term'] != srv_before_wr_vals['/0/term'])
-     loop: "{{ range(0, nrunning_peers | length)| list }}"
+         (srv_latest_vals['/0/sync-entry-idx'] != (num_writes + srv_before_wr_vals['/0/sync-entry-idx'])) or
+         (srv_latest_vals['/0/sync-entry-term'] != srv_before_wr_vals['/0/term'])
+     loop: "{{ range(0, NRunningPeers | length)| list }}"
    
-   - name: "{{ recipe_name}}: Verify that term, last-applied-cumulative-crc, newest-entry-term, newest-entry-data-size and newest-entry-crc are same on all peers"
+   - name: "{{ recipe_name}}: Verify that term, last-applied-cumulative-crc, sync-entry-term, sync-entry-data-size and sync-entry-crc are same on all peers"
      vars:
        curr_itr_vals: "{{ running_srv_vals['results'][item]['item'] }}"
        next_itr_vals: "{{ running_srv_vals['results'][item + 1]['item'] }}"
      debug:
-       msg: "Verifying that term, last-applied-cumulative-crc, newest-entry-term, newest-entry-data-size and newest-entry-crc are same on all peers"
+       msg: "Verifying that term, last-applied-cumulative-crc, sync-entry-term, sync-entry-data-size and sync-entry-crc are same on all peers"
      failed_when: >
          (curr_itr_vals['/0/term'] != next_itr_vals['/0/term']) or
          (curr_itr_vals['/0/last-applied-cumulative-crc'] != next_itr_vals['/0/last-applied-cumulative-crc']) or
-         (curr_itr_vals['/0/newest-entry-term'] != next_itr_vals['/0/newest-entry-term']) or
-         (curr_itr_vals['/0/newest-entry-data-size'] != next_itr_vals['/0/newest-entry-data-size']) or
-         (curr_itr_vals['/0/newest-entry-crc'] != next_itr_vals['/0/newest-entry-crc'])
-     loop: "{{ range(0, nrunning_peers | length - 1)| list }}"
+         (curr_itr_vals['/0/sync-entry-term'] != next_itr_vals['/0/sync-entry-term']) or
+         (curr_itr_vals['/0/sync-entry-data-size'] != next_itr_vals['/0/sync-entry-data-size']) or
+         (curr_itr_vals['/0/sync-entry-crc'] != next_itr_vals['/0/sync-entry-crc'])
+     loop: "{{ range(0, NRunningPeers | length - 1)| list }}"
