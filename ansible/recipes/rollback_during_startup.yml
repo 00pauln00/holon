@@ -319,7 +319,7 @@
    - name: "{{ recipe_name }}: Validate parameters for pmdb-request-history."
      vars:
        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
-       pmdb_request_history: "{{ pmdb_request_history_values_after_reboot['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][-1] }}"
+       pmdb_request_history: "{{ pmdb_request_history_values_after_reboot['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][0] }}"
      debug:
        msg: "Validating parameters for  pmdb-request-history."
      failed_when: >
