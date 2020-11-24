@@ -1,5 +1,5 @@
 - import_playbook: basic_raft_operation_with_client_activity.yml
-  when: raft_param['ctype'] == "pumicedb"
+  when: ClusterParams['ctype'] == "pumicedb"
 
 - name: "PMDB Client Error Demonstration 1"
   hosts: localhost
@@ -20,8 +20,8 @@
   tasks:
     - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
       debug:
-        msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed: {{ raft_param['ctype'] }}"
-      failed_when: requirement != raft_param['ctype']
+        msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed: {{ ClusterParams['ctype'] }}"
+      failed_when: requirement != ClusterParams['ctype']
 
     - name: "{{ recipe_name }}: Create UUID for starting the client"
       shell: "/usr/bin/uuid"
