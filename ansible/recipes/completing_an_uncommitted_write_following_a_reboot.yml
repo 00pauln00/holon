@@ -1,5 +1,5 @@
 - import_playbook: healthy_raftserver_cluster_type2.yml
-  when: raft_param['ctype'] == "pumicedb"
+  when: ClusterParams['ctype'] == "pumicedb"
 
 - name: "Completing an Uncommitted Write Following a Reboot"
   hosts: localhost
@@ -15,16 +15,16 @@
            - "/raft_root_entry/0/commit-idx"
            - "/raft_root_entry/0/last-applied"
            - "/raft_root_entry/0/last-applied-cumulative-crc"
-           - "/raft_root_entry/0/newest-entry-idx"
-           - "/raft_root_entry/0/newest-entry-term"
-           - "/raft_root_entry/0/newest-entry-data-size"
-           - "/raft_root_entry/0/newest-entry-crc"
+           - "/raft_root_entry/0/sync-entry-idx"
+           - "/raft_root_entry/0/sync-entry-term"
+           - "/raft_root_entry/0/sync-entry-data-size"
+           - "/raft_root_entry/0/sync-entry-crc"
 
   tasks:
    - name: "{{ recipe_name }}: Verifying recipe compatibility requirements."
      debug:
-       msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed: {{ raft_param['ctype'] }}"
-     failed_when: requirement != raft_param['ctype']
+       msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed: {{ ClusterParams['ctype'] }}"
+     failed_when: requirement != ClusterParams['ctype']
 
    - name: "{{ recipe_name }}: Generate Client UUID."
      shell: "/usr/bin/uuid"
@@ -38,7 +38,7 @@
    - name: "{{ recipe_name }}: Get raft_root_entry values of all peers before reboot."
      vars:
        stage: "recipe_preparation"
-       raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, peer_raft_keys, wantlist=True) }}"
+       raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, peer_raft_keys, wantlist=True) }}"
      debug:
         msg: "Getting raft_root_entry for all servers."
      no_log: true
@@ -56,14 +56,14 @@
        last_applied_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/last-applied'] }}"
        last_applied_cum_crc: "{{ raft_root_entry_all['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
        last_applied_cum_crc_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/last-applied-cumulative-crc'] }}"
-       newest_entry_idx: "{{ raft_root_entry_all['results'][item]['item']['/0/newest-entry-idx'] }}"
-       newest_entry_idx_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/newest-entry-idx'] }}"
-       newest_entry_term: "{{ raft_root_entry_all['results'][item]['item']['/0/newest-entry-term'] }}"
-       newest_entry_term_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/newest-entry-term'] }}"
-       newest_entry_data_size: "{{ raft_root_entry_all['results'][item]['item']['/0/newest-entry-data-size'] }}"
-       newest_entry_data_size_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/newest-entry-data-size'] }}"
-       newest_entry_crc: "{{ raft_root_entry_all['results'][item]['item']['/0/newest-entry-crc'] }}"
-       newest_entry_crc_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/newest-entry-crc'] }}"
+       sync_entry_idx: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-idx'] }}"
+       sync_entry_idx_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-idx'] }}"
+       sync_entry_term: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-term'] }}"
+       sync_entry_term_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-term'] }}"
+       sync_entry_data_size: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-data-size'] }}"
+       sync_entry_data_size_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-data-size'] }}"
+       sync_entry_crc: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-crc'] }}"
+       sync_entry_crc_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-crc'] }}"
      debug:
        msg: "Compare raft_root_entry values of all peers."
      failed_when: >
@@ -71,11 +71,11 @@
           (commit_idx != commit_idx_next) or
           (last_applied != last_applied_next) or
           (last_applied_cum_crc != last_applied_cum_crc_next) or
-          (newest_entry_idx != newest_entry_idx_next) or
-          (newest_entry_term != newest_entry_term_next) or
-          (newest_entry_data_size != newest_entry_data_size_next) or
-          (newest_entry_crc != newest_entry_crc_next)
-     loop: "{{ range(0, nrunning_peers | length-1) | list }}"
+          (sync_entry_idx != sync_entry_idx_next) or
+          (sync_entry_term != sync_entry_term_next) or
+          (sync_entry_data_size != sync_entry_data_size_next) or
+          (sync_entry_crc != sync_entry_crc_next)
+     loop: "{{ range(0, NRunningPeers | length-1) | list }}"
    
    #Determine leader before reboot
    - name: "{{ recipe_name }}: Get leader_uuid before reboot."
@@ -83,7 +83,7 @@
        stage: "before_reboot_leader"
        raft_keys:
           - "/raft_root_entry/0/leader-uuid"
-       lead_values: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers[0], raft_keys, wantlist=True) }}"
+       lead_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], raft_keys, wantlist=True) }}"
      debug:
        msg: "Getting leader_uuid before reboot."
      with_items:
@@ -91,33 +91,34 @@
      register: leader_values
 
    - name: "{{ recipe_name }}: Get leader uuid and follower's uuids."
-     set_fact:
-       cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
-       cuwr_follower_uuids: "{{ nrunning_peers | difference(leader_values['results'][0]['item']['/0/leader-uuid']) }}"
+     include_role:
+        name: common
+        tasks_from: get_follower_stats
 
-   - name: "{{ recipe_name }}: Get newest-entry-idx values for all followers before write."
+   - name: "{{ recipe_name }}: Get sync-entry-idx values for all followers before write."
      vars:
        stage: "before_write_followers"
        raft_keys:
-           - "/raft_root_entry/0/newest-entry-idx"
-       new_ent_idx_follo_before_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_follower_uuids, raft_keys, wantlist=True) }}"
+           - "/raft_root_entry/0/sync-entry-idx"
+       sync_ent_idx_follo_before_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, raft_keys, wantlist=True) }}"
      debug:
-       msg: "Getting newest-entry-idx values for all followers before write."
+       msg: "Getting sync-entry-idx values for all followers before write."
      with_items:
-         - "{{ new_ent_idx_follo_before_write_vals }}"
-     register: newest_entry_idx_followers_before_write
+         - "{{ sync_ent_idx_follo_before_write_vals }}"
+     register: sync_entry_idx_followers_before_write
 
-   - name: "{{ recipe_name }}: Get newest-entry-idx value for leader before write."
+   - name: "{{ recipe_name }}: Get sync-entry-idx value for leader before write."
      vars:
+       cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
        stage: "before_write_leader"
        raft_keys:
-           - "/raft_root_entry/0/newest-entry-idx"
-       new_ent_idx_lead_before_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_leader_uuid_before, raft_keys, wantlist=True) }}"
+           - "/raft_root_entry/0/sync-entry-idx"
+       sync_ent_idx_lead_before_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_leader_uuid_before, raft_keys, wantlist=True) }}"
      debug:
-       msg: "Getting newest-entry-idx value for leader before write."
+       msg: "Getting sync-entry-idx value for leader before write."
      with_items:
-         - "{{ new_ent_idx_lead_before_write_vals }}"
-     register: newest_entry_idx_leader_before_write
+         - "{{ sync_ent_idx_lead_before_write_vals }}"
+     register: sync_entry_idx_leader_before_write
 
    #Set raft_follower_ignores_non_hb_AE_request on the Followers
    - name: "{{ recipe_name }}: Ignore writes on all followers using fault injection."
@@ -125,8 +126,8 @@
        name: common
        tasks_from: set_fault_injection_on_all_followers_and_verify
      vars:
-       ServerUUID: "{{ cuwr_follower_uuids[item] }}"
-     loop: "{{ range(0, cuwr_follower_uuids | length) | list }}"
+       ServerUUID: "{{ FollowerUUIDs[item] }}"
+     loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
    - name: "{{ recipe_name }}: Start client process."
      include_role:
@@ -151,54 +152,55 @@
      debug:
        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
 
-   - name: "{{ recipe_name }}: Get newest-entry-idx values for all followers after write."
+   - name: "{{ recipe_name }}: Get sync-entry-idx values for all followers after write."
      vars:
        stage: "after_write_followers"
        raft_keys:
-           - "/raft_root_entry/0/newest-entry-idx"
-       new_ent_idx_followers_after_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_follower_uuids, raft_keys, wantlist=True) }}"
+           - "/raft_root_entry/0/sync-entry-idx"
+       sync_ent_idx_followers_after_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, raft_keys, wantlist=True) }}"
      debug:
-       msg: "Getting newest-entry-idx values for all followers after write."
+       msg: "Getting sync-entry-idx values for all followers after write."
      with_items:
-         - "{{ new_ent_idx_followers_after_write_vals }}"
-     register: newest_entry_idx_followers_after_write
+         - "{{ sync_ent_idx_followers_after_write_vals }}"
+     register: sync_entry_idx_followers_after_write
 
-   - name: "{{ recipe_name }}: Get newest-entry-idx value for leader after write."
+   - name: "{{ recipe_name }}: Get sync-entry-idx value for leader after write."
      vars:
+       cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
        stage: "after_write_leader"
        raft_keys:
-           - "/raft_root_entry/0/newest-entry-idx"
-       new_ent_idx_lead_after_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_leader_uuid_before, raft_keys, wantlist=True) }}"
+           - "/raft_root_entry/0/sync-entry-idx"
+       sync_ent_idx_lead_after_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', cuwr_leader_uuid_before, raft_keys, wantlist=True) }}"
      debug:
-       msg: "Getting newest-entry-idx value for leader after write."
+       msg: "Getting sync-entry-idx value for leader after write."
      with_items:
-         - "{{ new_ent_idx_lead_after_write_vals }}"
-     register: newest_entry_idx_leader_after_write
+         - "{{ sync_ent_idx_lead_after_write_vals }}"
+     register: sync_entry_idx_leader_after_write
 
-   #2a- Verification for newest-entry-idx and commit-idx
-   - name: "{{ recipe_name }}: Verify that newest-entry-idx of all followers remains same."
+   #2a- Verification for sync-entry-idx and commit-idx
+   - name: "{{ recipe_name }}: Verify that sync-entry-idx of all followers remains same."
      vars:
-       newest_entry_idx_before: "{{ newest_entry_idx_followers_before_write['results'][item]['item'] }}"
-       newest_entry_idx_after: "{{ newest_entry_idx_followers_after_write['results'][item]['item'] }}"
+       sync_entry_idx_before: "{{ sync_entry_idx_followers_before_write['results'][item]['item'] }}"
+       sync_entry_idx_after: "{{ sync_entry_idx_followers_after_write['results'][item]['item'] }}"
      debug:
-       msg: "Verifying that newest-entry-idx of all followers remains same"
-     failed_when: newest_entry_idx_before['/0/newest-entry-idx'] != newest_entry_idx_after['/0/newest-entry-idx']
-     loop: "{{ range(0, cuwr_follower_uuids | length) | list }}"
+       msg: "Verifying that sync-entry-idx of all followers remains same"
+     failed_when: sync_entry_idx_before['/0/sync-entry-idx'] != sync_entry_idx_after['/0/sync-entry-idx']
+     loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
-   - name: "{{ recipe_name }}: Verify that newest-entry-idx of leader is advanced by 1."
+   - name: "{{ recipe_name }}: Verify that sync-entry-idx of leader is advanced by 1."
      vars:
-       leader_newest_entry_idx_before: "{{ newest_entry_idx_leader_before_write['results'][0]['item'] }}"
-       leader_newest_entry_idx_after: "{{ newest_entry_idx_leader_after_write['results'][0]['item'] }}"
+       leader_sync_entry_idx_before: "{{ sync_entry_idx_leader_before_write['results'][0]['item'] }}"
+       leader_sync_entry_idx_after: "{{ sync_entry_idx_leader_after_write['results'][0]['item'] }}"
      debug:
-       msg: "Verifying that newest-entry-idx of leader is advanced by 1."
-     failed_when: (leader_newest_entry_idx_after['/0/newest-entry-idx'] - leader_newest_entry_idx_before['/0/newest-entry-idx']) != 1
+       msg: "Verifying that sync-entry-idx of leader is advanced by 1."
+     failed_when: (leader_sync_entry_idx_after['/0/sync-entry-idx'] - leader_sync_entry_idx_before['/0/sync-entry-idx']) != 1
 
    - name: "{{ recipe_name }}: Get commit-idx of all running peers after write."
      vars:
        stage: "get_commit_idx_all_after_write"
        raft_keys:
            - "/raft_root_entry/0/commit-idx"
-       get_commit_idx_all_after_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, raft_keys, wantlist=True) }}"
+       get_commit_idx_all_after_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
      debug:
        msg: "Getting commit-idx of all running peers after write."
      with_items:
@@ -212,15 +214,17 @@
      failed_when: commit_idx != commit_idx_after
      debug:
        msg: "Verifying that commit-idx has not advanced on any peer."
-     loop: "{{ range(0, nrunning_peers | length) | list }}"
+     loop: "{{ range(0, NRunningPeers | length) | list }}"
 
    #3- Stop the processes, first all followers and then leader
    - name: "{{ recipe_name }}: Stop all follower processes."
      debug:
-       msg: "{{ lookup('niova_raftprocess', 'kill', cuwr_follower_uuids[item], wantlist=True) }}"
-     loop: "{{ range(0, cuwr_follower_uuids | length) | list }}"
+       msg: "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[item], wantlist=True) }}"
+     loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
    - name: "{{ recipe_name }}: Stop leader process."
+     vars:
+       cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
      debug:
        msg: "{{ lookup('niova_raftprocess', 'kill', cuwr_leader_uuid_before, wantlist=True) }}"
 
@@ -233,6 +237,8 @@
        ServerUUID: "{{ cuwr_leader_uuid_before }}"
      
    - name: "{{ recipe_name }}: Add the leader to the started peer list."
+     vars:
+       cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
      set_fact:
        cuwr_num_peer_started_after_reboot: "{{ cuwr_num_peer_started_after_reboot + [cuwr_leader_uuid_before] }}"
 
@@ -247,12 +253,12 @@
        name: common
        tasks_from: start_server
      vars:
-       ServerUUID: "{{ cuwr_follower_uuids[item] }}"
+       ServerUUID: "{{ FollowerUUIDs[item] }}"
      loop: "{{ range(0, npeers_for_leader_elect | int - 1) | list }}"
      
    - name: "{{ recipe_name }}: Get the started followers in the running peer list."
      set_fact:
-       cuwr_num_peer_started_after_reboot : "{{ cuwr_num_peer_started_after_reboot + [cuwr_follower_uuids[item]] }}"
+       cuwr_num_peer_started_after_reboot : "{{ cuwr_num_peer_started_after_reboot + [FollowerUUIDs[item]] }}"
      loop: "{{ range(0, npeers_for_leader_elect | int - 1) | list }}"
 
    - name: "{{ recipe_name }}: Activate Raft timer thread on all started peers."
@@ -294,7 +300,7 @@
    
    - name: "{{ recipe_name }}:Get remaining non-running peer uuids for restarting it."
      set_fact:
-        cuwr_remaining_followers_to_start: "{{ cuwr_follower_uuids | difference(cuwr_num_peer_started_after_reboot) }}"
+        cuwr_remaining_followers_to_start: "{{ FollowerUUIDs | difference(cuwr_num_peer_started_after_reboot) }}"
 
    #7 - Startup the Remaining Followers
    - name: "{{ recipe_name }}: Restarting remaining followers."
@@ -310,59 +316,59 @@
        stage: "poll_for_last_applied_idx"
      debug:
        msg: "Waiting for all followers to have a last-applied-idx which is equal to the leader's."
-     until: (lookup('niova_ctlrequest', 'lookup', cuwr_follower_uuids[item], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first) == (lookup('niova_ctlrequest', 'lookup', leader_uuid_after['results'][0]['item']['/0/leader-uuid'], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first)
-     loop: "{{ range(0, cuwr_follower_uuids | length) | list }}"
+     until: (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[item], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first) == (lookup('niova_ctlrequest', 'lookup', leader_uuid_after['results'][0]['item']['/0/leader-uuid'], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first)
+     loop: "{{ range(0, FollowerUUIDs | length) | list }}"
      loop_control:
         pause: 2
 
    #7a - Verifications
-   - name: "{{ recipe_name }}: Get the values for comparing commit-idx, last-applied and newest-entry-idx for all servers."
+   - name: "{{ recipe_name }}: Get the values for comparing commit-idx, last-applied and sync-entry-idx for all servers."
      vars:
        stage: "verifications_after_reboot"
-       raft_root_entry_all_after_vals: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, peer_raft_keys, wantlist=True) }}"
+       raft_root_entry_all_after_vals: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, peer_raft_keys, wantlist=True) }}"
      debug:
-       msg: "Getting values for for all peers for comparing commit-idx, last-applied and newest-entry-idx."
+       msg: "Getting values for for all peers for comparing commit-idx, last-applied and sync-entry-idx."
      with_items:
          - "{{ raft_root_entry_all_after_vals }}"
      register: raft_root_entry_all_after
 
-   - name: "{{ recipe_name }}: Verify values for commit-idx, last-applied and newest-entry-idx for all servers."
+   - name: "{{ recipe_name }}: Verify values for commit-idx, last-applied and sync-entry-idx for all servers."
      vars:
        commit_idx: "{{ raft_root_entry_all_after['results'][item]['item'] }}"
        last_applied: "{{ raft_root_entry_all_after['results'][item]['item'] }}"
-       newest_entry_idx: "{{  raft_root_entry_all_after['results'][item]['item'] }}"
+       sync_entry_idx: "{{  raft_root_entry_all_after['results'][item]['item'] }}"
        commit_idx_prev: "{{ raft_root_entry_all['results'][item]['item'] }}"
        last_applied_prev: "{{ raft_root_entry_all['results'][item]['item'] }}"
-       newest_entry_idx_prev: "{{  raft_root_entry_all['results'][item]['item'] }}"
+       sync_entry_idx_prev: "{{  raft_root_entry_all['results'][item]['item'] }}"
      debug:
-       msg: "Verifying values for commit-idx, last-applied and newest-entry-idx for all servers."
+       msg: "Verifying values for commit-idx, last-applied and sync-entry-idx for all servers."
      failed_when: >
            (commit_idx['/0/commit-idx'] != (commit_idx_prev['/0/commit-idx'] + 2)) or
            (last_applied['/0/last-applied'] != (last_applied_prev['/0/last-applied'] + 2)) or
-           (newest_entry_idx['/0/newest-entry-idx'] != (newest_entry_idx_prev['/0/newest-entry-idx'] + 2))
-     loop: "{{ range(0, nrunning_peers | length) | list }}"
+           (sync_entry_idx['/0/sync-entry-idx'] != (sync_entry_idx_prev['/0/sync-entry-idx'] + 2))
+     loop: "{{ range(0, NRunningPeers | length) | list }}"
    
-   - name: "{{ recipe_name }}: Validate term, last-applied-cumulative-crc, newest-entry-term, newest-entry-data-size and newest-entry-crc of all peers after reboot."
+   - name: "{{ recipe_name }}: Validate term, last-applied-cumulative-crc, sync-entry-term, sync-entry-data-size and sync-entry-crc of all peers after reboot."
      vars:
        term: "{{ raft_root_entry_all_after['results'][item]['item']['/0/term'] }}"
        last_applied_cum_crc: "{{ raft_root_entry_all_after['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
-       newest_entry_term: "{{ raft_root_entry_all_after['results'][item]['item']['/0/newest-entry-term'] }}"
-       newest_entry_data_size: "{{ raft_root_entry_all_after['results'][item]['item']['/0/newest-entry-data-size'] }}"
-       newest_entry_crc: "{{ raft_root_entry_all_after['results'][item]['item']['/0/newest-entry-crc'] }}"
+       sync_entry_term: "{{ raft_root_entry_all_after['results'][item]['item']['/0/sync-entry-term'] }}"
+       sync_entry_data_size: "{{ raft_root_entry_all_after['results'][item]['item']['/0/sync-entry-data-size'] }}"
+       sync_entry_crc: "{{ raft_root_entry_all_after['results'][item]['item']['/0/sync-entry-crc'] }}"
        term_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/term'] }}"
        last_applied_cum_crc_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
-       newest_entry_term_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/newest-entry-term'] }}"
-       newest_entry_data_size_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/newest-entry-data-size'] }}"
-       newest_entry_crc_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/newest-entry-crc'] }}"
+       sync_entry_term_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/sync-entry-term'] }}"
+       sync_entry_data_size_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/sync-entry-data-size'] }}"
+       sync_entry_crc_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/sync-entry-crc'] }}"
      debug:
        msg: "Compare raft_root_entry values of all peers"
      failed_when: >
            (term != term_next) or
            (last_applied_cum_crc != last_applied_cum_crc_next) or
-           (newest_entry_term != newest_entry_term_next) or
-           (newest_entry_data_size != newest_entry_data_size_next) or
-           (newest_entry_crc != newest_entry_crc_next)
-     loop: "{{ range(0, nrunning_peers | length-1) | list }}"
+           (sync_entry_term != sync_entry_term_next) or
+           (sync_entry_data_size != sync_entry_data_size_next) or
+           (sync_entry_crc != sync_entry_crc_next)
+     loop: "{{ range(0, NRunningPeers | length-1) | list }}"
    
    #8 - Verify the Application Data.
    - name: "{{ recipe_name }}: Perform read on the same object."

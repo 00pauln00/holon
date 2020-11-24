@@ -7,13 +7,13 @@ from genericcmd import *
 from basicio import *
 from raftconfig import *
 
-def niova_raft_conf_create(recipe_params, conf_params):
-    base_dir = recipe_params['base_dir']
-    raft_uuid = recipe_params['raft_uuid']
+def niova_raft_conf_create(cluster_params):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
 
-    npeers = int(conf_params['npeers'])
-    port = int(conf_params['srv_port'])
-    client_port = int(conf_params['client_port'])
+    npeers = int(cluster_params['npeers'])
+    port = int(cluster_params['srv_port'])
+    client_port = int(cluster_params['client_port'])
 
     # Log file would be created inside the base directory only
     log_path = "%s/%s/%s.log" % (base_dir, raft_uuid, raft_uuid)
@@ -40,12 +40,11 @@ def niova_raft_conf_create(recipe_params, conf_params):
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
-        recipe_params = kwargs['variables']['raft_param']
+        cluster_params = kwargs['variables']['ClusterParams']
 
-        config_params_dict = terms[0]
         '''
         Create server and raft config files
         '''
-        raftconfobj_dict = niova_raft_conf_create(recipe_params, config_params_dict)
+        raftconfobj_dict = niova_raft_conf_create(cluster_params)
 
         return raftconfobj_dict

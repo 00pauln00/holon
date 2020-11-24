@@ -147,10 +147,10 @@ def niova_raft_lookup_ctlreq(recipe_conf, ctlreq_cmd_dict, peer_uuid):
 '''
 Load the recipe json file and get the file contents as dictionary.
 '''
-def niova_get_recipe_json_data(recipe_params):
+def niova_get_recipe_json_data(cluster_params):
 
 	# Prepare the path for the recipe json file
-    raft_json_fpath = "%s/%s/%s.json" % (recipe_params['base_dir'], recipe_params['raft_uuid'], recipe_params['raft_uuid'])
+    raft_json_fpath = "%s/%s/%s.json" % (cluster_params['base_dir'], cluster_params['raft_uuid'], cluster_params['raft_uuid'])
 
 	# Load the recipe json file.
     recipe_conf = {}
@@ -164,10 +164,10 @@ def niova_get_recipe_json_data(recipe_params):
 '''
 Initialize the logger for ctlrequest cmd.
 '''
-def niova_ctlrequest_init_logger(recipe_params):
+def niova_ctlrequest_init_logger(cluster_params):
 
 	# Prepare the log path
-    log_path = "%s/%s/%s.log" % (recipe_params['base_dir'], recipe_params['raft_uuid'], recipe_params['raft_uuid'])
+    log_path = "%s/%s/%s.log" % (cluster_params['base_dir'], cluster_params['raft_uuid'], cluster_params['raft_uuid'])
 	# Initialize logger
     logging.basicConfig(filename=log_path, filemode='a', level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
 
@@ -229,17 +229,16 @@ class LookupModule(LookupBase):
         '''
         Initialize the logger for ctlrequest logs.
         '''
-        recipe_params = kwargs['variables']['raft_param']
+        cluster_params = kwargs['variables']['ClusterParams']
 
-        niova_ctlrequest_init_logger(recipe_params)
+        niova_ctlrequest_init_logger(cluster_params)
 
         '''
         Get the recipe json contents.
         '''
-        recipe_conf = niova_get_recipe_json_data(recipe_params)
+        recipe_conf = niova_get_recipe_json_data(cluster_params)
 
         logging.warning("Ctlrequest for recipe: %s, stage: %s, operation: %s, peer_uuid_list: %s" % (ctlreq_cmd_dict['recipe_name'], ctlreq_cmd_dict['stage'], ctlreq_cmd_dict['operation'], ctlreq_cmd_dict['peer_uuid_list']))
-
 
         result_array = []
         logging.warning("operation: %s" % ctlreq_cmd_dict['operation'])

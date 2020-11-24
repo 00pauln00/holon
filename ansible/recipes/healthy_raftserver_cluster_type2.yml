@@ -20,7 +20,7 @@
        raft_keys:
           - "/raft_root_entry/0/leader-uuid"
           - "/raft_root_entry/0/term"
-       pre_restart: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, raft_keys, wantlist=True) }}"
+       pre_restart: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
     debug:
       msg: "Get the leader-uuid and term before restarting the servers"
     no_log: true
@@ -35,7 +35,7 @@
       stage: "pre_restart_start_time"
       raft_keys:
            - "/system_info/start_time"
-      stime_prev: "{{ lookup('niova_ctlrequest','lookup', nrunning_peers, raft_keys, wantlist=True) }}"
+      stime_prev: "{{ lookup('niova_ctlrequest','lookup', NRunningPeers, raft_keys, wantlist=True) }}"
     debug:
       msg: "Get start time before restarting peers {{ stime_prev }}"
     no_log: true
@@ -43,20 +43,21 @@
       - "{{ stime_prev }}"
     register: start_time_prerestart
   
-  - name: "{{ recipe_name }}: Get follower-stats from leader peer before restart"
+  - name: "{{ recipe_name }}: Get follower-stats from leader peer before restart."
+    include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+  - name: "Assign follower-stats before reboot."
     vars:
-      type2_leader_uuid: "{{ pre_restart_vals['results'][0]['item']['/0/leader-uuid'] }}"
-      stage: "pre_restart_follower_stat"
-      raft_keys:
-          - "/raft_root_entry/0/follower-stats"
-      follower_stats: "{{ lookup('niova_ctlrequest', 'lookup', type2_leader_uuid, raft_keys, wantlist=True) }}"
+      follower_stats: "{{ GetFollowerStatsInfo }}"
     debug:
       msg: "Get the follower stat before restart"
     no_log: true
     with_items:
       - "{{ follower_stats }}"
     register: fstats_before_restart
-  
+
   #Stage1: Restart
   - name: "{{ recipe_name }}: Safe restart: Make peers idle before stopping them"
     vars:
@@ -64,23 +65,23 @@
       cmd: "ignore_timer_events@true"
       where: "/raft_net_info/ignore_timer_events"
       wait_for_ofile: False
-      idle_on: "{{ lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers, cmd, where, wantlist=True) }}"
+      idle_on: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
     debug:
       msg: "making servers idle before stopping them"
     no_log: true
 
   - name: "{{ recipe_name }}: Safe_restart : Kill the processes."
     set_fact:
-      type2_kill_peer: "{{ lookup('niova_raftprocess', 'kill', nrunning_peers[item], wantlist=True) }}"
-    loop: "{{ range(0, nrunning_peers| length) | list }}"
+      type2_kill_peer: "{{ lookup('niova_raftprocess', 'kill', NRunningPeers[item], wantlist=True) }}"
+    loop: "{{ range(0, NRunningPeers | length) | list }}"
 
   - name: "Restart all peers in the cluster"
     include_role:
       name: common
       tasks_from: start_server
     vars:
-      ServerUUID: "{{ nrunning_peers[item] }}"
-    loop: "{{ range(0, nrunning_peers | length) | list }}"
+      ServerUUID: "{{ NRunningPeers[item] }}"
+    loop: "{{ range(0, NRunningPeers | length) | list }}"
 
   - name: "{{ recipe_name }}: Make sure peers are not in idle state"
     vars:
@@ -88,15 +89,15 @@
        cmd: "ignore_timer_events@false"
        where: "/raft_net_info/ignore_timer_events"
     set_fact:
-       type2_idle_off: "{{ lookup('niova_ctlrequest', 'apply_cmd', nrunning_peers, cmd, where, wantlist=True) }}"
+       type2_idle_off: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
 
   - name: "{{ recipe_name }}: Wait until leader election happens"
     vars:
       stage: "stage2_leader_election"
     debug:
       msg: "Waiting for leader election"
-    until: lookup('niova_ctlrequest', 'lookup', nrunning_peers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | string != "null"
-    loop: "{{ range(0, nrunning_peers | length) | list }}"
+    until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | string != "null"
+    loop: "{{ range(0, NRunningPeers | length) | list }}"
     loop_control:
       pause: 2
 
@@ -106,7 +107,7 @@
       raft_keys:
            - "/system_info/start_time"
            - "/raft_root_entry/0/leader-uuid"
-      stime_after: "{{ lookup('niova_ctlrequest','lookup', nrunning_peers, raft_keys, wantlist=True) }}"
+      stime_after: "{{ lookup('niova_ctlrequest','lookup', NRunningPeers, raft_keys, wantlist=True) }}"
     debug:
       msg: "Get start time after restarting peers {{ stime_after }}"
     no_log: true
@@ -122,7 +123,7 @@
     debug:
       msg: "Compare time stamp: {{ prev_time }} with {{ after_time }}"
     failed_when: prev_time >= after_time
-    loop: "{{ range(0, nrunning_peers | length)| list }}"
+    loop: "{{ range(0, NRunningPeers | length)| list }}"
 
   #Get new leader-uuid after restart
   - name: "{{ recipe_name }}: Obtaining the leader_uuid after leader election"
@@ -130,7 +131,7 @@
        stage: "stage2_get_leader_uuid"
        raft_keys:
            - "/raft_root_entry/0/leader-uuid"
-       after_restart: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, raft_keys, wantlist=True) }}"
+       after_restart: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
     debug:
       msg: "Get te leader uuid after restart"
     no_log: true
@@ -138,24 +139,21 @@
       - "{{ after_restart }}"
     register: type2_vals_after_restart
 
-  - name: "{{ recipe_name }}: Get follower's uuids after restart"
-    set_fact:
-        type2_follower_uuids_after_restart: "{{ nrunning_peers | difference(type2_vals_after_restart['results'][0]['item']['/0/leader-uuid']) }}"
-
-  - name: "{{ recipe_name }}: Get follower-stats from leader peer after restart"
+  - name: "{{ recipe_name }}: Get follower-stats from leader peer after restart."
+    include_role:
+         name: common
+         tasks_from: get_follower_stats
+    
+  - name: "Assign follower-stats after reboot."  
     vars:
-      type2_leader_uuid: "{{ type2_vals_after_restart['results'][0]['item']['/0/leader-uuid'] }}"
-      stage: "stage2_get_follower_stats"
-      raft_keys:
-          - "/raft_root_entry/0/follower-stats"
-      follower_stats: "{{ lookup('niova_ctlrequest', 'lookup', type2_leader_uuid, raft_keys, wantlist=True) }}"
+      follower_stats: "{{ GetFollowerStatsInfo }}"
     debug:
       msg: "Get follower-stat after restart"
     no_log: true
     with_items:
       - "{{ follower_stats }}"
     register: follower_stats_after_restart
-        
+
   - name: "{{ recipe_name }}: Verify next-idx value before and after restart"
     vars:
       next_idx_before: "{{ fstats_before_restart['results'][0]['item']['/0/follower-stats'][item]['next-idx'] }}"
@@ -164,7 +162,7 @@
       msg: "Compare next_idx_before: {{ next_idx_before }} with next_idx_after {{ next_idx_after }}"
     failed_when: >
       next_idx_after < next_idx_before
-    loop: "{{ range(0, type2_follower_uuids_after_restart | length) | list }}"
+    loop: "{{ range(0, FollowerUUIDs | length) | list }}"
   
   - name: "{{ recipe_name }}: Get values from all peers after restart and compare parameters"
     vars:
@@ -174,18 +172,17 @@
            - "/raft_root_entry/0/commit-idx"
            - "/raft_root_entry/0/last-applied"
            - "/raft_root_entry/0/last-applied-cumulative-crc"
-           - "/raft_root_entry/0/newest-entry-idx"
-           - "/raft_root_entry/0/newest-entry-term"
-           - "/raft_root_entry/0/newest-entry-data-size"
-           - "/raft_root_entry/0/newest-entry-crc"
-       values_after_restart: "{{ lookup('niova_ctlrequest', 'lookup', nrunning_peers, raft_keys, wantlist=True) }}"
+           - "/raft_root_entry/0/sync-entry-idx"
+           - "/raft_root_entry/0/sync-entry-term"
+           - "/raft_root_entry/0/sync-entry-data-size"
+           - "/raft_root_entry/0/sync-entry-crc"
+       values_after_restart: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
     debug:
       msg: "Get the values of the peers after restart"
     no_log: true
     with_items:
       - "{{ values_after_restart }}"
     register: peers_info_after_restart
-
 
   - name: "{{ recipe_name }}: Compare the values after restart with pre-restart."
     set_fact:
@@ -195,27 +192,27 @@
          (type2_vals_after_restart['/0/term'] <= type2_vals_before_restart['/0/term']) or
          (type2_vals_after_restart['/0/commit-idx'] < 1) or
          (type2_vals_after_restart['/0/last-applied'] < 1) or
-         (type2_vals_after_restart['/0/newest-entry-idx'] < 1) or
-         (type2_vals_after_restart['/0/newest-entry-term'] < type2_vals_before_restart['/0/term']) or
-         (type2_vals_after_restart['/0/newest-entry-data-size'] != 0)
-    loop: "{{ range(0, nrunning_peers | length) | list }}"
+         (type2_vals_after_restart['/0/sync-entry-idx'] < 1) or
+         (type2_vals_after_restart['/0/sync-entry-term'] < type2_vals_before_restart['/0/term']) or
+         (type2_vals_after_restart['/0/sync-entry-data-size'] != 0)
+    loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-  - name: "{{ recipe_name }}: Compare term, last_applied_cumulative_crc and newest_entry_crc of all peers"
+  - name: "{{ recipe_name }}: Compare term, last_applied_cumulative_crc and sync_entry_crc of all peers"
     vars:
       term_prev: "{{ peers_info_after_restart['results'][item]['item']['/0/term'] }}"
       term_next: "{{ peers_info_after_restart['results'][item + 1]['item']['/0/term'] }}"
       last_applied_cumulative_crc_prev: "{{ peers_info_after_restart['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
       last_applied_cumulative_crc_next: "{{ peers_info_after_restart['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
-      newest_entry_crc_prev: "{{ peers_info_after_restart['results'][item]['item']['/0/newest-entry-crc'] }}"
-      newest_entry_crc_next: "{{ peers_info_after_restart['results'][item + 1]['item']['/0/newest-entry-crc'] }}"
+      sync_entry_crc_prev: "{{ peers_info_after_restart['results'][item]['item']['/0/sync-entry-crc'] }}"
+      sync_entry_crc_next: "{{ peers_info_after_restart['results'][item + 1]['item']['/0/sync-entry-crc'] }}"
     debug:
        msg: "Compare term values of all peers"
     no_log: true
     failed_when: >
       term_prev != term_next or
       last_applied_cumulative_crc_prev != last_applied_cumulative_crc_next or
-      newest_entry_crc_prev != newest_entry_crc_next 
-    loop: "{{ range(0, nrunning_peers | length-1) | list }}"
+      sync_entry_crc_prev != sync_entry_crc_next
+    loop: "{{ range(0, NRunningPeers | length-1) | list }}"
 
   - name: "{{ recipe_name }}: Compare Leader’s follower-stats for all followers"
     set_fact:
@@ -224,4 +221,4 @@
     failed_when: >
       (type2_fstats_after_restart['/0/follower-stats'][item]['next-idx'] != 2) or
       (type2_fstats_after_restart['/0/follower-stats'][item]['prev-idx-term'] != type2_term_after_restart['/0/term'])
-    loop: "{{ range(0, type2_follower_uuids_after_restart | length) | list }}"
+    loop: "{{ range(0, FollowerUUIDs | length) | list }}"
