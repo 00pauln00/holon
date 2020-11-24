@@ -1,4 +1,5 @@
-- import_playbook: basic_raft_operation_with_client_activity.yml
+#- import_playbook: basic_raft_operation_with_client_activity.yml
+- import_playbook: healthy_raftserver_cluster_type2.yml
 - name: "PMDB Foreign Client Error Demonstration"
   hosts: localhost
   connection: local
@@ -11,38 +12,29 @@
   tasks:
   - name: "{{ recipe_name }}: Verify holon started with pumicedb as backend."
     debug:
-      msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed: {{ raft_param['ctype'] }}"
-    failed_when: requirement != raft_param['ctype']
+      msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed: {{ ClusterParams['ctype'] }}"
+    failed_when: requirement != ClusterParams['ctype']
+
 
   - name: "{{ recipe_name }}: Create new Raft UUID for foreign client."
     shell: "/usr/bin/uuid"
-    register: cluster_uuid
+    register: foreign_cluster_uuid
+
+  - name: "Prepare the foreign cluster information."
+    set_fact:
+      orig_cluster_param: "{{ ClusterParams }}"
+      ClusterParams:
+           base_dir: "{{ dir_path }}"
+           raft_uuid: "{{ foreign_cluster_uuid.stdout}}"
+           ctype: "{{ backend_type }}"
+           npeers: "{{ npeers }}"
+           client_port: "{{ client_port }}"
+           srv_port: "{{ srv_port }}"
 
   - name: "{{ recipe_name }}: Prepare config for new cluster using same ports as already running cluster."
-    vars:
-      config_params:
-        npeers: "{{ npeers }}"
-        srv_port: "{{ srv_port }}"
-        client_port: "{{ client_port }}"
-      raft_params:
-         base_dir: "{{ dir_path }}"
-         raft_uuid: "{{ cluster_uuid.stdout}}"
-         ctype: "{{ backend_type }}"
-         npeers: "{{ npeers }}"
-         client_port: "{{ client_port }}"        
     set_fact: 
-      raft_conf: "{{ lookup('niova_raftconfig', 'server', config_params, raft_params, wantlist=True) }}"
+      foreign_cluster: "{{ lookup('niova_raftconfig', 'server', wantlist=True) }}"
 
-  - name: "{{ recipe_name }}: Show the new cluster values."
-    debug:
-      msg:
-        - "Directory path: {{ dir_path }}"
-        - "Port is {{ srv_port }}"
-        - "Nservers is: {{ npeers }}"
-        - "client port is {{ client_port }}"
-        - "Raft UUID is {{ cluster_uuid.stdout }}"
-        - "Raft params: {{ raft_param }}"
- 
   - name: "{{ recipe_name }}: Create UUID for starting the client in the 2nd cluster."
     shell: "/usr/bin/uuid"
     register: fc_client_uuid
@@ -137,4 +129,10 @@
        time_diff: "{{ ((submitted_time | to_datetime) - (current_time | to_datetime)).total_seconds() | int }}"
     failed_when: (time_diff | int) > 1
 
+  - name: "Kill the foriegn client"
+    debug:
+      msg: "{{ lookup('niova_raftprocess', 'kill', fc_client_uuid.stdout, wantlist=True) }}"
 
+  - name: "{{ recipe_name }}: Revert back the origin cluster information."
+    set_fact:
+      ClusterParams: "{{ orig_cluster_param }}"
