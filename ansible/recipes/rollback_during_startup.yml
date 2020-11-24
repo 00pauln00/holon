@@ -20,9 +20,9 @@
 
   tasks:
    - name: "{{ recipe_name }}: Verifying recipe compatibility requirements."
-     debug:
-       msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed: {{ ClusterParams['ctype'] }}"
-     failed_when: requirement != ClusterParams['ctype']
+     include_role:
+        name: common
+        tasks_from: recipe_compatibility_requirement
 
    #Recipe-Preparation and step 1 to step 3.
    - name: "{{ recipe_name }}: Perform step1 to step3 from commmon task."
