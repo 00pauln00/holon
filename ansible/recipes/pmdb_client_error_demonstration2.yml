@@ -20,9 +20,9 @@
 
   tasks:
     - name: "Verifying recipe compatibility requirements."
-      debug:
-         msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed is : {{ ClusterParams['ctype'] }}"
-      failed_when: requirement != ClusterParams['ctype']
+      include_role:
+         name: common
+         tasks_from: recipe_compatibility_requirement
 
     - name: "Create UUID for starting the client"
       shell: "/usr/bin/uuid"

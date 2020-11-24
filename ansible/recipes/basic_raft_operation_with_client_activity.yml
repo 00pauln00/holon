@@ -22,9 +22,9 @@
 
   tasks:
    - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
-     debug:
-       msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed is : {{ ClusterParams['ctype'] }}"
-     failed_when: requirement != ClusterParams['ctype']
+     include_role:
+        name: common
+        tasks_from: recipe_compatibility_requirement
 
    - name: "{{ recipe_name }}: Get cluster information"
      include_role:

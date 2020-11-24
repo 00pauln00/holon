@@ -19,9 +19,9 @@
             - "/raft_client_root_entry/0/recent-ops-wr"
   tasks:
     - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
-      debug:
-        msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed: {{ ClusterParams['ctype'] }}"
-      failed_when: requirement != ClusterParams['ctype']
+      include_role:
+         name: common
+         tasks_from: recipe_compatibility_requirement
 
     - name: "{{ recipe_name }}: Create UUID for starting the client"
       shell: "/usr/bin/uuid"
