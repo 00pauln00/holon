@@ -1,0 +1,7 @@
+---
+
+  - name: "{{ recipe_name }} : Verifying backend_type should be 'pumicedb'."
+    debug:
+      msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed: {{ ClusterParams['ctype'] }}"
+    failed_when: requirement != ClusterParams['ctype']
+

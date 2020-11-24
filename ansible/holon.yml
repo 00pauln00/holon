@@ -13,28 +13,44 @@
   - name: "Default Values"
     set_fact:
       dir_path: "{{ dir_path | default('/tmp/holon_recipes_run') }}"
-      cluster_type: "{{ cluster_type | default('raft')}}"
+      backend_type: "{{ backend_type | default('raft')}}"
       srv_port: "{{ srv_port | default(6000) }}"
       npeers: "{{ npeers | default(5) }}"
       client_port: "{{ client_port | default(13000) }}"
       disable_post_run: "{{ disable_post_run | default(false) | bool }}"
+    failed_when: >
+      ((srv_port | int) >= 65536) or
+      ((client_port | int) >= 65536) or
+      ((backend_type != "raft") and (backend_type != "pumicedb"))
+
+  - name: "Check if ports are already in use"
+    vars:
+      config_params:
+        startup_check: "port_check"
+        srv_port: "{{ srv_port }}"
+        client_port: "{{ client_port }}"
+    debug:
+       msg: "{{ lookup('holon_startup', config_params, wantlist=True) }}"
+
+  - name: "Install python modules if not installed previously"
+    vars:
+      config_params:
+        startup_check: "python_module_install"
+    debug:
+      msg: "{{ lookup('holon_startup', config_params, wantlist=True) }}"
 
   - name: "Prepare parameter to pass across recipes"
     set_fact:
-       raft_param:
+       ClusterParams:
            base_dir: "{{ dir_path }}"
            raft_uuid: "{{ cluster_uuid.stdout}}"
-           ctype: "{{ cluster_type }}"
+           ctype: "{{ backend_type }}"
            npeers: "{{ npeers }}"
            client_port: "{{ client_port }}"
+           srv_port: "{{ srv_port }}"
 
   - name: "prepare config"
-    vars:
-      config_params:
-        npeers: "{{ npeers }}"
-        srv_port: "{{ srv_port }}"
-        client_port: "{{ client_port }}"
-    set_fact: raft_conf="{{lookup('niova_raftconfig', config_params, wantlist=True)}}"
+    set_fact: ClusterInfo="{{lookup('niova_raftconfig', wantlist=True)}}"
 
   - name: "Show the values"
     debug:
@@ -45,14 +61,14 @@
         - "client port is {{ client_port }}"
         - "Raft UUID is {{ cluster_uuid.stdout }}"
         - "Recipe: {{ recipe }}"
-        - "Raft params: {{ raft_param }}"
+        - "Raft params: {{ ClusterParams }}"
         - "Disable post run : {{ disable_post_run }}"
 
-- import_playbook: "{{ recipe }}"
+- import_playbook: recipes/"{{ recipe }}"
   vars:
-    recipe_params: "{{ raft_param }}"
+    recipe_params: "{{ ClusterParams }}"
 
 - import_playbook: "post_run.yml"
   vars:
-    recipe_params: "{{ raft_param }}"
+    recipe_params: "{{ ClusterParams }}"
   when: disable_post_run == "False" or disable_post_run == "false" or disable_post_run == false

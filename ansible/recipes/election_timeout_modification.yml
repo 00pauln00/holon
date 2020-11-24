@@ -1,0 +1,384 @@
+- import_playbook: basic_raft_operation_with_client_activity.yml
+  when: ClusterParams['ctype'] == "pumicedb"
+
+- name: "Election Timeout Modification"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "elect_time_mod"
+     parent: "Basic raft operation with client activity"
+     requirement: "pumicedb"
+
+  tasks:
+    #Recipe compatibility.
+    - name: "{{ recipe_name }}: Verifying recipe compatibility requirements."
+      debug:
+        msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed: {{ ClusterParams['ctype'] }}"
+      failed_when: requirement != ClusterParams['ctype']
+
+    #Recipe preparation.
+    - name: "{{ recipe_name }}: Get values for raft_net_info for all servers."
+      vars:
+        stage: "rec_prep"
+        raft_keys:
+            - "/raft_net_info/election-timeout-ms"
+            - "/raft_net_info/heartbeat-freq-per-election-timeout"
+        raft_net_info_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Getting raft_net_info for all servers."
+      no_log: true
+      with_items:
+        - "{{ raft_net_info_values }}"
+      register: net_info_all
+
+    - name: "{{ recipe_name }}: Validate the values of raft_net_info for all servers."
+      vars:
+        net_info_elec_timeout: "{{ net_info_all['results'][item]['item']['/raft_net_info/election-timeout-ms'] }}"
+        net_info_elec_timeout_next: "{{ net_info_all['results'][item + 1]['item']['/raft_net_info/election-timeout-ms'] }}"
+        net_info_hb_freq_per_elec_timeout: "{{ net_info_all['results'][item]['item']['/raft_net_info/heartbeat-freq-per-election-timeout'] }}"
+        net_info_hb_freq_per_elec_timeout_next: "{{ net_info_all['results'][item + 1]['item']['/raft_net_info/heartbeat-freq-per-election-timeout'] }}"
+      debug:
+        msg:
+        - "Validate the raft_net_info values for all servers."
+      failed_when: >
+        (net_info_elec_timeout != net_info_elec_timeout_next) or
+        (net_info_hb_freq_per_elec_timeout != net_info_hb_freq_per_elec_timeout_next)
+      loop: "{{ range(0, NRunningPeers | length-1) | list }}"
+    
+    - name: "{{ recipe_name }}: Get Leader UUID."
+      include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+    #1 - Verify that the Followers Respond to the Leader within the Configured Threshold.
+    - name: "{{ recipe_name }}: After resuming followers valiadate it's aliveness."
+      include_role:
+         name: common
+         tasks_from: validate_followers_aliveness
+      vars:
+        LeaderUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+      with_items:
+          - 0
+          - 1
+          - 2
+          - 3
+      loop_control:
+        loop_var: outer_item
+
+    #2 - Modify the Heartbeat Frequency and Re-observe.
+    - name: "{{ recipe_name }}: Set heartbeat frequency per election timeout to 7 ms for all servers."
+      vars:
+        stage: "set_hb_freq_to7ms"
+        wait_for_ofile: False
+        cmd: "heartbeat-freq-per-election-timeout@7"
+        where: "/raft_net_info/heartbeat-freq-per-election-timeout"
+        key:
+         - "/raft_net_info/heartbeat-freq-per-election-timeout"
+      debug:
+        msg:
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    #Re-run step1.
+    - name: "{{ recipe_name }}: After resuming followers valiadate it's aliveness."
+      include_role:
+         name: common
+         tasks_from: validate_followers_aliveness
+      vars:
+        LeaderUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+      with_items:
+          - 0
+          - 1
+          - 2
+          - 3
+      loop_control:
+        loop_var: outer_item
+
+    #3a - Set election timeout value which is too small.
+    - name: "{{ recipe_name }}: Set election timeout to 99 ms for all servers."
+      vars:
+        stage: "set_elec_timeout99ms"
+        cmd: "election-timeout-ms@99"
+        where: "/raft_net_info/election-timeout-ms"
+        key:
+         - "/raft_net_info/election-timeout-ms"
+        set_elet_to_99ms: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ set_elet_to_99ms }}"
+      no_log: true
+      register: set_elet_timeo_99ms_vals
+
+    #Get error messages from outfile of all servers.
+    - name: "{{ recipe_name }}: Get err_msg from outfile of all servers."
+      shell: cat "{{ set_elet_timeo_99ms_vals['msg'][item]['output_fpath'] }}"
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+      register: err_msg
+        
+    #Verify error messages from outfile of all servers.
+    - name: "{{ recipe_name }}: Verify that outfile shows error message for all servers."
+      vars:
+        stdout: "{{ err_msg['results'][item]['stdout'] }}"
+        err: "{{ stdout | dict2items| map(attribute='value') | list | first }}"
+        err_chk: "command `election-timeout-ms' with value `99' failed: Numerical result out of range"
+      debug:
+        msg: "Verifying that outfile shows error message."
+      failed_when: err != err_chk
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get values for /raft_net_info/election-timeout-ms for all servers."
+      vars:
+        stage: "get_elec_timeout99ms"
+        raft_keys:
+            - "/raft_net_info/election-timeout-ms"
+        raft_net_info_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+      no_log: true
+      debug:
+        msg: "Getting raft_net_info for all servers."
+      with_items:
+        - "{{ raft_net_info_values }}"
+      register: net_info_all_after
+
+    - name: "{{ recipe_name }}: Verify that /raft_net_info/election-timeout-ms has not changed."
+      vars:
+        elec_timeout_val_before: "{{ net_info_all['results'][item]['item']['/raft_net_info/election-timeout-ms'] }}"
+        elec_timeout_val_after: "{{ net_info_all_after['results'][item]['item']['/raft_net_info/election-timeout-ms'] }}"
+      failed_when: elec_timeout_val_after != elec_timeout_val_before
+      debug:
+        msg: "Verifying that /raft_net_info/election-timeout-ms has not changed."
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    #3b- Decreasing the HB freq below 10 ms causes the value to be set to 10 ms.
+    - name: "{{ recipe_name }}: Set heartbeat frequency per election timeout to 9 ms for all servers."
+      vars:
+        stage: "set_hb_freq_to9ms"
+        wait_for_ofile: False
+        cmd: "heartbeat-freq-per-election-timeout@9"
+        where: "/raft_net_info/heartbeat-freq-per-election-timeout"
+        key:
+         - "/raft_net_info/heartbeat-freq-per-election-timeout"
+      debug:
+        msg:
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Get values for /raft_net_info/heartbeat-freq-per-election-timeout for all servers."
+      vars:
+        stage: "get_hb_freq_to9ms"
+        raft_keys:
+            - "/raft_net_info/heartbeat-freq-per-election-timeout"
+        hb_freq_per_election_timeout: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Getting /raft_net_info/heartbeat-freq-per-election-timeout for all servers."
+      no_log: true
+      with_items:
+        - "{{ hb_freq_per_election_timeout }}"
+      register: hb_freq_per_election_timeout_vals
+
+    - name: "{{ recipe_name }}: Verify that /raft_net_info/heartbeat-freq-per-election-timeout is set at lowest value."
+      vars:
+        hb_freq_per_elec_timeo: "{{ hb_freq_per_election_timeout_vals['results'][item]['item'] }}"
+      failed_when: hb_freq_per_elec_timeo['/raft_net_info/heartbeat-freq-per-election-timeout'] != 9
+      debug:
+        msg: "Verifying that /raft_net_info/heartbeat-freq-per-election-timeout is set at lowest value."
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    #Increasing the HB freq to greater than max. value causes the value to be set to 30 ms.
+    - name: "{{ recipe_name }}: Set heartbeat frequency per election timeout to 100 ms for all servers."
+      vars:
+        stage: "set_hb_freq_to100ms"
+        wait_for_ofile: False
+        cmd: "heartbeat-freq-per-election-timeout@100"
+        where: "/raft_net_info/heartbeat-freq-per-election-timeout"
+        key:
+         - "/raft_net_info/heartbeat-freq-per-election-timeout"
+      debug:
+        msg:
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Get values for /raft_net_info/heartbeat-freq-per-election-timeout for all servers."
+      vars:
+        stage: "get_hb_freq_to100ms"
+        raft_keys:
+            - "/raft_net_info/heartbeat-freq-per-election-timeout"
+        hb_freq_per_election_timeout: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Getting /raft_net_info/heartbeat-freq-per-election-timeout for all servers."
+      no_log: true
+      with_items:
+        - "{{ hb_freq_per_election_timeout }}"
+      register: hb_freq_per_election_timeout_100
+
+    - name: "{{ recipe_name }}: Verify that /raft_net_info/heartbeat-freq-per-election-timeout is set at maximum value."
+      vars:
+        hb_freq_per_elec_timeo: "{{ hb_freq_per_election_timeout_100['results'][item]['item'] }}"
+      failed_when: hb_freq_per_elec_timeo['/raft_net_info/heartbeat-freq-per-election-timeout'] != 30
+      debug:
+        msg: "Verifying that /raft_net_info/heartbeat-freq-per-election-timeout is set at maximum value."
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    #3c- Proposed value which is < Min HB freq val should not change the current HB value.
+    - name: "{{ recipe_name }}: Set heartbeat frequency per election timeout to 1 ms for all servers."
+      vars:
+        stage: "set_hb_freq_to1ms"
+        wait_for_ofile: False
+        cmd: "heartbeat-freq-per-election-timeout@1"
+        where: "/raft_net_info/heartbeat-freq-per-election-timeout"
+        key:
+         - "/raft_net_info/heartbeat-freq-per-election-timeout"
+      debug:
+        msg:
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+        
+    - name: "{{ recipe_name }}: Get values for /raft_net_info/heartbeat-freq-per-election-timeout for all servers."
+      vars:
+        stage: "get_hb_freq_to1ms"
+        raft_keys:
+            - "/raft_net_info/heartbeat-freq-per-election-timeout"
+        hb_freq_per_election_timeout: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Getting /raft_net_info/heartbeat-freq-per-election-timeout for all servers."
+      no_log: true
+      with_items:
+        - "{{ hb_freq_per_election_timeout }}"
+      register: hb_freq_per_election_timeout_1
+
+    #Verifying that freq val should not change the current HB value which was set in previous step. 
+    - name: "{{ recipe_name }}: Verify that /raft_net_info/heartbeat-freq-per-election-timeout has not changed."
+      vars:
+        hb_freq_per_elec_timeo_before: "{{ hb_freq_per_election_timeout_100['results'][item]['item']['/raft_net_info/heartbeat-freq-per-election-timeout'] }}"
+        hb_freq_per_elec_timeo_after: "{{ hb_freq_per_election_timeout_1['results'][item]['item']['/raft_net_info/heartbeat-freq-per-election-timeout'] }}"
+      failed_when: hb_freq_per_elec_timeo_after != hb_freq_per_elec_timeo_before
+      debug:
+        msg: "Verifying that /raft_net_info/heartbeat-freq-per-election-timeout has not changed."
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    #3d- Negative HB freq val should not change the current HB value.
+    - name: "{{ recipe_name }}: Set heartbeat frequency per election timeout to -1 ms for all servers."
+      vars:
+        stage: "set_hb_freq_to-1ms"
+        wait_for_ofile: False
+        cmd: "heartbeat-freq-per-election-timeout@-1"
+        where: "/raft_net_info/heartbeat-freq-per-election-timeout"
+        key:
+         - "/raft_net_info/heartbeat-freq-per-election-timeout"
+      debug:
+        msg:
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Get values for /raft_net_info/heartbeat-freq-per-election-timeout for all servers."
+      vars:
+        stage: "get_hb_freq_to-1ms"
+        raft_keys:
+            - "/raft_net_info/heartbeat-freq-per-election-timeout"
+        hb_freq_per_election_timeout: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Getting /raft_net_info/heartbeat-freq-per-election-timeout for all servers."
+      with_items:
+        - "{{ hb_freq_per_election_timeout }}"
+      register: hb_freq_per_election_timeout_negative
+
+    #Verifying that negative freq val should not change the current HB value which was set in previous step.
+    - name: "{{ recipe_name }}: Verify that /raft_net_info/heartbeat-freq-per-election-timeout has not changed."
+      vars:
+        hb_freq_per_elect_timeout_before: "{{ hb_freq_per_election_timeout_1['results'][item]['item']['/raft_net_info/heartbeat-freq-per-election-timeout'] }}"
+        hb_freq_per_elect_timeout_after: "{{ hb_freq_per_election_timeout_negative['results'][item]['item']['/raft_net_info/heartbeat-freq-per-election-timeout'] }}"
+      failed_when: hb_freq_per_elect_timeout_after != hb_freq_per_elect_timeout_before
+      debug:
+        msg: "Verifying that /raft_net_info/heartbeat-freq-per-election-timeout has not changed."
+      loop: "{{ range(0, NRunningPeers | length) | list }}" 
+
+    #3e - HB freq self adjusts to compensate for a decreased election-timeout.
+    #3e - 1.Set election-timeout to 10000 and heartbeat-freq-per-election-timeout to 1000.
+    - name: "{{ recipe_name }}: Set election timeout to 10000 ms for all servers."
+      vars:
+        stage: "set_elec_timeout10000ms"
+        wait_for_ofile: False
+        cmd: "election-timeout-ms@10000"
+        where: "/raft_net_info/election-timeout-ms"
+        key:
+         - "/raft_net_info/election-timeout-ms"
+      debug:
+        msg:
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Set heartbeat frequency per election timeout to 1000 ms for all servers."
+      vars:
+        stage: "set_hb_freq_to1000ms"
+        wait_for_ofile: False
+        cmd: "heartbeat-freq-per-election-timeout@1000"
+        where: "/raft_net_info/heartbeat-freq-per-election-timeout"
+        key:
+         - "/raft_net_info/heartbeat-freq-per-election-timeout"
+      debug:
+        msg:
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    #3e - 2.Decrease the election timeout by half.
+    - name: "{{ recipe_name }}: Set election timeout to 5000 ms for all servers."
+      vars:
+        stage: "set_elec_timeout5000ms"
+        wait_for_ofile: False
+        cmd: "election-timeout-ms@5000"
+        where: "/raft_net_info/election-timeout-ms"
+        key:
+         - "/raft_net_info/election-timeout-ms"
+      debug:
+        msg:
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Get values for /raft_net_info for all servers."
+      vars:
+        stage: "get_raftni_all"
+        raft_keys:
+            -  "/raft_net_info/election-timeout-ms"
+            - "/raft_net_info/heartbeat-freq-per-election-timeout"
+        rni_vals: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Getting values for /raft_net_info for all servers."
+      with_items:
+        - "{{ rni_vals }}"
+      register: raft_net_info_vals_all
+
+    #Verifications for step 3e.
+    - name: "{{ recipe_name }}: Verify that HB freq self adjusts to compensate for a decreased election-timeout."
+      vars:
+        min_hb_time: 10
+        raft_net_info: "{{ raft_net_info_vals_all['results'][item]['item'] }}"
+      failed_when: (raft_net_info['/raft_net_info/election-timeout-ms'] / raft_net_info['/raft_net_info/heartbeat-freq-per-election-timeout']) < min_hb_time
+      debug:
+        msg: "Verifying that HB freq self adjusts to compensate for a decreased election-timeout."
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    #Recipe-cleanup.
+    #Set election timeout and hb-freq to the values at the beginning of the recipe.
+    - name: "{{ recipe_name }}: Set election timeout to 300 ms for all servers."
+      vars:
+        stage: "set_elec_timeout300ms"
+        wait_for_ofile: False
+        cmd: "election-timeout-ms@300"
+        where: "/raft_net_info/election-timeout-ms"
+        key:
+         - "/raft_net_info/election-timeout-ms"
+      debug:
+        msg:
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Set heartbeat frequency per election timeout to 10 ms for all servers."
+      vars:
+        stage: "set_hb_freq_to10ms"
+        wait_for_ofile: False
+        cmd: "heartbeat-freq-per-election-timeout@10"
+        where: "/raft_net_info/heartbeat-freq-per-election-timeout"
+        key:
+         - "/raft_net_info/heartbeat-freq-per-election-timeout"
+      debug:
+        msg:
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
