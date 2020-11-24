@@ -20,9 +20,6 @@
       msg:
         - "{{ pmdb_standalone_raft_uuid }}"
         - "{{ client_uuid.stdout }}"
-
-  - debug: var=truncate_ruuid
-  - debug: var=truncate_cuuid
     
   - name: "Starting the Raft client with wrong Raft UUID and Client UUID."
     vars:
@@ -34,7 +31,7 @@
         - -r
         - "{{ truncate_ruuid }}"
         - -u
-        - "{{ truncate_ruuid }}"
+        - "{{ truncate_cuuid }}"
     register: raft_output
     failed_when: raft_output.rc != 22
   - debug: var=raft_output.rc
@@ -49,7 +46,7 @@
         - -r
         - "{{ truncate_ruuid }}"
         - -u
-        - "{{ truncate_ruuid }}"
+        - "{{ truncate_cuuid }}"
     register: pmdb_output
     failed_when: pmdb_output.rc == 0
   - debug: var=pmdb_output.rc

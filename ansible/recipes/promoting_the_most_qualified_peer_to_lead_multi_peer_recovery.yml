@@ -28,6 +28,7 @@
        stage: "check_booting_stage"
        state_key:
           - "/raft_root_entry/0/state"
+          - "/raft_root_entry/0/leader-uuid"
        verify_cluster_requirement: "{{ lookup('niova_ctlrequest', 'lookup', running_servers, state_key, wantlist=True) }}"
     debug:
       msg: "Getting orignal values."

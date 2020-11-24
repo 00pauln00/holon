@@ -1,4 +1,4 @@
-- import_playbook: healthy_raftserver_cluster_type2.yml
+- import_playbook: pmdb_client_error_demonstration1.yml
   when: raft_param['ctype'] == "pumicedb"
 
 - name: "pmdb_client_error_demonstration2"
