@@ -396,11 +396,11 @@
    - name: "{{ recipe_name }}: Validate pmdb-request-history parameters."
      vars:
        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
-       pmdb_seqno: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][-1] }}"
-       app_seq_no: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][-1] }}"
-       app_user_id: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][-1] }}"
-       op: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][-1] }}"
-       status: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][-1] }}"
+       pmdb_seqno: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][0] }}"
+       app_seq_no: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][0] }}"
+       app_user_id: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][0] }}"
+       op: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][0] }}"
+       status: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][0] }}"
      debug:
        msg: "Validating pmdb-request-history parameters."
      failed_when: >

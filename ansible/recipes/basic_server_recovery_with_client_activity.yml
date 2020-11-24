@@ -349,9 +349,9 @@
       (get_stage5['/0/last-request-tag'] == (get_stage3 | int)) or
       (get_stage5['/0/status'] != "Success") or
       (get_stage5['/0/app-validated-seqno'] != num_writes) or
-      (get_stage5['/pumice_db_test_client/pmdb-request-history'][-1]['last-request-tag'] != get_stage5['/0/last-request-tag']) or
-      (get_stage5['/pumice_db_test_client/pmdb-request-history'][-1]['op'] != "read") or
-      (get_stage5['/pumice_db_test_client/pmdb-request-history'][-1]['status'] != "Success")
+      (get_stage5['/pumice_db_test_client/pmdb-request-history'][0]['last-request-tag'] != get_stage5['/0/last-request-tag']) or
+      (get_stage5['/pumice_db_test_client/pmdb-request-history'][0]['op'] != "read") or
+      (get_stage5['/pumice_db_test_client/pmdb-request-history'][0]['status'] != "Success")
   
   - name: "{{ recipe_name }}: Apply cmd to remove fault injection from the paused follower."
     vars:
