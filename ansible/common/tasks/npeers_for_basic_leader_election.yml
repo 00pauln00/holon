@@ -2,7 +2,7 @@
 
   - name: "Get the npeer from recipe json"
     set_fact:
-      nserver={{ raft_conf | json_query('nservers')}}
+      nserver={{ ClusterInfo | json_query('nservers')}}
 
   - name: "Get the total number of peers for basic leader election"
     set_fact:

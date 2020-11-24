@@ -1,5 +1,5 @@
 - import_playbook: basic_raft_operation_with_client_activity.yml
-  when: raft_param['ctype'] == "pumicedb"
+  when: ClusterParams['ctype'] == "pumicedb"
 
 - name: "Election Timeout Modification"
   hosts: localhost
@@ -13,8 +13,8 @@
     #Recipe compatibility.
     - name: "{{ recipe_name }}: Verifying recipe compatibility requirements."
       debug:
-        msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed: {{ raft_param['ctype'] }}"
-      failed_when: requirement != raft_param['ctype']
+        msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed: {{ ClusterParams['ctype'] }}"
+      failed_when: requirement != ClusterParams['ctype']
 
     #Recipe preparation.
     - name: "{{ recipe_name }}: Get values for raft_net_info for all servers."

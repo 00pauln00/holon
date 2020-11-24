@@ -2,6 +2,6 @@
 
   - name: "{{ recipe_name }} : Verifying backend_type should be 'pumicedb'."
     debug:
-      msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed: {{ raft_param['ctype'] }}"
-    failed_when: requirement != raft_param['ctype']
+      msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed: {{ ClusterParams['ctype'] }}"
+    failed_when: requirement != ClusterParams['ctype']
 
