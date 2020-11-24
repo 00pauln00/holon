@@ -10,7 +10,7 @@
   tasks:
   - name: "Extract the Base directory path and Raft UUID."
     set_fact:
-      pmdb_standalone_raft_uuid: "{{ raft_conf | json_query('raft_uuid') }}"
+      pmdb_standalone_raft_uuid: "{{ ClusterInfo | json_query('raft_uuid') }}"
 
   - name: "Generate client UUID"
     shell: "/usr/bin/uuid"

@@ -97,7 +97,7 @@
   #Recipe Setup: Identify a subset of followers to be paused, the number of which should be the largest number which allows the raft quorum to persist.
   - name: "{{ recipe_name }}: Get odd and even number of cluster peers."
     vars:
-      no_of_server: "{{ raft_conf | json_query('nservers') }}"
+      no_of_server: "{{ ClusterInfo | json_query('nservers') }}"
     set_fact:
       Promoting_Odd_nfollowers: "{{ no_of_server | int / 2 | int }}"
       Promoting_Even_nfollowers: "{{ no_of_server | int / 2 - 1 | int }}"
