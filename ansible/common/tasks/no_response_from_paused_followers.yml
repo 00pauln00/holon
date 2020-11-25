@@ -2,7 +2,6 @@
 
   - name: "{{ recipe_name }}: After pausing one follower, get the follower-stats from leader"
     vars:
-      pmqp_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
       stage: "after_pause_follower"
       raft_key:
          - "/raft_root_entry/0/follower-stats"
