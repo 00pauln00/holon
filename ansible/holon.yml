@@ -16,8 +16,11 @@
       backend_type: "{{ backend_type | default('raft')}}"
       srv_port: "{{ srv_port | default(6000) }}"
       npeers: "{{ npeers | default(5) }}"
+      nclients: "{{ nclients | default(10) }}"
       client_port: "{{ client_port | default(13000) }}"
       disable_post_run: "{{ disable_post_run | default(false) | bool }}"
+      num_clients: "{{ num_clients | default(10) }}"
+      ClientIndex: 0
     failed_when: >
       ((srv_port | int) >= 65536) or
       ((client_port | int) >= 65536) or
@@ -46,11 +49,16 @@
            raft_uuid: "{{ cluster_uuid.stdout}}"
            ctype: "{{ backend_type }}"
            npeers: "{{ npeers }}"
+           nclients: "{{ nclients }}"
            client_port: "{{ client_port }}"
            srv_port: "{{ srv_port }}"
 
-  - name: "prepare config"
-    set_fact: ClusterInfo="{{lookup('niova_raftconfig', wantlist=True)}}"
+  - name: "Prepare server configs"
+    set_fact: ClusterInfo="{{lookup('niova_raftconfig', "server", wantlist=True)}}"
+
+  - name: "Prepare client configs"
+    set_fact:
+       ClientList="{{lookup('niova_raftconfig', "client", wantlist=True)}}"
 
   - name: "Show the values"
     debug:
@@ -63,6 +71,8 @@
         - "Recipe: {{ recipe }}"
         - "Raft params: {{ ClusterParams }}"
         - "Disable post run : {{ disable_post_run }}"
+        - "Used client index: {{ ClientIndex }}"
+        - "Client list: {{ ClientList }}"
 
 - import_playbook: recipes/"{{ recipe }}"
   vars:

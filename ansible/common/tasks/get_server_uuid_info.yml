@@ -33,6 +33,7 @@
     - name: "Get the list of all peers"
       set_fact:
         TotalNServersDict: "{{ ClusterInfo | json_query('peer_uuid_dict') }}"
+
     - name: "Convert dictionary values into list"
       set_fact:
         TotalNServersList: "{{ TotalNServersDict.values() | list }}"
