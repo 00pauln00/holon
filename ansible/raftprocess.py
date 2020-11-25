@@ -105,6 +105,7 @@ class RaftProcess:
 
         #Check if child process exited with error
         if process_popen.poll() is None:
+            self.process_status = "running"
             logging.info("Raft process started successfully")
         else:
             logging.info("Raft process failed to start")
@@ -142,6 +143,7 @@ class RaftProcess:
         To check if process is paused
         '''
         self.Wait_for_process_status("stopped", pid)
+        self.process_status = "paused"
         return 0
 
     '''
@@ -159,6 +161,7 @@ class RaftProcess:
             logging.error("Failed to send CONT signal with error: %s" % os.stderror(e.errno))
             return -1
 
+        self.process_status = "running"
         return 0
 
     '''
@@ -175,4 +178,6 @@ class RaftProcess:
         except subprocess.SubprocessError as e:
             logging.error("Failed to send kill signal with error: %s" % os.stderror(e.errno))
             return -1
+
+        self.process_status = "killed"
         return 0
