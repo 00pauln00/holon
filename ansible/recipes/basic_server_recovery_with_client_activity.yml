@@ -119,35 +119,36 @@
     failed_when: (time1 | int) >= (time2 | int)
     loop: "{{ range(0, 4)| list }}"
 
-  - name: "{{ recipe_name }}: Create UUID for starting the client."
-    shell: "/usr/bin/uuid"
-    register: bsrca_client_uuid
+  - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+    include_role:
+       name: common
+       tasks_from: get_new_client_uuid
+    register: client_uuid
 
   - name: "{{ recipe_name }}: Create app uuid."
     shell: "/usr/bin/uuid"
     register: bsrca_app_uuid
 
   - debug:
-      msg:
-        - "client uuid: {{ bsrca_client_uuid.stdout }}"
+      msg: "client uuid: {{ client_uuid }}"
      
   - name: "{{ recipe_name }}: Start the client."
     include_role:
        name: common
        tasks_from: start_client
     vars:
-      ClientUUID: "{{ bsrca_client_uuid.stdout }}"
+      ClientUUID: "{{ client_uuid.stdout }}"
 
   - name: "Recovery Client."
     set_fact: 
-      RecoveryClient: "{{ bsrca_client_uuid.stdout }}"
+      RecoveryClient: "{{ client_uuid.stdout }}"
     
   - name: "{{ recipe_name }}: Perform the write {{ num_writes }} times."
     vars:
       stage: "num_writes"
       cmd: "input@{{ bsrca_app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
       where: "/pumice_db_test_client/input"
-      write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', bsrca_client_uuid.stdout, cmd, where, wantlist=True) }}"
+      write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
     debug:
       msg: "{{ write_cmd }}"
     no_log: True
@@ -158,7 +159,7 @@
       raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
     debug:
       msg: "Waiting for client to finish writing"
-    until: lookup('niova_ctlrequest', 'lookup', bsrca_client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != (num_writes - 1)
+    until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != (num_writes - 1)
     loop: "{{ range(0, 10) | list }}"
     loop_control:
        pause: 1
@@ -173,7 +174,7 @@
           - "/pumice_db_test_client/pmdb-test-apps/0/app-sync"
           - "/pumice_db_test_client/pmdb-test-apps/0/app-seqno"
           - "/pumice_db_test_client/pmdb-test-apps/0/last-request-tag"
-      client_write_verification: "{{ lookup('niova_ctlrequest', 'lookup', bsrca_client_uuid.stdout, raft_keys, wantlist=True) }}"
+      client_write_verification: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
     debug:
       msg: "Getting client-requests from leader."
     no_log: True
@@ -316,7 +317,7 @@
       stage: "read_client"
       cmd: "input@{{ bsrca_app_uuid.stdout }}:0:0:0:0.read"
       where: "/pumice_db_test_client/input"
-      read_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', bsrca_client_uuid.stdout, cmd, where, wantlist=True) }}"
+      read_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
     debug:
       msg: "{{ read_cmd }}"
     no_log: True
@@ -329,7 +330,7 @@
           - "/pumice_db_test_client/pmdb-test-apps/0/status"
           - "/pumice_db_test_client/pmdb-test-apps/0/app-validated-seqno"
           - "/pumice_db_test_client/pmdb-request-history"
-      client_read_verification: "{{ lookup('niova_ctlrequest', 'lookup', bsrca_client_uuid.stdout, raft_keys, wantlist=True) }}"
+      client_read_verification: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
     debug:
       msg: "Getting last-request-tag."
     no_log: True

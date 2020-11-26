@@ -23,8 +23,10 @@
          name: common
          tasks_from: recipe_compatibility_requirement
 
-    - name: "{{ recipe_name }}: Create UUID for starting the client"
-      shell: "/usr/bin/uuid"
+    - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+      include_role:
+        name: common
+        tasks_from: get_new_client_uuid
       register: client_uuid
 
     - name: "{{ recipe_name }}: Create app uuid"

@@ -7,7 +7,7 @@ from genericcmd import *
 from basicio import *
 from raftconfig import *
 
-def niova_raft_conf_create(cluster_params):
+def niova_server_conf_create(cluster_params):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -38,13 +38,52 @@ def niova_raft_conf_create(cluster_params):
     genericcmdobj.recipe_json_dump(recipe_conf) 
     return raftconfobj.__dict__
 
+def niova_client_conf_create(cluster_params):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    npeers = int(cluster_params['npeers'])
+    nclients = int(cluster_params['nclients'])
+    raft_dir = "%s/%s" % (base_dir, raft_uuid)
+
+    # Start using client_port for clients after server's client_port range.
+    start_client_port = int(cluster_params['client_port']) + npeers
+
+    # Load the recipe JSON file
+    json_path = "%s/%s/%s.json" % (base_dir, raft_uuid, raft_uuid)
+    recipe_conf = {}
+    if os.path.exists(json_path):
+        with open(json_path, "r+", encoding="utf-8") as json_file:
+            recipe_conf = json.load(json_file)
+
+    genericcmdobj = GenericCmds()
+    raftconfobj = RaftConfig(raft_dir, raft_uuid, genericcmdobj)
+
+    recipe_conf['client_uuid_array'] = []
+    for cli in range(nclients):
+        # Create client UUID.
+        client_uuid = genericcmdobj.generate_uuid()
+        client_port = start_client_port + cli
+        raftconfobj.generate_client_conf(genericcmdobj, client_uuid, "127.0.0.1", client_port)
+        # Add the entry of this new client uuid into the client_uuid_array
+        recipe_conf['client_uuid_array'].append(client_uuid)
+
+    genericcmdobj.recipe_json_dump(recipe_conf)
+    return recipe_conf['client_uuid_array']
+
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
         cluster_params = kwargs['variables']['ClusterParams']
+        config_type = terms[0]
 
-        '''
-        Create server and raft config files
-        '''
-        raftconfobj_dict = niova_raft_conf_create(cluster_params)
+        if config_type == "server":
+            '''
+            Create server and raft config files
+            '''
+            raftconfobj_dict = niova_server_conf_create(cluster_params)
 
+        else:
+            '''
+            Create client config files
+            '''
+            raftconfobj_dict = niova_client_conf_create(cluster_params)
         return raftconfobj_dict
