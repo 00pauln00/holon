@@ -13,7 +13,7 @@
 
   tasks:
   - block:
-          - name: "Check if parent recipe failed"
+          - name: "{{ recipe_name }}: Check if parent recipe failed."
             debug: msg="Check if parent recipe {{ parent }} failed"
             failed_when: terminate_recipe == true
 
@@ -22,7 +22,7 @@
                name: common
                tasks_from: recipe_compatibility_requirement
 
-          - name: "{{ recipe_name }}: Get the list of all running peer UUIDs"
+          - name: "{{ recipe_name }}: Get the list of all running peer UUIDs."
             include_role:
                name: common
                tasks_from: get_server_uuid_info
@@ -34,6 +34,7 @@
                stage: "check_booting_stage"
                state_key:
                   - "/raft_root_entry/0/state"
+                  - "/raft_root_entry/0/leader-uuid"
                verify_cluster_requirement: "{{ lookup('niova_ctlrequest', 'lookup', running_servers, state_key, wantlist=True) }}"
             debug:
               msg: "Getting orignal values."
@@ -50,12 +51,12 @@
                 - "Verifying all peers are up and running."
             no_log: True
             failed_when: get_stage0['/0/state'] == "booting"
-
-          - name: "{{ recipe_name }}: Get corresponding UUIDs for follower peers"
+            
+          - name: "{{ recipe_name }}: Get corresponding UUIDs for follower peers."
             include_role:
                name: common
                tasks_from: get_follower_stats
-
+            
           #Recipe Setup: Ensure followers aliveness.
           - name: "{{ recipe_name }}: Validate followers are alive."
             include_role:
@@ -63,7 +64,7 @@
                tasks_from: validate_followers_aliveness
             vars:
                LeaderUUID: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
-
+          
           #Recipe Setup: Ensure all fault injections with “raft” in the name are disabled on all peers.
           - name: "{{ recipe_name }}: Check fault injection on all followers through common task."
             vars:
@@ -102,12 +103,12 @@
           #Recipe Setup: Identify a subset of followers to be paused, the number of which should be the largest number which allows the raft quorum to persist.
           - name: "{{ recipe_name }}: Get odd and even number of cluster peers."
             vars:
-              no_of_server: "{{ raft_conf | json_query('nservers') }}"
+              no_of_server: "{{ ClusterInfo | json_query('nservers') }}"
             set_fact:
               Promoting_Odd_nfollowers: "{{ no_of_server | int / 2 | int }}"
               Promoting_Even_nfollowers: "{{ no_of_server | int / 2 - 1 | int }}"
             loop: "{{ range(0, FollowerUUIDs | length) | list }}"
-
+            
           - name: "{{ recipe_name }}: Set the list to get largest value."
             vars:
               odd_followers: "{{ Promoting_Odd_nfollowers | int }}"
@@ -141,9 +142,9 @@
               Promoting_Selected_Followers: "{{ Promoting_Selected_Followers + [FollowerUUIDs[item]] }}"
             loop: "{{ range(0, raft_quorum | int) | list }}"
 
-          - debug:
+          - debug: 
               msg: "Step #1 Selected followers list for pausing: {{ Promoting_Selected_Followers }}."
-
+            
           #1 - Pause the Selected Followers.
           - name: "{{ recipe_name }}: Pause the selected followers."
             vars:
@@ -156,11 +157,13 @@
           - name: "{{ recipe_name }}: Ensure that the paused followers are not responding to the leader by observing the increase of their ms-last-ack-ms value."
             include_role:
                name: common
-               tasks_from: no_response_from_paused_followers
+               tasks_from: no_response_from_paused_followers 
             loop: "{{ range(0, 4)| list }}"
 
-          - name: "{{ recipe_name }}: Create UUID for starting the client."
-            shell: "/usr/bin/uuid"
+          - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+            include_role:
+               name: common
+               tasks_from: get_new_client_uuid
             register: pmqp_client_uuid
 
           - name: "{{ recipe_name }}: Create app uuid."
@@ -170,7 +173,7 @@
           - debug:
               msg:
                 - "client uuid: {{ pmqp_client_uuid.stdout }}"
-
+                
           - name: "{{ recipe_name }}: Start the client."
             include_role:
                name: common
@@ -249,7 +252,7 @@
           - name: "{{ recipe_name }}: Verify all alive peers should have the same values."
             vars:
               alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
-              inital_commit_idx: "{{ stage1_value['results'][item]['item']['/0/commit-idx'] }}"
+              initial_commit_idx: "{{ stage1_value['results'][item]['item']['/0/commit-idx'] }}" 
               get_stage4: "{{ alive_peers_value['results'][item]['item'] }}"
               last_applied_cum_crc: "{{ alive_peers_value['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
               last_applied_cum_crc_next: "{{ alive_peers_value['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
@@ -261,9 +264,9 @@
             failed_when: >
               (term != term_next) or
               (last_applied_cum_crc != last_applied_cum_crc_next) or
-              (get_stage4["/0/commit-idx"] != (inital_commit_idx | int) + (nwrites | int)) or
-              (get_stage4["/0/last-applied"] != (inital_commit_idx | int) + (nwrites | int)) or
-              (get_stage4["/0/sync-entry-idx"] != (inital_commit_idx | int) + (nwrites | int))
+              (get_stage4["/0/commit-idx"] != (initial_commit_idx | int) + (nwrites | int)) or
+              (get_stage4["/0/last-applied"] != (initial_commit_idx | int) + (nwrites | int)) or
+              (get_stage4["/0/sync-entry-idx"] != (initial_commit_idx | int) + (nwrites | int))
             loop: "{{ range(0, alive_followers | length - 1) | list }}"
 
           #3a - Choose the leader-to-be from the set of running followers.
@@ -273,7 +276,7 @@
             debug:
               msg: "{{ alive_followers[0] }}"
             no_log: True
-
+          
           #3b - Prep all running servers, except leader-to-be.
           - name: "{{ recipe_name }}: Prepare all running servers."
             vars:
@@ -284,7 +287,7 @@
               nalive_follower: "{{ alive_followers | difference(leader_to_be) }}"
             set_fact:
               No_of_Fi: "{{ no_of_fi + nalive_follower + [pmqp_leader_uuid] }}"
-
+           
           - name: "{{ recipe_name }}: Apply fault injection on running servers except leader-to-be."
             vars:
               stage: "disable_candidate_mode"
@@ -294,7 +297,7 @@
             debug:
               msg: "{{ disable_mode }}"
             no_log: True
-
+           
           - name: "{{ recipe_name }}: Get fault_injection_points array."
             vars:
               stage: "get_fi_array"
@@ -350,7 +353,7 @@
               msg: "{{ Promoting_fi_on_leader_to_be }}"
             no_log: True
             failed_when: Promoting_fi_on_leader_to_be == True
-
+          
           #3c - Pause all running servers.
           - name: "{{ recipe_name }}: Pause all running servers, (this includes the current leader, leader-to-be, etc)."
             vars:
@@ -359,12 +362,12 @@
               peers_to_be_pause: "{{ No_of_Fi + [leader_to_be] }}"
               pause_all_peers: "{{ lookup('niova_raftprocess', 'pause', peers_to_be_pause[item], wantlist=True) }}"
             debug:
-              msg:
+              msg: 
                 - "{{ pause_all_peers }}"
                 - "{{ peers_to_be_pause }}"
             no_log: True
             loop: "{{ range(0, peers_to_be_pause | length) | list }}"
-
+          
           #3d - Resume the followers which were paused in Step #1.
           - name: "{{ recipe_name }}: Resume the selected followers(i.e. paused followers in step 1)."
             vars:
@@ -373,7 +376,7 @@
               msg: "{{ resume_followers_from_step1 }}"
             no_log: True
             loop: "{{ range(0, Promoting_Selected_Followers | length) | list }}"
-
+         
           - name: "{{ recipe_name }}: Verify timestamp advancing for resumed followers."
             include_role:
               name: common
@@ -382,7 +385,7 @@
               ServerUUID: "{{ Promoting_Selected_Followers[outer_idx] }}"
             loop: "{{ range(0, Promoting_Selected_Followers | length) | list }}"
             loop_control:
-               loop_var: outer_idx
+               loop_var: outer_idx    
 
           - name: "{{ recipe_name }}: Get the 'state' from resumed followers."
             vars:
@@ -407,7 +410,7 @@
             failed_when: >
               (followers_state['/0/state'] != "candidate") and
               (followers_state['/0/state'] != "follower")
-
+            
           #4-Unpause the Leader-to-Be from Step #3.
           - name: "{{ recipe_name }}: Unpause the 'Leader-to-Be' from Step #3."
             vars:
@@ -430,7 +433,7 @@
             until: lookup('niova_ctlrequest', 'lookup', nresume_peers[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (leader_to_be)
             retries: 60
             delay: 1
-            loop: "{{ range(0, nresume_peers | length) | list }}"
+            loop: "{{ range(0, nresume_peers | length) | list }}" 
 
           - name: "{{ recipe_name }}: Get last-applied value from followers which are unpaused in Step #3."
             vars:
@@ -469,7 +472,7 @@
               (collect_all_values['/0/commit-idx'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
               (collect_all_values['/0/sync-entry-idx'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
               (collect_all_values['/0/term'] < (initial_term | int))
-
+            
           - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and sync-entry-crc is same on all peers."
             vars:
               alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
@@ -482,7 +485,7 @@
             no_log: True
             failed_when: (last_applied_cum_crc != last_applied_cum_crc_next)
             loop: "{{ range(0, nresume_peers | length - 1) | list }}"
-
+         
           - name: "{{ recipe_name }}: Unpause the Remaining Paused Peers."
             vars:
               resume_followers: "{{ lookup('niova_raftprocess', 'resume', No_of_Fi[item], wantlist=True) }}"
@@ -502,9 +505,9 @@
             retries: 5
             delay: 1
             loop: "{{ range(0, No_of_Fi | length) | list }}"
-
+          
           - name: "{{ recipe_name }}: Get last-applied value from followers which are unpaused in Step #3."
-            vars:
+            vars:     
               stage: "state_of_resumed_followers"
               raft_key:
                   - "/raft_root_entry/0/commit-idx"
@@ -539,7 +542,7 @@
               (after_resume_all['/0/sync-entry-term'] != after_resume_all['/0/term'])
 
           - name: "{{ recipe_name }}: Verify term, last-applied-crc, sync_entry_crc on all peers."
-            vars:
+            vars: 
               last_applied_cum_crc: "{{ stage_raft_values['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
               last_applied_cum_crc_next: "{{ stage_raft_values['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
               sync_entry_crc: "{{ stage_raft_values['results'][item]['item']['/0/sync-entry-crc'] }}"

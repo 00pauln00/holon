@@ -1,0 +1,13 @@
+---
+   - name: "Get the unused client uuid"
+     vars:
+       uuid: "{{ ClientList[ClientIndex] }}"
+     shell: echo "{{ uuid }}"
+     register: client_uuid
+
+   - name: "Increment the Client index"
+     set_fact:
+       ClientIndex: "{{ ClientIndex | int + 1}}"
+
+   - debug:
+       msg: "{{ client_uuid.stdout }}"

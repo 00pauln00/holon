@@ -20,8 +20,11 @@
       backend_type: "{{ backend_type | default('raft')}}"
       srv_port: "{{ srv_port | default(6000) }}"
       npeers: "{{ npeers | default(5) }}"
+      nclients: "{{ nclients | default(10) }}"
       client_port: "{{ client_port | default(13000) }}"
       disable_post_run: "{{ disable_post_run | default(false) | bool }}"
+      num_clients: "{{ num_clients | default(10) }}"
+      ClientIndex: 0
     failed_when: >
       ((srv_port | int) >= 65536) or
       ((client_port | int) >= 65536) or
@@ -33,32 +36,33 @@
         startup_check: "port_check"
         srv_port: "{{ srv_port }}"
         client_port: "{{ client_port }}"
-    set_fact:
-       ports_check: "{{ lookup('holon_startup', config_params, wantlist=True) }}"
+    debug:
+       msg: "{{ lookup('holon_startup', config_params, wantlist=True) }}"
 
   - name: "Install python modules if not installed previously"
     vars:
       config_params:
         startup_check: "python_module_install"
-    set_fact:
-      installation: "{{ lookup('holon_startup', config_params, wantlist=True) }}"
+    debug:
+      msg: "{{ lookup('holon_startup', config_params, wantlist=True) }}"
 
   - name: "Prepare parameter to pass across recipes"
     set_fact:
-       raft_param:
+       ClusterParams:
            base_dir: "{{ dir_path }}"
            raft_uuid: "{{ cluster_uuid.stdout}}"
            ctype: "{{ backend_type }}"
            npeers: "{{ npeers }}"
+           nclients: "{{ nclients }}"
            client_port: "{{ client_port }}"
+           srv_port: "{{ srv_port }}"
 
-  - name: "prepare config"
-    vars:
-      config_params:
-        npeers: "{{ npeers }}"
-        srv_port: "{{ srv_port }}"
-        client_port: "{{ client_port }}"
-    set_fact: raft_conf="{{lookup('niova_raftconfig', config_params, wantlist=True)}}"
+  - name: "Prepare server configs"
+    set_fact: ClusterInfo="{{lookup('niova_raftconfig', "server", wantlist=True)}}"
+
+  - name: "Prepare client configs"
+    set_fact:
+       ClientList="{{lookup('niova_raftconfig', "client", wantlist=True)}}"
 
   - name: "Show the values"
     debug:
@@ -69,14 +73,16 @@
         - "client port is {{ client_port }}"
         - "Raft UUID is {{ cluster_uuid.stdout }}"
         - "Recipe: {{ recipe }}"
-        - "Raft params: {{ raft_param }}"
+        - "Raft params: {{ ClusterParams }}"
         - "Disable post run : {{ disable_post_run }}"
+        - "Used client index: {{ ClientIndex }}"
+        - "Client list: {{ ClientList }}"
 
 - import_playbook: recipes/"{{ recipe }}"
   vars:
-    recipe_params: "{{ raft_param }}"
+    recipe_params: "{{ ClusterParams }}"
 
 - import_playbook: "post_run.yml"
   vars:
-    recipe_params: "{{ raft_param }}"
+    recipe_params: "{{ ClusterParams }}"
   when: disable_post_run == "False" or disable_post_run == "false" or disable_post_run == false

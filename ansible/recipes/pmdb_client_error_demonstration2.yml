@@ -1,5 +1,5 @@
 - import_playbook: pmdb_client_error_demonstration1.yml
-  when: raft_param['ctype'] == "pumicedb"
+  when: ClusterParams['ctype'] == "pumicedb"
 
 - name: "pmdb_client_error_demonstration2"
   hosts: localhost
@@ -20,28 +20,30 @@
 
   tasks:
   - block:
-            - name: "Check if parent recipe failed"
+            - name: "{{ recipe_name }}: Check if parent recipe failed."
               debug: msg="Check if parent recipe {{ parent }} failed"
               failed_when: terminate_recipe == true
 
-            - name: "Verifying recipe compatibility requirements."
-              debug:
-                 msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed is : {{ raft_param['ctype'] }}"
-              failed_when: requirement != raft_param['ctype']
+            - name: "{{ recipe_name }}: Verifying recipe compatibility requirements."
+              include_role:
+                 name: common
+                 tasks_from: recipe_compatibility_requirement
 
-            - name: "Create UUID for starting the client"
-              shell: "/usr/bin/uuid"
+            - name: "{{ recipe_name }}: Get unused client uuid for starting the client."
+              include_role:
+                name: common
+                tasks_from: get_new_client_uuid
               register: client_uuid
 
-            - name: "Create app uuid"
+            - name: "{{ recipe_name }}: Create app uuid."
               shell: "/usr/bin/uuid"
               register: app_uuid
 
-            - name: "{{ recipe_name }}: Prepare parameter to pass across recipes"
+            - name: "{{ recipe_name }}: Prepare parameter to pass across recipes."
               set_fact:
                 Demo2Rncui: "{{ app_uuid.stdout }}:0:0:0:0"
 
-            - name: "{{ recipe_name }}: Starting client {{ client_uuid.stdout }}"
+            - name: "{{ recipe_name }}: Starting client {{ client_uuid.stdout }}."
               include_role:
                  name: common
                  tasks_from: start_client
@@ -130,7 +132,7 @@
               debug:
                 msg: "{{ valid_write_seq }}"
 
-            - name: "{{ recipe_name }}: Wait for write completion"
+            - name: "{{ recipe_name }}: Wait for write completion."
               vars:
                 stage: "wait-for-write-comp"
               debug:
@@ -154,7 +156,6 @@
                 (demo2_stage2_values['/0/app-seqno'] != 1) or
                 (demo2_stage2_values['/0/recent-ops-wr'][0]['sub-app-user-id'] != Demo2Rncui) or
                 (demo2_stage2_values['/0/recent-ops-wr'][0]['status'] != "Success")
-
 
             - name: "{{ recipe_name }}: Get the number of peers needed for quorum."
               include_role:
@@ -180,7 +181,7 @@
               retries: 30
               delay: 1
 
-            - name: "{{ recipe_name }}: Verify the client parameters after connection timeout"
+            - name: "{{ recipe_name }}: Verify the client parameters after connection timeout."
               vars:
                 stage: "after_conn_timeout"
                 lookup_key:
@@ -216,7 +217,7 @@
                  - "{{ lookup('niova_raftprocess', 'resume', FollowerUUIDs[item], wantlist=True) }}"
               loop: "{{ range(0, npeers_for_leader_elect | int) | list }}"
 
-            - name: "{{ recipe_name }}: Resetting the election timeout on leader"
+            - name: "{{ recipe_name }}: Resetting the election timeout on leader."
               vars:
                 stage: "stage0_set_elec_timeout_on_leader"
                 cmd: "election-timeout-ms@300"
@@ -226,7 +227,7 @@
                 msg:
                   - "{{ lookup('niova_ctlrequest', 'apply_cmd', leader_uuid, cmd, where, wantlist=True) }}"
 
-            - name: "{{ recipe_name }}: Resetting the election timeout on followers"
+            - name: "{{ recipe_name }}: Resetting the election timeout on followers."
               vars:
                 stage: "stage0_set_elec_timeout_on_follower"
                 cmd: "election-timeout-ms@300"
@@ -246,7 +247,7 @@
                  msg: "{{ client_timeout }}"
 
             # This was work-around as thread polls till the previous timeout completes.
-            - name: "Wait for 30sec timeout to complete"
+            - name: "Wait for 30sec timeout to complete."
               wait_for:
                 timeout: 35
 
@@ -256,7 +257,7 @@
                 leader_obj: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/leader-uuid', wantlist=True) }}"
               set_fact: demo2_new_leader_uuid="{{ leader_obj['/0/leader-uuid'] }}"
 
-            - name: "{{ recipe_name }}: After resuming followers valiadate it's aliveness"
+            - name: "{{ recipe_name }}: After resuming followers valiadate it's aliveness."
               include_role:
                  name: common
                  tasks_from: validate_followers_aliveness

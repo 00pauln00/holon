@@ -1,5 +1,5 @@
 - import_playbook: healthy_raftserver_cluster_type2.yml
-  when: raft_param['ctype'] == "pumicedb"
+  when: ClusterParams['ctype'] == "pumicedb"
 
 - name: "Completing an Uncommitted Write Following a Reboot"
   hosts: localhost
@@ -22,24 +22,26 @@
 
   tasks:
    - block:
-           - name: "Check if parent recipe failed"
+           - name: "{{ recipe_name }}: Check if parent recipe failed."
              debug: msg="Check if parent recipe {{ parent }} failed"
              failed_when: terminate_recipe == true
 
            - name: "{{ recipe_name }}: Verifying recipe compatibility requirements."
-             debug:
-               msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed: {{ raft_param['ctype'] }}"
-             failed_when: requirement != raft_param['ctype']
+             include_role:
+                name: common
+                tasks_from: recipe_compatibility_requirement
 
-           - name: "{{ recipe_name }}: Generate Client UUID."
-             shell: "/usr/bin/uuid"
+           - name: "{{ recipe_name }}: Get unused client uuid for starting the client."
+             include_role:
+               name: common
+               tasks_from: get_new_client_uuid
              register: client_uuid
 
            - name: "{{ recipe_name }}: Generate App UUID."
              shell: "/usr/bin/uuid"
              register: app_uuid
 
-           #Recipe Preparation
+           #Recipe Preparation.
            - name: "{{ recipe_name }}: Get raft_root_entry values of all peers before reboot."
              vars:
                stage: "recipe_preparation"
@@ -81,8 +83,8 @@
                   (sync_entry_data_size != sync_entry_data_size_next) or
                   (sync_entry_crc != sync_entry_crc_next)
              loop: "{{ range(0, NRunningPeers | length-1) | list }}"
-
-           #Determine leader before reboot
+           
+           #Determine leader before reboot.
            - name: "{{ recipe_name }}: Get leader_uuid before reboot."
              vars:
                stage: "before_reboot_leader"
@@ -125,7 +127,7 @@
                  - "{{ sync_ent_idx_lead_before_write_vals }}"
              register: sync_entry_idx_leader_before_write
 
-           #Set raft_follower_ignores_non_hb_AE_request on the Followers
+           #Set raft_follower_ignores_non_hb_AE_request on the Followers.
            - name: "{{ recipe_name }}: Ignore writes on all followers using fault injection."
              include_role:
                name: common
@@ -182,7 +184,7 @@
                  - "{{ sync_ent_idx_lead_after_write_vals }}"
              register: sync_entry_idx_leader_after_write
 
-           #2a- Verification for sync-entry-idx and commit-idx
+           #2a- Verification for sync-entry-idx and commit-idx.
            - name: "{{ recipe_name }}: Verify that sync-entry-idx of all followers remains same."
              vars:
                sync_entry_idx_before: "{{ sync_entry_idx_followers_before_write['results'][item]['item'] }}"
@@ -239,8 +241,9 @@
                name: common
                tasks_from: start_server
              vars:
+               cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
                ServerUUID: "{{ cuwr_leader_uuid_before }}"
-
+             
            - name: "{{ recipe_name }}: Add the leader to the started peer list."
              vars:
                cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
@@ -260,7 +263,7 @@
              vars:
                ServerUUID: "{{ FollowerUUIDs[item] }}"
              loop: "{{ range(0, npeers_for_leader_elect | int - 1) | list }}"
-
+             
            - name: "{{ recipe_name }}: Get the started followers in the running peer list."
              set_fact:
                cuwr_num_peer_started_after_reboot : "{{ cuwr_num_peer_started_after_reboot + [FollowerUUIDs[item]] }}"
@@ -273,6 +276,7 @@
                where: "/raft_net_info/ignore_timer_events"
              debug:
                msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', cuwr_num_peer_started_after_reboot, cmd, where, wantlist=True) }}"
+             no_log: True
 
            #6 - Wait for an Election to Complete.
            - name: "{{ recipe_name }}: Wait until leader election happens."
@@ -299,15 +303,17 @@
              register: leader_uuid_after
 
            - name: "{{ recipe_name }}: Verify that leader did not change after reboot."
+             vars:
+               cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
              debug:
                msg: "Verifying that leader did not change after reboot."
              failed_when: cuwr_leader_uuid_before != leader_uuid_after['results'][0]['item']['/0/leader-uuid']
-
+           
            - name: "{{ recipe_name }}:Get remaining non-running peer uuids for restarting it."
              set_fact:
                 cuwr_remaining_followers_to_start: "{{ FollowerUUIDs | difference(cuwr_num_peer_started_after_reboot) }}"
 
-           #7 - Startup the Remaining Followers
+           #7 - Startup the Remaining Followers.
            - name: "{{ recipe_name }}: Restarting remaining followers."
              include_role:
                name: common
@@ -326,7 +332,7 @@
              loop_control:
                 pause: 2
 
-           #7a - Verifications
+           #7a - Verifications.
            - name: "{{ recipe_name }}: Get the values for comparing commit-idx, last-applied and sync-entry-idx for all servers."
              vars:
                stage: "verifications_after_reboot"
@@ -352,7 +358,7 @@
                    (last_applied['/0/last-applied'] != (last_applied_prev['/0/last-applied'] + 2)) or
                    (sync_entry_idx['/0/sync-entry-idx'] != (sync_entry_idx_prev['/0/sync-entry-idx'] + 2))
              loop: "{{ range(0, NRunningPeers | length) | list }}"
-
+           
            - name: "{{ recipe_name }}: Validate term, last-applied-cumulative-crc, sync-entry-term, sync-entry-data-size and sync-entry-crc of all peers after reboot."
              vars:
                term: "{{ raft_root_entry_all_after['results'][item]['item']['/0/term'] }}"
@@ -374,7 +380,7 @@
                    (sync_entry_data_size != sync_entry_data_size_next) or
                    (sync_entry_crc != sync_entry_crc_next)
              loop: "{{ range(0, NRunningPeers | length-1) | list }}"
-
+           
            #8 - Verify the Application Data.
            - name: "{{ recipe_name }}: Perform read on the same object."
              vars:
@@ -383,6 +389,7 @@
                where: "/pumice_db_test_client/input"
              debug:
                msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+             no_log: True
 
            #8a- Get values for pmdb-request-history.
            - name: "{{ recipe_name }}: Get values for pmdb-request-history."
@@ -401,11 +408,11 @@
            - name: "{{ recipe_name }}: Validate pmdb-request-history parameters."
              vars:
                rncui: "{{ app_uuid.stdout }}:0:0:0:0"
-               pmdb_seqno: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][-1] }}"
-               app_seq_no: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][-1] }}"
-               app_user_id: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][-1] }}"
-               op: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][-1] }}"
-               status: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][-1] }}"
+               pmdb_seqno: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][0] }}"
+               app_seq_no: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][0] }}"
+               app_user_id: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][0] }}"
+               op: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][0] }}"
+               status: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][0] }}"
              debug:
                msg: "Validating pmdb-request-history parameters."
              failed_when: >

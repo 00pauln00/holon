@@ -1,0 +1,137 @@
+#- import_playbook: basic_raft_operation_with_client_activity.yml
+- import_playbook: healthy_raftserver_cluster_type2.yml
+- name: "PMDB Foreign Client Error Demonstration"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "pmdb_foreign_client"
+     parent: "basic_raft_operation_with_client_activity"
+     requirement: "pumicedb"
+     client_obj: {}
+     set_timeout: 3 
+  tasks:
+  - name: "{{ recipe_name }}: Verify holon started with pumicedb as backend."
+    include_role:
+       name: common
+       tasks_from: recipe_compatibility_requirement
+
+  - name: "{{ recipe_name }}: Create new Raft UUID for foreign client."
+    shell: "/usr/bin/uuid"
+    register: foreign_cluster_uuid
+
+  - name: "Prepare the foreign cluster information."
+    set_fact:
+      orig_cluster_param: "{{ ClusterParams }}"
+      ClusterParams:
+           base_dir: "{{ dir_path }}"
+           raft_uuid: "{{ foreign_cluster_uuid.stdout}}"
+           ctype: "{{ backend_type }}"
+           npeers: "{{ npeers }}"
+           client_port: "{{ client_port }}"
+           srv_port: "{{ srv_port }}"
+
+  - name: "{{ recipe_name }}: Prepare config for new cluster using same ports as already running cluster."
+    set_fact: 
+      foreign_cluster: "{{ lookup('niova_raftconfig', 'server', wantlist=True) }}"
+
+  - name: "{{ recipe_name }}: Create UUID for starting the client in the 2nd cluster."
+    shell: "/usr/bin/uuid"
+    register: fc_client_uuid
+
+  - name: "{{ recipe_name }}: Create app uuid"
+    shell: "/usr/bin/uuid"
+    register: fc_app_uuid
+
+  - debug:
+      msg:
+        - "client uuid: {{ fc_client_uuid.stdout }}"
+        - "app uuid: {{ fc_app_uuid.stdout }}"
+
+  - name: "{{ recipe_name }}: Start client process from the 2nd cluster."
+    include_role:
+       name: common
+       tasks_from: start_client
+    vars:
+       ClientUUID: "{{ fc_client_uuid.stdout }}"
+       RaftUUID: "{{ recipe_params['raft_uuid'] }}"
+       ClientPort: 12006
+
+  - name: "{{ recipe_name }}: Modify the client request timeout to 3sec."
+    vars:
+       stage: "modify_timeout"
+       cmd: "default-request-timeout-sec@{{ set_timeout }}"
+       where: "/raft_client_root_entry/default-request-timeout-sec"
+       set_time: "{{ lookup('niova_ctlrequest', 'apply_cmd', fc_client_uuid.stdout, cmd, where, wantlist=True) }}"
+    debug:
+      msg: "{{ set_time }}"
+    no_log: True
+
+  - name: "{{ recipe_name }}: Verify client request timeout set to '3'"
+    vars:
+      stage: "stage0"
+      raft_key:
+            - "/raft_client_root_entry/0/default-request-timeout-sec"
+    set_fact:
+      stage0_values: "{{ lookup('niova_ctlrequest', 'lookup', fc_client_uuid.stdout, raft_key, wantlist=True) }}"
+    failed_when: stage0_values["/0/default-request-timeout-sec"] != 3
+
+  - name: "{{ recipe_name }}: Apply write cmd"
+    vars:
+      stage: "valid_seq_stage"
+      cmd: "input@{{ fc_app_uuid.stdout }}:0:0:0:1.write:0"
+      where: "/pumice_db_test_client/input"
+      write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', fc_client_uuid.stdout, cmd, where, wantlist=True) }}"
+    debug:
+      msg: "{{ write_seq }}"
+    no_log: True
+
+  - pause:
+      seconds: "{{ set_timeout | int + 2 | int }}"
+
+  - name: "{{ recipe_name }}: Verify the write request expired as client was trying to send request to 1st cluster."
+    vars:
+      rncui: "{{ fc_app_uuid.stdout }}:0:0:0:0"
+      stage: "stage1"
+      raft_keys:
+            - "/pumice_db_test_client/pmdb-test-apps/0/app-user-id"
+            - "/pumice_db_test_client/pmdb-test-apps/0/status"
+            - "/pumice_db_test_client/pmdb-test-apps/0/last-request-tag"
+            - "/system_info/current_time"
+            - "/raft_client_root_entry/0/recent-ops-wr"
+    set_fact:
+      stage1_values: "{{ lookup('niova_ctlrequest', 'lookup', fc_client_uuid.stdout, raft_keys, wantlist=True) }}"
+    failed_when: >
+        ((stage1_values['/0/recent-ops-wr'][0]['sub-app-user-id'] != rncui) and 
+        (stage1_values['/0/recent-ops-wr'][0]['sub-app-user-id'] != stage1_values['/0/app-user-id'])) or
+        ((stage1_values['/0/recent-ops-wr'][0]['status'] != "Connection timed out") and
+        (stage1_values['/0/recent-ops-wr'][0]['status'] != stage1_values['/0/status'])) or
+        (stage1_values['/0/recent-ops-wr'][0]['server'] != "0.0.0.0:0") or
+        (stage1_values['/0/recent-ops-wr'][0]['rpc-user-tag'] != stage1_values['/0/last-request-tag']) or
+        (stage1_values['/0/recent-ops-wr'][0]['attempts'] != 0)
+  
+  - name: "{{ recipe_name }}: Get submitted time and current time for comparison."
+    vars:
+       stage: "check_timestamp"
+       raft_keys:
+            - "/raft_client_root_entry/0/recent-ops-wr"
+            - "/system_info/current_time"
+    set_fact:
+       get_time: "{{ lookup('niova_ctlrequest', 'lookup', fc_client_uuid.stdout, raft_keys, wantlist=True) }}"
+
+  - name: "{{ recipe_name }}: Convert default timestamp format into datetime format for comparison."
+    set_fact:
+       submitted_time: "{{ get_time['/0/recent-ops-wr'][0]['submitted'] | to_datetime('%a %b %d %H:%M:%S %Z %Y') }}"
+       current_time: "{{ get_time['/system_info/current_time'] | to_datetime('%a %b %d %H:%M:%S %Z %Y') }}"
+
+  - name: "{{ recipe_name }}: Difference between submitted time and current time should be approximately same."
+    set_fact:
+       time_diff: "{{ ((submitted_time | to_datetime) - (current_time | to_datetime)).total_seconds() | int }}"
+    failed_when: (time_diff | int) > 1
+
+  - name: "Kill the foriegn client"
+    debug:
+      msg: "{{ lookup('niova_raftprocess', 'kill', fc_client_uuid.stdout, wantlist=True) }}"
+
+  - name: "{{ recipe_name }}: Revert back the origin cluster information."
+    set_fact:
+      ClusterParams: "{{ orig_cluster_param }}"
