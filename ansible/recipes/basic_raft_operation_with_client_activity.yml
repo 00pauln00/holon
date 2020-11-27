@@ -21,71 +21,91 @@
           - "/raft_root_entry/0/sync-entry-crc"
 
   tasks:
-   - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
-     debug:
-       msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed is : {{ ClusterParams['ctype'] }}"
-     failed_when: requirement != ClusterParams['ctype']
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
 
-   - name: "{{ recipe_name }}: Get cluster information"
-     include_role:
-       name: common
-       tasks_from: get_server_uuid_info
-      
-   - name: "{{ recipe_name }}: Create UUID for starting the client"
-     shell: "/usr/bin/uuid"
-     register: client_uuid
+    - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
+      include_role:
+        name: common
+        tasks_from: recipe_compatibility_requirement
 
-   - name: "{{ recipe_name }}: Generate App UUID"
-     shell: "/usr/bin/uuid"
-     register: app_uuid
+    - name: "{{ recipe_name }}: Get cluster information"
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
 
-   - name: "{{ recipe_name }}: Start client process"
-     include_role:
-       name: common
-       tasks_from: start_client
-     vars:
-       ClientUUID: "{{ client_uuid.stdout }}"
+    - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+      include_role:
+        name: common
+        tasks_from: get_new_client_uuid
+      register: client_uuid
 
-   - name: "{{ recipe_name }}: Get raft_uuid and leader_uuid."
-     vars:
-       stage: "stage0"
-       raft_keys:
+    - debug:
+        msg: "Client UUID: {{ client_uuid }}"
+
+    - name: "{{ recipe_name }}: Generate App UUID"
+      shell: "/usr/bin/uuid"
+      register: app_uuid
+
+    - name: "{{ recipe_name }}: Start client process"
+      include_role:
+        name: common
+        tasks_from: start_client
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
+    - name: "{{ recipe_name }}: Wait till client reports leader-viable = true"
+      debug:
+        msg: "Wait till client reports leader-viable = true"
+      no_log: True
+      vars:
+        stage: "browca_leader_viable"
+      until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/raft_client_root_entry/0/leader-viable', wantlist=True) | dict2items | map(attribute='value') | list | first | bool != false)
+      retries: 10
+      delay: 2
+
+    - name: "{{ recipe_name }}: Get raft_uuid and leader_uuid."
+      vars:
+        stage: "stage0"
+        raft_keys:
           - "/raft_root_entry/0/raft-uuid"
           - "/raft_root_entry/0/leader-uuid"
-       uuids: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], raft_keys, wantlist=True) }}"
-     debug:
-       msg: "Get the leader uuid and raft-uuid"
-     no_log: true
-     with_items:
-       - "{{ uuids }}"
-     register: raft_leader_uuids
+        uuids: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Get the leader uuid and raft-uuid"
+      no_log: true
+      with_items:
+        - "{{ uuids }}"
+      register: raft_leader_uuids
 
-   - name: "{{ recipe_name}}: Get the parameters for client."
-     vars:
-       stage: "stage1"
-       raft_keys:
+    - name: "{{ recipe_name}}: Get the parameters for client."
+      vars:
+        stage: "stage1"
+        raft_keys:
           - "/raft_client_root_entry/0/leader-viable"
           - "/raft_client_root_entry/0/last-request-sent"
           - "/raft_client_root_entry/0/last-request-ack"
           - "/raft_client_root_entry/0/raft-uuid"
           - "/raft_client_root_entry/0/state"
           - "/raft_client_root_entry/0/leader-uuid"
-       cli_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
-     debug:
-       msg: "Get the values for client"
-     no_log: true
-     with_items:
-       - "{{ cli_vals }}"
-     register: client_values
+        cli_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Get the values for client"
+      no_log: true
+      with_items:
+        - "{{ cli_vals }}"
+      register: client_values
   
-   - name: "{{ recipe_name }}: Verify the client parameters"
-     vars:
-       client_info: "{{ client_values['results'][0]['item'] }}"
-       uuids: "{{ raft_leader_uuids['results'][0]['item'] }}"
-     debug:
-       msg: "Compare values for client"
-     no_log: true
-     failed_when: >
+    - name: "{{ recipe_name }}: Verify the client parameters"
+      vars:
+        client_info: "{{ client_values['results'][0]['item'] }}"
+        uuids: "{{ raft_leader_uuids['results'][0]['item'] }}"
+      debug:
+        msg: "Compare values for client"
+      no_log: true
+      failed_when: >
             (client_info['/0/raft-uuid'] != uuids['/0/raft-uuid']) or
             (client_info['/0/state'] != "client") or
             (client_info['/0/leader-uuid'] != uuids['/0/leader-uuid']) or
@@ -93,79 +113,76 @@
             (client_info['/0/last-request-ack'] != "Thu Jan 01 00:00:00 UTC 1970") or
             (client_info['/0/leader-viable'] != true)
 
-   - name: "{{ recipe_name}}: Snapshot the State of the Raft Servers before doing any writes on client."
-     vars:
-       stage: "snapshot_before_write"
-       pre_write_values: []
-       snapshot_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, peer_raft_keys, wantlist=True) }}"
-     debug:
-       msg: "Snapshot the raft server state before write operaiton."
-     no_log: true
-     with_items:
-       - "{{ snapshot_values }}"
-     register: snapshot_before_write
+    - name: "{{ recipe_name}}: Snapshot the State of the Raft Servers before doing any writes on client."
+      vars:
+        stage: "snapshot_before_write"
+        pre_write_values: []
+        snapshot_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, peer_raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Snapshot the raft server state before write operaiton."
+      no_log: true
+      with_items:
+        - "{{ snapshot_values }}"
+      register: snapshot_before_write
 
-   - name: "{{ recipe_name }}: Get follower-stats from leader."
-     include_role:
+    - name: "{{ recipe_name }}: Get follower-stats from leader."
+      include_role:
          name: common
          tasks_from: get_follower_stats
 
-   - name: "{{ recipe_name}}: Snapshot the follower stats from leader before doing any writes on client."
-     vars:
-       snapshot_fstat: "{{ GetFollowerStatsInfo }}"
-     debug:
-       msg: "Get the follower stat before write."
-     no_log: true
-     with_items:
-       - "{{ snapshot_fstat }}"
-     register: snapshot_fstat_before_wr
+    - name: "{{ recipe_name}}: Snapshot the follower stats from leader before doing any writes on client."
+      vars:
+        snapshot_fstat: "{{ GetFollowerStatsInfo }}"
+      debug:
+        msg: "Get the follower stat before write."
+      no_log: true
+      with_items:
+        - "{{ snapshot_fstat }}"
+      register: snapshot_fstat_before_wr
 
-   - name: "{{ recipe_name}}: Write at seqno 0 and perform the write {{ num_writes }} times."
-     vars:
-       stage: "write"
-       cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
-       where: "/pumice_db_test_client/input"
-     set_fact:
-       bca_write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+    - name: "{{ recipe_name}}: Write at seqno 0 and perform the write {{ num_writes }} times."
+      vars:
+        stage: "write"
+        cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
+        where: "/pumice_db_test_client/input"
+      set_fact:
+        bca_write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
 
-   - name: "{{ recipe_name}}: Wait until all write completes from client"
-     vars:
-      stage: "wait_for_client_write_comp"
-      raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
-     debug:
-       msg: "Waiting for client to finish writing"
-     until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != (num_writes - 1)
-     loop: "{{ range(0, 10) | list }}"
-     loop_control:
-       pause: 1
+    - name: "{{ recipe_name}}: Wait until all write completes from client"
+      vars:
+        stage: "wait_for_client_write_comp"
+        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+      debug:
+        msg: "Waiting for client to finish writing"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != (num_writes - 1)
+      loop: "{{ range(0, 10) | list }}"
+      loop_control:
+        pause: 1
 
-   - name: "{{ recipe_name}}: Get the client parameters after successful write."
-     vars:
-       stage: "lookup"
-       raft_keys:
+    - name: "{{ recipe_name}}: Get the client parameters after successful write."
+      vars:
+        stage: "lookup"
+        raft_keys:
           - "/pumice_db_test_client/pmdb-test-apps/0/app-user-id"
           - "/pumice_db_test_client/pmdb-test-apps/0/status"
           - "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
           - "/pumice_db_test_client/pmdb-test-apps/0/pmdb-write-pending"
           - "/pumice_db_test_client/pmdb-test-apps/0/app-sync"
           - "/pumice_db_test_client/pmdb-test-apps/0/app-seqno"
-       client_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
-     debug:
-       msg: "get the values after client write operation."
-     no_log: true
-     with_items:
-       - "{{ client_vals }}"
-     register: client_vals_after_wr
+        client_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "get the values after client write operation."
+      no_log: true
+      with_items:
+        - "{{ client_vals }}"
+      register: client_vals_after_wr
 
-   - debug:
-        msg: "{{ client_vals_after_wr }}"
-
-   - name: "{{ recipe_name}}: Verify the client parameters after successful write."
-     vars:
-       app_uuid_string: "{{ app_uuid.stdout }}:0:0:0:0"
-     debug:
-       msg: "Verify parameters after successful write operation"
-     failed_when: >
+    - name: "{{ recipe_name}}: Verify the client parameters after successful write."
+      vars:
+        app_uuid_string: "{{ app_uuid.stdout }}:0:0:0:0"
+      debug:
+        msg: "Verify parameters after successful write operation"
+      failed_when: >
             (client_vals_after_wr['results'][0]['item']['/0/app-user-id'] != app_uuid_string) or
             (client_vals_after_wr['results'][0]['item']['/0/status'] != "Success") or
             (client_vals_after_wr['results'][0]['item']['/0/pmdb-seqno'] != (num_writes - 1)) or
@@ -173,85 +190,90 @@
             (client_vals_after_wr['results'][0]['item']['/0/app-sync'] != true) or
             (client_vals_after_wr['results'][0]['item']['/0/app-seqno'] != num_writes)
   
-   - name: "{{ recipe_name }}: Get follower-stats from leader."
-     include_role:
+    - name: "{{ recipe_name }}: Get follower-stats from leader."
+      include_role:
          name: common
          tasks_from: get_follower_stats
 
-   - name: "{{ recipe_name}}: Assign follower-stats in variable."
-     vars:
-       fstats: "{{ GetFollowerStatsInfo }}"
-     debug:
-       msg: "Get the follower stats"
-     no_log: true
-     with_items:
-       - "{{ fstats }}"
-     register: follower_stats
+    - name: "{{ recipe_name}}: Assign follower-stats in variable."
+      vars:
+        fstats: "{{ GetFollowerStatsInfo }}"
+      debug:
+        msg: "Get the follower stats"
+      no_log: true
+      with_items:
+        - "{{ fstats }}"
+      register: follower_stats
 
-   - name: "{{ recipe_name}}: Server side verifications."
-     vars:
-       follower_stats_after_wr: "{{ follower_stats['results'][0]['item'] }}"
-       follower_stats_before_wr: "{{ snapshot_fstat_before_wr['results'][0]['item'] }}"
-       term_before_wr: "{{ snapshot_before_write['results'][item]['item'] }}"
-     debug:
-       msg: "Server side verifications."
-     failed_when: >
+    - name: "{{ recipe_name}}: Server side verifications."
+      vars:
+        follower_stats_after_wr: "{{ follower_stats['results'][0]['item'] }}"
+        follower_stats_before_wr: "{{ snapshot_fstat_before_wr['results'][0]['item'] }}"
+        term_before_wr: "{{ snapshot_before_write['results'][item]['item'] }}"
+      debug:
+        msg: "Server side verifications."
+      failed_when: >
          (follower_stats_after_wr['/0/follower-stats'][item]['next-idx'] != (follower_stats_before_wr['/0/follower-stats'][item]['next-idx'] + num_writes)) or
          (follower_stats_after_wr['/0/follower-stats'][item]['prev-idx-term'] != term_before_wr['/0/term']) 
-     loop: "{{ range(0, FollowerUUIDs | length) | list }}"
+      loop: "{{ range(0, FollowerUUIDs | length) | list }}"
   
-   - name: "{{ recipe_name}}: Get the last-ack for all the followers"
-     vars:
-      bca_last_ack_arr: []
-     set_fact:
+    - name: "{{ recipe_name}}: Get the last-ack for all the followers"
+      vars:
+        bca_last_ack_arr: []
+      set_fact:
         bca_last_ack_arr: "{{ bca_last_ack_arr }} + ['{{ follower_stats['results'][0]['item']['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y') }}']"
-     loop: "{{ range(0, FollowerUUIDs | length) | list }}"
+      loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
-   - name: "{{ recipe_name}}: Difference between last-ack of two followers should not be more than 2secs"
-     vars:
-        time_diff: "{{ ((bca_last_ack_arr[item] | to_datetime) - (bca_last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"
-     debug:
-       msg: "Time difference between last-ack of two followers should not be > 2sec"
-     no_log: true
-     failed_when: (time_diff | int)  >= 2
-     loop: "{{ range(0, FollowerUUIDs | length - 2) | list }}"
+    - name: "{{ recipe_name}}: Difference between last-ack of two followers should not be more than 2secs"
+      vars:
+         time_diff: "{{ ((bca_last_ack_arr[item] | to_datetime) - (bca_last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"
+      debug:
+        msg: "Time difference between last-ack of two followers should not be > 2sec"
+      no_log: true
+      failed_when: (time_diff | int)  >= 2
+      loop: "{{ range(0, FollowerUUIDs | length - 2) | list }}"
 
-   - name: "{{ recipe_name}}: Get the server information for all running servers."
-     vars:
-       stage: "server_verify"
-       peer_values_all: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, peer_raft_keys, wantlist=True) }}"
-     debug:
-       msg: "Get the values for all running servers."
-     no_log: true
-     with_items:
-       - "{{ peer_values_all }}"
-     register: running_srv_vals
+    - name: "{{ recipe_name}}: Get the server information for all running servers."
+      vars:
+        stage: "server_verify"
+        peer_values_all: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, peer_raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Get the values for all running servers."
+      no_log: true
+      with_items:
+        - "{{ peer_values_all }}"
+      register: running_srv_vals
 
-   - name: "{{ recipe_name}}: Verify the values for running peers."
-     vars:
-       srv_latest_vals: "{{ running_srv_vals['results'][item]['item'] }}"
-       srv_before_wr_vals: "{{ snapshot_before_write['results'][item]['item'] }}"
-     debug:
+    - name: "{{ recipe_name}}: Verify the values for running peers."
+      vars:
+        srv_latest_vals: "{{ running_srv_vals['results'][item]['item'] }}"
+        srv_before_wr_vals: "{{ snapshot_before_write['results'][item]['item'] }}"
+      debug:
        msg: "Compare parameters with before write parameters{{ srv_latest_vals }} and {{ srv_before_wr_vals }}"
-     no_log: true
-     failed_when: >
+      no_log: true
+      failed_when: >
          (srv_latest_vals['/0/term'] !=  srv_before_wr_vals['/0/term']) or
          (srv_latest_vals['/0/commit-idx'] != (num_writes + srv_before_wr_vals['/0/commit-idx'])) or
          (srv_latest_vals['/0/last-applied'] != (num_writes + srv_before_wr_vals['/0/last-applied'])) or
          (srv_latest_vals['/0/sync-entry-idx'] != (num_writes + srv_before_wr_vals['/0/sync-entry-idx'])) or
          (srv_latest_vals['/0/sync-entry-term'] != srv_before_wr_vals['/0/term'])
-     loop: "{{ range(0, NRunningPeers | length)| list }}"
+      loop: "{{ range(0, NRunningPeers | length)| list }}"
    
-   - name: "{{ recipe_name}}: Verify that term, last-applied-cumulative-crc, sync-entry-term, sync-entry-data-size and sync-entry-crc are same on all peers"
-     vars:
-       curr_itr_vals: "{{ running_srv_vals['results'][item]['item'] }}"
-       next_itr_vals: "{{ running_srv_vals['results'][item + 1]['item'] }}"
-     debug:
-       msg: "Verifying that term, last-applied-cumulative-crc, sync-entry-term, sync-entry-data-size and sync-entry-crc are same on all peers"
-     failed_when: >
+    - name: "{{ recipe_name}}: Verify that term, last-applied-cumulative-crc, sync-entry-term, sync-entry-data-size and sync-entry-crc are same on all peers"
+      vars:
+        curr_itr_vals: "{{ running_srv_vals['results'][item]['item'] }}"
+        next_itr_vals: "{{ running_srv_vals['results'][item + 1]['item'] }}"
+      debug:
+        msg: "Verifying that term, last-applied-cumulative-crc, sync-entry-term, sync-entry-data-size and sync-entry-crc are same on all peers"
+      failed_when: >
          (curr_itr_vals['/0/term'] != next_itr_vals['/0/term']) or
          (curr_itr_vals['/0/last-applied-cumulative-crc'] != next_itr_vals['/0/last-applied-cumulative-crc']) or
          (curr_itr_vals['/0/sync-entry-term'] != next_itr_vals['/0/sync-entry-term']) or
          (curr_itr_vals['/0/sync-entry-data-size'] != next_itr_vals['/0/sync-entry-data-size']) or
          (curr_itr_vals['/0/sync-entry-crc'] != next_itr_vals['/0/sync-entry-crc'])
-     loop: "{{ range(0, NRunningPeers | length - 1)| list }}"
+      loop: "{{ range(0, NRunningPeers | length - 1)| list }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true

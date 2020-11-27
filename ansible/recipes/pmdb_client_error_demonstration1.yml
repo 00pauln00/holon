@@ -18,13 +18,20 @@
             - "/pumice_db_test_client/pmdb-test-apps/0/app-seqno"
             - "/raft_client_root_entry/0/recent-ops-wr"
   tasks:
-    - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
-      debug:
-        msg: "Recipe Requirement is: {{ requirement }}, where as 'backend_type' passed: {{ ClusterParams['ctype'] }}"
-      failed_when: requirement != ClusterParams['ctype']
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
 
-    - name: "{{ recipe_name }}: Create UUID for starting the client"
-      shell: "/usr/bin/uuid"
+    - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
+      include_role:
+         name: common
+         tasks_from: recipe_compatibility_requirement
+
+    - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+      include_role:
+        name: common
+        tasks_from: get_new_client_uuid
       register: client_uuid
 
     - name: "{{ recipe_name }}: Create app uuid"
@@ -47,7 +54,16 @@
       debug:
         msg: "{{ non_existing_obj_lookup }}"
       no_log: True
- 
+
+    - name: "Wait for lookup operation to complete"
+      vars:
+         stage: "client_lookup_inval_obj"
+      debug:
+        msg: "Wait till the lookup operation completes"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, "/raft_client_root_entry/0/recent-ops-rd/0/status", wantlist=True) | dict2items | map(attribute='value') | list | first != "null"
+      retries: 3
+      delay: 1
+
     - name: "{{ recipe_name }}: Get the values from client for comparison."
       vars:
         stage: "stage0"
@@ -63,6 +79,7 @@
         - "{{ demo1_lookup_vals }}"
       register: non_existing_obj
 
+
     - name: "{{ recipe_name }}: Verify the parameters after lookup on non-existing object"
       vars:
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
@@ -76,7 +93,7 @@
         (invalid_wr_vals['/0/app-user-id'] != rncui) or
         (invalid_wr_vals['/0/status'] != "No such file or directory") or
         (invalid_wr_vals['/0/last-request-tag'] != invalid_wr_vals['/0/recent-ops-rd'][0]['rpc-user-tag'])
-     
+
     - name: "{{ recipe_name }}: Apply invalid write sequence nunber."
       vars:
          stage: "invalid_seq_stage"
@@ -172,3 +189,7 @@
         (invalid_wr['/0/recent-ops-wr'][0]['sub-app-user-id'] != rncui) or
         (invalid_wr['/0/recent-ops-wr'][0]['status'] != "Success")
 
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true

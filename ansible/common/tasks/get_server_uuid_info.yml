@@ -27,12 +27,13 @@
         process_uuid: "{{ raft_processes[item]['process_uuid'] }}"
       set_fact:
         NRunningPeers: "{{ NRunningPeers + [raft_processes[item]['process_uuid']] }}"
-      when: raft_processes[item]['process_type'] == "server"
+      when: raft_processes[item]['process_type'] == "server" and raft_processes[item]['process_status'] == "running"
       loop: "{{ range(0, raft_processes | length) | list }}"
 
     - name: "Get the list of all peers"
       set_fact:
         TotalNServersDict: "{{ ClusterInfo | json_query('peer_uuid_dict') }}"
+
     - name: "Convert dictionary values into list"
       set_fact:
         TotalNServersList: "{{ TotalNServersDict.values() | list }}"

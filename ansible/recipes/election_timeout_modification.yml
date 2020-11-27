@@ -10,11 +10,16 @@
      requirement: "pumicedb"
 
   tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+ 
     #Recipe compatibility.
     - name: "{{ recipe_name }}: Verifying recipe compatibility requirements."
-      debug:
-        msg: "Recipe Requirement is: {{ requirement }}, where as 'cluster_type' passed: {{ ClusterParams['ctype'] }}"
-      failed_when: requirement != ClusterParams['ctype']
+      include_role:
+         name: common
+         tasks_from: recipe_compatibility_requirement
 
     #Recipe preparation.
     - name: "{{ recipe_name }}: Get values for raft_net_info for all servers."
@@ -56,7 +61,7 @@
          name: common
          tasks_from: validate_followers_aliveness
       vars:
-        LeaderUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        ValLeaderUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
       with_items:
           - 0
           - 1
@@ -85,7 +90,7 @@
          name: common
          tasks_from: validate_followers_aliveness
       vars:
-        LeaderUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        ValLeaderUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
       with_items:
           - 0
           - 1
@@ -382,3 +387,8 @@
         msg:
           - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true

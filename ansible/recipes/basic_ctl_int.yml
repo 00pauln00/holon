@@ -6,6 +6,7 @@
      parent: None
 
   tasks:
+  - block:
     - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
       include_role:
         name: common
@@ -87,3 +88,8 @@
          msg: "Compare time stamp: {{ orig_time }} with {{ curr_time }}"
       failed_when: orig_time >= curr_time
       loop: "{{ range(0, 4)| list }}"
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true

@@ -8,6 +8,11 @@
      basic_elect_npeer_start: []
 
   tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
     - name: "{{ recipe_name }}: Start number of server for basic leader election."
       include_role:
         name: common
@@ -68,8 +73,13 @@
         msg:
         - "Validate the raft values for peer: {{ NRunningPeers[item] }}"
       failed_when: >
-        (peer_info["/0/commit-idx"] != 0) or
-        (peer_info["/0/last-applied"] != 0) or
+        (peer_info["/0/commit-idx"] < 0) or
+        (peer_info["/0/last-applied"] < 0) or
         (peer_info["/0/last-applied-cumulative-crc"] != peer_info["/0/sync-entry-crc"]) or
         (peer_info["/0/term"] != peer_info["/0/sync-entry-term"])
       loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
