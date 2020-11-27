@@ -29,11 +29,10 @@
           #Recipe Setup: If the cluster is not booted, the recipe should abort.
           - name: "{{ recipe_name }}: Get the state from all peers."
             vars:
-               running_servers: "{{ NRunningPeers }}"
                stage: "check_booting_stage"
                state_key:
                   - "/raft_root_entry/0/state"
-               verify_cluster_requirement: "{{ lookup('niova_ctlrequest', 'lookup', running_servers, state_key, wantlist=True) }}"
+               verify_cluster_requirement: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, state_key, wantlist=True) }}"
             debug:
               msg: "Getting orignal values."
             no_log: True
@@ -60,6 +59,8 @@
             include_role:
                name: common
                tasks_from: validate_followers_aliveness
+            vars:
+              ValLeaderUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
 
           #Recipe Setup: Ensure all fault injections with “raft” in the name are disabled on all peers.
           - name: "{{ recipe_name }}: Check fault injection on all followers through common task."
@@ -116,7 +117,7 @@
               - "{{ largest_value }}"
             register: largest_number
 
-          - name: "{{ recipe_name }}: Get the number of which should be the largest number which allows the raft quorum to persist."
+          - name: "{{ recipe_name }}: Get the number of peers which should be the largest number which allows the raft quorum to persist."
             vars:
               large_value: "{{ largest_number['results'][0]['item'] }}"
               raft_quorum_value: "{{ large_value | sort | last | int }}"
@@ -153,9 +154,11 @@
                tasks_from: no_response_from_paused_followers
             loop: "{{ range(0, 4)| list }}"
 
-          - name: "{{ recipe_name }}: Create UUID for starting the client."
-            shell: "/usr/bin/uuid"
-            register: sel_corr_lead_client_uuid
+          - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+            include_role:
+              name: common
+              tasks_from: get_new_client_uuid
+            register: client_uuid
 
           - name: "{{ recipe_name }}: Create app uuid."
             shell: "/usr/bin/uuid"
@@ -163,14 +166,14 @@
 
           - debug:
               msg:
-                - "client uuid: {{ sel_corr_lead_client_uuid.stdout }}"
+                - "client uuid: {{ client_uuid.stdout }}"
 
           - name: "{{ recipe_name }}: Start the client."
             include_role:
                name: common
                tasks_from: start_client
             vars:
-              ClientUUID: "{{ sel_corr_lead_client_uuid.stdout }}"
+              ClientUUID: "{{ client_uuid.stdout }}"
 
           #2 - Perform Some Client Writes.
           - name: "{{ recipe_name }}: Perform the write {{ nwrites }} times."
@@ -178,7 +181,7 @@
               stage: "num_writes"
               cmd: "input@{{ sel_correct_lead_app_uuid.stdout }}:0:0:0:0.write:0.{{ nwrites }}"
               where: "/pumice_db_test_client/input"
-              write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', sel_corr_lead_client_uuid.stdout, cmd, where, wantlist=True) }}"
+              write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
             debug:
               msg: "{{ write_cmd }}"
             no_log: True
@@ -189,10 +192,15 @@
               raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
             debug:
               msg: "Waiting for client to finish writing"
-            until: lookup('niova_ctlrequest', 'lookup', sel_corr_lead_client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != (nwrites - 1)
+            until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != (nwrites - 1)
             loop: "{{ range(0, 10) | list }}"
             loop_control:
                pause: 1
+
+          - name: "{{ recipe_name }}: Get the follower-stat after pausing some followers."
+            include_role:
+               name: common
+               tasks_from: get_follower_stats
 
           - name: "{{ recipe_name }}: Recheck the follower-stats from leader."
             vars:
@@ -204,21 +212,21 @@
               - "{{ curr_follower_stats }}"
             register: recheck_fstats
 
-          - name: "{{ recipe_name }}: Verify next-idx for alive followers, it should be (original-next-idx + NumWrites)."
-            vars:
-              alive_followers: "{{ FollowerUUIDs | difference(Sel_Correct_Lea_Selected_Followers) }}"
-              initial_next_idx: "{{ get_fstats['results'][0]['item']['/0/follower-stats'][item]['next-idx'] }}"
-              get_curr_fstats: "{{ recheck_fstats['results'][0]['item'] }}"
-              alive_peer_uuid: "{{ alive_followers | select('search', get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) | list }}"
-            debug:
-              msg:
-                - "{{ alive_peer_uuid }}"
-                - "{{ get_curr_fstats['/0/follower-stats'][item]['peer-uuid'] }}"
-                - "{{ get_curr_fstats['/0/follower-stats'][item]['next-idx'] }}"
-            failed_when: >
-              (alive_peer_uuid == get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) and
-              get_curr_fstats['/0/follower-stats'][item]['next-idx'] != ((initial_next_idx | int) + (num_writes | int))
-            loop: "{{ range(0, FollowerUUIDs | length) | list }}"
+          #- name: "{{ recipe_name }}: Verify next-idx for alive followers, it should be (original-next-idx + NumWrites)."
+          #  vars:
+          #    alive_followers: "{{ FollowerUUIDs | difference(Sel_Correct_Lea_Selected_Followers) }}"
+          #    initial_next_idx: "{{ get_fstats['results'][0]['item']['/0/follower-stats'][item]['next-idx'] }}"
+          #    get_curr_fstats: "{{ recheck_fstats['results'][0]['item'] }}"
+          #    alive_peer_uuid: "{{ alive_followers | select('search', get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) | list }}"
+          #  debug:
+          #    msg:
+          #      - "{{ alive_peer_uuid }}"
+          #      - "{{ get_curr_fstats['/0/follower-stats'][item]['peer-uuid'] }}"
+          #      - "{{ get_curr_fstats['/0/follower-stats'][item]['next-idx'] }}"
+          #  failed_when: >
+          #    (alive_peer_uuid == get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) and
+          #    get_curr_fstats['/0/follower-stats'][item]['next-idx'] != ((initial_next_idx | int) + (num_writes | int))
+          #  loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
           #2a - Additional Verifications.
           - name: "{{ recipe_name }}: Get all values from alive peers."
@@ -274,6 +282,14 @@
             debug:
               msg: "{{ lookup('niova_raftprocess', 'kill', ServerUUID, wantlist=True) }}"
             loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+          #Pre3 stage, delete the rocksdb lock files for previously paused followers
+          - name: "{{ recipe_name }}: Delete the rocksdb lock file for paused followers"
+            file:
+              path: "{{ ClusterParams['base_dir'] }}/{{ ClusterParams['raft_uuid'] }}/raftdb/{{ Sel_Correct_Lea_Selected_Followers[item] }}.raftdb/LOCK"
+              state: absent
+            register: output
+            loop: "{{ range(0, Sel_Correct_Lea_Selected_Followers | length) | list }}"
 
           #3
           - name: "{{ recipe_name }}: Start followers which are paused in step 1."
