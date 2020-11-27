@@ -6,6 +6,11 @@
      recipe_name: "term_ticker"
      parent: "basic_process_ctl"
   tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
     - name: "{{ recipe_name }}: Get the raft key values for peer0 in a loop with 3sec pause between iterations"
       vars:
         stage: "stage0"
@@ -105,3 +110,8 @@
       debug:
          msg: "Compare before reboot term: {{ before_reboot_term['results'][0]['item']['/0/term'] }} with after reboot term: {{ term_after_reboot['results'][0]['item']['/0/term'] }}"
       failed_when: before_reboot["/0/term"] >= term_after_reboot['results'][0]['item']["/0/term"]
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true

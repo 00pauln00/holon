@@ -8,109 +8,118 @@
      pmdb_client_path: "/home/pauln/raft-builds/latest/pumicedb-client-test"
      raft_client_path: "/home/pauln/raft-builds/latest/raft-client"
   tasks:
-  - name: "Extract the Base directory path and Raft UUID."
-    set_fact:
-      pmdb_standalone_raft_uuid: "{{ ClusterInfo | json_query('raft_uuid') }}"
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
 
-  - name: "Generate client UUID"
-    shell: "/usr/bin/uuid"
-    register: client_uuid
+    - name: "Extract the Base directory path and Raft UUID."
+      set_fact:
+        pmdb_standalone_raft_uuid: "{{ ClusterInfo | json_query('raft_uuid') }}"
 
-  - debug:
-      msg:
-        - "{{ pmdb_standalone_raft_uuid }}"
-        - "{{ client_uuid.stdout }}"
-    
-  - name: "Starting the Raft client with wrong Raft UUID and Client UUID."
-    vars:
-      truncate_ruuid: "{{ pmdb_standalone_raft_uuid[:-1] }}"
-      truncate_cuuid: "{{ client_uuid.stdout[:-1] }}" 
-    command:
-      argv:
-        - "{{ raft_client_path }}"
-        - -r
-        - "{{ truncate_ruuid }}"
-        - -u
-        - "{{ truncate_cuuid }}"
-    register: raft_output
-    failed_when: raft_output.rc != 22
-  - debug: var=raft_output.rc
+    - name: "Generate client UUID"
+      shell: "/usr/bin/uuid"
+      register: client_uuid
 
-  - name: "Starting the pumicedb client with wrong Raft UUID and Client UUID."
-    vars:
-      truncate_ruuid: "{{ pmdb_standalone_raft_uuid[:-1] }}"
-      truncate_cuuid: "{{ client_uuid.stdout[:-1] }}" 
-    command:
-      argv:
-        - "{{ pmdb_client_path }}"
-        - -r
-        - "{{ truncate_ruuid }}"
-        - -u
-        - "{{ truncate_cuuid }}"
-    register: pmdb_output
-    failed_when: pmdb_output.rc == 0
-  - debug: var=pmdb_output.rc
+    - debug:
+        msg:
+          - "{{ pmdb_standalone_raft_uuid }}"
+          - "{{ client_uuid.stdout }}"
 
-  - name: "Ensure that raft client fails when '-u' is not passed"
-    command:
-      argv:
-        - "{{ raft_client_path }}"
-        - -r
-        - "{{ pmdb_standalone_raft_uuid }}"
-    register: ruuid_result
-    failed_when: ruuid_result.rc == 0
-  - debug: var=ruuid_result.rc
+    - name: "Starting the Raft client with wrong Raft UUID and Client UUID."
+      vars:
+        truncate_ruuid: "{{ pmdb_standalone_raft_uuid[:-1] }}"
+        truncate_cuuid: "{{ client_uuid.stdout[:-1] }}"
+      command:
+        argv:
+          - "{{ raft_client_path }}"
+          - -r
+          - "{{ truncate_ruuid }}"
+          - -u
+          - "{{ truncate_cuuid }}"
+      register: raft_output
+      failed_when: raft_output.rc != 22
+    - debug: var=raft_output.rc
 
-  - name: "Ensure that raft client fails when '-r' is not passed."
-    command:
-      argv:
-        - "{{ raft_client_path }}"
-        - -u
-        - "{{ client_uuid.stdout }}"
-    register: cuuid_result
-    failed_when: cuuid_result.rc == 0
-  - debug: var=cuuid_result.rc
+    - name: "Starting the pumicedb client with wrong Raft UUID and Client UUID."
+      vars:
+        truncate_ruuid: "{{ pmdb_standalone_raft_uuid[:-1] }}"
+        truncate_cuuid: "{{ client_uuid.stdout[:-1] }}"
+      command:
+        argv:
+          - "{{ pmdb_client_path }}"
+          - -r
+          - "{{ truncate_ruuid }}"
+          - -u
+          - "{{ truncate_cuuid }}"
+      register: pmdb_output
+      failed_when: pmdb_output.rc == 0
+    - debug: var=pmdb_output.rc
 
-  - name: "Ensure that pumicedb client fails when '-u' is not passed."
-    command:
-      argv:
-        - "{{ pmdb_client_path }}"
-        - -r
-        - "{{ pmdb_standalone_raft_uuid }}"
-    register: ruuid_return
-    failed_when: ruuid_return.rc == 0
-  - debug: var=ruuid_return.rc
+    - name: "Ensure that raft client fails when '-u' is not passed"
+      command:
+        argv:
+          - "{{ raft_client_path }}"
+          - -r
+          - "{{ pmdb_standalone_raft_uuid }}"
+      register: ruuid_result
+      failed_when: ruuid_result.rc == 0
+    - debug: var=ruuid_result.rc
 
-  - name: "Ensure that pumicedb client fails when '-r' is not passed."
-    command:
-      argv:
-        - "{{ pmdb_client_path }}"
-        - -u
-        - "{{ client_uuid.stdout }}"
-    register: cuuid_return
-    failed_when: cuuid_return.rc == 0
-  - debug: var=cuuid_return.rc
+    - name: "Ensure that raft client fails when '-r' is not passed."
+      command:
+        argv:
+          - "{{ raft_client_path }}"
+          - -u
+          - "{{ client_uuid.stdout }}"
+      register: cuuid_result
+      failed_when: cuuid_result.rc == 0
+    - debug: var=cuuid_result.rc
+
+    - name: "Ensure that pumicedb client fails when '-u' is not passed."
+      command:
+        argv:
+          - "{{ pmdb_client_path }}"
+          - -r
+          - "{{ pmdb_standalone_raft_uuid }}"
+      register: ruuid_return
+      failed_when: ruuid_return.rc == 0
+    - debug: var=ruuid_return.rc
+
+    - name: "Ensure that pumicedb client fails when '-r' is not passed."
+      command:
+        argv:
+          - "{{ pmdb_client_path }}"
+          - -u
+          - "{{ client_uuid.stdout }}"
+      register: cuuid_return
+      failed_when: cuuid_return.rc == 0
+    - debug: var=cuuid_return.rc
+
+    - name: "Run with raft-client by passing client uuid which is not known to the configuration."
+      command:
+        argv:
+          - "{{ raft_client_path }}"
+          - -r
+          - "{{ pmdb_standalone_raft_uuid }}"
+          - -u
+          - "{{ client_uuid.stdout }}"
+      register: raftclient_output
+      failed_when: raftclient_output.rc != 2
+    - debug: var=raftclient_output.rc
   
-  - name: "Run with raft-client by passing client uuid which is not known to the configuration."
-    command:
-      argv:
-        - "{{ raft_client_path }}"
-        - -r
-        - "{{ pmdb_standalone_raft_uuid }}"
-        - -u
-        - "{{ client_uuid.stdout }}"
-    register: raftclient_output
-    failed_when: raftclient_output.rc != 2
-  - debug: var=raftclient_output.rc
+    - name: "Run with pmdb-client by passing client uuid which is not known to the configuration."
+      command:
+        argv:
+          - "{{ pmdb_client_path }}"
+          - -r
+          - "{{ pmdb_standalone_raft_uuid }}"
+          - -u
+          - "{{ client_uuid.stdout }}"
+      register: pmdbclient_output
+      failed_when: pmdbclient_output.rc == 0
 
-  - name: "Run with pmdb-client by passing client uuid which is not known to the configuration."
-    command:
-      argv:
-        - "{{ pmdb_client_path }}"
-        - -r
-        - "{{ pmdb_standalone_raft_uuid }}"
-        - -u
-        - "{{ client_uuid.stdout }}"
-    register: pmdbclient_output
-    failed_when: pmdbclient_output.rc == 0
-  - debug: var=pmdbclient_output.rc
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
