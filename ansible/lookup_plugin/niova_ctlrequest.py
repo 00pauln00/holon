@@ -291,14 +291,10 @@ class LookupModule(LookupBase):
                     result =  result[0]
                     logging.warning("Only one element in the array: %s" % result)
                      
-            logging.warning("Result is: %s" % result)
             result_array.append(result)
-            logging.warning("result array: %s" % result_array)
-            logging.warning("Result array size: %d" % len(result_array)) 
 
         if len(result_array)  == 1:
-            logging.warning("Now sending only 1st element: %s" % result_array[0])
             result_array = result_array[0]
 
-        logging.warning("Final result array: %s" % result_array)
+        logging.warning("Values of ctlreq cmd: %s" % result_array)
         return result_array

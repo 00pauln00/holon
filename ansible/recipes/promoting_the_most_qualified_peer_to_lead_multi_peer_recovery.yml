@@ -158,7 +158,7 @@
     include_role:
        name: common
        tasks_from: get_new_client_uuid
-    register: pmqp_client_uuid
+    register: client_uuid
 
   - name: "{{ recipe_name }}: Create app uuid."
     shell: "/usr/bin/uuid"
@@ -166,14 +166,14 @@
 
   - debug:
       msg:
-        - "client uuid: {{ pmqp_client_uuid.stdout }}"
+        - "client uuid: {{ client_uuid.stdout }}"
         
   - name: "{{ recipe_name }}: Start the client."
     include_role:
        name: common
        tasks_from: start_client
     vars:
-      ClientUUID: "{{ pmqp_client_uuid.stdout }}"
+      ClientUUID: "{{ client_uuid.stdout }}"
 
   #2 - Perform Some Client Writes.
   - name: "{{ recipe_name }}: Perform the write {{ nwrites }} times."
@@ -181,7 +181,7 @@
       stage: "num_writes"
       cmd: "input@{{ pmqp_app_uuid.stdout }}:0:0:0:0.write:0.{{ nwrites }}"
       where: "/pumice_db_test_client/input"
-      write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', pmqp_client_uuid.stdout, cmd, where, wantlist=True) }}"
+      write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
     debug:
       msg: "{{ write_cmd }}"
     no_log: True
@@ -192,7 +192,7 @@
       raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
     debug:
       msg: "Waiting for client to finish writing"
-    until: lookup('niova_ctlrequest', 'lookup', pmqp_client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != (nwrites - 1)
+    until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != (nwrites - 1)
     loop: "{{ range(0, 10) | list }}"
     loop_control:
        pause: 1

@@ -68,8 +68,8 @@
         msg:
         - "Validate the raft values for peer: {{ NRunningPeers[item] }}"
       failed_when: >
-        (peer_info["/0/commit-idx"] != 0) or
-        (peer_info["/0/last-applied"] != 0) or
+        (peer_info["/0/commit-idx"] < 0) or
+        (peer_info["/0/last-applied"] < 0) or
         (peer_info["/0/last-applied-cumulative-crc"] != peer_info["/0/sync-entry-crc"]) or
         (peer_info["/0/term"] != peer_info["/0/sync-entry-term"])
       loop: "{{ range(0, NRunningPeers | length) | list }}"

@@ -57,7 +57,7 @@
      no_log: True
      vars:
        stage: "browca_leader_viable"
-     until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/raft_client_root_entry/0/leader-viable', wantlist=True) | dict2items | map(attribute='value') | list | first != "true")
+     until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/raft_client_root_entry/0/leader-viable', wantlist=True) | dict2items | map(attribute='value') | list | first | bool != false)
      retries: 10
      delay: 2
 

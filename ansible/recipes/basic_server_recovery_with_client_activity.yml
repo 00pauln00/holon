@@ -48,24 +48,26 @@
       - "{{ follower_info }}"
     register: get_fstats
     
+  - name: "{{ recipe_name }}: Select any follower to be paused"
+    set_fact:
+      bsr_pause_follower: "{{ FollowerUUIDs[0] }}"
+
   - name: "{{ recipe_name }}: Apply fault injection on follower which will be pause."
     vars:
-      follower0: "{{ FollowerUUIDs[0] }}"
       stage: "disable_candidate_mode"
       cmd: "enabled@true"
       where: "/fault_injection_points/name@raft_candidate_state_disabled"
-      disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', follower0, cmd, where, wantlist=True) }}"
+      disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', bsr_pause_follower, cmd, where, wantlist=True) }}"
     debug:
       msg: "{{ disable_mode }}"
     no_log: True
   
   - name: "{{ recipe_name }}: Get fault_injection_points array."
     vars:
-      follower0: "{{ FollowerUUIDs[0] }}"
       stage: "stage2"
       raft_key:
          - "/fault_injection_points"
-      get_fi: "{{ lookup('niova_ctlrequest', 'lookup', follower0, raft_key, wantlist=True) }}"
+      get_fi: "{{ lookup('niova_ctlrequest', 'lookup', bsr_pause_follower, raft_key, wantlist=True) }}"
     debug:
       msg: "Getting fault_injection_points array."
     no_log: True
@@ -87,12 +89,12 @@
     no_log: True
     failed_when: Basic_Recovery_fi_check != True
 
+
   - name: "{{ recipe_name }}: Pause one follower."
     vars:
-      follower0: "{{ FollowerUUIDs[0] }}"
       stage: "pause_follower"
       wait_for_ofile: False
-      pause_follower0: "{{ lookup('niova_raftprocess', 'pause', follower0, wantlist=True) }}"
+      pause_follower0: "{{ lookup('niova_raftprocess', 'pause', bsr_pause_follower, wantlist=True) }}"
     debug: 
       msg: "{{ pause_follower0 }}"
     no_log: True
@@ -214,7 +216,7 @@
 
   - name: "{{ recipe_name }}: Verify next-idx for alive followers, it should be (original-next-idx + NumWrites)."
     vars:
-      follower0: "{{ FollowerUUIDs[0] }}"
+      follower0: "{{ bsr_pause_follower }}"
       alive_followers: "{{ FollowerUUIDs | difference(follower0) }}"
       initial_next_idx: "{{ get_fstats['results'][0]['item']['/0/follower-stats'][item]['next-idx'] }}"
       get_curr_fstats: "{{ recheck_fstats['results'][0]['item'] }}"
@@ -242,10 +244,9 @@
 
   - name: "{{ recipe_name }}: Unpause the paused follower."
     vars:
-      follower0: "{{ FollowerUUIDs[0] }}"
       stage: "unpause_follower"
       wait_for_ofile: False
-      unpause_follower0: "{{ lookup('niova_raftprocess', 'resume', follower0, wantlist=True) }}"
+      unpause_follower0: "{{ lookup('niova_raftprocess', 'resume', bsr_pause_follower, wantlist=True) }}"
     debug:
       msg: "{{ unpause_follower0 }}"
     no_log: True
@@ -356,22 +357,20 @@
   
   - name: "{{ recipe_name }}: Apply cmd to remove fault injection from the paused follower."
     vars:
-      follower0: "{{ FollowerUUIDs[0] }}"
       stage: "recipe_cleanup"
       cmd: "enabled@false"
       where: "/fault_injection_points/name@raft_candidate_state_disabled"
-      remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', follower0, cmd, where, wantlist=True) }}"
+      remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', bsr_pause_follower, cmd, where, wantlist=True) }}"
     debug:
       msg: "{{ remove_fault_inject }}"
     no_log: True
 
   - name: "{{ recipe_name }}: Get fault_injection_points array to remove fault injection."
     vars:
-      follower0: "{{ FollowerUUIDs[0] }}"
       stage: "stage2"
       raft_key:
          - "/fault_injection_points"
-      remove_fi: "{{ lookup('niova_ctlrequest', 'lookup', follower0, raft_key, wantlist=True) }}"
+      remove_fi: "{{ lookup('niova_ctlrequest', 'lookup', bsr_pause_follower, raft_key, wantlist=True) }}"
     debug:
       msg: "Getting fault_injection_points array."
     no_log: True
