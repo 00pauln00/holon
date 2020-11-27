@@ -10,6 +10,10 @@
     shell: "/usr/bin/uuid"
     register: cluster_uuid
 
+  - name: "Initalize error handling"
+    set_fact:
+      terminate_recipe: false
+
   - name: "Default Values"
     set_fact:
       dir_path: "{{ dir_path | default('/tmp/holon_recipes_run') }}"

@@ -18,6 +18,11 @@
             - "/pumice_db_test_client/pmdb-test-apps/0/app-seqno"
             - "/raft_client_root_entry/0/recent-ops-wr"
   tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
     - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
       include_role:
          name: common
@@ -184,3 +189,7 @@
         (invalid_wr['/0/recent-ops-wr'][0]['sub-app-user-id'] != rncui) or
         (invalid_wr['/0/recent-ops-wr'][0]['status'] != "Success")
 
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
