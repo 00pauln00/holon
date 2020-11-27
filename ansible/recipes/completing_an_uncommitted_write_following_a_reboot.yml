@@ -154,6 +154,17 @@
      debug:
        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
 
+   - name: "{{ recipe_name}}: Wait until write completes from client"
+     vars:
+      stage: "wait_for_client_write_comp"
+      raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+     debug:
+       msg: "Waiting for client to finish writing"
+     until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != 0
+     loop: "{{ range(0, 3) | list }}"
+     loop_control:
+       pause: 1
+
    - name: "{{ recipe_name }}: Get sync-entry-idx values for all followers after write."
      vars:
        stage: "after_write_followers"
@@ -236,7 +247,7 @@
        name: common
        tasks_from: start_server
      vars:
-       ServerUUID: "{{ cuwr_leader_uuid_before }}"
+       ServerUUID: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
      
    - name: "{{ recipe_name }}: Add the leader to the started peer list."
      vars:
@@ -296,6 +307,8 @@
      register: leader_uuid_after
 
    - name: "{{ recipe_name }}: Verify that leader did not change after reboot."
+     vars:
+        cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
      debug:
        msg: "Verifying that leader did not change after reboot."
      failed_when: cuwr_leader_uuid_before != leader_uuid_after['results'][0]['item']['/0/leader-uuid']

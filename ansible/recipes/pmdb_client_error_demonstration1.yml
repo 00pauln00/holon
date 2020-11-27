@@ -49,7 +49,16 @@
       debug:
         msg: "{{ non_existing_obj_lookup }}"
       no_log: True
- 
+
+    - name: "Wait for lookup operation to complete"
+      vars:
+         stage: "client_lookup_inval_obj"
+      debug:
+        msg: "Wait till the lookup operation completes"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, "/raft_client_root_entry/0/recent-ops-rd/0/status", wantlist=True) | dict2items | map(attribute='value') | list | first != "null"
+      retries: 3
+      delay: 1
+
     - name: "{{ recipe_name }}: Get the values from client for comparison."
       vars:
         stage: "stage0"
@@ -65,6 +74,7 @@
         - "{{ demo1_lookup_vals }}"
       register: non_existing_obj
 
+
     - name: "{{ recipe_name }}: Verify the parameters after lookup on non-existing object"
       vars:
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
@@ -78,7 +88,7 @@
         (invalid_wr_vals['/0/app-user-id'] != rncui) or
         (invalid_wr_vals['/0/status'] != "No such file or directory") or
         (invalid_wr_vals['/0/last-request-tag'] != invalid_wr_vals['/0/recent-ops-rd'][0]['rpc-user-tag'])
-     
+
     - name: "{{ recipe_name }}: Apply invalid write sequence nunber."
       vars:
          stage: "invalid_seq_stage"
