@@ -149,7 +149,7 @@
            name: common
            tasks_from: get_follower_stats
 
-    - name: "Assign follower-stats after reboot."
+    - name: "{{ recipe_name }}: Assign follower-stats after reboot."
       vars:
         follower_stats: "{{ GetFollowerStatsInfo }}"
       debug:
@@ -159,7 +159,19 @@
         - "{{ follower_stats }}"
       register: follower_stats_after_restart
 
-    - name: "{{ recipe_name }}: Verify next-idx value before and after restart"
+    - name: "{{ recipe_name }}: Wait until next-idx of all followers to converge."
+      vars:
+        stage: "next_idx_converge"
+        next_idx_before: "{{ fstats_before_restart['results'][0]['item']['/0/follower-stats'][item]['next-idx'] }}"
+        next_idx_after: "{{ follower_stats_after_restart['results'][0]['item']['/0/follower-stats'][item]['next-idx'] }}"
+      debug:
+        msg: "Waiting until next-idx of all followers to converge."
+      until: next_idx_after > next_idx_before
+      retries: 5
+      delay: 1
+      loop: "{{ range(0, FollowerUUIDs | length) | list }}"
+
+    - name: "{{ recipe_name }}: Verify next-idx value before and after restart."
       vars:
         next_idx_before: "{{ fstats_before_restart['results'][0]['item']['/0/follower-stats'][item]['next-idx'] }}"
         next_idx_after: "{{ follower_stats_after_restart['results'][0]['item']['/0/follower-stats'][item]['next-idx'] }}"
