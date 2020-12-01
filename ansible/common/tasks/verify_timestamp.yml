@@ -1,8 +1,5 @@
 ---
 
-    - debug:
-        msg: "{{ ServerUUID }}"
-
     - name: "{{ recipe_name }}: Get the current time for the peer in loop"
       vars:
         stage: "get_curr_timestamp"
