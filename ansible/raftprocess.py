@@ -15,7 +15,7 @@ def check_for_process_status(pid, process_status):
             break
 
         time_global.sleep(0.005)
-        logging.info(" process status %s (expected %s)"% (ps.status(), process_status))
+        logging.warning(" process status %s (expected %s)"% (ps.status(), process_status))
 
 class RaftProcess:
 
@@ -172,9 +172,9 @@ class RaftProcess:
     def kill_process(self, pid):
         self.process_pid = pid
         process_obj = psutil.Process(pid)
-        logging.info("kill the process by sending sigterm")
+        logging.warning("kill the process(%d) by sending sigterm" % pid)
         try:
-            process_obj.send_signal(signal.SIGTERM)
+            process_obj.send_signal(signal.SIGKILL)
         except subprocess.SubprocessError as e:
             logging.error("Failed to send kill signal with error: %s" % os.stderror(e.errno))
             return -1

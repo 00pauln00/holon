@@ -130,23 +130,23 @@
 
           - name: "{{ recipe_name }}: Get the followers list which are to be paused."
             vars:
-              Sel_Correct_Lea_Selected_Followers: []
+              SelCorLeaderPausedFollowers: []
               raft_quorum: "{{ get_largest_value['results'][0]['item'] }}"
             set_fact:
-              Sel_Correct_Lea_Selected_Followers: "{{ Sel_Correct_Lea_Selected_Followers + [FollowerUUIDs[item]] }}"
+              SelCorLeaderPausedFollowers: "{{ SelCorLeaderPausedFollowers + [FollowerUUIDs[item]] }}"
             loop: "{{ range(0, raft_quorum | int) | list }}"
 
           - debug:
-              msg: "Step #1 Selected followers list for pausing: {{ Sel_Correct_Lea_Selected_Followers }}."
+              msg: "Step #1 Selected followers list for pausing: {{ SelCorLeaderPausedFollowers }}."
 
           #1 - Pause the Selected Followers.
           - name: "{{ recipe_name }}: Pause the selected followers."
             vars:
-              pause_followers: "{{ lookup('niova_raftprocess', 'pause', Sel_Correct_Lea_Selected_Followers[item], wantlist=True) }}"
+              pause_followers: "{{ lookup('niova_raftprocess', 'pause', SelCorLeaderPausedFollowers[item], wantlist=True) }}"
             debug:
               msg: "{{ pause_followers }}"
             no_log: True
-            loop: "{{ range(0, Sel_Correct_Lea_Selected_Followers | length) | list }}"
+            loop: "{{ range(0, SelCorLeaderPausedFollowers | length) | list }}"
 
           - name: "{{ recipe_name }}: Ensure that the paused followers are not responding to the leader by observing the increase of their ms-last-ack-ms value."
             include_role:
@@ -212,26 +212,26 @@
               - "{{ curr_follower_stats }}"
             register: recheck_fstats
 
-          #- name: "{{ recipe_name }}: Verify next-idx for alive followers, it should be (original-next-idx + NumWrites)."
-          #  vars:
-          #    alive_followers: "{{ FollowerUUIDs | difference(Sel_Correct_Lea_Selected_Followers) }}"
-          #    initial_next_idx: "{{ get_fstats['results'][0]['item']['/0/follower-stats'][item]['next-idx'] }}"
-          #    get_curr_fstats: "{{ recheck_fstats['results'][0]['item'] }}"
-          #    alive_peer_uuid: "{{ alive_followers | select('search', get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) | list }}"
-          #  debug:
-          #    msg:
-          #      - "{{ alive_peer_uuid }}"
-          #      - "{{ get_curr_fstats['/0/follower-stats'][item]['peer-uuid'] }}"
-          #      - "{{ get_curr_fstats['/0/follower-stats'][item]['next-idx'] }}"
-          #  failed_when: >
-          #    (alive_peer_uuid == get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) and
-          #    get_curr_fstats['/0/follower-stats'][item]['next-idx'] != ((initial_next_idx | int) + (num_writes | int))
-          #  loop: "{{ range(0, FollowerUUIDs | length) | list }}"
+          - name: "{{ recipe_name }}: Verify next-idx for alive followers, it should be (original-next-idx + NumWrites)."
+            vars:
+              alive_followers: "{{ FollowerUUIDs | difference(SelCorLeaderPausedFollowers) }}"
+              initial_next_idx: "{{ get_fstats['results'][0]['item']['/0/follower-stats'][item]['next-idx'] }}"
+              get_curr_fstats: "{{ recheck_fstats['results'][0]['item'] }}"
+              alive_peer_uuid: "{{ alive_followers | select('match', get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) | list }}"
+            debug:
+              msg:
+                - "{{ alive_peer_uuid }}"
+                - "{{ get_curr_fstats['/0/follower-stats'][item]['peer-uuid'] }}"
+                - "{{ get_curr_fstats['/0/follower-stats'][item]['next-idx'] }}"
+            failed_when: >
+              (alive_peer_uuid == get_curr_fstats['/0/follower-stats'][item]['peer-uuid']) and
+              get_curr_fstats['/0/follower-stats'][item]['next-idx'] != ((initial_next_idx | int) + (num_writes | int))
+            loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
           #2a - Additional Verifications.
           - name: "{{ recipe_name }}: Get all values from alive peers."
             vars:
-              alive_followers: "{{ FollowerUUIDs | difference(Sel_Correct_Lea_Selected_Followers) }}"
+              alive_followers: "{{ FollowerUUIDs | difference(SelCorLeaderPausedFollowers) }}"
               stage: "stage4"
               raft_keys:
                       - "/raft_root_entry/0/commit-idx"
@@ -250,7 +250,7 @@
 
           - name: "{{ recipe_name }}: Verify all alive peers should have the same values."
             vars:
-              alive_followers: "{{ FollowerUUIDs | difference(Sel_Correct_Lea_Selected_Followers) }}"
+              alive_followers: "{{ FollowerUUIDs | difference(SelCorLeaderPausedFollowers) }}"
               initial_commit_idx: "{{ stage1_value['results'][item]['item']['/0/commit-idx'] }}"
               get_stage4: "{{ alive_peers_value['results'][item]['item'] }}"
               last_applied_cum_crc: "{{ alive_peers_value['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
@@ -271,25 +271,20 @@
           #1
           - name: "{{ recipe_name }}: Choose leader-to-be."
             vars:
-              alive_followers: "{{ FollowerUUIDs | difference(Sel_Correct_Lea_Selected_Followers) }}"
+              alive_followers: "{{ FollowerUUIDs | difference(SelCorLeaderPausedFollowers) }}"
             set_fact:
                Sel_Corr_Lea_Leader_to_be: "{{ alive_followers[0] }}"
 
+          - name: "{{ recipe_name }}: Get all the peer UUIDs"
+            include_role:
+               name: common
+               tasks_from: get_server_uuid_info
+
           #2
           - name: "{{ recipe_name }}: Kill the processes."
-            vars:
-               ServerUUID: "{{ NRunningPeers[item] }}"
             debug:
-              msg: "{{ lookup('niova_raftprocess', 'kill', ServerUUID, wantlist=True) }}"
-            loop: "{{ range(0, NRunningPeers | length) | list }}"
-
-          #Pre3 stage, delete the rocksdb lock files for previously paused followers
-          - name: "{{ recipe_name }}: Delete the rocksdb lock file for paused followers"
-            file:
-              path: "{{ ClusterParams['base_dir'] }}/{{ ClusterParams['raft_uuid'] }}/raftdb/{{ Sel_Correct_Lea_Selected_Followers[item] }}.raftdb/LOCK"
-              state: absent
-            register: output
-            loop: "{{ range(0, Sel_Correct_Lea_Selected_Followers | length) | list }}"
+              msg: "{{ lookup('niova_raftprocess', 'kill', TotalNServersList[item], wantlist=True) }}"
+            loop: "{{ range(0, TotalNServersList | length) | list }}"
 
           #3
           - name: "{{ recipe_name }}: Start followers which are paused in step 1."
@@ -297,25 +292,26 @@
               name: common
               tasks_from: start_server
             vars:
-              ServerUUID: "{{ Sel_Correct_Lea_Selected_Followers[item] }}"
-            loop: "{{ range(0, Sel_Correct_Lea_Selected_Followers | length) | list }}"
+              ServerUUID: "{{ SelCorLeaderPausedFollowers[item] }}"
+            loop: "{{ range(0, SelCorLeaderPausedFollowers | length) | list }}"
 
           - name: "{{ recipe_name }}: Verify timestamp progress for newly started followers."
             include_role:
               name: common
               tasks_from: verify_timestamp
             vars:
-              ServerUUID: "{{ Sel_Correct_Lea_Selected_Followers[peer_idx] }}"
-            loop: "{{ range(0, Sel_Correct_Lea_Selected_Followers | length) | list }}"
+              ServerUUID: "{{ SelCorLeaderPausedFollowers[peer_idx] }}"
+            loop: "{{ range(0, SelCorLeaderPausedFollowers | length) | list }}"
             loop_control:
                 loop_var: peer_idx
 
           - name: "{{ recipe_name }}: Get the 'state' from resumed followers."
             vars:
               stage: "state_of_resumed_followers"
+              resumed_followers: "{{ SelCorLeaderPausedFollowers }}"
               state_key:
                   - "/raft_root_entry/0/state"
-              get_state: "{{ lookup('niova_ctlrequest', 'lookup', Sel_Correct_Lea_Selected_Followers, state_key, wantlist=True) }}"
+              get_state: "{{ lookup('niova_ctlrequest', 'lookup', resumed_followers, state_key, wantlist=True) }}"
             debug:
               msg: "Getting state for resumed followers."
             no_log: True
@@ -325,7 +321,7 @@
 
           - name: "{{ recipe_name }}: Verify 'state' for resumed followers must be either 'candidate' or 'follower'."
             vars:
-              followers_state: "{{ state_value['results'][0]['item'] }}"
+              followers_state: "{{ state_value['results'][item]['item'] }}"
             debug:
               msg:
                 - "Verifying state for resumed followers."
@@ -333,6 +329,7 @@
             failed_when: >
               (followers_state['/0/state'] != "candidate") and
               (followers_state['/0/state'] != "follower")
+            loop: "{{ range(0, SelCorLeaderPausedFollowers | length) | list }}"
 
           #4
           - name: "{{ recipe_name }}: Start peer which is leader-to-be"
@@ -344,13 +341,22 @@
 
           - name: "{{ recipe_name }}: Wait until 'leader-to-be' becomes leader."
             vars:
-              nresume_peers: "{{ Sel_Correct_Lea_Selected_Followers + [Sel_Corr_Lea_Leader_to_be] }}"
+              resumed_followers: "{{ SelCorLeaderPausedFollowers }}"
+              stage: "wait_leader_election"
             debug:
               msg: "Wait to until 'leader-to-be' becomes leader."
-            until: lookup('niova_ctlrequest', 'lookup', nresume_peers[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (Sel_Corr_Lea_Leader_to_be)
+            until: lookup('niova_ctlrequest', 'lookup', resumed_followers[0], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first == (Sel_Corr_Lea_Leader_to_be)
             retries: 60
             delay: 1
-            loop: "{{ range(0, nresume_peers | length) | list }}"
+
+          - name: "{{ recipe_name }}: Make sure leader-to-be becomes leader after certain retries"
+            vars:
+              stage: "validate_leader"
+              resumed_followers: "{{ SelCorLeaderPausedFollowers }}"
+              leader_uuid: "{{ lookup('niova_ctlrequest', 'lookup', resumed_followers[0], '/raft_root_entry/0/leader-uuid', wantlist=True) }}"
+            debug:
+               msg: "Leader should be: {{ Sel_Corr_Lea_Leader_to_be }}"
+            failed_when: leader_uuid['/0/leader-uuid'] != Sel_Corr_Lea_Leader_to_be
 
           #4a - Verifications.
           - name: "{{ recipe_name }}: Get the raft_net_info values and follower-stats of all followers."
@@ -361,44 +367,22 @@
                   - "/raft_net_info/election-timeout-ms"
                   - "/raft_root_entry/0/follower-stats"
             set_fact:
-               FollowersStat: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+               FollowersStat: "{{ lookup('niova_ctlrequest', 'lookup', Sel_Corr_Lea_Leader_to_be, raft_keys, wantlist=True) }}"
 
-          - name: "{{ recipe_name }}: Get follower-stats values for selected followers in step 1 only."
+          - name: "{{ recipe_name }}: Check the aliveness of the started followers."
             vars:
+              resumed_followers: "{{ SelCorLeaderPausedFollowers }}"
               num_followers: "{{ FollowersStat['/0/follower-stats'] | length | int }}"
-            set_fact:
-               selected_followers_stat: "{{ [] + FollowersStat[item] }}"
-            when: FollowersStat[item]['peer-uuid'] == Sel_Correct_Lea_Selected_Followers[item]
-            loop: "{{ range(0, num_followers | length) | list }}"
-            loop_control:
-               loop_var: itr
-
-          #Verify that followers paused in step #1 are now running.
-          - name: "{{ recipe_name }}: Validate the aliveness of the selected followers."
-            vars:
-              num_followers: "{{ selected_followers_stat['/0/follower-stats'] | length | int }}"
             debug:
-              msg: "Validating ms-since-last-ack <= 3 * (election-timeout-ms / heartbeat-freq-per-election-timeout)"
+              msg: "Check the alivness of the running followers"
+            no_log: true
             failed_when: (FollowersStat['/0/follower-stats'][item]['ms-since-last-ack'] | int > (3 * (FollowersStat['/raft_net_info/election-timeout-ms'] | int / FollowersStat['/raft_net_info/heartbeat-freq-per-election-timeout'] | int)))
-            loop: "{{ range(0, num_followers | int) | list }}"
-
-          #TODO check
-          #Verify that the followers paused in step #3 are still paused by observing the increase of their ms-last-ack-ms value."
-          - name: "{{ recipe_name }}: 'ms-since-last-ack' should increment in each iteration"
-            vars:
-              raft_quorum: "{{ get_largest_value['results'][0]['item'] }}"
-              check_time1: "{{ selected_followers_stat[item]['/0/follower-stats'][inner_itr]['ms-since-last-ack'] }}"
-              check_time2: "{{ selected_followers_stat[item + 1]['/0/follower-stats'][inner_itr]['ms-since-last-ack'] }}"
-            debug:
-              msg: "Compare ms-since-last-ack: {{ check_time1 | int }} with {{ check_time2 | int }}"
-            failed_when: (check_time1 | int) >= (check_time2 | int)
-            loop: "{{ range(0, raft_quorum | int) | list }}"
-            loop_control:
-               loop_var: inner_itr
+            when: resumed_followers | select('match', FollowersStat['/0/follower-stats'][item]['peer-uuid']) | list != "" 
+            loop: "{{ range(0, FollowersStat['/0/follower-stats'] | length) | list }}"
 
           - name: "{{ recipe_name }}: Get raft_root_entry values from all running peers."
             vars:
-              nresume_peers: "{{ Sel_Correct_Lea_Selected_Followers + [Sel_Corr_Lea_Leader_to_be] }}"
+              started_peers: "{{ SelCorLeaderPausedFollowers + [Sel_Corr_Lea_Leader_to_be] }}"
               stage: "state_of_resumed_followers"
               raft_key:
                   - "/raft_root_entry/0/commit-idx"
@@ -406,7 +390,7 @@
                   - "/raft_root_entry/0/term"
                   - "/raft_root_entry/0/sync-entry-idx"
                   - "/raft_root_entry/0/last-applied-cumulative-crc"
-              get_raft_value: "{{ lookup('niova_ctlrequest', 'lookup', nresume_peers, raft_key, wantlist=True) }}"
+              get_raft_value: "{{ lookup('niova_ctlrequest', 'lookup', started_peers, raft_key, wantlist=True) }}"
             debug:
               msg: "Getting raft_root_entry values from all running peers."
             no_log: True
@@ -416,29 +400,32 @@
 
           - name: "{{ recipe_name }}: Verify raft_root_entry values for all running peers."
             vars:
+              resumed_followers: "{{ SelCorLeaderPausedFollowers }}"
+              started_peers: "{{ resumed_followers + [Sel_Corr_Lea_Leader_to_be] }}"
               initial_commit_idx: "{{ stage1_value['results'][0]['item']['/0/commit-idx'] }}"
               initial_term: "{{ stage1_value['results'][0]['item']['/0/term'] }}"
-              collect_all_values: "{{ all_values['results'][0]['item'] }}"
+              collect_all_values: "{{ all_values['results'][item]['item'] }}"
             debug:
               msg: "Verifying raft_root_entry values for all running peers.."
-            no_log: True
             failed_when: >
                 (collect_all_values['/0/last-applied'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
                 (collect_all_values['/0/commit-idx'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
                 (collect_all_values['/0/sync-entry-idx'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
                 (collect_all_values['/0/term'] < (initial_term | int))
+            loop: "{{ range(0, started_peers | length) | list }}"
 
           - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and sync-entry-crc is same on all running peers."
             vars:
-              alive_followers: "{{ FollowerUUIDs | difference(Sel_Correct_Lea_Selected_Followers) }}"
-              nresume_peers: "{{ Sel_Correct_Lea_Selected_Followers + [Sel_Corr_Lea_Leader_to_be] }}"
+              resume_followers: "{{ SelCorLeaderPausedFollowers }}"
+              alive_followers: "{{ FollowerUUIDs | difference(resume_followers) }}"
+              started_peers: "{{ resume_followers + [Sel_Corr_Lea_Leader_to_be] }}"
               last_applied_cum_crc: "{{ all_values['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
               last_applied_cum_crc_next: "{{ all_values['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
             debug:
               msg: "Compare last-applied-cumulative-crc and sync-entry-crc on all peers."
             no_log: True
             failed_when: (last_applied_cum_crc != last_applied_cum_crc_next)
-            loop: "{{ range(0, nresume_peers | length - 1) | list }}"
+            loop: "{{ range(0, started_peers | length - 1) | list }}"
 
           #5 - Startup the remaining peers.
           - name: "{{ recipe_name }}: Start remaining peers."
@@ -446,15 +433,17 @@
               name: common
               tasks_from: start_server
             vars:
-              nresume_peers: "{{ Sel_Correct_Lea_Selected_Followers + [Sel_Corr_Lea_Leader_to_be] }}"
-              remaining_peers_to_start: "{{ NRunningPeers | difference(nresume_peers) }}"
+              resumed_followers: "{{ SelCorLeaderPausedFollowers }}"
+              started_peers: "{{ resumed_followers + [Sel_Corr_Lea_Leader_to_be] }}"
+              remaining_peers_to_start: "{{ NRunningPeers | difference(started_peers) }}"
               ServerUUID: "{{ remaining_peers_to_start[item] }}"
             loop: "{{ range(0, remaining_peers_to_start | length ) | list }}"
 
           - name: "{{ recipe_name }}: Verify commit-idx should be <initial-commit-idx + NumWrites + 1>."
             vars:
-              nresume_peers: "{{ Sel_Correct_Lea_Selected_Followers + [Sel_Corr_Lea_Leader_to_be] }}"
-              remaining_peers_to_start: "{{ NRunningPeers | difference(nresume_peers) }}"
+              resumed_followers: "{{ SelCorLeaderPausedFollowers }}"
+              started_peers: "{{ resumed_followers + [Sel_Corr_Lea_Leader_to_be] }}"
+              remaining_peers_to_start: "{{ NRunningPeers | difference(started_peers) }}"
               initial_commit_idx: "{{ stage1_value['results'][0]['item']['/0/commit-idx'] }}"
               stage: "wait_commit_idx"
               raft_key: "/raft_root_entry/0/commit-idx"
