@@ -150,6 +150,7 @@
         where: "/raft_client_root_entry/default-request-timeout-sec"
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+      no_log: True
 
     - name: "{{ recipe_name }}: Perform write on the client."
       vars:
@@ -158,6 +159,7 @@
         where: "/pumice_db_test_client/input"
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+      no_log: True
 
     - name: "{{ recipe_name}}: Wait until write completes from client"
       vars:
@@ -169,6 +171,30 @@
       loop: "{{ range(0, 3) | list }}"
       loop_control:
         pause: 1
+
+    #Verify that write operation failed with timeout error.
+    - name: "{{ recipe_name }}: Get values for pmdb-request-history."
+      vars:
+        stage: "get_pmdbrh"
+        raft_keys:
+             - "/pumice_db_test_client/pmdb-request-history"
+        pmdb_request_history_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Getting values for pmdb-request-history."
+      no_log: true
+      with_items:
+          - "{{ pmdb_request_history_values }}"
+      register: pmdb_request_history_vals
+
+    - name: "{{ recipe_name }}: Validate status for write operation."
+      vars:
+        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
+        pmdb_request_history: "{{ pmdb_request_history_vals['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][0] }}"
+      debug:
+        msg: "Validating status for write operation."
+      failed_when: >
+            (pmdb_request_history['op'] != "write") or
+            (pmdb_request_history['status'] != "Connection timed out")
 
     - name: "{{ recipe_name }}: Get sync-entry-idx values for all followers after write."
       vars:
@@ -286,17 +312,19 @@
         where: "/raft_net_info/ignore_timer_events"
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', cuwr_num_peer_started_after_reboot, cmd, where, wantlist=True) }}"
+      no_log: True
 
-    #6 - Wait for an Election to Complete.
+    #6 - Wait for an Election to Complete (Wait for 5 minutes).
     - name: "{{ recipe_name }}: Wait until leader election happens."
       vars:
         stage: "leader_election"
       debug:
         msg: "Waiting for leader election"
       until: lookup('niova_ctlrequest', 'lookup', cuwr_num_peer_started_after_reboot[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+      retries: 300
+      delay: 1
       loop: "{{ range(0, cuwr_num_peer_started_after_reboot | length) | list }}"
-      loop_control:
-         pause: 2
+      failed_when: lookup('niova_ctlrequest', 'lookup', cuwr_num_peer_started_after_reboot[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first == "null"
 
     #Verify that leader before reboot and after reboot are same.
     - name: "{{ recipe_name }}: Get leader_uuid after reboot."
@@ -398,6 +426,7 @@
         where: "/pumice_db_test_client/input"
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+      no_log: True
 
     #8a- Get values for pmdb-request-history.
     - name: "{{ recipe_name }}: Get values for pmdb-request-history."
@@ -411,6 +440,7 @@
       with_items:
           - "{{ pmdb_req_history_vals }}"
       register: pmdb_request_history
+      no_log: True
 
     #8a- Verifications.
     - name: "{{ recipe_name }}: Validate pmdb-request-history parameters."
