@@ -1,5 +1,4 @@
-#- import_playbook: basic_raft_operation_with_client_activity.yml
-- import_playbook: healthy_raftserver_cluster_type2.yml
+- import_playbook: basic_raft_operation_with_client_activity.yml
 - name: "PMDB Foreign Client Error Demonstration"
   hosts: localhost
   connection: local

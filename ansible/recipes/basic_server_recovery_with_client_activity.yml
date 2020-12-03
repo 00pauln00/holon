@@ -343,6 +343,18 @@
           - "{{ client_read_verification }}"
       register: stage5_value
 
+    - name: "{{ recipe_name }}: Wait until last-request-tag value changed to a new value."
+      vars:
+        stage: "wait_for_last_rqst_tag"
+        get_stage3: "{{ stage3_value['results'][0]['item']['/0/last-request-tag'] }}"
+        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/last-request-tag"
+      debug:
+        msg: "Waiting last-request-tag value changed to a new value"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first != (get_stage3 | int)
+      loop: "{{ range(0, 10) | list }}"
+      loop_control:
+         pause: 1
+
     - name: "{{ recipe_name }}: Verify that last-request-tag value changed after successful read."
       vars:
         running_peers: "{{ NRunningPeers }}"
@@ -371,7 +383,7 @@
 
     - name: "{{ recipe_name }}: Get fault_injection_points array to remove fault injection."
       vars:
-        stage: "stage2"
+        stage: "stage6"
         raft_key:
            - "/fault_injection_points"
         remove_fi: "{{ lookup('niova_ctlrequest', 'lookup', bsr_pause_follower, raft_key, wantlist=True) }}"
