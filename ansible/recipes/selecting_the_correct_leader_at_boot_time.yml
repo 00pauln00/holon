@@ -521,3 +521,4 @@
       - name: "Recipe failed"
         set_fact:
           terminate_recipe: true
+        failed_when: true
