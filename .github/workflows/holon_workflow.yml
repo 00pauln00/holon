@@ -28,3 +28,6 @@ jobs:
         
     - name: Test the python code
       run: python3 random_no_gen.py
+    
+    - name: Test playbook
+      run: ansible-playbook sample_playbook.yml
