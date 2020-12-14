@@ -5,4 +5,4 @@
    tasks:
    - name: simple msg
      debug:
-       msg: "Hey! I am inside playbook..."
+       msg: "Hey! I am inside playbook...running github-actions..."
