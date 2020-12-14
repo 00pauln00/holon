@@ -1,2 +1,2 @@
 import random
-print(random.randint(0,10000))
+print(random.randint(0,100000))
