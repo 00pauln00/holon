@@ -1,0 +1,8 @@
+--- 
+ - name: simple playbook
+   hosts: localhost
+   
+   tasks:
+   - name: simple msg
+     debug:
+       msg: "Hey! I am inside playbook....Github actions."
