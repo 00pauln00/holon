@@ -25,3 +25,6 @@ jobs:
         python -m pip install --upgrade pip
         pip3 install ansible
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        
+    - name: Test the python code
+      run: python3 random_no_gen.py
