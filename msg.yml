@@ -1,0 +1,9 @@
+- name: "Debug Message"
+  hosts: localhost
+  connection: local
+
+  tasks:
+  - name: Print msg
+    debug:
+      msg: "Welcome to Github Actions."
+
