@@ -1,5 +1,5 @@
 # Container image that runs your code
-FROM ubuntu:20.04
+FROM ubuntu:18.04
 MAINTAINER vishwambhar.kapare@paroscale.com
 
 RUN apt-get update -y \
