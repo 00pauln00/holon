@@ -1,0 +1,16 @@
+on: [push]
+
+jobs:
+  print_msg_job:
+    runs-on: ubuntu-latest
+    name: Job to print msg
+    steps:
+    # To use this repository's private action,
+      # you must check out the repository
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: addition action step
+      uses: ./ # Uses an action in the root directory
+    # print message
+    - name: Print one-line msg
+      run: echo Hello, Welcome to Holon!
