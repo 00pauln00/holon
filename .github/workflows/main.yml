@@ -9,7 +9,7 @@ jobs:
       # you must check out the repository
     - name: Checkout
       uses: actions/checkout@v2
-    - name: addition action step
+    - name: Print debug msg
       uses: ./ # Uses an action in the root directory
     # print message
     - name: Print one-line msg
