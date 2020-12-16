@@ -1,0 +1,6 @@
+# action.yml
+name: 'Display message'
+description: 'Print mesg'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
