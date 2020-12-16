@@ -11,7 +11,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: build_and_run
-        uses: ./hello-world-docker-action # Uses an action in the specified directory
+        uses: ./docker_action # Uses an action in the specified directory
         id: build_and_run
         with:
           who-to-greet: 'Vishwambhar Kapare'
