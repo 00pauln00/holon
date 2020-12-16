@@ -1,0 +1,20 @@
+name: Create Docker Container Action
+on: [push]
+
+jobs:
+  build_and_run:
+    runs-on: ubuntu-latest
+    name: sample_docker_container_workflow
+    steps:
+      # To use this repository's private action,
+      # you must check out the repository
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: build_and_run
+        uses: ./hello-world-docker-action # Uses an action in the specified directory
+        id: build_and_run
+        with:
+          who-to-greet: 'Vishwambhar Kapare'
+      # Use the output from the `build_and_run` step
+      - name: Get the output time
+        run: echo "The time was ${{ steps.build_and_run.outputs.time }}"
