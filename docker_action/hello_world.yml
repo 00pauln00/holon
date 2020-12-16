@@ -1,0 +1,8 @@
+---
+- name: playbook_test
+  hosts: localhost
+
+  tasks:
+  - name: debug_msg
+    debug:
+      msg: "Hello World"
