@@ -24,7 +24,6 @@ class RaftProcess:
     process_status = ''
     process_popen = {}
     process_backend_type = ''
-    binary_path='/home/pauln/raft-builds/latest/raft-server'
     process_pid = 0
 
     '''
@@ -66,16 +65,25 @@ class RaftProcess:
     def start_process(self, raft_uuid, peer_uuid, base_dir):
 
         logging.warning("Starting uuid: %s, cluster_type %s" % (peer_uuid, self.process_backend_type))
+
+        # If user has passed any specific path to use for raft binaries
+        binary_dir = os.getenv('NIOVA_BIN_PATH')
+        logging.warning("raft binary path is: %s" % binary_dir)
+
+        # Otherwise use the default path
+        if binary_dir == None:
+            binary_dir = "/home/pauln/raft-builds/latest"
+
         if self.process_backend_type == "pumicedb":
             if self.process_type == "server":
-                bin_path = '/home/pauln/raft-builds/latest/pumicedb-server-test'
+                bin_path = '%s/pumicedb-server-test' % binary_dir
             else:
-                bin_path = '/home/pauln/raft-builds/latest/pumicedb-client-test'
+                bin_path = '%s/pumicedb-client-test' % binary_dir
         else:
             if self.process_type == "server":
-                bin_path = '/home/pauln/raft-builds/latest/raft-server'
+                bin_path = '%s/raft-server' % binary_dir
             else:
-                bin_path = '/home/pauln/raft-builds/latest/raft-client'
+                bin_path = '%s/raft-client' % binary_dir
 
 
         '''
