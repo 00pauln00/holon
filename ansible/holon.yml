@@ -85,4 +85,4 @@
 - import_playbook: "post_run.yml"
   vars:
     recipe_params: "{{ ClusterParams }}"
-  when: disable_post_run == "False" or disable_post_run == "false" or disable_post_run == false
+    recipe_result: "{{ terminate_recipe }}"

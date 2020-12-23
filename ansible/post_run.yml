@@ -2,6 +2,16 @@
   hosts: localhost
 
   tasks:
+
+  - name: "Check if recipe failed and post_run is disabled"
+    debug:
+      msg: "Check the recipe execution status"
+    failed_when: recipe_result == True and disable_post_run == True
+
+  - name: "Exit now as post run is disabled"
+    meta: end_play
+    when: disable_post_run == "True" or disable_post_run == "true" or disable_post_run == True
+
   - name: "Get the json path"
     set_fact:
         base_dir="{{ recipe_params['base_dir']}}"
@@ -30,3 +40,8 @@
     set_fact:
        kill_peer0="{{lookup('niova_raftprocess', 'kill', peer_uuid[item], wantlist=True)}}"
     loop: "{{ range(0, running_npeers| int)| list}}"
+
+  - name: "Check status post run"
+    debug:
+      msg: "If recipe was rescued for post run, make sure we return error"
+    failed_when: recipe_result == True
