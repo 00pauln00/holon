@@ -26,7 +26,7 @@
         idle_on: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, cmd, where, wantlist=True)}}"
       debug:
         msg: "{{ idle_on }}"
-      no_log:  True
+      #no_log:  True
 
     - name: "{{ recipe_name }}: Start peer which is made idle in previous task"
       include_role:
@@ -47,7 +47,7 @@
         raft_values: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, raft_keys, wantlist=True) }}"
       debug:
         msg: "{{ raft_values }}"
-      no_log:  True
+      #no_log:  True
       # Lookup the  value in the result using last two keys from the complete key path
       failed_when: >
          (raft_values["/0/leader-uuid"] != "null") or
@@ -64,7 +64,7 @@
          idle_off: "{{ lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ idle_off }}"
-      no_log:  True
+      #no_log:  True
 
     - name: "{{ recipe_name }}: Get the current time for the peer in loop"
       vars:
