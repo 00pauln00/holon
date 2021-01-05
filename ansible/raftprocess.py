@@ -76,14 +76,14 @@ class RaftProcess:
 
         if self.process_backend_type == "pumicedb":
             if self.process_type == "server":
-                bin_path = '%s/pumicedb-server-test' % binary_dir
+                bin_path = '%s/pumice-reference-server' % binary_dir
             else:
-                bin_path = '%s/pumicedb-client-test' % binary_dir
+                bin_path = '%s/pumice-reference-client' % binary_dir
         else:
             if self.process_type == "server":
-                bin_path = '%s/raft-server' % binary_dir
+                bin_path = '%s/raft-reference-server' % binary_dir
             else:
-                bin_path = '%s/raft-client' % binary_dir
+                bin_path = '%s/raft-reference-client' % binary_dir
 
 
         '''
