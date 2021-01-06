@@ -31,6 +31,11 @@
         ServerUUID: "{{ NonRunningServers[item] }}"
       loop: "{{ range(0, npeers_start| int) | list }}"
 
+    - name: "{{ recipe_name }}: Get the updated list of runing peers"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+    
     - name: "{{ recipe_name }}: Wait until leader election happens"
       vars:
          stage: "wait_leader_election"
