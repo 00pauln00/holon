@@ -3,7 +3,7 @@ import subprocess
 from genericcmd import GenericCmds
 from enum import Enum
 
-class inotify_input_base(Enum):
+class inotify_input_base:
     SHARED_INIT = 1
     PRIVATE_INIT = 2
     REGULAR = 3
@@ -24,7 +24,6 @@ class InotifyPath:
         self.inotify_path = "%s/ctl-interface" % base_dir_path
         self.inotify_shared_init_path = "%s/init" % base_dir_path
         self.inotify_is_base_path = inotify_is_base_path
-
         # Create inotify and init directories
         genericcmdobj = GenericCmds()
         genericcmdobj.make_dir(self.inotify_path)
@@ -60,7 +59,21 @@ class InotifyPath:
         logging.warning("exporting NIOVA_CTL_INTERFACE_INIT_PATH=%s",
                         os.environ['NIOVA_CTL_INTERFACE_INIT_PATH'])
 
+    '''
+    Method : To export ctl -svc path
+    '''
+    def export_ctlsvc_path(self, ctl_svc_path):
 
+        '''
+        if shared_path is true, use the shared init path.
+        else use the init directory path inside inotify/peer_uuid/init
+        '''
+
+        os.environ['NIOVA_LOCAL_CTL_SVC_DIR'] = ctl_svc_path
+        logging.warning("exporting NIOVA_LOCAL_CTL_SVC_DIR=%s",
+                        os.environ['NIOVA_LOCAL_CTL_SVC_DIR'])
+
+    
     '''
     method: prepare input/output path.
     purpose: Prepare the absolute path for input/output files for specific
@@ -79,9 +92,9 @@ class InotifyPath:
             else: # input_base = REGULAR
                 fpath = "%s/%s/%s/%s.%s" % (self.inotify_path, peer_uuid, dir_name, base_fname,
                                             app_uuid)
-
-            logging.warning("Input path for ctlrequest cmd is: %s" % fpath)
+            logging.info("Input File path:%s", fpath)
         else:
             fpath = "%s/%s/%s/%s.%s" % (self.inotify_path, peer_uuid, dir_name, base_fname,
                                     app_uuid)
+            logging.info("Output File Path:%s", fpath)
         return fpath;

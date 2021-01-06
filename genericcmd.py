@@ -1,4 +1,4 @@
-import os, sys, subprocess, json, time, logging, socket, errno, shutil, pkg_resources
+import os, subprocess, json, time, logging, socket, errno, pkg_resources
 from datetime import datetime
 
 '''
@@ -47,7 +47,7 @@ class GenericCmds:
         p = subprocess.run(['cp', src_path, dest_path], stdout=subprocess.PIPE)
 
         if p.returncode != 0:
-            logging.error("Copy file %s to %s failed with error: %d" % (src_path, dest_path, p.returncode))
+            print("Copy file %s to %s failed with error: %d" % (src_path, dest_path, p.returncode))
 
         return p.returncode
 
@@ -56,29 +56,26 @@ class GenericCmds:
     '''
     def move_file(self, src_path, dest_path):
         
-        try:
-            shutil.move(src_path, dest_path)
-        except shutil.Error:
-            raise logging.error("Move file %s to %s failed with error: %s" % (src_path, dest_path, shutil.Error))
-            return shutil.Error
+        p = subprocess.run(['mv', src_path, dest_path], stdout=subprocess.PIPE)
+        if p.returncode != 0:
+            print("Move file %s to %s failed with error: %d" % (src_path, dest_path, p.returncode))
+
+        return p.returncode
 
     def remove_file(self, fpath):
         rc = 0
         try:
             rc = os.remove(fpath)
         except OSError as e:
-            logging.error("File %s remove failed with error: %s" % (fpath, os.strerror(e.errno)))
+            print("File %s remove failed with error: %s" % (fpath, os.strerror(e.errno)))
             
         return rc
 
     '''
     method raft_json_load: Lead the JSON file
     '''
-    def raft_json_load(self, ctlreqobj):
-        fpath = ctlreqobj.get_latest_version_ofile()
-        '''
-        Sleep for 1 sec if file has not got created yet.
-        '''
+    def raft_json_load(self, fpath):
+        # SLeep for 1 sec if file has not got created yet.
         while os.path.exists(fpath) == False:
             time.sleep(1)
 
@@ -86,6 +83,11 @@ class GenericCmds:
             data = json.load(f)
 
         return data
+
+    def recipe_json_dump(self, recipe_dict):
+        recipe_json_fpath = "%s/%s.json" % (recipe_dict['raft_config']['base_dir_path'], recipe_dict['raft_config']['raft_uuid'])
+        with open(recipe_json_fpath, "w+", encoding="utf-8") as json_file:
+            json.dump(recipe_dict, json_file, indent = 4)
 
     def make_dir(self, dirpath):
         if not os.path.exists(dirpath):
