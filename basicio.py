@@ -1,5 +1,4 @@
 import os, errno, sys
-import logging
 
 '''
 This class will have methods for file IO operations.
@@ -16,7 +15,7 @@ class BasicIO:
         try:
             fd = open(fpath, "w+")
         except OSError as e:
-            logging.error("File (%s) open failed with error: %s" % (fpath, os.strerror(e.errno)))
+            print("File (%s) open failed with error: %s" % (fpath, os.strerror(e.errno)))
 
         return fd
 
@@ -31,7 +30,7 @@ class BasicIO:
         try:
             nbytes = fd.write(buff)
         except OSError as e:
-            logging.error("File write failed with error: %s" % os.strerror(e.errno))
+            print("File write failed with error: %s" % os.strerror(e.errno))
 
         return nbytes
 
@@ -45,6 +44,6 @@ class BasicIO:
         try:
             rc = fd.close()
         except OSError as e:
-            logging.error("File close failed with error: %s" % os.strerror(e.errno))
+            print("File close failed with error: %s" % os.strerror(e.errno))
 
         return rc

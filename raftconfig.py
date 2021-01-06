@@ -1,4 +1,4 @@
-import os, logging
+import os, logging, json
 import subprocess
 from basicio import BasicIO
 from genericcmd import GenericCmds
@@ -9,7 +9,7 @@ class RaftConfig:
     base_dir_path = ''
     server_config_path = ''
     raft_uuid = ''
-    peer_uuid_arr = [] # Peer UUID array
+    peer_uuid_dict = {} # Peer UUID dictionary
     client_uuid_arr = [] # Client UUID array
     nservers = 0
 
@@ -93,9 +93,10 @@ class RaftConfig:
         Prepare config file each peer in the cluster. Peer config file name
         format would be <PEER_UUID>.peer
         '''
+        self.peer_uuid_dict = {}
         for i in range(nservers):
             peer_uuid = genericcmdobj.generate_uuid()
-            
+ 
             basicioobj.write_file(raft_fd, "PEER %s\n" % peer_uuid)
 
             peer_config_path = "%s/%s.peer" % (self.server_config_path, peer_uuid)
@@ -116,9 +117,12 @@ class RaftConfig:
             '''
             Maintain peer uuid array for all the peers in the cluster.
             '''
-            self.peer_uuid_arr.append(peer_uuid)
+            self.peer_uuid_dict[i] = peer_uuid
 
         basicioobj.close_file(raft_fd)
+
+        json_string = json.dumps(self.__dict__)
+        logging.info(json_string)
 
     '''
         Method: get_peer_uuid_for_peerno
@@ -134,14 +138,9 @@ class RaftConfig:
         Parameters: @ip_address: IP address for the client.
                     @client_port: Client port number.
     '''
-    def generate_client_conf(self, genericcmdobj, ip_address, client_port):
+    def generate_client_conf(self, genericcmdobj, client_uuid, ip_address, client_port):
         
         basicioobj = BasicIO()
-
-        '''
-        Generate new UUID for the client.
-        '''
-        client_uuid = genericcmdobj.generate_uuid()
 
         '''
         Prepare client config information and right it to client config file.
@@ -154,7 +153,7 @@ class RaftConfig:
         basicioobj.write_file(cl_fd, client_buff)
         # close the file
         basicioobj.close_file(cl_fd)
-        # Append the client uuid into an array
+        # Store the client UUID
         self.client_uuid_arr.append(client_uuid)
 
     '''

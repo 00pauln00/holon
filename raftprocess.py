@@ -15,7 +15,7 @@ def check_for_process_status(pid, process_status):
             break
 
         time_global.sleep(0.005)
-        logging.info(" process status %s (expected %s)"% (ps.status(), process_status))
+        logging.warning(" process status %s (expected %s)"% (ps.status(), process_status))
 
 class RaftProcess:
 
@@ -23,20 +23,21 @@ class RaftProcess:
     process_uuid = ''
     process_status = ''
     process_popen = {}
-    process_idx = 0
-    binary_path='/home/pauln/raft-builds/latest/'
-
+    process_backend_type = ''
+    process_pid = 0
 
     '''
         Constructor:
         Purpose: Initialisation
-        Parameter:  @uuid: UUID of server or client for which process object is
+        Parameter:  @cluster_type: Cluster is raft cluster or pumiceDB cluster.
+					@uuid: UUID of server or client for which process object is
                             created.
                     @process_type: Type of the process(server or client)
     '''
-    def __init__(self, uuid, process_idx, process_type):
+    def __init__(self, backend_type, uuid, process_type):
+        self.process_backend_type = backend_type
         self.process_uuid = uuid
-        self.process_idx = process_idx
+        self.process_pid = 0
         self.process_type = process_type
 
     '''
@@ -46,14 +47,14 @@ class RaftProcess:
                     @uuid: UUID of the server or client.
     '''
 
-    def Wait_for_process_status(self, process_status):
+    def Wait_for_process_status(self, process_status, pid):
         '''
         To wait for change in process status.
         Timeout is added to wait for change in process status till the specified time.
         '''
         rc = 0
         try:
-            func_timeout(20, check_for_process_status, args=(self.process_popen.pid, process_status))
+            func_timeout(20, check_for_process_status, args=(pid, process_status))
         except FunctionTimedOut:
                 logging.error("Error : timeout occur to change process status to %s" % process_status)
                 rc = 1
@@ -61,63 +62,87 @@ class RaftProcess:
         if rc == 1:
             exit()
 
-    def start_process(self, raftconfobj, clusterobj):
-        logging.warning("Starting process of type: %s with UUID: %s" % (self.process_type,
-                                self.process_uuid))
+    def start_process(self, raft_uuid, peer_uuid, base_dir):
 
-        # Create object for generic cmds.
-        genericcmdobj = GenericCmds()
-        '''
-        Generate UUID for the application to be used in the raft_log.txt file.
-        '''
-        app_uuid = genericcmdobj.generate_uuid()
+        logging.warning("Starting uuid: %s, cluster_type %s" % (peer_uuid, self.process_backend_type))
 
-        if self.process_type == 'server':
-            server_bin_path = "%s/raft-server" % (self.binary_path)
-            file_path = "%s/raft_log_%s.txt" % (raftconfobj.base_dir_path, app_uuid)
-            with open(file_path, "w+") as file:
-                self.process_popen = subprocess.Popen([server_bin_path, '-r',
-                                raftconfobj.raft_uuid, '-u', self.process_uuid], stdout = file, stderr = file)
-                file.close()
+        # If user has passed any specific path to use for raft binaries
+        binary_dir = os.getenv('NIOVA_BIN_PATH')
+        logging.warning("raft binary path is: %s" % binary_dir)
 
-            with open(file_path, "r") as fp:
-                Lines = fp.readlines()
-                output_label = "raft-%s.%s" % (self.process_type, self.process_idx)
+        # Otherwise use the default path
+        if binary_dir == None:
+            binary_dir = "/home/pauln/raft-builds/latest"
+
+        if self.process_backend_type == "pumicedb":
+            if self.process_type == "server":
+                bin_path = '%s/pumice-reference-server' % binary_dir
+            else:
+                bin_path = '%s/pumice-reference-client' % binary_dir
         else:
-            client_bin_path = "%s/raft-client" % (self.binary_path)
-            self.process_popen = subprocess.Popen([client_bin_path, '-r',
-                                raftconfobj.raft_uuid, '-u', self.process_uuid])
+            if self.process_type == "server":
+                bin_path = '%s/raft-reference-server' % binary_dir
+            else:
+                bin_path = '%s/raft-reference-client' % binary_dir
+
 
         '''
-        To check if process is started
+        We want to append the output of raft-server log into the recipe log
+        adding information about for which peerid the process has started.
+        So first get the raft-server init log into temp file, add the prefix
+        and then write it to recipe log.
         '''
-        self.Wait_for_process_status("running")
+        temp_file = "%s/raft_log_%s.txt" % (base_dir, peer_uuid)
 
-        # Check if child process exited with error
-        if self.process_popen.poll() is None:
-            logging.warning("Raft process started successfully")
+        fp = open(temp_file, "w")
+        if self.process_type =="server":
+            process_popen = subprocess.Popen([bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid],  stdout = fp, stderr = fp)
         else:
-            logging.error("Raft process failed to start")
+            process_popen = subprocess.Popen([bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid, '-a'],  stdout = fp, stderr = fp)
+
+        #Make sure all the ouput gets flushed to the file before closing it
+        os.fsync(fp)
+
+        output_label = "raft-%s.%s" % (self.process_type, self.process_uuid)
+        self.process_pid = process_popen.pid
+    
+        #To check if process is started
+        self.Wait_for_process_status("running", self.process_pid)
+
+        #Check if child process exited with error
+        if process_popen.poll() is None:
+            self.process_status = "running"
+            logging.info("Raft process started successfully")
+        else:
+            logging.info("Raft process failed to start")
             raise subprocess.SubprocessError(self.process_popen.returncode)
+
+        # Wait till the raft-server output gets written to the temp file
+        while(1):
+            fsize = os.path.getsize(temp_file)
+            if fsize != 0:
+                break
+
+        with open(temp_file, "r") as fp:
+            Lines = fp.readlines()
 
         #Print <process_type.peer_index> at the start of raft log messages
         for line in Lines:
             logging.warning("<{}>:{}".format(output_label, line.strip()))
-
-        #Remove the temporary created raft_log.txt file
-        if os.path.exists(file_path):
-            shutil.os.remove(file_path)
-
 
     '''
         Method: pause_process
         Purpose: pause the process by sending sigstop
         Parameters:
     '''
-    def pause_process(self):
-        logging.warning("pause the process by sending sigstop")
+    def pause_process(self, pid):
+        self.process_pid = pid
+        process_obj = psutil.Process(pid)
+        logging.info("pause the process by sending sigstop")
         try:
-            self.process_popen.send_signal(signal.SIGSTOP)
+            process_obj.send_signal(signal.SIGSTOP)
         except subprocess.SubprocessError as e:
             logging.error("Failed to send Stop signal with error: %s" % os.stderror(e.errno))
             return -1
@@ -125,7 +150,8 @@ class RaftProcess:
         '''
         To check if process is paused
         '''
-        self.Wait_for_process_status("stopped")
+        self.Wait_for_process_status("stopped", pid)
+        self.process_status = "paused"
         return 0
 
     '''
@@ -133,14 +159,17 @@ class RaftProcess:
         Purpose: resume the process by sending sigcont
         Parameters:
     '''
-    def resume_process(self):
-        logging.warning("resume the process by sending sigcont")
+    def resume_process(self, pid):
+        self.process_pid = pid
+        process_obj = psutil.Process(pid)
+        logging.info("resume the process by sending sigcont")
         try:
-            self.process_popen.send_signal(signal.SIGCONT)
+            process_obj.send_signal(signal.SIGCONT)
         except subprocess.SubprocessError as e:
             logging.error("Failed to send CONT signal with error: %s" % os.stderror(e.errno))
             return -1
 
+        self.process_status = "running"
         return 0
 
     '''
@@ -148,11 +177,15 @@ class RaftProcess:
         Purpose: kill the process by sending sigterm
         Parameters:
     '''
-    def kill_process(self):
-        logging.warning("kill the process by sending sigterm")
+    def kill_process(self, pid):
+        self.process_pid = pid
+        process_obj = psutil.Process(pid)
+        logging.warning("kill the process(%d) by sending sigterm" % pid)
         try:
-            self.process_popen.send_signal(signal.SIGTERM)
+            process_obj.send_signal(signal.SIGKILL)
         except subprocess.SubprocessError as e:
             logging.error("Failed to send kill signal with error: %s" % os.stderror(e.errno))
             return -1
+
+        self.process_status = "killed"
         return 0
