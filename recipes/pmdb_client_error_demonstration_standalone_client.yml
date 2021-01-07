@@ -1,14 +1,23 @@
-- name: "PMDB Client Error Demonstration"
+- name: "PMDB Client Error Demonstration Standalone Client"
   hosts: localhost
   connection: local
   vars:
      recipe_name: "pmdb_client_error_demonstration_standalone_client"
      parent: None
-     # XXX we should change hardcoded path later.
-     pmdb_client_path: "/home/pauln/raft-builds/latest/pumicedb-client-test"
-     raft_client_path: "/home/pauln/raft-builds/latest/raft-client"
+     bin_path: "{{ lookup('env','NIOVA_BIN_PATH') }}"
+     pmdb_client_path: "{{ bin_path }}/pumice-reference-client"
+     raft_client_path: "{{ bin_path }}/raft-reference-client"
+
   tasks:
   - block:
+    - name: "Default bin_path"
+      vars:
+        default_path: "/home/pauln/raft-builds/latest"
+      set_fact:
+         pmdb_client_path: "{{ default_path }}/pumice-reference-client"
+         raft_client_path: "{{ default_path }}/raft-reference-client"
+      when: bin_path == "null"
+
     - name: "Check if parent recipe failed"
       debug: msg="Check if parent recipe {{ parent }} failed"
       failed_when: terminate_recipe == true
