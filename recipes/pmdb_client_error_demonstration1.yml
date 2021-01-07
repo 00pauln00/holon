@@ -16,6 +16,7 @@
             - "/pumice_db_test_client/pmdb-test-apps/0/pmdb-write-pending"
             - "/pumice_db_test_client/pmdb-test-apps/0/app-sync"
             - "/pumice_db_test_client/pmdb-test-apps/0/app-seqno"
+            - "/pumice_db_test_client/pmdb-test-apps/0/last-request-tag"
             - "/raft_client_root_entry/0/recent-ops-wr"
   tasks:
   - block:
@@ -79,7 +80,6 @@
         - "{{ demo1_lookup_vals }}"
       register: non_existing_obj
 
-
     - name: "{{ recipe_name }}: Verify the parameters after lookup on non-existing object"
       vars:
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
@@ -103,15 +103,25 @@
       debug:
         msg: "{{ invalid_write_seq }}"
       no_log: True
-
+    
     - name: "{{ recipe_name }}: Verify that write failed for invalid sequence number"
       vars:
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
         stage: "stage1"
-        stage1_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+        invalid_write: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
       debug:
         msg: "Write will fail with invalid seqno."
       no_log: true
+      with_items:
+        - "{{ invalid_write }}"
+      register: invalid_seq
+
+    - name: "{{ recipe_name }}: Verify write should fail with invalid seqno 1."
+      vars:
+        stage1_values: "{{ invalid_seq['results'][0]['item'] }}"
+        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
+      debug:
+        msg: "Validate write failed with invalid seqno: 2 {{ demo1_valid_wr }}"
       failed_when: >
         (stage1_values['/0/app-user-id'] != rncui) or
         (stage1_values['/0/status'] != "Invalid exchange") or
@@ -131,15 +141,24 @@
       debug:
         msg: "{{ valid_write_seq }}"
       no_log: True
-
+     
     - name: "{{ recipe_name }}: Verify the parameters for successful write operation."
       vars:
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
         stage: "stage2"
-        demo1_valid_wr: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+        demo1_wr: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
       debug:
-        msg: "Verify parameters after successful write operation."
-      no_log: true
+        msg: "Verify parameters after successful write operation {{ demo1_wr }}"
+      with_items:
+         - "{{ demo1_wr }}"
+      register: valid_write
+
+    - name: "{{ recipe_name }}: Verify write should not fail with valid seqno 0."
+      vars:
+        demo1_valid_wr: "{{ valid_write['results'][0]['item'] }}"
+        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
+      debug:
+        msg: "Validate write failed with invalid seqno: 2 {{ demo1_valid_wr }}"
       failed_when: >
         (demo1_valid_wr['/0/app-user-id'] != rncui) or
         (demo1_valid_wr['/0/status'] != "Success") or
@@ -160,7 +179,19 @@
         msg: "{{ write_seq }}"
       no_log: True
 
-    - name: "{{ recipe_name }}: Lookup object with invalid seqno 2."
+    - name: "{{ recipe_name}}: Wait until last-request-tag get changed."
+      vars:
+        stage: "wait_for_last_rqst_tag"
+        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/last-request-tag"
+        demo1_valid_wr: "{{ valid_write['results'][0]['item'] }}"
+      debug:
+        msg: "Waiting for last-rqst-tag to change its value"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != demo1_valid_wr['/0/last-request-tag']
+      loop: "{{ range(0, 10) | list }}"
+      loop_control:
+        pause: 1
+
+    - name: "{{ recipe_name }}: Get parameters to verify invalid seqno 2."
       vars:
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
         stage: "stage3"
@@ -178,7 +209,6 @@
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
       debug:
         msg: "Validate write failed with invalid seqno: 2 {{ invalid_wr }}"
-      no_log: true
       failed_when: >
         (invalid_wr['/0/app-user-id'] != rncui) or
         (invalid_wr['/0/status'] != "Invalid exchange") or
