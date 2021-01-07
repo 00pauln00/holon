@@ -15,9 +15,9 @@ def check_for_process_status(pid, process_status):
         if ps.status() == process_status:
             break
 
-        time_global.sleep(0.5)
-        #After every 10 iterations, print process status.
-        if itr == 10:
+        time_global.sleep(0.050)
+        #After every 50 iterations, print process status.
+        if itr == 50:
             logging.warning("process status %s (expected %s)"% (ps.status(), process_status))
             itr = 0
         itr += 1
@@ -61,7 +61,6 @@ class RaftProcess:
         try:
             func_timeout(20, check_for_process_status, args=(pid, process_status))
         except FunctionTimedOut:
-                logging.warning("process status %s (expected %s)"% (psutil.Process(pid).status(), process_status))
                 logging.error("Error : timeout occur to change process status to %s" % process_status)
                 rc = 1
 
