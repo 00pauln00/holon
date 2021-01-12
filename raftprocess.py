@@ -10,12 +10,17 @@ def check_for_process_status(pid, process_status):
     To check process status
     '''
     ps = psutil.Process(pid)
+    itr = 0
     while(1):
         if ps.status() == process_status:
             break
 
-        time_global.sleep(0.005)
-        logging.warning(" process status %s (expected %s)"% (ps.status(), process_status))
+        time_global.sleep(0.050)
+        #After every 50 iterations, print process status.
+        if itr == 50:
+            logging.warning("process status %s (expected %s)"% (ps.status(), process_status))
+            itr = 0
+        itr += 1
 
 class RaftProcess:
 
