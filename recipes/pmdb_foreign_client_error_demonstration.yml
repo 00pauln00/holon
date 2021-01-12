@@ -62,7 +62,7 @@
              srv_port: "{{ srv_port }}"
              nclients: 1
 
-    - name: "{{ recipe_name }}: Prepare client config with same server ports but differe client port than already runnig client."
+    - name: "{{ recipe_name }}: Prepare config for the foreign client."
       set_fact:
         foreign_cluster: "{{ lookup('niova_raftconfig', 'client', wantlist=True) }}"
 
@@ -73,7 +73,7 @@
       vars:
          ClientUUID: "{{ fc_client_uuid.stdout }}"
 
-    - name: "{{ recipe_name }}: Modify the client request timeout to 3sec."
+    - name: "{{ recipe_name }}: Modify the foriegn client request timeout to 3sec."
       vars:
          stage: "modify_timeout"
          cmd: "default-request-timeout-sec@{{ set_timeout }}"
@@ -83,7 +83,7 @@
         msg: "{{ set_time }}"
       no_log: True
 
-    - name: "{{ recipe_name }}: Verify client request timeout set to '3'"
+    - name: "{{ recipe_name }}: Verify foreign client request timeout set to '3'"
       vars:
         stage: "stage0"
         raft_key:
@@ -92,7 +92,7 @@
         stage0_values: "{{ lookup('niova_ctlrequest', 'lookup', fc_client_uuid.stdout, raft_key, wantlist=True) }}"
       failed_when: stage0_values["/0/default-request-timeout-sec"] != 3
 
-    - name: "{{ recipe_name }}: Apply write cmd"
+    - name: "{{ recipe_name }}: Apply write cmd from foreign client"
       vars:
         stage: "valid_seq_stage"
         cmd: "input@{{ fc_app_uuid.stdout }}:0:0:0:1.write:0"
@@ -105,7 +105,7 @@
     - pause:
         seconds: "{{ set_timeout | int + 2 | int }}"
 
-    - name: "{{ recipe_name }}: Verify the write request expired as client was trying to send request to 1st cluster."
+    - name: "{{ recipe_name }}: Verify the write request expired as foreign client was trying to send request to 1st cluster."
       vars:
         rncui: "{{ fc_app_uuid.stdout }}:0:0:0:0"
         stage: "stage1"
