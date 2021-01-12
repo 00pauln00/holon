@@ -467,9 +467,9 @@
           - "Verifying all values after electing new leader {{ collect_all_values }}."
       no_log: True
       failed_when: >
-        (collect_all_values['/0/last-applied'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
-        (collect_all_values['/0/commit-idx'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
-        (collect_all_values['/0/sync-entry-idx'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
+        (collect_all_values['/0/last-applied'] < ((initial_commit_idx | int) + (nwrites | int) + 1)) or
+        (collect_all_values['/0/commit-idx'] < ((initial_commit_idx | int) + (nwrites | int) + 1)) or
+        (collect_all_values['/0/sync-entry-idx'] < ((initial_commit_idx | int) + (nwrites | int) + 1)) or
         (collect_all_values['/0/term'] < (initial_term | int))
       
     - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and sync-entry-crc is same on all peers."
