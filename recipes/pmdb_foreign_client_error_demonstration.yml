@@ -51,14 +51,27 @@
           - "client uuid: {{ fc_client_uuid.stdout }}"
           - "app uuid: {{ fc_app_uuid.stdout }}"
 
+    - name: "Client port should be different than already running client."
+      set_fact:
+        ClusterParams:
+             base_dir: "{{ dir_path }}"
+             raft_uuid: "{{ foreign_cluster_uuid.stdout}}"
+             ctype: "{{ backend_type }}"
+             npeers: "{{ npeers }}"
+             client_port: "{{ client_port | int + 100 }}"
+             srv_port: "{{ srv_port }}"
+             nclients: 1
+
+    - name: "{{ recipe_name }}: Prepare client config with same server ports but differe client port than already runnig client."
+      set_fact:
+        foreign_cluster: "{{ lookup('niova_raftconfig', 'client', wantlist=True) }}"
+
     - name: "{{ recipe_name }}: Start client process from the 2nd cluster."
       include_role:
          name: common
          tasks_from: start_client
       vars:
          ClientUUID: "{{ fc_client_uuid.stdout }}"
-         RaftUUID: "{{ recipe_params['raft_uuid'] }}"
-         ClientPort: 12006
 
     - name: "{{ recipe_name }}: Modify the client request timeout to 3sec."
       vars:
