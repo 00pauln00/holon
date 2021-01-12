@@ -92,7 +92,7 @@ class RaftProcess:
         So first get the raft-server init log into temp file, add the prefix
         and then write it to recipe log.
         '''
-        temp_file = "%s/raft_log_%s.txt" % (base_dir, peer_uuid)
+        temp_file = "%s/raft_log_%s_%s.txt" % (base_dir, self.process_type, peer_uuid)
 
         fp = open(temp_file, "w")
         if self.process_type =="server":
