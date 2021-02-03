@@ -410,6 +410,31 @@
         (followers_state['/0/state'] != "candidate") and
         (followers_state['/0/state'] != "follower")
       
+    - name: "{{ recipe_name }}: Get the 'term' from resumed followers."
+      vars:
+        stage: "term_of_resumed_followers"
+        term_key:
+            - "/raft_root_entry/0/term"
+        get_term: "{{ lookup('niova_ctlrequest', 'lookup', Promoting_Selected_Followers, term_key, wantlist=True) }}"
+      debug:
+        msg: "Getting term for resumed followers."
+      no_log: True
+      with_items:
+          - "{{ get_term }}"
+      register: term_value
+
+    - name: "{{ recipe_name }}: Wait until the followers-to-be-recovered increase their term > leader's term."
+      vars:
+        stage: "wait_to change_term"
+        initial_term: "{{ stage1_value['results'][item]['item']['/0/term'] }}"
+        raft_key: "/raft_root_entry/0/term"
+      debug:
+        msg: "Wait to until term value increases."
+      until: lookup('niova_ctlrequest', 'lookup', Promoting_Selected_Followers[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first > (initial_term | int)
+      retries: 60
+      delay: 1
+      loop: "{{ range(0, Promoting_Selected_Followers | length) | list }}"
+
     #4-Unpause the Leader-to-Be from Step #3.
     - name: "{{ recipe_name }}: Unpause the 'Leader-to-Be' from Step #3."
       vars:
