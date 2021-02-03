@@ -410,19 +410,6 @@
         (followers_state['/0/state'] != "candidate") and
         (followers_state['/0/state'] != "follower")
       
-    - name: "{{ recipe_name }}: Get the 'term' from resumed followers."
-      vars:
-        stage: "term_of_resumed_followers"
-        term_key:
-            - "/raft_root_entry/0/term"
-        get_term: "{{ lookup('niova_ctlrequest', 'lookup', Promoting_Selected_Followers, term_key, wantlist=True) }}"
-      debug:
-        msg: "Getting term for resumed followers."
-      no_log: True
-      with_items:
-          - "{{ get_term }}"
-      register: term_value
-
     - name: "{{ recipe_name }}: Wait until the followers-to-be-recovered increase their term > leader's term."
       vars:
         stage: "wait_to change_term"
@@ -444,7 +431,7 @@
       debug:
         msg: "{{ resume_leader_to_be }}"
       no_log: True
-  
+
     - name: "{{ recipe_name }}: Wait until 'leader-to-be' becomes leader."
       vars:
         alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
