@@ -274,8 +274,7 @@
         alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
       debug:
         msg: "{{ alive_followers[0] }}"
-      no_log: True
-    
+   
     #3b - Prep all running servers, except leader-to-be.
     - name: "{{ recipe_name }}: Prepare all running servers."
       vars:
@@ -412,7 +411,7 @@
       
     - name: "{{ recipe_name }}: Wait until the followers-to-be-recovered increase their term > leader's term."
       vars:
-        stage: "wait_to change_term"
+        stage: "wait_to_change_term"
         initial_term: "{{ stage1_value['results'][item]['item']['/0/term'] }}"
         raft_key: "/raft_root_entry/0/term"
       debug:
@@ -421,6 +420,18 @@
       retries: 60
       delay: 1
       loop: "{{ range(0, Promoting_Selected_Followers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Disable Raft timer thread on followers which are resumed."
+      vars:
+        stage: "idle_on"
+        wait_for_ofile: False
+        cmd: "ignore_timer_events@true"
+        where: "/raft_net_info/ignore_timer_events"
+        copy_to: "init"
+        idle_on: "{{lookup('niova_ctlrequest', 'apply_cmd', Promoting_Selected_Followers, cmd, where, wantlist=True)}}"
+      debug:
+        msg: "{{ idle_on }}"
+      no_log:  True
 
     #4-Unpause the Leader-to-Be from Step #3.
     - name: "{{ recipe_name }}: Unpause the 'Leader-to-Be' from Step #3."
@@ -431,6 +442,16 @@
       debug:
         msg: "{{ resume_leader_to_be }}"
       no_log: True
+
+    - name: "{{ recipe_name }}: Activate Raft timer thread"
+      vars:
+         stage: "idle_off"
+         cmd: "ignore_timer_events@false"
+         where: "/raft_net_info/ignore_timer_events"
+         idle_off: "{{ lookup('niova_ctlrequest', 'apply_cmd', Promoting_Selected_Followers, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ idle_off }}"
+      no_log:  True
 
     - name: "{{ recipe_name }}: Wait until 'leader-to-be' becomes leader."
       vars:
