@@ -25,29 +25,23 @@
          tasks_from: get_server_uuid_info
 
     #Recipe Setup: If the cluster is not booted, the recipe should abort.
-    - name: "{{ recipe_name }}: Get the state from all peers."
+    - name: "{{ recipe_name }}: Verify if the cluster is not booted, the recipe should abort."
+      include_role:
+         name: common
+         tasks_from: verify_all_peers_up_and_running
+
+    - name: "{{ recipe_name }}: Get the leader from all peers."
       vars:
-         running_servers: "{{ NRunningPeers }}"
-         stage: "check_booting_stage"
-         state_key:
-            - "/raft_root_entry/0/state"
+         stage: "get_leader"
+         leader_key:
             - "/raft_root_entry/0/leader-uuid"
-         verify_cluster_requirement: "{{ lookup('niova_ctlrequest', 'lookup', running_servers, state_key, wantlist=True) }}"
+         verify_orig_leader: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, leader_key, wantlist=True) }}"
       debug:
-        msg: "Getting orignal values {{ verify_cluster_requirement }}."
+        msg: "Getting orignal leader-uuid {{ verify_orig_leader }}"
       #no_log: True
       with_items:
-          - "{{ verify_cluster_requirement }}"
+          - "{{ verify_orig_leader }}"
       register: stage0_value
-
-    - name: "{{ recipe_name }}: Verify if the cluster is not booted, the recipe should abort."
-      vars:
-        get_stage0: "{{ stage0_value['results'][0]['item'] }}"
-      debug:
-        msg:
-          - "Verifying all peers are up and running."
-      no_log: True
-      failed_when: get_stage0['/0/state'] == "booting"
 
     - name: "{{ recipe_name }}: Get corresponding UUIDs for follower peers"
       include_role:
@@ -108,7 +102,7 @@
       no_log: True
 
     #Prepare list of two sets of the peers in the cluster.
-    - name: "Get Quorum partition."
+    - name: "Get the peer uuids for creating partition with enough number of peers to form the quorum."
       vars:
         running_servers: "{{ NRunningPeers }}"
         leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
@@ -131,7 +125,7 @@
     - debug:
         msg: "Bigger Cluster: {{ Partition1 }}"
 
-    #Smaller Cluster(Partition2).
+    #Smaller Cluster(Partition2).The existing leader should be part of paritition2.
     - name: "Set Partition2(Smaller Cluster)."
       vars:
         running_servers: "{{ NRunningPeers }}"
@@ -144,7 +138,7 @@
     - debug:
         msg: "Smaller Cluster: {{ Partition2 }}"
 
-    #Disabling send message from Partition1 to Partition2.
+    #Disabling Msg(Recv) from Partition1 to Partition2.
     - name: "{{ recipe_name }}: Disable Msg(Recv) from Partition1 to Partition2."
       vars:
         stage: "disable_candidate_mode"
@@ -156,7 +150,7 @@
       loop: "{{ range(0, Partition1 | length) | list }}"
       no_log: True
 
-    #Disabling send message from Partition2 to Partition1.
+    #Disabling Msg(Recv) from Partition2 to Partition1.
     - name: "{{ recipe_name }}: Disable Msg(Recv) from Partition2 to Partition1."
       vars:
         stage: "disable_candidate_mode"
