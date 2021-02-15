@@ -30,20 +30,7 @@
          name: common
          tasks_from: verify_all_peers_up_and_running
 
-    - name: "{{ recipe_name }}: Get the leader from all peers."
-      vars:
-         stage: "get_leader"
-         leader_key:
-            - "/raft_root_entry/0/leader-uuid"
-         verify_orig_leader: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, leader_key, wantlist=True) }}"
-      debug:
-        msg: "Getting orignal leader-uuid {{ verify_orig_leader }}"
-      #no_log: True
-      with_items:
-          - "{{ verify_orig_leader }}"
-      register: stage0_value
-
-    - name: "{{ recipe_name }}: Get corresponding UUIDs for follower peers"
+    - name: "{{ recipe_name }}: Get Leader UUID and corresponding UUIDs for follower peers"
       include_role:
          name: common
          tasks_from: get_follower_stats
@@ -54,7 +41,7 @@
          name: common
          tasks_from: validate_followers_aliveness
       vars:
-         ValLeaderUUID: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
+         ValLeaderUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
 
     #Start 2 client instances.
     - name: "{{ recipe_name }}: Get multiple client uuids."
@@ -79,7 +66,6 @@
     - name: "{{ recipe_name }}: Set election timeout to 500 ms for all servers."
       vars:
         stage: "set_elec_timeout500ms"
-        running_servers: "{{ NRunningPeers }}"
         wait_for_ofile: False
         cmd: "election-timeout-ms@500"
         where: "/raft_net_info/election-timeout-ms"
@@ -87,7 +73,7 @@
          - "/raft_net_info/election-timeout-ms"
       debug:
         msg:
-          - "{{ lookup('niova_ctlrequest', 'apply_cmd', running_servers, cmd, where, wantlist=True) }}"
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
 
     #Start writes from both two clients. 100writes each.
@@ -104,10 +90,7 @@
     #Prepare list of two sets of the peers in the cluster.
     - name: "Get the peer uuids for creating partition with enough number of peers to form the quorum."
       vars:
-        running_servers: "{{ NRunningPeers }}"
-        leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
-        followers_uuids: "{{ running_servers | difference(leader_uuid) }}"
-        get_quorum: "{{ followers_uuids | length | int / 2 + 1 | int }}"
+        get_quorum: "{{ FollowerUUIDs | length | int / 2 + 1 | int }}"
       set_fact:
         Quorum_for_Partition: "{{ get_quorum | int }}"
 
@@ -115,11 +98,8 @@
     - name: "Set Partition1(Bigger Cluster)."
       vars:
         Partition1: []
-        running_servers: "{{ NRunningPeers }}"
-        leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
-        followers_uuids: "{{ running_servers | difference(leader_uuid) }}"
       set_fact:
-        Partition1: "{{ Partition1 + [followers_uuids[item]] }}"
+        Partition1: "{{ Partition1 + [FollowerUUIDs[item]] }}"
       loop: "{{ range(0,  Quorum_for_Partition | int) | list }}"
 
     - debug:
@@ -128,12 +108,9 @@
     #Smaller Cluster(Partition2).The existing leader should be part of paritition2.
     - name: "Set Partition2(Smaller Cluster)."
       vars:
-        running_servers: "{{ NRunningPeers }}"
-        leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
-        followers_uuids: "{{ running_servers | difference(leader_uuid) }}"
-        remaining_uuids: "{{ followers_uuids | difference(Partition1) }}"
+        remaining_uuids: "{{ FollowerUUIDs | difference(Partition1) }}"
       set_fact:
-        Partition2: "{{ [] + [leader_uuid] + remaining_uuids }}"
+        Partition2: "{{ [] + [LeaderUUID['/0/leader-uuid']] + remaining_uuids }}"
 
     - debug:
         msg: "Smaller Cluster: {{ Partition2 }}"
@@ -178,23 +155,21 @@
     #Check the partition created in the cluster.Check the leader UUIDs on both two sets.
     - name: "{{ recipe_name }}: Verify the smaller cluster's leader is same as original leader."
       vars:
-        orig_leader: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
         part2_stage: "{{ part2_value['results'][0]['item'] }}"
       debug:
         msg:
           - "Verifying new leader election on partition2."
       no_log: True
-      failed_when: part2_stage['/0/leader-uuid'] != orig_leader
+      failed_when: part2_stage['/0/leader-uuid'] != LeaderUUID['/0/leader-uuid']
 
     #On Partition1, check for a new leader and successful leader election.
     - name: "{{ recipe_name }}: Wait until the new leader elected in bigger cluster(Partition1)."
       vars:
         stage: "wait_leader_to_elect"
-        orig_leader: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
         raft_key: "/raft_root_entry/0/leader-uuid"
       debug:
         msg: "Waiting for leader to elect"
-      until: lookup('niova_ctlrequest', 'lookup', Partition1[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first != (orig_leader)
+      until: lookup('niova_ctlrequest', 'lookup', Partition1[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first != LeaderUUID['/0/leader-uuid']
       retries: 60
       delay: 1
       loop: "{{ range(0, Partition1 | length) | list }}"
@@ -242,7 +217,7 @@
         (peer_info["/0/term"] != peer_info["/0/sync-entry-term"])
       loop: "{{ range(0, Partition1 | length) | list }}"
 
-    #Enable recv on peers from two partitions.
+    #Enable msg recv on peers from two partitions.
     - name: "{{ recipe_name }}: Enable Msg(Recv) from Partition1 to Partition2."
       vars:
         stage: "disable_candidate_mode"
@@ -282,15 +257,14 @@
     - name: "{{ recipe_name }}: Wait until all the peers report same leader UUID which is elected in bigger cluster."
       vars:
         stage: "verify_leader_on_all"
-        running_servers: "{{ NRunningPeers }}"
         part1_leader: "{{ leader_value['results'][0]['item']['/0/leader-uuid'] }}"
         raft_key: "/raft_root_entry/0/leader-uuid"
       debug:
         msg: "Verifying leader-uuid on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', running_servers[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (part1_leader)
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (part1_leader)
       retries: 60
       delay: 1
-      loop: "{{ range(0, running_servers | length) | list }}"
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     #Perform writes from all clients. 100writes from each client.
     - name: "{{ recipe_name }}: Perform the write {{ num_writes }} times on both clients."
