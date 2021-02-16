@@ -1,0 +1,31 @@
+---
+    - name: "{{ recipe_name}}: Get the client parameters after successful write."
+      vars:
+        stage: "lookup"
+        raft_keys:
+          - "/pumice_db_test_client/pmdb-test-apps/{{ idx }}/app-user-id"
+          - "/pumice_db_test_client/pmdb-test-apps/{{ idx }}/status"
+          - "/pumice_db_test_client/pmdb-test-apps/{{ idx }}/pmdb-seqno"
+          - "/pumice_db_test_client/pmdb-test-apps/{{ idx }}/pmdb-write-pending"
+          - "/pumice_db_test_client/pmdb-test-apps/{{ idx }}/app-sync"
+          - "/pumice_db_test_client/pmdb-test-apps/{{ idx }}/app-seqno"
+        client_vals: "{{ lookup('niova_ctlrequest', 'lookup', Client_UUID, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "get the values after client write operation."
+      no_log: true
+      with_items:
+        - "{{ client_vals }}"
+      register: client_vals_after_wr
+
+    - name: "{{ recipe_name}}: Verify the client parameters after successful write."
+      vars:
+        app_uuid_string: "{{ pmdb_apps[idx] | string }}:0:0:0:0"
+      debug:
+        msg: "Verify parameters after successful write operation"
+      failed_when: >
+            (client_vals_after_wr['results'][0]['item']['/{{ idx }}/app-user-id'] != app_uuid_string) or
+            (client_vals_after_wr['results'][0]['item']['/{{ idx }}/status'] != "Success") or
+            (client_vals_after_wr['results'][0]['item']['/{{ idx }}/pmdb-seqno'] != (exp_list[idx] | int - 1)) or
+            (client_vals_after_wr['results'][0]['item']['/{{ idx }}/pmdb-write-pending'] != false) or
+            (client_vals_after_wr['results'][0]['item']['/{{ idx }}/app-sync'] != true) or
+            (client_vals_after_wr['results'][0]['item']['/{{ idx }}/app-seqno'] != (exp_list[idx] | int)) 

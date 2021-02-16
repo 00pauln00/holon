@@ -1,0 +1,52 @@
+- import_playbook: healthy_raftserver_cluster_type1.yml
+  when: ClusterParams['ctype'] == "pumicedb"
+
+- name: "pmdb_multiple_clients_with_multiple_subapps_per_client"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "pmdb_multiple_clients_subapps"
+     parent: "healthy_raftserver_cluster_type1"
+     requirement: "pumicedb"    
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
+      include_role:
+        name: common
+        tasks_from: recipe_compatibility_requirement
+        
+    #write with multiple app uuids using common task.
+    - name: "{{ recipe_name }}: write with multiple app uuids."
+      include_role:
+        name: common
+        tasks_from: start_multiple_clients_and_write
+      vars:
+        number_of_clients: 5
+        number_of_app_uuids: 5
+      
+    #wait for write operations to complete.
+    - name: "{{ recipe_name }}: wait for write completion."
+      include_role:
+        name: common
+        tasks_from: wait_for_write_completion
+      vars:
+        Client_UUID: "{{ ClientUUIDS[cl_idx] }}"
+      loop: "{{  range(0, ClientUUIDS | length) | list }}"
+      loop_control:
+              loop_var: cl_idx
+
+    #Verify client parameters after successful write operations.
+    - name: "{{ recipe_name }}: Verify client parameters."
+      include_role:
+        name: common
+        tasks_from: verify_client_parameters
+      vars:
+        Client_UUID: "{{ ClientUUIDS[client_idx] }}"
+      loop: "{{  range(0, ClientUUIDS | length) | list }}"
+      loop_control:
+          loop_var: client_idx

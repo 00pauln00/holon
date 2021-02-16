@@ -1,0 +1,15 @@
+---
+    - name: "Get list of expected num writes"
+      include_role:
+        name: common
+        tasks_from: get_list_of_expected_num_writes
+
+    - name: "wait for app to complete writes."
+      include_role:
+        name: common
+        tasks_from: wait_for_app_for_write_completion
+      vars:
+        index: "{{ idx }}"
+      loop: "{{ range(0, pmdb_app_uuids | length) | list }}"
+      loop_control:
+          loop_var: idx
