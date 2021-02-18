@@ -2,11 +2,11 @@
     - name: "Write at seqno 0 and perform the writes."
       vars:
         stage: "write"
-        cmd: "input@{{ pmdb_apps[item] }}:0:0:0:0.write:0.{{ num_writes_list[item] }}"
+        cmd: "input@{{ pmdb_apps[item] }}:0:0:0:0.write:0.{{ random_num_writes_list[item] | default(constant_number_of_writes) }}"
         where: "/pumice_db_test_client/input"
       set_fact:
         pmdb_multiple_clients_write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', ClientUUID, cmd, where, wantlist=True) }}"
-        app_data_dict: "{{ app_data_dict | default({}) | combine( {  pmdb_apps[item]: num_writes_list[item] } ) }}"
+        app_data_dict: "{{ app_data_dict | default({}) | combine( {  pmdb_apps[item]: (random_num_writes_list[item] | default(constant_number_of_writes)) } ) }}"
       loop: "{{ range(0, pmdb_apps | length) | list }}"
 
     #Create nested dictionary of client_uuids => app_uuid and number of writes.
