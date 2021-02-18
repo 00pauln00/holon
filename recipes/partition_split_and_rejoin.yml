@@ -6,7 +6,15 @@
      recipe_name: "partition_split_and_rejoin"
      parent: "healthy_raftserver_cluster_type1"
      requirement: "pumicedb"
-     num_writes: 100
+     number_of_app_uuids: 1
+     server_keys:
+              - "/raft_root_entry/0/leader-uuid"
+              - "/raft_root_entry/0/commit-idx"
+              - "/raft_root_entry/0/last-applied"
+              - "/raft_root_entry/0/last-applied-cumulative-crc"
+              - "/raft_root_entry/0/sync-entry-crc"
+              - "/raft_root_entry/0/term"
+              - "/raft_root_entry/0/sync-entry-term"
   tasks:
   - block:
     - name: "Check if parent recipe failed"
@@ -43,24 +51,32 @@
       vars:
          ValLeaderUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
 
-    #Start 2 client instances.
-    - name: "{{ recipe_name }}: Get multiple client uuids."
+    - name: "{{ recipe_name}}: Get the server information for all running servers."
+      vars:
+        stage: "server_verify"
+        peer_values_all: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, server_keys, wantlist=True) }}"
+      debug:
+        msg: "Get the values for all running servers {{ peer_values_all }}"
+      no_log: true
+      with_items:
+        - "{{ peer_values_all }}"
+      register: running_srv_vals
+
+    #start multiple clients using common task.
+    - name: "{{ recipe_name }}: start multiple clients."
       include_role:
         name: common
-        tasks_from: get_multiple_client_uuids
-      loop: "{{ range(0, 2) | list }}" #loop for no. of client uuids required.
-
-    - name: "{{ recipe_name }}: Generate App UUIDs."
-      shell: "/usr/bin/uuid"
-      register: partition_app_uuid
-
-    - name: "{{ recipe_name }}: Start the client."
-      include_role:
-         name: common
-         tasks_from: start_client
+        tasks_from: start_multiple_clients
       vars:
-        ClientUUID: "{{ ClientUUIDS[item] }}"
-      loop: "{{ range(0, ClientUUIDS | length) | list }}"
+        number_of_clients: 2
+
+    #Create set of required number of app_uuids.
+    - name: "Get set of required number of app_uuids."
+      include_role:
+        name: common
+        tasks_from: create_app_uuid_set
+      vars:
+        number_of_apps: "{{ number_of_app_uuids }}"
 
     #Increase election timeout to 500ms.
     - name: "{{ recipe_name }}: Set election timeout to 500 ms for all servers."
@@ -76,80 +92,93 @@
           - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
 
-    #Start writes from both two clients. 100writes each.
-    - name: "{{ recipe_name }}: Perform the write {{ num_writes }} times."
+    - name: "Perform write operations for multiple clients."
+      include_role:
+         name: common
+         tasks_from: perform_writes
       vars:
-        stage: "num_writes"
-        cmd: "input@{{ partition_app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
-        where: "/pumice_db_test_client/input"
-        write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', ClientUUIDS, cmd, where, wantlist=True) }}"
-      debug:
-        msg: "{{ write_cmd }}"
-      no_log: True
+        pmdb_apps: "{{ pmdb_app_uuids }}"
+        ClientUUID: "{{ ClientUUIDS[idx] }}"
+        constant_number_of_writes: 300
+      loop: "{{ range(0, ClientUUIDS | length) |list }}"
+      loop_control:
+              loop_var: idx
 
     #Prepare list of two sets of the peers in the cluster.
-    - name: "Get the peer uuids for creating partition with enough number of peers to form the quorum."
+    - name: "Select peers for Large (quorum-capable) partition."
       vars:
         get_quorum: "{{ FollowerUUIDs | length | int / 2 + 1 | int }}"
       set_fact:
         Quorum_for_Partition: "{{ get_quorum | int }}"
 
-    #Bigger Cluster(Partition1).
-    - name: "Set Partition1(Bigger Cluster)."
+    #Bigger Cluster.
+    - name: "Set Bigger Cluster."
       vars:
-        Partition1: []
+        bigger_cluster: []
       set_fact:
-        Partition1: "{{ Partition1 + [FollowerUUIDs[item]] }}"
+        bigger_cluster: "{{ bigger_cluster + [FollowerUUIDs[item]] }}"
       loop: "{{ range(0,  Quorum_for_Partition | int) | list }}"
 
     - debug:
-        msg: "Bigger Cluster: {{ Partition1 }}"
+        msg: "Bigger Cluster: {{ bigger_cluster }}"
 
-    #Smaller Cluster(Partition2).The existing leader should be part of paritition2.
-    - name: "Set Partition2(Smaller Cluster)."
+    #Smaller Cluster.The existing leader should be part of Smaller Cluster.
+    - name: "Set Smaller Cluster."
       vars:
-        remaining_uuids: "{{ FollowerUUIDs | difference(Partition1) }}"
+        remaining_uuids: "{{ FollowerUUIDs | difference(bigger_cluster) }}"
       set_fact:
-        Partition2: "{{ [] + [LeaderUUID['/0/leader-uuid']] + remaining_uuids }}"
+        smaller_cluster: "{{ [] + [LeaderUUID['/0/leader-uuid']] + remaining_uuids }}"
 
     - debug:
-        msg: "Smaller Cluster: {{ Partition2 }}"
+        msg: "Smaller Cluster: {{ smaller_cluster }}"
 
-    #Disabling Msg(Recv) from Partition1 to Partition2.
-    - name: "{{ recipe_name }}: Disable Msg(Recv) from Partition1 to Partition2."
+    #Disabling Msg(Recv) from bigger_cluster to smaller_cluster.
+    - name: "{{ recipe_name }}: Disable Msg(Recv) from bigger_cluster to smaller_cluster."
       vars:
         stage: "disable_candidate_mode"
         cmd: "net_recv_enabled@false"
-        where: "/ctl_svc_nodes/uuid@{{ Partition1[item] }}"
-        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', Partition2, cmd, where, wantlist=True) }}"
+        where: "/ctl_svc_nodes/uuid@{{ bigger_cluster[item] }}"
+        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', smaller_cluster, cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ disable_mode }}"
-      loop: "{{ range(0, Partition1 | length) | list }}"
+      loop: "{{ range(0, bigger_cluster | length) | list }}"
       no_log: True
 
-    #Disabling Msg(Recv) from Partition2 to Partition1.
-    - name: "{{ recipe_name }}: Disable Msg(Recv) from Partition2 to Partition1."
+    #Disabling Msg(Recv) from smaller_cluster to bigger_cluster.
+    - name: "{{ recipe_name }}: Disable Msg(Recv) from smaller_cluster to bigger_cluster."
       vars:
         stage: "disable_candidate_mode"
         cmd: "net_recv_enabled@false"
-        where: "/ctl_svc_nodes/uuid@{{ Partition2[item] }}"
-        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', Partition1, cmd, where, wantlist=True) }}"
+        where: "/ctl_svc_nodes/uuid@{{ smaller_cluster[item] }}"
+        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', bigger_cluster, cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ disable_mode }}"
-      loop: "{{ range(0, Partition2 | length) | list }}"
+      loop: "{{ range(0, smaller_cluster | length) | list }}"
       no_log: True
 
-    - name: "{{ recipe_name }}: Get the leader from partition2."
+    #On bigger_cluster, check for a new leader and successful leader election.
+    - name: "{{ recipe_name }}: Wait until the new leader elected in bigger cluster."
       vars:
-         stage: "part2_leader"
-         leader_key:
-            - "/raft_root_entry/0/leader-uuid"
-         verify_partition2: "{{ lookup('niova_ctlrequest', 'lookup', Partition2, leader_key, wantlist=True) }}"
+        stage: "wait_leader_to_elect"
+        raft_key:
+              - "/raft_root_entry/0/leader-uuid"
       debug:
-        msg: "Getting orignal values {{ verify_partition2 }}."
+        msg: "Waiting for leader to elect"
+      until: lookup('niova_ctlrequest', 'lookup', bigger_cluster[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first != LeaderUUID['/0/leader-uuid']
+      retries: 60
+      delay: 1
+      loop: "{{ range(0, bigger_cluster | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get the leader from smaller cluster."
+      vars:
+         stage: "small_cluster_leader"
+         leader_key: "/raft_root_entry/0/leader-uuid"
+         verify_smaller_cluster: "{{ lookup('niova_ctlrequest', 'lookup', smaller_cluster, leader_key, wantlist=True) }}"
+      debug:
+        msg: "Getting orignal values {{ verify_smaller_cluster }}"
       no_log: True
       with_items:
-          - "{{ verify_partition2 }}"
+          - "{{ verify_smaller_cluster }}"
       register: part2_value
 
     #Check the partition created in the cluster.Check the leader UUIDs on both two sets.
@@ -162,91 +191,48 @@
       no_log: True
       failed_when: part2_stage['/0/leader-uuid'] != LeaderUUID['/0/leader-uuid']
 
-    #On Partition1, check for a new leader and successful leader election.
-    - name: "{{ recipe_name }}: Wait until the new leader elected in bigger cluster(Partition1)."
-      vars:
-        stage: "wait_leader_to_elect"
-        raft_key: "/raft_root_entry/0/leader-uuid"
-      debug:
-        msg: "Waiting for leader to elect"
-      until: lookup('niova_ctlrequest', 'lookup', Partition1[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first != LeaderUUID['/0/leader-uuid']
-      retries: 60
-      delay: 1
-      loop: "{{ range(0, Partition1 | length) | list }}"
-
-    #On Partition 2, check for ‘may-be-depose’
-    - name: "{{ recipe_name }}: Wait until the leader notices 'may-be-depose'."
+    #On Bigger Cluster, check for ‘deny-may-be-depose’
+    - name: "{{ recipe_name }}: Wait until the leader notices 'deny-may-be-depose'."
       vars:
         stage: "wait_leader_may_be_depose"
         part2_leader: "{{ part2_value['results'][0]['item'] }}"
-        raft_key: "/raft_root_entry/0/state"
+        raft_key: "/raft_root_entry/0/client-requests"
       debug:
-        msg: "Waiting for leader notices 'may-be-depose'"
-      until: lookup('niova_ctlrequest', 'lookup', part2_leader['/0/leader-uuid'], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == "may-be-depose"
+        msg: "Waiting for leader notices 'deny-may-be-deposed'"
+      until: lookup('niova_ctlrequest', 'lookup', part2_leader['/0/leader-uuid'], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == "deny-may-be-deposed"
       retries: 60
       delay: 1
 
-    - name: "{{ recipe_name }}: Gather the stats for Partition1(Bigger Cluster)."
-      vars:
-         stage: "verify_partition1"
-         raft_keys:
-              - "/raft_root_entry/0/commit-idx"
-              - "/raft_root_entry/0/last-applied"
-              - "/raft_root_entry/0/last-applied-cumulative-crc"
-              - "/raft_root_entry/0/sync-entry-crc"
-              - "/raft_root_entry/0/term"
-              - "/raft_root_entry/0/sync-entry-term"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', Partition1, raft_keys, wantlist=True) }}"
-      debug:
-        msg: "Getting stats for all running peers."
-      no_log: true
-      with_items:
-        - "{{ peer_values }}"
-      register: running_peers_info
-
-    - name: "{{ recipe_name }}: Compare the values for successful leader election of bigger cluster(Partition1)."
-      vars:
-        peer_info: "{{ running_peers_info['results'][item]['item'] }}"
-      debug:
-        msg:
-        - "Validate the raft values for bigger cluster."
-      failed_when: >
-        (peer_info["/0/commit-idx"] < 0) or
-        (peer_info["/0/last-applied"] < 0) or
-        (peer_info["/0/last-applied-cumulative-crc"] != peer_info["/0/sync-entry-crc"]) or
-        (peer_info["/0/term"] != peer_info["/0/sync-entry-term"])
-      loop: "{{ range(0, Partition1 | length) | list }}"
-
-    #Enable msg recv on peers from two partitions.
-    - name: "{{ recipe_name }}: Enable Msg(Recv) from Partition1 to Partition2."
+    #Enable msg recv on peers from two partitions(i.e.Remove partition)
+    - name: "{{ recipe_name }}: Enable Msg(Recv) from bigger_cluster to smaller_cluster."
       vars:
         stage: "disable_candidate_mode"
         cmd: "net_recv_enabled@true"
-        where: "/ctl_svc_nodes/uuid@{{ Partition1[item] }}"
-        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', Partition2, cmd, where, wantlist=True) }}"
+        where: "/ctl_svc_nodes/uuid@{{ bigger_cluster[item] }}"
+        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', smaller_cluster, cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ disable_mode }}"
-      loop: "{{ range(0, Partition1 | length) | list }}"
+      loop: "{{ range(0, bigger_cluster | length) | list }}"
       no_log: True
 
-    - name: "{{ recipe_name }}: Enable Msg(Recv) from Partition2 to Partition1."
+    - name: "{{ recipe_name }}: Enable Msg(Recv) from smaller_cluster to bigger_cluster."
       vars:
         stage: "disable_candidate_mode"
         cmd: "net_recv_enabled@true"
-        where: "/ctl_svc_nodes/uuid@{{ Partition2[item] }}"
-        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', Partition1, cmd, where, wantlist=True) }}"
+        where: "/ctl_svc_nodes/uuid@{{ smaller_cluster[item] }}"
+        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', bigger_cluster, cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ disable_mode }}"
-      loop: "{{ range(0, Partition2 | length) | list }}"
+      loop: "{{ range(0, smaller_cluster | length) | list }}"
       no_log: True
 
-    #Loop for Partition1(bigger cluster) to get merged in Partition2(smaller cluster).
+    #Loop for bigger_cluster(bigger cluster) to get merged in smaller_cluster(smaller cluster).
     - name: "{{ recipe_name }}: Get the leader(which elected in bigger cluster) from all peers."
       vars:
          stage: "get_leader"
          leader_key:
             - "/raft_root_entry/0/leader-uuid"
-         verify_leader: "{{ lookup('niova_ctlrequest', 'lookup', Partition1, leader_key, wantlist=True) }}"
+         verify_leader: "{{ lookup('niova_ctlrequest', 'lookup', bigger_cluster, leader_key, wantlist=True) }}"
       debug:
         msg: "Getting orignal values {{ verify_leader }}."
       no_log: True
@@ -266,25 +252,61 @@
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    #Perform writes from all clients. 100writes from each client.
-    - name: "{{ recipe_name }}: Perform the write {{ num_writes }} times on both clients."
+    - name: "{{ recipe_name}}: Get the server information for all running servers."
       vars:
-        stage: "num_writes100"
-        cmd: "input@{{ partition_app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
-        where: "/pumice_db_test_client/input"
-        again_write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', ClientUUIDS, cmd, where, wantlist=True) }}"
+        stage: "all_peers_verify"
+        server_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, server_keys, wantlist=True) }}"
       debug:
-        msg: "{{ again_write_cmd }}"
-      no_log: True
+        msg: "Get the values for all running servers {{ server_values }}"
+      no_log: true
+      with_items:
+        - "{{ server_values }}"
+      register: all_peers_vals
 
-    - name: "{{ recipe_name }}: Wait until all write completes from both client."
+    - name: "{{ recipe_name }}: Compare the values for successful leader election of Bigger Cluster."
       vars:
-        stage: "wait_to_client_write"
-        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+        orig_values: "{{ running_srv_vals['results'][item]['item'] }}"
+        peer_info: "{{ all_peers_vals['results'][item]['item'] }}"
       debug:
-        msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', ClientUUIDS[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes | int - 1)
-      retries: 5
-      delay: 1
-      loop: "{{ range(0, ClientUUIDS | length) | list }}"
+        msg:
+        - "Validate the raft values for bigger cluster."
+      failed_when: >
+        (peer_info["/0/commit-idx"] <= orig_values["/0/commit-idx"]) or
+        (peer_info["/0/last-applied"] <= orig_values["/0/last-applied"]) or
+        (peer_info["/0/term"] <= orig_values["/0/term"])
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name}}: Verify that term, last-applied-cumulative-crc and sync-entry-crc are same on all peers"
+      vars:
+        curr_itr_vals: "{{ all_peers_vals['results'][item]['item'] }}"
+        next_itr_vals: "{{ all_peers_vals['results'][item + 1]['item'] }}"
+      debug:
+        msg: "Verifying that term, last-applied-cumulative-crc and sync-entry-crc are same on all peers"
+      failed_when: >
+         (curr_itr_vals['/0/last-applied-cumulative-crc'] != next_itr_vals['/0/last-applied-cumulative-crc']) or
+         (curr_itr_vals['/0/sync-entry-crc'] != next_itr_vals['/0/sync-entry-crc'])
+      loop: "{{ range(0, NRunningPeers | length - 1)| list }}"
+
+    - name: "Perform write operations for multiple clients."
+      include_role:
+         name: common
+         tasks_from: perform_writes
+      vars:
+        pmdb_apps: "{{ pmdb_app_uuids }}"
+        ClientUUID: "{{ ClientUUIDS[idx] }}"
+        constant_number_of_writes: 300
+      loop: "{{ range(0, ClientUUIDS | length) |list }}"
+      loop_control:
+              loop_var: idx
+
+    #wait for write operations to complete.
+    - name: "{{ recipe_name }}: wait for write completion."
+      include_role:
+        name: common
+        tasks_from: wait_for_write_completion
+      vars:
+        Client_UUID: "{{ ClientUUIDS[cl_idx] }}"
+      loop: "{{  range(0, ClientUUIDS | length) | list }}"
+      loop_control:
+              loop_var: cl_idx
 
