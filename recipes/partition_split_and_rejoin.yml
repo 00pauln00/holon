@@ -206,23 +206,23 @@
     #Enable msg recv on peers from two partitions(i.e.Remove partition)
     - name: "{{ recipe_name }}: Enable Msg(Recv) from bigger_cluster to smaller_cluster."
       vars:
-        stage: "disable_candidate_mode"
+        stage: "disable_smaller_cluster"
         cmd: "net_recv_enabled@true"
         where: "/ctl_svc_nodes/uuid@{{ bigger_cluster[item] }}"
-        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', smaller_cluster, cmd, where, wantlist=True) }}"
+        disable_smaller_cluster: "{{ lookup('niova_ctlrequest', 'apply_cmd', smaller_cluster, cmd, where, wantlist=True) }}"
       debug:
-        msg: "{{ disable_mode }}"
+        msg: "{{ disable_smaller_cluster }}"
       loop: "{{ range(0, bigger_cluster | length) | list }}"
       no_log: True
 
     - name: "{{ recipe_name }}: Enable Msg(Recv) from smaller_cluster to bigger_cluster."
       vars:
-        stage: "disable_candidate_mode"
+        stage: "disable_bigger_cluster"
         cmd: "net_recv_enabled@true"
         where: "/ctl_svc_nodes/uuid@{{ smaller_cluster[item] }}"
-        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', bigger_cluster, cmd, where, wantlist=True) }}"
+        disable_bigger_cluster: "{{ lookup('niova_ctlrequest', 'apply_cmd', bigger_cluster, cmd, where, wantlist=True) }}"
       debug:
-        msg: "{{ disable_mode }}"
+        msg: "{{ disable_bigger_cluster }}"
       loop: "{{ range(0, smaller_cluster | length) | list }}"
       no_log: True
 
@@ -276,16 +276,11 @@
         (peer_info["/0/term"] <= orig_values["/0/term"])
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    - name: "{{ recipe_name}}: Verify that term, last-applied-cumulative-crc and sync-entry-crc are same on all peers"
-      vars:
-        curr_itr_vals: "{{ all_peers_vals['results'][item]['item'] }}"
-        next_itr_vals: "{{ all_peers_vals['results'][item + 1]['item'] }}"
-      debug:
-        msg: "Verifying that term, last-applied-cumulative-crc and sync-entry-crc are same on all peers"
-      failed_when: >
-         (curr_itr_vals['/0/last-applied-cumulative-crc'] != next_itr_vals['/0/last-applied-cumulative-crc']) or
-         (curr_itr_vals['/0/sync-entry-crc'] != next_itr_vals['/0/sync-entry-crc'])
-      loop: "{{ range(0, NRunningPeers | length - 1)| list }}"
+    - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and sync-entry-crc are same on all peers."
+      include_role:
+        name: common
+        tasks_from: verify_crc_on_all_peers
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "Perform write operations for multiple clients."
       include_role:
@@ -297,7 +292,7 @@
         constant_number_of_writes: 300
       loop: "{{ range(0, ClientUUIDS | length) |list }}"
       loop_control:
-              loop_var: idx
+           loop_var: idx
 
     #wait for write operations to complete.
     - name: "{{ recipe_name }}: wait for write completion."
@@ -308,5 +303,10 @@
         Client_UUID: "{{ ClientUUIDS[cl_idx] }}"
       loop: "{{  range(0, ClientUUIDS | length) | list }}"
       loop_control:
-              loop_var: cl_idx
+           loop_var: cl_idx
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
 
