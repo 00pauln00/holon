@@ -20,12 +20,19 @@
     - name: "{{ recipe_name}}: Verify the client parameters after successful write."
       vars:
         app_uuid_string: "{{ pmdb_apps[idx] | string }}:0:0:0:0"
+        app_user_id_index: '/{{ idx }}/app-user-id'
+        status_index: '/{{ idx }}/status'
+        pmdb_seqno_index: '/{{ idx }}/pmdb-seqno'
+        pmdb_write_pd_index: '/{{ idx }}/pmdb-write-pending'
+        app_sync_index: '/{{ idx }}/app-sync'
+        app_seqno_index: '/{{ idx }}/app-seqno'
       debug:
-        msg: "Verify parameters after successful write operation"
+        msg:
+         - "Verify parameters after successful write operation"
       failed_when: >
-            (client_vals_after_wr['results'][0]['item']['/{{ idx }}/app-user-id'] != app_uuid_string) or
-            (client_vals_after_wr['results'][0]['item']['/{{ idx }}/status'] != "Success") or
-            (client_vals_after_wr['results'][0]['item']['/{{ idx }}/pmdb-seqno'] != (exp_list[idx] | int - 1)) or
-            (client_vals_after_wr['results'][0]['item']['/{{ idx }}/pmdb-write-pending'] != false) or
-            (client_vals_after_wr['results'][0]['item']['/{{ idx }}/app-sync'] != true) or
-            (client_vals_after_wr['results'][0]['item']['/{{ idx }}/app-seqno'] != (exp_list[idx] | int)) 
+            (client_vals_after_wr['results'][0]['item'][app_user_id_index] != app_uuid_string) or
+            (client_vals_after_wr['results'][0]['item'][status_index] != "Success") or
+            (client_vals_after_wr['results'][0]['item'][pmdb_seqno_index] != (exp_list[idx] | int - 1)) or
+            (client_vals_after_wr['results'][0]['item'][pmdb_write_pd_index] != false) or
+            (client_vals_after_wr['results'][0]['item'][app_sync_index] != true) or
+            (client_vals_after_wr['results'][0]['item'][app_seqno_index] != (exp_list[idx] | int))
