@@ -55,7 +55,7 @@
         ClientUUID: "{{ ClientUUIDS[idx] }}"
       loop: "{{ range(0, ClientUUIDS | length) |list }}"
       loop_control:
-              loop_var: idx
+          loop_var: idx
       
     #wait for write operations to complete.
     - name: "{{ recipe_name }}: wait for write completion."
@@ -66,7 +66,7 @@
         Client_UUID: "{{ ClientUUIDS[cl_idx] }}"
       loop: "{{  range(0, ClientUUIDS | length) | list }}"
       loop_control:
-              loop_var: cl_idx
+          loop_var: cl_idx
 
     #Verify client parameters after successful write operations.
     - name: "{{ recipe_name }}: Verify client parameters."
@@ -78,3 +78,8 @@
       loop: "{{  range(0, ClientUUIDS | length) | list }}"
       loop_control:
           loop_var: client_idx
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
