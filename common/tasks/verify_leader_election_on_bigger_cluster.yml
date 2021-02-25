@@ -1,0 +1,13 @@
+
+    #On bigger_cluster, check for a new leader and successful leader election.
+    - name: "{{ recipe_name }}: Wait until the new leader elected in bigger cluster."
+      vars:
+        stage: "wait_leader_to_elect"
+        raft_key:
+              - "/raft_root_entry/0/leader-uuid"
+      debug:
+        msg: "Waiting for leader to elect"
+      until: lookup('niova_ctlrequest', 'lookup', bigger_cluster[itr], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first != LeaderUUID['/0/leader-uuid']
+      retries: 60
+      delay: 1
+

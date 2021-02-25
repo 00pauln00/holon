@@ -1,0 +1,14 @@
+
+    - name: "{{ recipe_name }}: Set election timeout to max for all servers."
+      vars:
+        stage: "set_elec_timeout"
+        wait_for_ofile: False
+        cmd: "election-timeout-ms@{{ set_election_timeout }}"
+        where: "/raft_net_info/election-timeout-ms"
+        key:
+         - "/raft_net_info/election-timeout-ms"
+      debug:
+        msg:
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+

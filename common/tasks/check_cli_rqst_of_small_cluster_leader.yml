@@ -1,0 +1,10 @@
+    - name: "{{ recipe_name }}: Wait until the leader notices 'deny-may-be-depose'."
+      vars:
+        stage: "wait_leader_may_be_depose"
+        raft_key: "/raft_root_entry/0/client-requests"
+      debug:
+        msg: "Waiting for leader notices 'deny-may-be-deposed'"
+      until: lookup('niova_ctlrequest', 'lookup', SmallClusterLeader, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == "deny-may-be-deposed"
+      retries: 60
+      delay: 1
+

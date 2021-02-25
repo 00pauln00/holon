@@ -1,0 +1,23 @@
+
+  - set_fact:
+       peer_info: []
+
+  - name: "{{ recipe_name }}: Verify commit-idx, last-applied and term value on all peers."
+    vars:
+      stage: "verify_raft_values"
+      raft_keys:
+              - "/raft_root_entry/0/commit-idx"
+              - "/raft_root_entry/0/last-applied"
+              - "/raft_root_entry/0/term"
+    set_fact:
+      peer_info: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+    failed_when: >
+      (peer_info[itr]['/0/commit-idx'] <= get_values_from_all[itr]['/0/commit-idx']) or
+      (peer_info[itr]['/0/last-applied'] <= get_values_from_all[itr]['/0/last-applied']) or
+      (peer_info[itr]['/0/term'] <= get_values_from_all[itr]['/0/term'])
+    loop: "{{ range(0, NRunningPeers | length)| list }}"
+    loop_control:
+       loop_var: itr
+
+  - debug:
+      msg: "{{ peer_info }}"
