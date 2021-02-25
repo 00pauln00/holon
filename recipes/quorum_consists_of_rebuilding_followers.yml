@@ -1,0 +1,131 @@
+- import_playbook: basic_raft_operation_with_client_activity.yml
+  when: ClusterParams['ctype'] == "pumicedb"
+
+- name: "Quorum_of_rebuilding_followers"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "quorum_consists_of_rebuild_followers"
+     parent: "basic_raft_operation_with_client_activity"
+     requirement: "pumicedb"
+     client_obj: {}
+     num_writes: 100
+     number_of_app_uuids: 10
+     peer_raft_keys:
+          - "/raft_root_entry/0/term"
+          - "/raft_root_entry/0/commit-idx"
+          - "/raft_root_entry/0/last-applied"
+          - "/raft_root_entry/0/last-applied-cumulative-crc"
+          - "/raft_root_entry/0/sync-entry-idx"
+          - "/raft_root_entry/0/sync-entry-term"
+          - "/raft_root_entry/0/sync-entry-data-size"
+          - "/raft_root_entry/0/sync-entry-crc"
+
+  tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
+      include_role:
+        name: common
+        tasks_from: recipe_compatibility_requirement
+
+    - name: "{{ recipe_name }}: Get quorum value."
+      include_role:
+        name: common
+        tasks_from: npeers_for_basic_leader_election
+
+    - debug:
+        msg: "Number of followers to be paused so that quorum will be intacted: {{ NRunningPeers | length - npeers_for_leader_elect | int }}"
+
+    #Get the value of number_of_followers_to_pause so that quorum will be intacted.
+    - name: "{{ recipe_name }}: Set number of followers to be paused."
+      set_fact:
+         number_of_followers_to_pause: "{{ NRunningPeers | length - npeers_for_leader_elect | int }}"
+
+    - name: "{{ recipe_name }}: Get cluster information before pausing followers."
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
+
+    - name: "{{ recipe_name }}: Pause number of followers."
+      set_fact:
+         quorum_rebuild_pause_peers: "{{ lookup('niova_raftprocess', 'pause', FollowerUUIDs[item], wantlist=True) }}"
+         inactive_followers: "{{ inactive_followers | default([]) + [FollowerUUIDs[item]] }}"
+      loop: "{{ range(0, number_of_followers_to_pause | int) | list }}"
+    
+    - name: "{{ recipe_name }}: Get cluster information after pausing followers."
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
+
+    #leader value before resuming inactive followers.
+    - set_fact:
+         leader_uuid_before: "{{ LeaderUUID }}"
+
+    #Create set of required number of app_uuids.
+    - name: "{{ recipe_name }}: Get set of required number of app_uuids."
+      include_role:
+        name: common
+        tasks_from: create_app_uuid_set
+      vars:
+        number_of_apps: "{{ number_of_app_uuids }}"
+
+    #Perform write operations for multiple clients. (passing one client at a time.)
+    - name: "{{ recipe_name }}: Perform write operations for multiple clients."
+      include_role:
+         name: common
+         tasks_from: perform_writes
+      vars:
+        pmdb_apps: "{{ pmdb_app_uuids }}"
+        ClientUUID: "{{ client_uuid.stdout }}"
+        constant_number_of_writes: 200
+
+    #wait for write operations to complete.
+    - name: "{{ recipe_name }}: wait for write completion."
+      include_role:
+        name: common
+        tasks_from: wait_for_write_completion
+      vars:
+        Client_UUID: "{{ client_uuid.stdout }}"
+
+    - name: "{{ recipe_name }}: Get the list of peer UUIDs before resuming paused followers."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Resume number of followers."
+      set_fact:
+         quorum_rebuild_resume_peers: "{{ lookup('niova_raftprocess', 'resume', inactive_followers[item], wantlist=True) }}"
+      loop: "{{ range(0, inactive_followers | length) | list }}"
+
+    #Wait until inactive followers show the same leader uuid.
+    - name: "{{ recipe_name }}: Get the Leader UUID for inactive followers and wait until inactive followers show the same leader uuid."
+      vars:
+        stage: "get_leader_uuid"
+        leader_uuid: "{{ lookup('niova_ctlrequest', 'lookup', inactive_followers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) }}"
+      debug:
+        msg: "Waiting till inactive followers show same leader uuid"
+      until: leader_uuid == leader_uuid_before
+      loop: "{{ range(0, inactive_followers | length) | list }}"
+      loop_control:
+          pause: 1
+
+    - name: "{{ recipe_name }}: Get the list of peer UUIDs after resuming followers."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    #Polling until inactive followers are recovered.
+    #Wait until all running peers show same last-applied-cumulative-crc.
+    - name: "{{ recipe_name }}: Wait until all running peers show same last-applied-cumulative-crc."
+      include_role:
+        name: common
+        tasks_from: wait_until_all_peers_show_same_cum_crc
+
+    - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and sync-entry-crc are same on all peers."
+      include_role:
+        name: common
+        tasks_from: verify_crc_on_all_peers
