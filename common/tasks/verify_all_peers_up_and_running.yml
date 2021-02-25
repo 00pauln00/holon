@@ -1,11 +1,23 @@
+    - set_fact:
+        verify_cluster_requirement: []
+
     #Recipe Setup: If the cluster is not booted, the recipe should abort.
     - name: "{{ recipe_name }}: Get the state from all peers."
       vars:
          stage: "check_booting_stage"
          state_key:
-            - "/raft_root_entry/0/state"
+            - "/raft_root_entry/0/process-state"
       set_fact:
          verify_cluster_requirement: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, state_key, wantlist=True) }}"
-      failed_when:
-        verify_cluster_requirement == "booting"
 
+    - debug:
+        msg: "{{ verify_cluster_requirement }}"
+
+    - name: "{{ recipe_name }}: Verify peer state is not booted on all peers."
+      debug:
+        msg: "Verifying booting stage for all peers."
+      failed_when:
+        verify_cluster_requirement[itr]['/0/process-state'] == "booting"
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+      loop_control:
+          loop_var: itr
