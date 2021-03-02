@@ -15,7 +15,3 @@
     set_fact:
       get_values_from_all: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys_from_all_peers, wantlist=True) }}"
 
-  #- debug:
-  #    msg: "{{ get_values_from_all }}"
-
-  - debug: var=get_values_from_all

@@ -36,6 +36,7 @@
          name: common
          tasks_from: get_follower_stats
 
+    #Get all values from all peers before partitioning.
     - name: "{{ recipe_name }}: Get the server information for all running servers."
       include_role:
          name: common
@@ -57,7 +58,7 @@
       vars:
         number_of_apps: "{{ number_of_app_uuids }}"
 
-    #Increase election timeout to 300ms.
+    #Increase election timeout to 500ms.
     - name: "{{ recipe_name }}: Set election timeout to 500 ms for all servers."
       include_role:
         name: common
@@ -65,7 +66,7 @@
       vars:
         set_election_timeout: 500
 
-    #bigger_cluster which has original leader-uuid.
+    #Partiotion:1 i.e. bigger_cluster which has follower-uuids.
     - name: "Set Bigger Cluster."
       set_fact:
         bigger_cluster: "{{ FollowerUUIDs }}"
@@ -73,7 +74,7 @@
     - debug:
         msg: "bigger_cluster: {{ bigger_cluster }}"
 
-    #smaller_cluster which has all followers-uuid.
+    #Partiotion:2 i.e. smaller_cluster which has only leader-uuid.
     - name: "Set Smaller Cluster."
       set_fact:
         smaller_cluster: "{{ LeaderUUID['/0/leader-uuid'] }}"
@@ -81,6 +82,7 @@
     - debug:
         msg: "smaller_cluster: {{ smaller_cluster }}"
 
+    #Start 500 num_writes from both clients.
     - name: "Perform write operations for multiple clients."
       include_role:
         name: common
@@ -125,6 +127,7 @@
       loop_control:
           loop_var: itr
 
+    #Get the leader-uuid from samller cluster.
     - name: "{{ recipe_name }}: Get the leader from smaller cluster."
       vars:
          stage: "small_cluster_leader"
@@ -178,7 +181,7 @@
         msg: "{{ disable_bigger_cluster }}"
       no_log: True
 
-    #Loop for bigger_cluster(bigger cluster) to get merged in smaller_cluster(smaller cluster).
+    #Loop for smaller cluster to get merged in bigger cluster.
     - name: "{{ recipe_name }}: Get the leader(which elected in bigger cluster) from all peers."
       vars:
          stage: "get_leader"
@@ -192,6 +195,7 @@
           - "{{ verify_leader }}"
       register: leader_value
 
+    #Verify that after remove the partitions, all peers have the same leader-uuid which is elected in bigger cluster.
     - name: "{{ recipe_name }}: Wait until all the peers report same leader UUID which is elected in bigger cluster."
       vars:
         stage: "verify_leader_on_all"
@@ -204,16 +208,19 @@
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and sync-entry-crc are same on all peers."
+    #Check all peers have same last-applied-cumulative-crc and sync-entry-crc.
+    - name: "{{ recipe_name }}: Verify term, commit-idx values are greater than original values."
       include_role:
         name: common
         tasks_from: verify_raft_values_on_all_peers
 
+    #Check all peers have same last-applied-cumulative-crc and sync-entry-crc.
     - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and sync-entry-crc are same on all peers."
       include_role:
         name: common
         tasks_from: verify_crc_on_all_peers
 
+    #After verifying server side values, Do 500 num_writes from both clients.
     - name: "Perform write operations for multiple clients."
       include_role:
          name: common
@@ -226,7 +233,7 @@
       loop_control:
            loop_var: idx
 
-    #wait for write operations to complete.
+    #wait for 500 writes to get complete.
     - name: "{{ recipe_name }}: wait for write completion."
       include_role:
         name: common
@@ -236,4 +243,35 @@
       loop: "{{  range(0, ClientUUIDS | length) | list }}"
       loop_control:
            loop_var: cl_idx
+
+    #Verify client side parameters such as pmdb-seqno, app-seqno, status.
+    - name: "{{ recipe_name}}: Get the client parameters after successful write."
+      vars:
+        stage: "lookup_on_client"
+        client_keys:
+          - "/pumice_db_test_client/pmdb-test-apps/0/status"
+          - "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+          - "/pumice_db_test_client/pmdb-test-apps/0/app-seqno"
+        client_vals: "{{ lookup('niova_ctlrequest', 'lookup', ClientUUIDS, client_keys, wantlist=True) }}"
+      debug:
+        msg: "get the values after client write operation {{ client_vals }}"
+      #no_log: true
+      with_items:
+        - "{{ client_vals }}"
+      register: client_vals_after_wr
+
+    - name: "{{ recipe_name}}: Verify the client parameters after successful write."
+      vars:
+        num_writes: 500
+      debug:
+        msg: "Verify parameters after successful write operation"
+      failed_when: >
+            (client_vals_after_wr['results'][0]['item']['/0/status'] != "Success") or
+            (client_vals_after_wr['results'][0]['item']['/0/pmdb-seqno'] != (num_writes - 1)) or
+            (client_vals_after_wr['results'][0]['item']['/0/app-seqno'] != num_writes)
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
 

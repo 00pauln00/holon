@@ -19,5 +19,3 @@
     loop_control:
        loop_var: itr
 
-  - debug:
-      msg: "{{ peer_info }}"
