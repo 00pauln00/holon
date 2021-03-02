@@ -65,18 +65,6 @@
       vars:
         set_election_timeout: 500
 
-    - name: "Perform write operations for multiple clients."
-      include_role:
-         name: common
-         tasks_from: perform_writes
-      vars:
-        pmdb_apps: "{{ pmdb_app_uuids }}"
-        ClientUUID: "{{ ClientUUIDS[idx] }}"
-        constant_number_of_writes: 300
-      loop: "{{ range(0, ClientUUIDS | length) |list }}"
-      loop_control:
-              loop_var: idx
-
     #bigger_cluster which has original leader-uuid.
     - name: "Set Bigger Cluster."
       set_fact:
@@ -92,6 +80,18 @@
 
     - debug:
         msg: "smaller_cluster: {{ smaller_cluster }}"
+
+    - name: "Perform write operations for multiple clients."
+      include_role:
+        name: common
+        tasks_from: perform_writes
+      vars:
+        pmdb_apps: "{{ pmdb_app_uuids }}"
+        ClientUUID: "{{ ClientUUIDS[idx] }}"
+        constant_number_of_writes: 500
+      loop: "{{ range(0, ClientUUIDS | length) |list }}"
+      loop_control:
+              loop_var: idx
 
     #Disabling Msg(Recv) from bigger_cluster to smaller_cluster.
     - name: "{{ recipe_name }}: Disable Msg(Recv) from bigger_cluster to smaller_cluster."
@@ -221,7 +221,7 @@
       vars:
         pmdb_apps: "{{ pmdb_app_uuids }}"
         ClientUUID: "{{ ClientUUIDS[idx] }}"
-        constant_number_of_writes: 300
+        constant_number_of_writes: 500
       loop: "{{ range(0, ClientUUIDS | length) |list }}"
       loop_control:
            loop_var: idx
