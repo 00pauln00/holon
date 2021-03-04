@@ -55,7 +55,7 @@
          quorum_rebuild_pause_peers: "{{ lookup('niova_raftprocess', 'pause', FollowerUUIDs[item], wantlist=True) }}"
          inactive_followers: "{{ inactive_followers | default([]) + [FollowerUUIDs[item]] }}"
       loop: "{{ range(0, number_of_followers_to_pause | int) | list }}"
-    
+
     - name: "{{ recipe_name }}: Get cluster information after pausing followers."
       include_role:
         name: common
@@ -96,10 +96,17 @@
         name: common
         tasks_from: get_server_uuid_info
 
-    - name: "{{ recipe_name }}: Resume number of followers."
+    - name: "{{ recipe_name }}: Resume inactive followers."
       set_fact:
          quorum_rebuild_resume_peers: "{{ lookup('niova_raftprocess', 'resume', inactive_followers[item], wantlist=True) }}"
       loop: "{{ range(0, inactive_followers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Pause active followers."
+      vars:
+         active_followers: "{{ FollowerUUIDs | difference(inactive_followers) }}"
+      set_fact:
+         pause_active_followers: "{{ lookup('niova_raftprocess', 'pause', active_followers[item], wantlist=True) }}"
+      loop: "{{ range(0, active_followers | length) | list }}"
 
     #Wait until inactive followers show the same leader uuid.
     - name: "{{ recipe_name }}: Get the Leader UUID for inactive followers and wait until inactive followers show the same leader uuid."
@@ -117,6 +124,32 @@
       include_role:
         name: common
         tasks_from: get_server_uuid_info
+
+    #Create set of 2 app_uuids.
+    - name: "{{ recipe_name }}: Get set of required number of app_uuids."
+      include_role:
+        name: common
+        tasks_from: create_app_uuid_set
+      vars:
+        number_of_apps: 2
+
+    #Perform write operations for multiple clients. (passing one client at a time.)
+    - name: "{{ recipe_name }}: Perform write operations for multiple clients."
+      include_role:
+         name: common
+         tasks_from: perform_writes
+      vars:
+        pmdb_apps: "{{ pmdb_app_uuids }}"
+        ClientUUID: "{{ client_uuid.stdout }}"
+        constant_number_of_writes: 100
+
+    #wait for write operations to complete.
+    - name: "{{ recipe_name }}: wait for write completion."
+      include_role:
+        name: common
+        tasks_from: wait_for_write_completion
+      vars:
+        Client_UUID: "{{ client_uuid.stdout }}"
 
     #Polling until inactive followers are recovered.
     #Wait until all running peers show same last-applied-cumulative-crc.
