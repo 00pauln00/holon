@@ -1,0 +1,85 @@
+- import_playbook: healthy_raftserver_cluster_type1.yml
+  when: ClusterParams['ctype'] == "pumicedb"
+
+- name: "pmdb_multiple_clients_with_multiple_subapps_per_client"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "pmdb_multiple_clients_subapps"
+     parent: "healthy_raftserver_cluster_type1"
+     requirement: "pumicedb"    
+     number_of_app_uuids: 5
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
+      include_role:
+        name: common
+        tasks_from: recipe_compatibility_requirement
+        
+    #start multiple clients using common task.
+    - name: "{{ recipe_name }}: start multiple clients."
+      include_role:
+        name: common
+        tasks_from: start_multiple_clients
+      vars:
+        number_of_clients: 5
+
+    #Create set of required number of app_uuids.
+    - name: "Get set of required number of app_uuids."
+      include_role:
+        name: common
+        tasks_from: create_app_uuid_set
+      vars:
+        number_of_apps: "{{ number_of_app_uuids }}"
+
+     #Generate list of random number of writes.( random number per app uuid)
+    - name: "Generate list of random number of writes for app_uuids."
+      vars:
+        num_writes: "{{ 1000 | random(start=100) }}"
+      set_fact:
+         random_num_writes_list: "{{ random_num_writes_list | default([]) + [num_writes] }}"
+      loop: "{{ range(0, number_of_app_uuids) | list }}"
+
+    #Perform write operations for multiple clients. (passing one client at a time.)
+    - name: "Perform write operations for multiple clients."
+      include_role:
+         name: common
+         tasks_from: perform_writes
+      vars:
+        pmdb_apps: "{{ pmdb_app_uuids }}"
+        ClientUUID: "{{ ClientUUIDS[idx] }}"
+      loop: "{{ range(0, ClientUUIDS | length) |list }}"
+      loop_control:
+          loop_var: idx
+      
+    #wait for write operations to complete.
+    - name: "{{ recipe_name }}: wait for write completion."
+      include_role:
+        name: common
+        tasks_from: wait_for_write_completion
+      vars:
+        Client_UUID: "{{ ClientUUIDS[cl_idx] }}"
+      loop: "{{  range(0, ClientUUIDS | length) | list }}"
+      loop_control:
+          loop_var: cl_idx
+
+    #Verify client parameters after successful write operations.
+    - name: "{{ recipe_name }}: Verify client parameters."
+      include_role:
+        name: common
+        tasks_from: verify_client_parameters
+      vars:
+        Client_UUID: "{{ ClientUUIDS[client_idx] }}"
+      loop: "{{  range(0, ClientUUIDS | length) | list }}"
+      loop_control:
+          loop_var: client_idx
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true

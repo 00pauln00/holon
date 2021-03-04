@@ -1,0 +1,16 @@
+---
+    - name: "Get list of expected num writes for client."
+      include_role:
+        name: common
+        tasks_from: get_list_of_expected_num_writes
+
+    - name: "Verify write completitions for every app."
+      include_role:
+        name: common
+        tasks_from: verify_client_parameters_for_every_app
+      vars:
+        pmdb_apps: "{{ pmdb_app_uuids | reverse | list }}"
+        idx: "{{ app_index }}"
+      loop: "{{ range(0, pmdb_apps | length) | list }}"
+      loop_control:
+          loop_var: app_index
