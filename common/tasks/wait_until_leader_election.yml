@@ -1,0 +1,17 @@
+---
+    - name: "{{ recipe_name }}: Get the updated list of runing peers."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Wait until leader election happens."
+      vars:
+         stage: "wait_leader_election"
+      debug:
+        msg: "Waiting for leader election"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+      retries: 4
+      delay: 1
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+      loop_control:
+        pause: 2

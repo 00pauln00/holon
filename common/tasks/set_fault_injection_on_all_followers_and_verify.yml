@@ -1,9 +1,9 @@
 ---
-    - name: "{{ recipe_name }}: Set fault injection raft_follower_ignores_non_hb_AE_request on all followers."
+    - name: "{{ recipe_name }}: Set fault injection {{ fault_injection_name }} on all followers."
       vars:
         stage: "fault_injection"
         cmd: "enabled@true"
-        where: "/fault_injection_points/name@raft_follower_ignores_non_hb_AE_request"
+        where: "/fault_injection_points/name@{{ fault_injection_name }}"
       set_fact:
          fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', ServerUUID, cmd, where, wantlist=True) }}"
 
@@ -18,7 +18,7 @@
     - name: "{{ recipe_name }}: Verify fault injected on followers properly."
       set_fact:
          fault_injection_point_enabled : "{{ fault_injection_points['//fault_injection_points'][index]['enabled'] }}"
-      when: (fault_injection_points['//fault_injection_points'][index]['name'] == "raft_follower_ignores_non_hb_AE_request")
+      when: (fault_injection_points['//fault_injection_points'][index]['name'] == fault_injection_name)
       loop: "{{  range(0, fault_injection_points['//fault_injection_points'] |length) | list }}"
       loop_control:
           loop_var: index
