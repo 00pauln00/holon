@@ -1,0 +1,18 @@
+  - set_fact:
+       peer_info: []
+
+  - name: "{{ recipe_name }}: Verify commit-idx, last-applied on all followers."
+    vars:
+      stage: "verify_commit_idx_last_applied"
+      raft_keys:
+              - "/raft_root_entry/0/commit-idx"
+              - "/raft_root_entry/0/last-applied"
+    set_fact:
+      peer_info: "{{ lookup('niova_ctlrequest', 'lookup', running_peers, raft_keys, wantlist=True) }}"
+    failed_when: >
+      (peer_info[itr]['/0/commit-idx'] <= get_values_from_all[itr]['/0/commit-idx']) or
+      (peer_info[itr]['/0/last-applied'] != get_values_from_all[itr]['/0/last-applied'])
+    loop: "{{ range(0, running_peers | length)| list }}"
+    loop_control:
+       loop_var: itr
+

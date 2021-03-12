@@ -1,0 +1,86 @@
+- import_playbook: healthy_raftserver_cluster_type1.yml
+- name: "basic_version_of_leader_has_wide_skew_bw_last_applied_and_commit_index"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "basic_version_of_leader_skew_bw_last_app_and_commit_idx"
+     parent: "healthy_raftserver_cluster_type1"
+     requirement: "pumicedb"
+     num_writes: 1
+     server_keys:
+              - "/raft_root_entry/0/leader-uuid"
+              - "/raft_root_entry/0/commit-idx"
+              - "/raft_root_entry/0/last-applied"
+  tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    - name: "{{ recipe_name }}: Verifying recipe compatibility requirements."
+      include_role:
+         name: common
+         tasks_from: recipe_compatibility_requirement
+
+    - name: "{{ recipe_name }}: Get the list of all running peer UUIDs"
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Get leader-uuid and follower-uuids."
+      include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+    #Get all values from all peers before partitioning.
+    - name: "{{ recipe_name }}: Get the server information for all running servers."
+      include_role:
+         name: common
+         tasks_from: get_all_values_from_all_peers
+
+    #Apply fault injection on all running peers.
+    - name: "{{ recipe_name }}: Ignore writes on all running peers using fault injection."
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_on_all_followers_and_verify
+      vars:
+        ServerUUID: "{{ NRunningPeers[item] }}"
+        fault_injection_name: "raft_server_bypass_sm_apply"
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - debug:
+        msg: "Leader UUID: {{ LeaderUUID['/0/leader-uuid'] }}"
+
+    - name: "{{ recipe_name }}: Kill the Leader."
+      debug:
+       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Wait until the new leader gets  elected."
+      include_role:
+        name: common
+        tasks_from: verify_new_leader_election
+      vars:
+        peer_list: "{{ FollowerUUIDs }}"
+        old_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+      loop: "{{ range(0, FollowerUUIDs | length) | list }}"
+      loop_control:
+          loop_var: itr
+
+    - name: "{{ recipe_name }}: Verify commit-idx values are greater than original values and last-applied should remains same."
+      include_role:
+        name: common
+        tasks_from: verify_commit_idx_and_last_applied
+      vars:
+        running_peers: "{{ FollowerUUIDs }}"
+
+    #Remove fault injection on all running peers.
+    - name: "{{ recipe_name }}: Remove fault injection."
+      include_role:
+        name: common
+        tasks_from: remove_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ FollowerUUIDs[item] }}"
+        fault_injection_name: "raft_server_bypass_sm_apply"
+      loop: "{{ range(0, FollowerUUIDs| length) | list }}"
+
