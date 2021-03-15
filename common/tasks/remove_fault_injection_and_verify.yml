@@ -1,7 +1,7 @@
 ---
     - name: "{{ recipe_name }}: Remove fault injection {{ fault_injection_name }} on all followers."
       vars:
-        stage: "fault_injection"
+        stage: "rm_fault_injection"
         cmd: "enabled@false"
         where: "/fault_injection_points/name@{{ fault_injection_name }}"
       set_fact:
@@ -9,15 +9,15 @@
 
     - name: "{{ recipe_name }}: Get list of fault-injections."
       vars:
-        stage: "fault_injection_check"
+        stage: "rm_fault_injection_check"
         raft_keys:
            - "/fault_injection_points"
       set_fact:
          fault_injection_remove_points: "{{ lookup('niova_ctlrequest', 'lookup', ServerUUID, raft_keys, wantlist=True) }}"
   
-    - name: "{{ recipe_name }}: Verify fault injected on followers properly."
+    - name: "{{ recipe_name }}: Verify fault injection is removed on followers properly."
       set_fact:
-         fault_injection_point_enabled: "{{ fault_injection_remove_points['//fault_injection_points'][index]['enabled'] }}"
+         fault_injection_point_disabled: "{{ fault_injection_remove_points['//fault_injection_points'][index]['enabled'] }}"
       when: (fault_injection_remove_points['//fault_injection_points'][index]['name'] == fault_injection_name)
       loop: "{{  range(0, fault_injection_points['//fault_injection_points'] |length) | list }}"
       loop_control:
@@ -25,4 +25,4 @@
 
     - debug:
         msg: "{{ recipe_name }}: Check if fault_injection is disabled."
-      failed_when: fault_injection_point_enabled != false
+      failed_when: fault_injection_point_disabled != false
