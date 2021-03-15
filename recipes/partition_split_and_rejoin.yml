@@ -167,12 +167,14 @@
       loop_control:
           pause: 1
 
-     #On bigger_cluster, check for a new leader and successful leader election.
-    - name: "{{ recipe_name }}: Wait until the new leader elected in bigger cluster."
+    - name: "{{ recipe_name }}: Wait until the new leader gets  elected."
       include_role:
         name: common
-        tasks_from: verify_leader_election_on_bigger_cluster
-      loop: "{{ range(0, bigger_cluster | length) | list }}"
+        tasks_from: verify_new_leader_election
+      vars:
+        peer_list: "{{ bigger_cluster }}"
+        old_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+      loop: "{{ range(0, peer_list | length) | list }}"
       loop_control:
           loop_var: itr
 
