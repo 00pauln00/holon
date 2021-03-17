@@ -103,7 +103,7 @@
       debug:
         msg: "{{ invalid_write_seq }}"
       no_log: True
-    
+
     - name: "{{ recipe_name }}: Verify that write failed for invalid sequence number"
       vars:
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
@@ -121,7 +121,7 @@
         stage1_values: "{{ invalid_seq['results'][0]['item'] }}"
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
       debug:
-        msg: "Validate write failed with invalid seqno: 2 {{ demo1_valid_wr }}"
+        msg: "Validate write failed with invalid seqno: 2 {{ stage1_values }}"
       failed_when: >
         (stage1_values['/0/app-user-id'] != rncui) or
         (stage1_values['/0/status'] != "Invalid exchange") or
@@ -130,7 +130,7 @@
         (stage1_values['/0/app-sync'] != False) or
         (stage1_values['/0/app-seqno'] != 2) or
         (stage1_values['/0/recent-ops-wr'][0]['sub-app-user-id'] != rncui) or
-        (stage1_values['/0/recent-ops-wr'][0]['status'] != "Success") 
+        (stage1_values['/0/recent-ops-wr'][0]['status'] != "Success")
 
     - name: "{{ recipe_name }}: Now Apply valid write seqno i.e 0"
       vars:
@@ -141,7 +141,7 @@
       debug:
         msg: "{{ valid_write_seq }}"
       no_log: True
-     
+
     - name: "{{ recipe_name }}: Verify the parameters for successful write operation."
       vars:
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
