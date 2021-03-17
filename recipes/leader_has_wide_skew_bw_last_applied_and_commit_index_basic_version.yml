@@ -32,23 +32,6 @@
          name: common
          tasks_from: get_follower_stats
 
-    - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
-      include_role:
-         name: common
-         tasks_from: get_new_client_uuid
-      register: client_uuid
-
-    - name: "{{ recipe_name }}: Create app uuid."
-      shell: "/usr/bin/uuid"
-      register: leader_skew_app_uuid
-
-    - name: "{{ recipe_name }}: Start the client."
-      include_role:
-         name: common
-         tasks_from: start_client
-      vars:
-        ClientUUID: "{{ client_uuid.stdout }}"
-
     #Get all values from all peers before partitioning.
     - name: "{{ recipe_name }}: Get the server information for all running servers."
       include_role:
@@ -93,9 +76,6 @@
         (verify_aftr_first_values[item]['/0/commit-idx'] <= get_values_from_all[item]['/0/commit-idx']) or
         (verify_aftr_first_values[item]['/0/last-applied'] != get_values_from_all[item]['/0/last-applied'])
       loop: "{{ range(0, FollowerUUIDs | length)| list }}"
-
-    - debug:
-        msg: "{{ verify_aftr_first_values }}"
 
     #Remove fault injection on all running peers.
     - name: "{{ recipe_name }}: Remove fault injection."
@@ -144,7 +124,3 @@
         (last_verification_aftr_rm_fault_inject[item]['/0/last-applied'] <= verify_aftr_first_values[item]['/0/last-applied']) or
         (last_verification_aftr_rm_fault_inject[item]['/0/last-applied'] != last_verification_aftr_rm_fault_inject[item]['/0/commit-idx'])
       loop: "{{ range(0, FollowerUUIDs | length)| list }}"
-
-    - debug:
-        msg: "{{ last_verification_aftr_rm_fault_inject }}"
-
