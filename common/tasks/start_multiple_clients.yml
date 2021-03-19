@@ -1,0 +1,16 @@
+---
+    #Get multiple client uuids using common task.
+    - name: "Get multiple client uuids."
+      include_role:
+        name: common
+        tasks_from: get_multiple_client_uuids
+      loop: "{{ range(0, number_of_clients) | list }}" #loop for no. of required client uuids.
+
+    #start multiple clients.
+    - name: "Start multiple client processes."
+      include_role:
+        name: common
+        tasks_from: start_client
+      vars:
+        ClientUUID: "{{ ClientUUIDS[item] }}"
+      loop: "{{ range(0, ClientUUIDS | length) |list }}"

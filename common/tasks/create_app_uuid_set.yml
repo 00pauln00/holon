@@ -1,0 +1,10 @@
+---
+        - name: "Generate App UUIDs."
+          shell: "/usr/bin/uuid"
+          loop: "{{ range(0, number_of_apps) | list }}"
+          register: app_uuids
+         
+        - name: "Create list of app uuids."
+          set_fact:
+             pmdb_app_uuids: "{{ pmdb_app_uuids | default([]) + [app_uuids['results'][item]['stdout']] }}"
+          loop: "{{ range(0, app_uuids['results'] | length) | list }}"
