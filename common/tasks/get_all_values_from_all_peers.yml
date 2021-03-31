@@ -1,0 +1,17 @@
+
+  - name: "{{ recipe_name }}: Get all raft values from all peers."
+    vars:
+      stage: "verify_raft_values"
+      raft_keys_from_all_peers:
+              - "/raft_root_entry/0/leader-uuid"
+              - "/raft_root_entry/0/commit-idx"
+              - "/raft_root_entry/0/last-applied"
+              - "/raft_root_entry/0/last-applied-cumulative-crc"
+              - "/raft_root_entry/0/sync-entry-crc"
+              - "/raft_root_entry/0/term"
+              - "/raft_root_entry/0/sync-entry-term"
+              - "/raft_root_entry/0/state"
+              - "/raft_root_entry/0/client-requests"
+    set_fact:
+      get_values_from_all: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys_from_all_peers, wantlist=True) }}"
+
