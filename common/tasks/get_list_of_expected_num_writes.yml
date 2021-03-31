@@ -1,0 +1,11 @@
+---
+
+    - name: "Get list of expected number of writes"
+      vars:
+        expected_num_writes: "{{ [Client_UUID] | map('extract', write_ops_data) | flatten | map(attribute=pmdb_app_uuids[item]) | flatten | list | first  }}"
+      set_fact:
+         exp_li: "{{ exp_li | default({}) | combine({item: expected_num_writes }) }}"
+      loop: "{{ range(0, pmdb_app_uuids | length) | reverse | list }}"
+
+
+    - set_fact: exp_list="{{ exp_li | dict2items |  map(attribute='value') | list  }}"

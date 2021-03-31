@@ -1,0 +1,298 @@
+- import_playbook: healthy_raftserver_cluster_type1.yml
+- name: "partition_split_and_rejoin"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "partition_split_and_rejoin"
+     parent: "healthy_raftserver_cluster_type1"
+     requirement: "pumicedb"
+     number_of_app_uuids: 1
+     peer_values_for_bigger_cluster: []
+     peer_values_for_small_cluster: []
+     server_keys:
+              - "/raft_root_entry/0/leader-uuid"
+              - "/raft_root_entry/0/commit-idx"
+              - "/raft_root_entry/0/last-applied"
+              - "/raft_root_entry/0/last-applied-cumulative-crc"
+              - "/raft_root_entry/0/sync-entry-crc"
+              - "/raft_root_entry/0/term"
+              - "/raft_root_entry/0/sync-entry-term"
+
+  tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    #All peers in the cluster should be up and running.
+    - name: "{{ recipe_name }}: Verifying recipe compatibility requirements."
+      include_role:
+         name: common
+         tasks_from: recipe_compatibility_requirement
+
+    - name: "{{ recipe_name }}: Get the list of all running peer UUIDs"
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
+    #Recipe Setup: If the cluster is not booted, the recipe should abort.
+    - name: "{{ recipe_name }}: Verify if the cluster is not booted, the recipe should abort."
+      include_role:
+         name: common
+         tasks_from: verify_all_peers_up_and_running
+
+    - name: "{{ recipe_name }}: Get Leader UUID and corresponding UUIDs for follower peers"
+      include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+    #Recipe Setup: Ensure followers aliveness.
+    - name: "{{ recipe_name }}: Validate followers are alive."
+      include_role:
+         name: common
+         tasks_from: validate_followers_aliveness
+      vars:
+         ValLeaderUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+
+    - name: "{{ recipe_name }}: Get all values from all peers."
+      include_role:
+         name: common
+         tasks_from: get_all_values_from_all_peers
+
+    #start multiple clients using common task.
+    - name: "{{ recipe_name }}: start multiple clients."
+      include_role:
+        name: common
+        tasks_from: start_multiple_clients
+      vars:
+        number_of_clients: 2
+
+    #Create set of required number of app_uuids.
+    - name: "Get set of required number of app_uuids."
+      include_role:
+        name: common
+        tasks_from: create_app_uuid_set
+      vars:
+        number_of_apps: "{{ number_of_app_uuids }}"
+
+     #Prepare list of two sets of the peers in the cluster.
+    - name: "Select peers for Large (quorum-capable) partition."
+      vars:
+        get_quorum: "{{ FollowerUUIDs | length | int / 2 + 1 | int }}"
+      set_fact:
+        Quorum_for_Partition: "{{ get_quorum | int }}"
+
+    #Bigger Cluster.
+    - name: "Set Bigger Cluster."
+      vars:
+        bigger_cluster: []
+      set_fact:
+        bigger_cluster: "{{ bigger_cluster + [FollowerUUIDs[item]] }}"
+      loop: "{{ range(0,  Quorum_for_Partition | int) | list }}"
+
+    - debug:
+        msg: "Bigger Cluster: {{ bigger_cluster }}"
+
+    #Smaller Cluster.The existing leader should be part of Smaller Cluster.
+    - name: "Set Smaller Cluster."
+      vars:
+        remaining_uuids: "{{ FollowerUUIDs | difference(bigger_cluster) }}"
+      set_fact:
+        smaller_cluster: "{{ [] + [LeaderUUID['/0/leader-uuid']] + remaining_uuids }}"
+
+    - debug:
+        msg: "Smaller Cluster: {{ smaller_cluster }}"
+
+    #Increase election timeout to 500ms.
+    - name: "{{ recipe_name }}: Set election timeout to 500 ms for all servers."
+      include_role:
+        name: common
+        tasks_from: set_max_election_timeout
+      vars:
+        set_election_timeout: 500
+
+    - name: "Perform write operations for multiple clients."
+      include_role:
+         name: common
+         tasks_from: perform_writes
+      vars:
+        pmdb_apps: "{{ pmdb_app_uuids }}"
+        ClientUUID: "{{ ClientUUIDS[idx] }}"
+        constant_number_of_writes: 500
+      loop: "{{ range(0, ClientUUIDS | length) |list }}"
+      loop_control:
+              loop_var: idx
+
+    #Disabling Msg(Recv) from bigger_cluster to smaller_cluster.
+    - name: "{{ recipe_name }}: Disable Msg(Recv) from bigger_cluster to smaller_cluster."
+      vars:
+        stage: "disable_candidate_mode"
+        cmd: "net_recv_enabled@false"
+        where: "/ctl_svc_nodes/uuid@{{ bigger_cluster[item] }}"
+        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', smaller_cluster, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ disable_mode }}"
+      loop: "{{ range(0, bigger_cluster | length) | list }}"
+      no_log: True
+
+    #Disabling Msg(Recv) from smaller_cluster to bigger_cluster.
+    - name: "{{ recipe_name }}: Disable Msg(Recv) from smaller_cluster to bigger_cluster."
+      vars:
+        stage: "disable_candidate_mode"
+        cmd: "net_recv_enabled@false"
+        where: "/ctl_svc_nodes/uuid@{{ smaller_cluster[item] }}"
+        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', bigger_cluster, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ disable_mode }}"
+      loop: "{{ range(0, smaller_cluster | length) | list }}"
+      no_log: True
+
+    - name: "{{ recipe_name}}: Get the server information for bigger cluster."
+      vars:
+        stage: "bigger_cluster_values"
+        peer_values_for_bigger_cluster: "{{ lookup('niova_ctlrequest', 'lookup', bigger_cluster, server_keys, wantlist=True) }}"
+      debug:
+        msg: "Get the values for all running servers {{ peer_values_for_bigger_cluster }}"
+      loop: "{{ range(0, 10) | list }}"
+      loop_control:
+          pause: 1
+
+    - name: "{{ recipe_name}}: Get the server information for smaller cluster."
+      vars:
+        stage: "smaller_cluster_values"
+        peer_values_for_small_cluster: "{{ lookup('niova_ctlrequest', 'lookup', smaller_cluster, server_keys, wantlist=True) }}"
+      debug:
+        msg: "Get the values for all running servers {{ peer_values_for_small_cluster }}"
+      loop: "{{ range(0, 10) | list }}"
+      loop_control:
+          pause: 1
+
+    - name: "{{ recipe_name }}: Wait until the new leader gets  elected."
+      include_role:
+        name: common
+        tasks_from: verify_new_leader_election
+      vars:
+        peer_list: "{{ bigger_cluster }}"
+        old_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+      loop: "{{ range(0, peer_list | length) | list }}"
+      loop_control:
+          loop_var: itr
+
+    - name: "{{ recipe_name }}: Get the leader from smaller cluster."
+      vars:
+         stage: "small_cluster_leader"
+         leader_key: "/raft_root_entry/0/leader-uuid"
+         verify_smaller_cluster: "{{ lookup('niova_ctlrequest', 'lookup', smaller_cluster, leader_key, wantlist=True) }}"
+      debug:
+        msg: "Getting orignal values {{ verify_smaller_cluster }}"
+      no_log: True
+      with_items:
+          - "{{ verify_smaller_cluster }}"
+      register: part2_value
+
+    #Check the partition created in the cluster.Check the leader UUIDs on both two sets.
+    - name: "{{ recipe_name }}: Verify the smaller cluster's leader is same as original leader."
+      vars:
+        part2_stage: "{{ part2_value['results'][0]['item'] }}"
+      debug:
+        msg:
+          - "Verifying new leader election on partition2."
+      no_log: True
+      failed_when: part2_stage['/0/leader-uuid'] != LeaderUUID['/0/leader-uuid']
+
+    #On smaller Cluster, check for leader's client-requests report ‘deny-may-be-depose’
+    - name: "{{ recipe_name }}: Wait until the leader notices 'deny-may-be-depose'."
+      include_role:
+         name: common
+         tasks_from: check_cli_rqst_of_small_cluster_leader
+      vars:
+         part2_leader: "{{ part2_value['results'][0]['item'] }}"
+         SmallClusterLeader: "{{ part2_leader['/0/leader-uuid'] }}"
+
+    #Enable msg recv on peers from two partitions(i.e.Remove partition)
+    - name: "{{ recipe_name }}: Enable Msg(Recv) from bigger_cluster to smaller_cluster."
+      vars:
+        stage: "disable_smaller_cluster"
+        cmd: "net_recv_enabled@true"
+        where: "/ctl_svc_nodes/uuid@{{ bigger_cluster[item] }}"
+        disable_smaller_cluster: "{{ lookup('niova_ctlrequest', 'apply_cmd', smaller_cluster, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ disable_smaller_cluster }}"
+      loop: "{{ range(0, bigger_cluster | length) | list }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Enable Msg(Recv) from smaller_cluster to bigger_cluster."
+      vars:
+        stage: "disable_bigger_cluster"
+        cmd: "net_recv_enabled@true"
+        where: "/ctl_svc_nodes/uuid@{{ smaller_cluster[item] }}"
+        disable_bigger_cluster: "{{ lookup('niova_ctlrequest', 'apply_cmd', bigger_cluster, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ disable_bigger_cluster }}"
+      loop: "{{ range(0, smaller_cluster | length) | list }}"
+      no_log: True
+
+    #Loop for bigger_cluster(bigger cluster) to get merged in smaller_cluster(smaller cluster).
+    - name: "{{ recipe_name }}: Get the leader(which elected in bigger cluster) from all peers."
+      vars:
+         stage: "get_leader"
+         leader_key:
+            - "/raft_root_entry/0/leader-uuid"
+         verify_leader: "{{ lookup('niova_ctlrequest', 'lookup', bigger_cluster, leader_key, wantlist=True) }}"
+      debug:
+        msg: "Getting orignal values {{ verify_leader }}."
+      no_log: True
+      with_items:
+          - "{{ verify_leader }}"
+      register: leader_value
+
+    - name: "{{ recipe_name }}: Wait until all the peers report same leader UUID which is elected in bigger cluster."
+      vars:
+        stage: "verify_leader_on_all"
+        part1_leader: "{{ leader_value['results'][0]['item']['/0/leader-uuid'] }}"
+        raft_key: "/raft_root_entry/0/leader-uuid"
+      debug:
+        msg: "Verifying leader-uuid on all peers."
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (part1_leader)
+      retries: 60
+      delay: 1
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and sync-entry-crc are same on all peers."
+      include_role:
+        name: common
+        tasks_from: verify_raft_values_on_all_peers
+
+    - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and sync-entry-crc are same on all peers."
+      include_role:
+        name: common
+        tasks_from: verify_crc_on_all_peers
+
+    - name: "Perform write operations for multiple clients."
+      include_role:
+         name: common
+         tasks_from: perform_writes
+      vars:
+        pmdb_apps: "{{ pmdb_app_uuids }}"
+        ClientUUID: "{{ ClientUUIDS[idx] }}"
+        constant_number_of_writes: 500
+      loop: "{{ range(0, ClientUUIDS | length) |list }}"
+      loop_control:
+           loop_var: idx
+
+    #wait for write operations to complete.
+    - name: "{{ recipe_name }}: wait for write completion."
+      include_role:
+        name: common
+        tasks_from: wait_for_write_completion
+      vars:
+        Client_UUID: "{{ ClientUUIDS[cl_idx] }}"
+      loop: "{{  range(0, ClientUUIDS | length) | list }}"
+      loop_control:
+           loop_var: cl_idx
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
+
