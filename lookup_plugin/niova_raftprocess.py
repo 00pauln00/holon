@@ -18,7 +18,7 @@ on the server/client.
 	@operation: operation to perform on the peer.
 	@proc_type: Process type (server/client)
 '''
-def niova_raft_process_ops(recipe_conf, cluster_type, peer_uuid, operation, proc_type):
+def niova_raft_process_ops(recipe_conf, cluster_type, peer_uuid, operation, proc_type, app_name):
 
     raft_uuid = recipe_conf['raft_config']['raft_uuid']
     base_dir =  recipe_conf['raft_config']['base_dir_path']
@@ -37,7 +37,7 @@ def niova_raft_process_ops(recipe_conf, cluster_type, peer_uuid, operation, proc
 
         inotifyobj = InotifyPath(base_dir, True)
         inotifyobj.export_ctlsvc_path(ctlsvc_path)
-        serverproc.start_process(raft_uuid, peer_uuid, base_dir)
+        serverproc.start_process(raft_uuid, peer_uuid, base_dir,app_name)
 
     elif operation == "pause":
         serverproc.pause_process(pid)
@@ -158,14 +158,17 @@ class LookupModule(LookupBase):
         Find out the type of the process (server or client) looking at its UUID
         '''
         proc_type = niova_raft_process_get_proc_type(uuid, recipe_conf)
-
+        
         if proc_type == "client" and proc_operation == "start":
 
             # Prepare the client config if it's already not created.
             niova_client_config_create(uuid, recipe_conf, cluster_params)
 
         # Perform the operation on the peer.
-        niova_obj_dict = niova_raft_process_ops(recipe_conf, cluster_type, uuid, proc_operation, proc_type)
+        #To know the application to start
+        app_name = cluster_params['App_type']
+            
+        niova_obj_dict = niova_raft_process_ops(recipe_conf, cluster_type, uuid, proc_operation, proc_type, app_name)
         if len(terms) == 3:
             logging.info("sleep after the operation")
             sleep_info = terms[2]
