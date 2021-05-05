@@ -32,7 +32,7 @@ class LookupModule(LookupBase):
                 for c in cmd:
                     fcntl.ioctl(fd, termios.TIOCSTI, c)
         except:
-            return {"Client has crashed"}
+            return {"status":-1,"msg":"Client has crashed"}
 
         #temp not checking json file for writes
         counter=0 #Timeout for checking output file 
@@ -50,10 +50,10 @@ class LookupModule(LookupBase):
                 counter+=1
                 time.sleep(1)
                 if counter == 5:
-                    return "Output file not created"
+                    return {"status":-1,"msg":"Output file not created"}
         
         #Parsing
         if "Read" in request['Operation'] or "Write" in request['Operation']: 
-            return request['App_data']
+            return {"status":0,"request":request['App_data']}
         else:
-            return request['Leader_uuid']
+            return {"status":0,"request":request['Leader_uuid']}
