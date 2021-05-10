@@ -1,0 +1,231 @@
+- name: "basic_recipe_for_covid_goapp"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "basic_recipe_for_covid_goapp"
+    parent: None
+    uid: "{{ app_uuid.stdout }}:0:0:0:0" 
+
+  tasks:
+  - block:
+       # start the servers
+     - name: "{{ recipe_name }}: Printing the list of all server"
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     - name: "{{ recipe_name }}: Get the list of all the server peer uuids"
+       include_role:
+         name: common
+         tasks_from: start_server_golang
+       vars:
+         ServerUUID: "{{ NonRunningServers[item] }}"
+       loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+       # start the client 
+     - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+       include_role:
+         name: common
+         tasks_from: get_new_client_uuid
+       register: client_uuid
+
+     - debug:
+        msg: "Client UUID: {{ client_uuid }}"
+
+     - name: "{{ recipe_name }}: Start client process"
+       include_role:
+         name: common
+         tasks_from: start_client_golang
+       vars:
+         ClientUUID: "{{ client_uuid.stdout }}"
+
+       # generate rncui                                             
+     - name: "{{ recipe_name }}: Generate App UUID"
+       shell: "/usr/bin/uuid"
+       register: app_uuid
+    
+       # write single entry
+     - name: "{{ recipe_name}}: Write single read entry to the golang app"
+       vars:
+         stage: "CovidWriteOne"
+         cmd: "WriteOne#{{ app_uuid.stdout }}:0:0:0:0#Africa#OWID_AFR#5000#2000#{{ recipe_name }}_{{ stage }}"
+       set_fact:
+         WriteOne: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+
+       # check is write is successful
+     - name: "{{ recipe_name }}: Check if write is successful"
+       vars:
+         uid: "{{ app_uuid.stdout }}:0:0:0:0" 
+       debug:
+         msg: "{{ WriteOne }}"
+       failed_when: >
+         (WriteOne['status']!=0) and
+         (WriteOne['response'][uid]['Status']!=0)
+
+       # read single entry 
+     - name: "{{ recipe_name}}: Read single entry to the golang app"
+       vars:
+         stage: "CovidReadOne"
+         cmd: "ReadOne#Africa#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
+       set_fact:
+         ReadOne: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}" 
+
+       # check if read is successful
+     - name: "{{ recipe_name }}: Check if read is successful"
+       debug:
+         msg: "{{ ReadOne }}"
+       failed_when:
+          ReadOne['status']!=0
+
+       # compare read and write
+     - name: "{{ recipe_name }}: Comparing read and write "
+       vars:
+        uid: "{{ app_uuid.stdout }}:0:0:0:0" 
+        Readrequest: "{{ ReadOne['response'][uid] }}"
+       debug:
+        msg: "{{ Readrequest }}"
+       failed_when: >
+         (Readrequest['Location'] != "Africa") and
+         (Readrequest['Iso_code'] != "OWID_AFR") and
+         (Readrequest['People_vaccinated'] != "2000") and
+         (Readrequest['Total_vaccinations'] != "5000") 
+
+       # getting NIOVA_BIN_PATH
+     - name: "{{ recipe_name }}: Getting NIOVA BIN PATH"
+       set_fact:
+        NIOVA_BIN_PATH: "{{ lookup('env','NIOVA_BIN_PATH') }}"
+      
+     - debug:
+        msg: "NIOVA PATH {{ NIOVA_BIN_PATH }}" 
+
+        # write multiple entries
+     - name: "{{ recipe_name}}: Write all entry to the golang app through csv file"
+       vars:
+         stage: "CovidWriteMulti"
+         cmd: "WriteMulti#{{ NIOVA_BIN_PATH }}/vaccinations.csv#{{ recipe_name }}_{{ stage }}"
+       set_fact:
+         WriteMulti: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+
+     - debug:
+         msg: "writemulti {{WriteMulti}}" 
+
+        # read multiple entries
+     - name: "{{ recipe_name}}: Read all entry to the golang app through csv file"
+       vars:
+         stage: "CovidReadMulti"
+         cmd: "ReadMulti#{{ recipe_name }}_{{ stage }}"
+       set_fact:
+         ReadMulti: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+
+        # checking values of readmulti
+     - name: "{{ recipe_name }}: Parsing read multiple entry to the golang app form json output"
+       debug:
+        msg: "ReadMulti {{ ReadMulti }}"
+
+        # get leader
+     - name: "{{ recipe_name}}: Get leader uuid value"
+       vars:
+         stage: 'getLeader'
+         cmd: "get_leader#{{ recipe_name }}_{{ stage }}"
+       set_fact:
+         OldLeaderUUID: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+
+     - debug:
+         msg: "{{ OldLeaderUUID }}"          
+
+       # pause the leader
+     - name: "{{ recipe_name}}: Pause the leader"
+       set_fact:
+         response: "Pausing leader process {{ lookup('niova_raftprocess', 'pause', OldLeaderUUID['response'], wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: Printing the list of all server"
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info   
+
+       # verify new leader is elected 
+     - name: "{{ recipe_name }}: Verify new leader is elected successfully"
+       include_role:
+         name: common
+         tasks_from: verify_new_leader_election 
+       vars:
+         old_leader: "{{ OldLeaderUUID['response'] }}"
+         peer_list: "{{ NRunningPeers }}"
+       loop: "{{ range(0, peer_list | length) | list }}"
+       loop_control:
+          loop_var: itr
+       
+       # get new leader 
+     - name: "{{ recipe_name }}: Get new leader uuid value"
+       vars:
+        stage: "getLeaderNew"
+        cmd: "get_leader#{{ recipe_name }}_{{ stage }}"
+       set_fact:
+        NewLeaderUUID: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+
+       # check if new leader is elected
+      - name: "{{ recipe_name}}: Check if new leader is elected"
+       debug:
+         msg: "Old leader : {{ OldLeaderUUID }} and New leader : {{ NewLeaderUUID }}"
+       failed_when: OldLeaderUUID == NewLeaderUUID 
+
+       # read single entry
+     - name: "{{ recipe_name}}: Read single entry to the golang app"
+       vars:
+         stage: "CovidReadTwo"
+         cmd: "ReadOne#Africa#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
+       set_fact:
+         ReadOneNew: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+
+       # comparing read entry of old and new leader 
+     - name: "{{ recipe_name }}: Comparing read single entry of the old leader with new leader"
+       vars:
+        uid: "{{ app_uuid.stdout }}:0:0:0:0" 
+        Readrequest: "{{ ReadOneNew['response'][uid] }}"
+       debug:
+        msg: "Compare  {{ Readrequest }}"
+       failed_when: >
+         (Readrequest['Location'] != "Africa") and
+         (Readrequest['Iso_code'] != "OWID_AFR") and
+         (Readrequest['People_vaccinated'] != "2000") and
+         (Readrequest['Total_vaccinations'] != "5000") 
+     
+        # write single entry
+     - name: "{{ recipe_name}}: Write single read entry to the golang app"
+       vars:
+          stage: "CovidWriteTwo"
+          cmd: "WriteOne#{{ app_uuid.stdout }}:0:0:0:0#Africa#OWID_AFR#5000#2000#{{ recipe_name }}_{{ stage }}"
+       set_fact:
+          WriteOne: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+
+        # check if write is successful
+     - name: "{{ recipe_name }}: Check if write is successful"
+       vars:
+         uid: "{{ app_uuid.stdout }}:0:0:0:0" 
+       debug:
+         msg: "{{ WriteOne }}"
+       failed_when: >
+         (WriteOne['status']!=0) and
+         (WriteOne['response'][uid]['Status']!=0)
+
+        # read single entry
+     - name: "{{ recipe_name}}: Read single entry to the golang app"
+       vars:
+          stage: "CovidReadThree"
+          cmd: "ReadOne#Africa#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
+       set_fact:
+          ReadOne: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+
+        # comapring read entry 
+     - name: "{{ recipe_name }}: Comparing read single entry of the golang app form json output"
+       vars:
+        uid: "{{ app_uuid.stdout }}:0:0:0:0"
+        Readrequest: "{{ ReadOne['response'][uid]}}"
+       debug:
+        msg: "Compare {{ Readrequest }}"
+       failed_when: >
+         (Readrequest['Location'] != "Africa") and
+         (Readrequest['Iso_code'] != "OWID_AFR") and
+         (Readrequest['People_vaccinated'] != "2000") and
+         (Readrequest['Total_vaccinations'] != "5000") 
+         
