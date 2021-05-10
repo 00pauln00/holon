@@ -166,7 +166,7 @@ class LookupModule(LookupBase):
 
         # Perform the operation on the peer.
         #To know the application to start
-        app_name = cluster_params['App_type']
+        app_name = cluster_params['app_type']
             
         niova_obj_dict = niova_raft_process_ops(recipe_conf, cluster_type, uuid, proc_operation, proc_type, app_name)
         if len(terms) == 3:

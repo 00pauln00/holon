@@ -8,23 +8,23 @@ import time
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
-        #Get parameter values
+        #Get lookup parameter values[cmd,client_uuid]
         cmd=terms[0]
         uuid=terms[1]
         cluster_params = kwargs['variables']['ClusterParams']
-        print("Debug : ",cmd," ",uuid)
-        # open the application log and get pid
-        recipe_conf = {}
+        
+
+        #Open the application log and get pid
         raft_json_fpath = "%s/%s/%s.json" % (cluster_params['base_dir'], cluster_params['raft_uuid'], cluster_params['raft_uuid'])
         if os.path.exists(raft_json_fpath):
             with open(raft_json_fpath, "r+", encoding="utf-8") as json_file:
                 recipe_conf = json.load(json_file)
-        #Get pid
-        pid = int(recipe_conf['raft_process'][uuid]['process_pid'])
-        #debug 
+                pid = int(recipe_conf['raft_process'][uuid]['process_pid'])
         
-        #check pid is alive
-        #send the cmd to application client through proc
+        #Get operation and file_name from cmd
+        opcode,fname=cmd.split("#")[0],cmd.split("#")[-1] 
+
+        #Send the cmd to application client through proc
         path="/proc/{}/fd/0".format(pid)
         cmd+="\n"
         try:
@@ -32,28 +32,32 @@ class LookupModule(LookupBase):
                 for c in cmd:
                     fcntl.ioctl(fd, termios.TIOCSTI, c)
         except:
+            #Client is crashed
             return {"status":-1,"msg":"Client has crashed"}
 
-        #temp not checking json file for writes
-        counter=0 #Timeout for checking output file 
-        client_json="%s/%s/client_%s.json" % (cluster_params['base_dir'], cluster_params['raft_uuid'],uuid)
+        #Wait till output json file created
+        counter=0
+        timeout=25
+        client_json="%s/%s/%s.json" % (cluster_params['base_dir'],cluster_params['raft_uuid'],fname)
         while True:
             if os.path.exists(client_json):
                 try:
                     with open(client_json, "r+", encoding="utf-8") as json_file:
                         request = json.load(json_file)
                 except:
-                    pass
+                    return {"status":-1,"msg":"Invalid json format in output file"}
                 break
             else:
-                #busy wait
+                #Wait, fail at max count
                 counter+=1
                 time.sleep(1)
-                if counter == 5:
-                    return {"status":-1,"msg":"Output file not created"}
+                if counter == timeout:
+                    return {"status":-1,"msg":"Timeout checking for output file"}
         
-        #Parsing
-        if "Read" in request['Operation'] or "Write" in request['Operation']: 
-            return {"status":0,"request":request['App_data']}
+        #Output parsing
+        if "Read" in request['Operation']: 
+            return {"status":0,"response":request['Data']}
+        elif "Write" in request['Operation']:
+            return {"status":0,"response":request['Data']}
         else:
-            return {"status":0,"request":request['Leader_uuid']}
+            return {"status":0,"response":request['Leader_uuid']}
