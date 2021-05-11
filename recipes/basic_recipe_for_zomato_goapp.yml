@@ -72,7 +72,9 @@
        debug:
          msg: "{{ ReadOne }}"
 
-     - name: "{{ recipe_name }}: Check if read is successful"   
+     - name: "{{ recipe_name }}: Check if read is successful"
+       debug:
+        msg: "check if read is successful"   
        failed_when:
           ReadOne['status'] != 0
 
@@ -127,7 +129,7 @@
        vars:
         stage: "getLeader"
         cmd: "get_leader#{{ recipe_name }}_{{ stage }}"
-       register:
+       set_fact:
         OldLeaderUUID: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
 
      - debug:
@@ -160,7 +162,7 @@
        vars:
         stage: "getLeaderNew"
         cmd: "get_leader#{{ recipe_name }}_{{ stage }}"
-       register:
+       set_fact:
         NewLeaderUUID: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
       
       # check if new leader is elected

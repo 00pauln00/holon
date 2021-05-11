@@ -75,7 +75,9 @@
        debug:
          msg: "{{ ReadOne }}"
 
-     - name: "{{ recipe_name }}: Check if read is successful"   
+     - name: "{{ recipe_name }}: Check if read is successful"
+       debug:
+        msg: "check if read is successful"
        failed_when:
           ReadOne['status'] != 0
 
@@ -129,16 +131,13 @@
        vars:
          stage: 'getLeader'
          cmd: "get_leader#{{ recipe_name }}_{{ stage }}"
-       register:
+       set_fact:
          OldLeaderUUID: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
 
-     - debug:
-         msg: "{{ OldLeaderUUID }}"          
-
        # pause the leader
-     - name: "{{ recipe_name}}: Pause the leader"
-       set_fact:
-         response: "Pausing leader process {{ lookup('niova_raftprocess', 'pause', OldLeaderUUID['response'], wantlist=True) }}"
+     - name: "{{ recipe_name }}: Pause  leader process."
+       debug:
+        msg: "Pausing leader process {{ lookup('niova_raftprocess', 'pause', OldLeaderUUID['response'], wantlist=True) }}"
 
      - name: "{{ recipe_name }}: Printing the list of all server"
        include_role:
@@ -162,11 +161,11 @@
        vars:
         stage: "getLeaderNew"
         cmd: "get_leader#{{ recipe_name }}_{{ stage }}"
-       register:
+       set_fact:
         NewLeaderUUID: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
 
        # check if new leader is elected
-      - name: "{{ recipe_name}}: Check if new leader is elected"
+     - name: "{{ recipe_name}}: Check if new leader is elected"
        debug:
          msg: "Old leader : {{ OldLeaderUUID }} and New leader : {{ NewLeaderUUID }}"
        failed_when: OldLeaderUUID == NewLeaderUUID 
