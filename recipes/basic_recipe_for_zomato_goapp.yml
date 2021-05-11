@@ -8,12 +8,12 @@
   tasks:
   - block:
        # start the servers
-     - name: "{{ recipe_name }}: Printing the list of all server"
+     - name: "{{ recipe_name }}: Print the UUIDs of all the servers"
        include_role:
           name: common
           tasks_from: get_server_uuid_info
 
-     - name: "{{ recipe_name }}: Get the list of all the server peer uuids"
+     - name: "{{ recipe_name }}: Start all the servers in the cluster"
        include_role:
           name: common
           tasks_from: start_server_golang
@@ -31,7 +31,7 @@
      - debug:
         msg: "Client UUID: {{ client_uuid }}"
      
-     - name: "{{ recipe_name }}: Start client process"
+     - name: "{{ recipe_name}}: Start the client for {{ app_type}} Application"
        include_role:
          name: common
          tasks_from: start_client_golang
@@ -44,38 +44,40 @@
        register: app_uuid
       
        # write single entry
-     - name: "{{ recipe_name }}: Write single  entry to the golang app"
+     - name: "{{ recipe_name }}: Write the single key-value pair to ZOMATO Application"
        vars:
         stage: "ZomatoWriteOne"
         cmd: "WriteOne#{{ app_uuid.stdout }}:0:0:0:0#96627#Grill9#Secunderabad#Biryani,Chinese,NorthIndian,Rolls#VeryGood#85988#{{ recipe_name }}_{{ stage }}"
        set_fact:
-        WriteOne: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+        WriteOne: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
      
-       # check is write is successful
+       # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful" 
        debug:
          msg: "{{ WriteOne }}"
        failed_when: >
-         (WriteOne['status']!=0) and
-         (WriteOne['response'][uid]['Status']!=0)
+         (WriteOne['status'] != 0) and
+         (WriteOne['response'][uid]['Status'] != 0)
 
         # read single entry   
-     - name: "{{ recipe_name }}: Read single entry to the golang app"
+     - name: "{{ recipe_name }}: Read value for key: 96627(Restaurant_id) from ZOMATO application"
        vars:
         stage: "ZomatoReadOne"
         cmd: "ReadOne#96627#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
        set_fact:
-        ReadOne: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+        ReadOne: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
 
-        # check if read is successful
-     - name: "{{ recipe_name }}: Check if read is successful"
+       # check if read is successful
+     - name: "{{ recipe_name }}: Print value of ReadOne"
        debug:
          msg: "{{ ReadOne }}"
+
+     - name: "{{ recipe_name }}: Check if read is successful"   
        failed_when:
-          ReadOne['status']!=0
+          ReadOne['status'] != 0
 
        # compare read and write
-     - name: "{{ recipe_name }}: Comparing read and write "
+     - name: "{{ recipe_name }}: Comparing read and write"
        vars:
         Readrequest: "{{ ReadOne['response'][uid] }}"
        debug:
@@ -88,45 +90,45 @@
          (Readrequest['ratings_text'] != "VeryGood") and
          (Readrequest['votes'] != "85988") 
       
-       # getting NIOVA_BIN_PATH
-     - name: "{{ recipe_name }}: Geting NIOVA BIN PATH"
+       # Get the path for csv file
+     - name: "{{ recipe_name }}: Get the path for csv file"
        set_fact:
         NIOVA_BIN_PATH: "{{ lookup('env','NIOVA_BIN_PATH') }}"
       
      - debug:
-        msg: "NIOVA PATH {{ NIOVA_BIN_PATH }}"
+        msg: "CSV PATH {{ NIOVA_BIN_PATH }}"
 
         # write multiple entries
-     - name: "{{ recipe_name }}: Write multiple entries to the golang app through csv file"
+     - name: "{{ recipe_name }}: Write all entries from csv file to ZOMATO application"
        vars:
          stage: "ZomatoWriteMulti"
          cmd: "WriteMulti#{{ NIOVA_BIN_PATH }}/zomatodata.csv#{{ recipe_name }}_{{ stage }}"
        set_fact:
-         WriteMulti: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+         WriteMulti: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
      
      - debug:
         msg: "writemulti {{ WriteMulti }}"
        
         # read multiple entries
-     - name: "{{ recipe_name }}: Read multiple entries to the golang app through csv file"
+     - name: "{{ recipe_name }}: Read multiple entries to the ZOMATO application through csv file"
        vars:
         stage: "ZomatoReadMulti"
         cmd: "ReadMulti#{{ recipe_name }}_{{ stage }}"
        set_fact:
-        ReadMulti: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+        ReadMulti: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
  
        # checking values of readmulti
-     - name: "{{ recipe_name }}: Parsing read multiple entry to the golang app form json output"
+     - name: "{{ recipe_name }}: Parsing read multiple entry to the ZOMATO application form json output"
        debug:
         msg: "ReadMulti {{ ReadMulti }}"   
      
        # get leader
-     - name: "{{ recipe_name }}: Get leader uuid value"
+     - name: "{{ recipe_name }}: Get Leader UUID"
        vars:
         stage: "getLeader"
         cmd: "get_leader#{{ recipe_name }}_{{ stage }}"
-       set_fact:
-        OldLeaderUUID: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+       register:
+        OldLeaderUUID: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
 
      - debug:
          msg: "{{ OldLeaderUUID }}"   
@@ -158,8 +160,8 @@
        vars:
         stage: "getLeaderNew"
         cmd: "get_leader#{{ recipe_name }}_{{ stage }}"
-       set_fact:
-        NewLeaderUUID: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+       register:
+        NewLeaderUUID: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
       
       # check if new leader is elected
      - name: "{{ recipe_name }}: Check if new leader is elected"
@@ -168,12 +170,12 @@
        failed_when: OldLeaderUUID == NewLeaderUUID 
 
         # read single entry        
-     - name: "{{ recipe_name }}: Read single entry to the golang app"
+     - name: "{{ recipe_name }}: Read single entry to the ZOMATO application"
        vars:
         stage: "ZomatoReadTwo"
         cmd: "ReadOne#96627#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
        set_fact:
-        ReadOneNew: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+        ReadOneNew: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
 
         # comparing read entry of old and new leader 
      - name: "{{ recipe_name }}: Comparing read single entry of the golang app form json output file "
@@ -189,40 +191,45 @@
          (Readrequest['ratings_text'] != "VeryGood") and
          (Readrequest['votes'] != "85988") 
 
+       # generate rncui                                             
+     - name: "{{ recipe_name }}: Generate App UUID"
+       shell: "/usr/bin/uuid"
+       register: app_uuid_new
+
       # write single entry
-     - name: "{{ recipe_name }}: Write single  entry to the golang app"
+     - name: "{{ recipe_name }}: Write single key-value pair to ZOMATO Application"
        vars:
-        stage: "ZomatoWriteTwo"
-        cmd: "WriteOne#{{ app_uuid.stdout }}:0:0:0:0#96627#Grill9#Kerala#Biryani,Chinese,NorthIndian,Rolls#VeryGood#85988#{{ recipe_name }}_{{ stage }}"
+        stage: "ZomatoWriteTwo"   
+        cmd: "WriteOne#{{ app_uuid_new.stdout }}:0:0:0:0#11971#Aroma'sHyderabadHouse#Punea#NorthIndian#VeryGood#692#{{ recipe_name }}_{{ stage }}"
        set_fact:
-        WriteOne: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+        WriteOne: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
 
        # check if write is successfull
      - name: "{{ recipe_name }}: Check if write is successful"
        debug:
          msg: "{{ WriteOne }}"
        failed_when: >
-         (WriteOne['status']!=0) and
-         (WriteOne['response'][uid]['Status']!=0)
+         (WriteOne['status'] != 0) and
+         (WriteOne['response'][uid]['Status'] != 0)
       
        # read single entry
-     - name: "{{ recipe_name }}: Read single entry to the golang app"
+     - name: "{{ recipe_name }}: Read value for key: 11971(Restaurant_id) from ZOMATO application"
        vars:
         stage: "ZomatoReadThree"
-        cmd: "ReadOne#96627#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
+        cmd: "ReadOne#11971#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
        set_fact:
-        ReadOne: "{{ lookup('golang_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+        ReadOne: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
 
          # comparing read entry 
-     - name: "{{ recipe_name }}: Comparing read and write"
+     - name: "{{ recipe_name }}: Comparing read single entry of the ZOMATO Application form json output"
        vars:
         Readrequest: "{{ ReadOne['response'][uid]}}"
        debug:
         msg: "Compare {{ Readrequest }}"
        failed_when: >
-         (Readrequest['Restaurant_id'] != "96627") and
-         (Readrequest['Restaurant_name'] != "Grill9") and
-         (Readrequest['city'] != "Kerala") and
-         (Readrequest['cuisines'] != "Biryani,Chinese,NorthIndian,Rolls") and
+         (Readrequest['Restaurant_id'] != "11971") and
+         (Readrequest['Restaurant_name'] != "Aroma'sHyderabadHouse") and
+         (Readrequest['city'] != "Punea") and
+         (Readrequest['cuisines'] != "NorthIndian") and
          (Readrequest['ratings_text'] != "VeryGood") and
-         (Readrequest['votes'] != "85988")    
+         (Readrequest['votes'] != "692")    
