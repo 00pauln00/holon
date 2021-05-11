@@ -113,11 +113,7 @@ class RaftProcess:
 
         If its application then we want the logs in the file
         '''
-        if app_name=="zomato" or app_name=="covid":
-            temp_file = "%s/application_output_%s_%s" % (base_dir,self.process_type,peer_uuid)
-            print("APPLICAITON OUTPUT : ",temp_file)
-        else:
-            temp_file = "%s/raft_log_%s_%s.txt" % (base_dir, self.process_type, peer_uuid)
+        temp_file = "%s/%s_log_%s_%s.txt" % (base_dir,app_name,self.process_type, peer_uuid)
         
         fp = open(temp_file, "w")
         print("Raft uuid : ",raft_uuid,"peer uuid : ",peer_uuid)

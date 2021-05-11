@@ -9,8 +9,8 @@ import time
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values[cmd,client_uuid]
-        cmd=terms[0]
-        uuid=terms[1]
+        cmd = terms[0]
+        uuid = terms[1]
         cluster_params = kwargs['variables']['ClusterParams']
         
 
@@ -22,7 +22,7 @@ class LookupModule(LookupBase):
                 pid = int(recipe_conf['raft_process'][uuid]['process_pid'])
         
         #Get operation and file_name from cmd
-        opcode,fname=cmd.split("#")[0],cmd.split("#")[-1] 
+        opcode,fname = cmd.split("#")[0],cmd.split("#")[-1] 
 
         #Send the cmd to application client through proc
         path="/proc/{}/fd/0".format(pid)
@@ -32,13 +32,13 @@ class LookupModule(LookupBase):
                 for c in cmd:
                     fcntl.ioctl(fd, termios.TIOCSTI, c)
         except:
-            #Client is crashed
-            return {"status":-1,"msg":"Client has crashed"}
+            #Client is not running
+            return {"status":-1,"msg":"Client is not running!"}
 
         #Wait till output json file created
-        counter=0
-        timeout=25
-        client_json="%s/%s/%s.json" % (cluster_params['base_dir'],cluster_params['raft_uuid'],fname)
+        counter = 0
+        timeout = 25
+        client_json = "%s/%s/%s.json" % (cluster_params['base_dir'],cluster_params['raft_uuid'],fname)
         while True:
             if os.path.exists(client_json):
                 try:
@@ -49,7 +49,7 @@ class LookupModule(LookupBase):
                 break
             else:
                 #Wait, fail at max count
-                counter+=1
+                counter+ = 1
                 time.sleep(1)
                 if counter == timeout:
                     return {"status":-1,"msg":"Timeout checking for output file"}
