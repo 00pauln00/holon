@@ -1,0 +1,7 @@
+---
+
+    - name: "Start the peer"
+      debug:
+       msg:
+        - "{{lookup('niova_raftprocess', 'start', ServerUUID, wantlist=True)}}"
+       
