@@ -4,7 +4,7 @@
   vars:
     recipe_name: "basic_recipe_for_covid_goapp"
     parent: None
-    uid: "{{ app_uuid.stdout }}:0:0:0:0" 
+    uid: "{{ app_uuid.stdout }}:0:0:0:0"
 
   tasks:
   - block:
@@ -22,7 +22,7 @@
          ServerUUID: "{{ NonRunningServers[item] }}"
        loop: "{{ range(0, NonRunningServers | length) | list }}"
 
-       # start the client 
+       # start the client
      - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
        include_role:
          name: common
@@ -39,11 +39,11 @@
        vars:
          ClientUUID: "{{ client_uuid.stdout }}"
 
-       # generate rncui                                             
+       # generate rncui
      - name: "{{ recipe_name }}: Generate App UUID"
        shell: "/usr/bin/uuid"
        register: app_uuid
-    
+
        # write single entry
      - name: "{{ recipe_name}}: Write the single key-value pair to COVID Application"
        vars:
@@ -55,20 +55,20 @@
        # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"
        vars:
-         uid: "{{ app_uuid.stdout }}:0:0:0:0" 
+         uid: "{{ app_uuid.stdout }}:0:0:0:0"
        debug:
          msg: "{{ WriteOne }}"
        failed_when: >
          (WriteOne['status'] != 0) and
          (WriteOne['response'][uid]['Status'] != 0)
 
-       # read single entry 
+       # read single entry
      - name: "{{ recipe_name}}: Read value for key: Africa(location) from COVID application"
        vars:
          stage: "CovidReadOne"
          cmd: "ReadOne#Africa#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
        set_fact:
-         ReadOne: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}" 
+         ReadOne: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
 
        # check if read is successful
      - name: "{{ recipe_name }}: Print value of ReadOne"
@@ -84,7 +84,7 @@
        # compare read and write
      - name: "{{ recipe_name }}: Comparing read and write "
        vars:
-        uid: "{{ app_uuid.stdout }}:0:0:0:0" 
+        uid: "{{ app_uuid.stdout }}:0:0:0:0"
         Readrequest: "{{ ReadOne['response'][uid] }}"
        debug:
         msg: "{{ Readrequest }}"
@@ -92,15 +92,15 @@
          (Readrequest['Location'] != "Africa") and
          (Readrequest['Iso_code'] != "OWID_AFR") and
          (Readrequest['People_vaccinated'] != "2000") and
-         (Readrequest['Total_vaccinations'] != "5000") 
+         (Readrequest['Total_vaccinations'] != "5000")
 
        # Get the path for csv file
      - name: "{{ recipe_name }}: Get the path for csv file"
        set_fact:
         NIOVA_BIN_PATH: "{{ lookup('env','NIOVA_BIN_PATH') }}"
-      
+
      - debug:
-        msg: "CSV PATH {{ NIOVA_BIN_PATH }}" 
+        msg: "CSV PATH {{ NIOVA_BIN_PATH }}"
 
         # write multiple entries
      - name: "{{ recipe_name}}: Write all entries from csv file to COVID application"
@@ -111,7 +111,7 @@
          WriteMulti: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
 
      - debug:
-         msg: "writemulti {{WriteMulti}}" 
+         msg: "writemulti {{WriteMulti}}"
 
         # read multiple entries
      - name: "{{ recipe_name}}: Read all entry to the COVID application through csv file"
@@ -131,44 +131,58 @@
        vars:
          stage: 'getLeader'
          cmd: "get_leader#{{ recipe_name }}_{{ stage }}"
-       set_fact:
-         OldLeaderUUID: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+         getLeader_values: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+       debug:
+         msg: "Get the Old Leader UUID {{ getLeader_values }}"
+       with_items:
+         - "{{ getLeader_values }}"
+       register: OldLeaderUUID
+
+     - debug:
+        msg: "{{ OldLeaderUUID['results'][0]['item']['response']}}"
 
        # pause the leader
      - name: "{{ recipe_name }}: Pause  leader process."
        debug:
-        msg: "Pausing leader process {{ lookup('niova_raftprocess', 'pause', OldLeaderUUID['response'], wantlist=True) }}"
+        msg: "Pausing leader process {{ lookup('niova_raftprocess', 'pause', OldLeaderUUID['results'][0]['item']['response'], wantlist=True) }}"
 
      - name: "{{ recipe_name }}: Printing the list of all server"
        include_role:
           name: common
-          tasks_from: get_server_uuid_info   
+          tasks_from: get_server_uuid_info
 
-       # verify new leader is elected 
+       # verify new leader is elected
      - name: "{{ recipe_name }}: Verify new leader is elected successfully"
        include_role:
          name: common
-         tasks_from: verify_new_leader_election 
+         tasks_from: verify_new_leader_election
        vars:
-         old_leader: "{{ OldLeaderUUID['response'] }}"
+         old_leader: "{{ OldLeaderUUID['results'][0]['item']['response'] }}"
          peer_list: "{{ NRunningPeers }}"
        loop: "{{ range(0, peer_list | length) | list }}"
        loop_control:
           loop_var: itr
-       
-       # get new leader 
+
+       # get new leader
      - name: "{{ recipe_name }}: Get new leader uuid value"
        vars:
         stage: "getLeaderNew"
         cmd: "get_leader#{{ recipe_name }}_{{ stage }}"
-       set_fact:
-        NewLeaderUUID: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+        getNewLeader_values: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+       debug:
+         msg: "Get the Old Leader UUID {{ getNewLeader_values }}"
+       with_items:
+         - "{{ getNewLeader_values }}"
+       register: NewLeaderUUID
+
+     - debug:
+        msg: "{{ NewLeaderUUID['results'][0]['item']['response']}}"       
 
        # check if new leader is elected
      - name: "{{ recipe_name}}: Check if new leader is elected"
        debug:
          msg: "Old leader : {{ OldLeaderUUID }} and New leader : {{ NewLeaderUUID }}"
-       failed_when: OldLeaderUUID == NewLeaderUUID 
+       failed_when: OldLeaderUUID == NewLeaderUUID
 
        # read single entry
      - name: "{{ recipe_name}}: Read value for key: Africa(location) from COVID application"
@@ -178,10 +192,10 @@
        set_fact:
          ReadOneNew: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
 
-       # comparing read entry of old and new leader 
+       # comparing read entry of old and new leader
      - name: "{{ recipe_name }}: Comparing read single entry of the old leader with new leader"
        vars:
-        uid: "{{ app_uuid.stdout }}:0:0:0:0" 
+        uid: "{{ app_uuid.stdout }}:0:0:0:0"
         Readrequest: "{{ ReadOneNew['response'][uid] }}"
        debug:
         msg: "Compare  {{ Readrequest }}"
@@ -189,9 +203,9 @@
          (Readrequest['Location'] != "Africa") and
          (Readrequest['Iso_code'] != "OWID_AFR") and
          (Readrequest['People_vaccinated'] != "2000") and
-         (Readrequest['Total_vaccinations'] != "5000") 
-     
-       # generate rncui                                             
+         (Readrequest['Total_vaccinations'] != "5000")
+
+       # generate rncui
      - name: "{{ recipe_name }}: Generate App UUID"
        shell: "/usr/bin/uuid"
        register: app_uuid_new
@@ -207,7 +221,7 @@
         # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"
        vars:
-         uid: "{{ app_uuid.stdout }}:0:0:0:0" 
+         uid: "{{ app_uuid.stdout }}:0:0:0:0"
        debug:
          msg: "{{ WriteOne }}"
        failed_when: >
@@ -222,7 +236,7 @@
        set_fact:
           ReadOne: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
 
-        # comparing read entry 
+        # comparing read entry
      - name: "{{ recipe_name }}: Comparing read single entry of the COVID Application form json output"
        vars:
         uid: "{{ app_uuid.stdout }}:0:0:0:0"
@@ -233,5 +247,5 @@
          (Readrequest['Location'] != "NewYork") and
          (Readrequest['Iso_code'] != "NYC") and
          (Readrequest['People_vaccinated'] != "5000") and
-         (Readrequest['Total_vaccinations'] != "5000") 
-         
+         (Readrequest['Total_vaccinations'] != "5000")
+

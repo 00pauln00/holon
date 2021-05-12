@@ -124,21 +124,25 @@
        debug:
         msg: "ReadMulti {{ ReadMulti }}"   
      
-       # get leader
-     - name: "{{ recipe_name }}: Get Leader UUID"
+        # get leader
+     - name: "{{ recipe_name}}: Get Leader UUID"
        vars:
-        stage: "getLeader"
-        cmd: "get_leader#{{ recipe_name }}_{{ stage }}"
-       set_fact:
-        OldLeaderUUID: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+         stage: 'getLeader'
+         cmd: "get_leader#{{ recipe_name }}_{{ stage }}"
+         getLeader_values: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+       debug:
+         msg: "Get the Old Leader UUID {{ getLeader_values }}"
+       with_items:
+         - "{{ getLeader_values }}"
+       register: OldLeaderUUID
 
      - debug:
-         msg: "{{ OldLeaderUUID }}"   
+        msg: "{{ OldLeaderUUID['results'][0]['item']['response']}}"   
  
        # pause the leader
      - name: "{{ recipe_name }}: Pause  leader process."
        debug:
-        msg: "Pausing leader process {{ lookup('niova_raftprocess', 'pause', OldLeaderUUID['response'], wantlist=True) }}"
+        msg: "Pausing leader process {{ lookup('niova_raftprocess', 'pause', OldLeaderUUID['results'][0]['item']['response'], wantlist=True) }}"
         
        # verify new leader is elected
      - name: "{{ recipe_name }}: Printing the list of all server"
@@ -151,19 +155,26 @@
          name: common
          tasks_from: verify_new_leader_election 
        vars:
-         old_leader: "{{ OldLeaderUUID['response'] }}"
+         old_leader: "{{OldLeaderUUID['results'][0]['item']['response'] }}"
          peer_list: "{{ NRunningPeers }}"
        loop: "{{ range(0, peer_list | length) | list }}"
        loop_control:
           loop_var: itr
        
-        # get new leader 
+       # get new leader
      - name: "{{ recipe_name }}: Get new leader uuid value"
        vars:
         stage: "getLeaderNew"
         cmd: "get_leader#{{ recipe_name }}_{{ stage }}"
-       set_fact:
-        NewLeaderUUID: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+        getNewLeader_values: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+       debug:
+         msg: "Get the Old Leader UUID {{ getNewLeader_values }}"
+       with_items:
+         - "{{ getNewLeader_values }}"
+       register: NewLeaderUUID
+
+     - debug:
+        msg: "{{ NewLeaderUUID['results'][0]['item']['response']}}"  
       
       # check if new leader is elected
      - name: "{{ recipe_name }}: Check if new leader is elected"
