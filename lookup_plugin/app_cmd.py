@@ -37,8 +37,9 @@ class LookupModule(LookupBase):
 
         #Wait till output json file created
         counter = 0
-        timeout = 25
+        timeout = 2500
         client_json = "%s/%s/%s.json" % (cluster_params['base_dir'],cluster_params['raft_uuid'],fname)
+        print(client_json)
         while True:
             if os.path.exists(client_json):
                 try:
@@ -49,8 +50,8 @@ class LookupModule(LookupBase):
                 break
             else:
                 #Wait, fail at max count
-                counter+= 1
-                time.sleep(1)
+                counter += 1
+                time.sleep(0.1)
                 if counter == timeout:
                     return {"status":-1,"msg":"Timeout checking for output file"}
         
