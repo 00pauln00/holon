@@ -49,7 +49,7 @@ class LookupModule(LookupBase):
                 break
             else:
                 #Wait, fail at max count
-                counter+ = 1
+                counter+= 1
                 time.sleep(1)
                 if counter == timeout:
                     return {"status":-1,"msg":"Timeout checking for output file"}
