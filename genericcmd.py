@@ -23,6 +23,7 @@ class GenericCmds:
                     print('{} is NOT installed'.format(package))
                     print('Installing : {}'.format(package))
                     subprocess.run(['pip3', 'install', package])
+                    subprocess.run(['pip', 'install', package])
 
     '''
     Method: generate uuid.
@@ -30,10 +31,10 @@ class GenericCmds:
     Parameters:
     '''
     def generate_uuid(self):
-        
+
         p = subprocess.Popen(["uuid"], stdout=subprocess.PIPE)
         (stdout, err) = p.communicate()
-        
+
         #remove the newline
         uuid_bytes = stdout.strip()
         uuid = uuid_bytes.decode('utf-8')
@@ -55,7 +56,7 @@ class GenericCmds:
     Method: Move file from source to destinaton directory
     '''
     def move_file(self, src_path, dest_path):
-        
+
         p = subprocess.run(['mv', src_path, dest_path], stdout=subprocess.PIPE)
         if p.returncode != 0:
             print("Move file %s to %s failed with error: %d" % (src_path, dest_path, p.returncode))
@@ -68,7 +69,7 @@ class GenericCmds:
             rc = os.remove(fpath)
         except OSError as e:
             print("File %s remove failed with error: %s" % (fpath, os.strerror(e.errno)))
-            
+
         return rc
 
     '''
@@ -110,4 +111,3 @@ class GenericCmds:
                print(f"Port %d is already in use" % port)
                exit()
         s.close()
-
