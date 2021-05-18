@@ -6,6 +6,10 @@
     - ./cmdline_vars.yml
 
   tasks:
+  - name: "Print ansible version"
+    debug:
+      msg: "Ansible version is  {{ ansible_version.full }}"
+
   - name: "Get Raft UUID"
     shell: "/usr/bin/uuid"
     register: cluster_uuid
