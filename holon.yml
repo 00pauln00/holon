@@ -6,10 +6,6 @@
     - ./cmdline_vars.yml
 
   tasks:
-  - name: "Installing jmespath python module"
-    pip:
-      name: jmespath
-
   - name: "Get Raft UUID"
     shell: "/usr/bin/uuid"
     register: cluster_uuid
