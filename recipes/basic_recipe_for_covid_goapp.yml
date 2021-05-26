@@ -8,6 +8,16 @@
 
   tasks:
   - block:
+
+      # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is coviclead"
+       vars: 
+         app_type: "{{ app_type}}"
+       debug:
+         msg: "app_type should be covid"
+       failed_when:
+         (app_type != "covid") 
+
        # start the servers
      - name: "{{ recipe_name }}: Print the UUIDs of all the servers"
        include_role:
@@ -61,8 +71,8 @@
        debug:
          msg: "{{ WriteOne }}"
        failed_when: >
-         (WriteOne['results'][0]['item']['status'] != 0) and
-         (WriteOne['results'][0]['item']['response'][uid]['Status'] != 0)
+         (WriteOne['results'][0]['item']['status'] != 0) or
+         (WriteOne['results'][0]['item']['response'][uid]['Status'] != '0')
 
        # read single entry
      - name: "{{ recipe_name}}: Read value for key: Africa(location) from COVID application"
@@ -85,14 +95,14 @@
        # compare read and write
      - name: "{{ recipe_name }}: Comparing read and write "
        vars:
-        Readrequest: "{{ ReadOne['results'][0]['item']['response'][uid] }}"
+        OldLeader_rdrqst: "{{ ReadOne['results'][0]['item']['response'][uid] }}"
        debug:
         msg: "compare read and write"
        failed_when: >
-         (Readrequest['Location'] != "Africa") and
-         (Readrequest['Iso_code'] != "OWID_AFR") and
-         (Readrequest['People_vaccinated'] != "2000") and
-         (Readrequest['Total_vaccinations'] != "5000")
+         (OldLeader_rdrqst['Location'] != "Africa") or
+         (OldLeader_rdrqst['Iso_code'] != "OWID_AFR") or
+         (OldLeader_rdrqst['People_vaccinated'] != "2000") or
+         (OldLeader_rdrqst['Total_vaccinations'] != "5000")
 
        # Get the path for csv file
      - name: "{{ recipe_name }}: Get the path for csv file"
@@ -118,11 +128,11 @@
          stage: "CovidReadMulti"
          cmd: "ReadMulti#{{ recipe_name }}_{{ stage }}"
          ReadMultiValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
-        debug:
+       debug:
          msg: "read all entries"
        with_items:
          - "{{ ReadMultiValue }}"
-       register: ReadMulti  
+       register: ReadMulti
        no_log: True
 
         # get leader
@@ -169,7 +179,7 @@
          msg: "Get the Old Leader UUID {{ getNewLeader_values }}"
        with_items:
          - "{{ getNewLeader_values }}"
-       register: NewLeaderUUID     
+       register: NewLeaderUUID
 
        # check if new leader is elected
      - name: "{{ recipe_name}}: Check if new leader is elected"
@@ -189,18 +199,25 @@
          - "{{ ReadOneNewValue }}"
        register: ReadOneNew
 
+     - debug:
+        msg: "{{ ReadOne}} "
+
+     - debug:
+        msg: "{{ ReadOneNew}} "
+
        # comparing read entry of old and new leader
      - name: "{{ recipe_name }}: Comparing read single entry of the old leader with new leader"
        vars:
         uid: "{{ app_uuid.stdout }}:0:0:0:0"
-        Readrequest: "{{ ReadOneNew['results'][0]['item']['response'][uid] }}"
+        prev_val: "{{ ReadOne['results'][0]['item']['response'][uid] }}"
+        NewLeader_rdreqst: "{{ ReadOneNew['results'][0]['item']['response'][uid] }}"
        debug:
         msg: "Compare read request of old and new leader"
        failed_when: >
-         (Readrequest['Location'] != "Africa") and
-         (Readrequest['Iso_code'] != "OWID_AFR") and
-         (Readrequest['People_vaccinated'] != "2000") and
-         (Readrequest['Total_vaccinations'] != "5000")
+         (NewLeader_rdreqst['Location'] != prev_val['Location']) or
+         (NewLeader_rdreqst['Iso_code'] != prev_val['Iso_code']) or
+         (NewLeader_rdreqst['People_vaccinated'] <= prev_val['People_vaccinated']) or
+         (NewLeader_rdreqst['Total_vaccinations'] <= prev_val['Total_vaccinations'])
 
        # generate rncui
      - name: "{{ recipe_name }}: Generate App UUID"
@@ -211,30 +228,32 @@
      - name: "{{ recipe_name}}: Write single key-value pair to Covid Application"
        vars:
           stage: "CovidWriteTwo"
-          cmd: "WriteOne#{{ app_uuid_new.stdout }}:0:0:0:0#NewYork#NYC#5000#5000#{{ recipe_name }}_{{ stage }}"
+          cmd: "WriteOne#{{ app_uuid_new.stdout }}:0:0:0:0#SaudiArebia#SB#5000#5000#{{ recipe_name }}_{{ stage }}"
           WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
        debug:
          msg: "write single entry"
        with_items:
          - "{{ WriteOneValue }}"
        register: WriteOne
-       no_log: True
+       #no_log: True
+
+     - debug: var=WriteOne
 
         # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"
        vars:
-         uid: "{{ app_uuid.stdout }}:0:0:0:0"
+         uid: "{{ app_uuid_new.stdout }}:0:0:0:0"
        debug:
          msg: "{{ WriteOne }}"
        failed_when: >
-         (WriteOne['results'][0]['item']['status'] != 0) and
-         (WriteOne['results'][0]['item']['response'][uid]['Status'] != 0)
+         (WriteOne['results'][0]['item']['status'] != 0) or
+         (WriteOne['results'][0]['item']['response'][uid]['Status'] != '0')
 
         # read single entry
-     - name: "{{ recipe_name}}:Read value for key: NewYork(location) from COVID application"
+     - name: "{{ recipe_name}}:Read value for key: SaudiArebia(location) from COVID application"
        vars:
           stage: "CovidReadThree"
-          cmd: "ReadOne#NewYork#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
+          cmd: "ReadOne#SaudiArebia#{{ app_uuid_new.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
           ReadOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
        debug:
          msg: "Read single entry"
@@ -246,11 +265,12 @@
         # comparing read entry
      - name: "{{ recipe_name }}: Comparing read single entry of the COVID Application form json output"
        vars:
+        uid: "{{ app_uuid_new.stdout }}:0:0:0:0"
         Readrequest: "{{ ReadOne['results'][0]['item']['response'][uid] }}"
        debug:
         msg: "Compare {{ Readrequest }}"
        failed_when: >
-         (Readrequest['Location'] != "NewYork") and
-         (Readrequest['Iso_code'] != "NYC") and
-         (Readrequest['People_vaccinated'] != "5000") and
+         (Readrequest['Location'] != "SaudiArebia") or
+         (Readrequest['Iso_code'] != "SB") or
+         (Readrequest['People_vaccinated'] != "5000") or
          (Readrequest['Total_vaccinations'] != "5000")
