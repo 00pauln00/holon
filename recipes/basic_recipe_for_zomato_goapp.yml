@@ -7,6 +7,15 @@
     uid: "{{ app_uuid.stdout }}:0:0:0:0" 
   tasks:
   - block:
+      # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is zomato"
+       vars: 
+         app_type: "{{ app_type}}"
+       debug:
+         msg: "app_type should be zomato"
+       failed_when:
+         (app_type != "zomato") 
+
        # start the servers
      - name: "{{ recipe_name }}: Print the UUIDs of all the servers"
        include_role:
@@ -44,23 +53,21 @@
      - name: "{{ recipe_name }}: Write the single key-value pair to ZOMATO Application"
        vars:
         stage: "ZomatoWriteOne"
-        cmd: "WriteOne#{{ app_uuid.stdout }}:0:0:0:0#96627#Grill9#Secunderabad#Biryani,Chinese,NorthIndian,Rolls#VeryGood#85988#{{ recipe_name }}_{{ stage }}"
+        cmd: "WriteOne#{{ app_uuid.stdout }}:0:0:0:0#96627#Grill 9#Secunderabad#Biryani, Chinese, North Indian, Rolls#Very Good#85988#{{ recipe_name }}_{{ stage }}"
         WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
        debug:
          msg: "write single entry"
        with_items:
          - "{{ WriteOneValue }}"
-       register: WriteOne 
-       no_log: True   
+       register: WriteOne   
      
        # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful" 
        debug:
          msg: "{{ WriteOne }}"
        failed_when: >
-         (WriteOne['results'][0]['item']['status'] != 0) and
-         (WriteOne['results'][0]['item']['response'][uid]['Status'] != 0)
-       no_log: True
+         (WriteOne['results'][0]['item']['status'] != 0) or
+         (WriteOne['results'][0]['item']['response'][uid]['Status'] != '0')
 
        # read single entry   
      - name: "{{ recipe_name }}: Read value for key: 96627(Restaurant_id) from ZOMATO application"
@@ -73,7 +80,6 @@
        with_items:
          - "{{ ReadOneValue }}"
        register: ReadOne
-       no_log: True
 
      - name: "{{ recipe_name }}: Check if read is successful"
        debug:
@@ -84,16 +90,16 @@
        # compare read and write
      - name: "{{ recipe_name }}: Comparing read and write"
        vars:
-        Readrequest: "{{ ReadOne['results'][0]['item']['response'][uid] }}"
+        OldLeader_rdrqst: "{{ ReadOne['results'][0]['item']['response'][uid] }}"
        debug:
         msg: "compare read and write"
        failed_when: >
-         (Readrequest['Restaurant_id'] != "96627") and
-         (Readrequest['Restaurant_name'] != "Grill9") and
-         (Readrequest['city'] != "Secunderabad") and
-         (Readrequest['cuisines'] != "Biryani,Chinese,NorthIndian,Rolls") and
-         (Readrequest['ratings_text'] != "VeryGood") and
-         (Readrequest['votes'] != "85988") 
+         (OldLeader_rdrqst['Restaurant_id'] != "96627") or
+         (OldLeader_rdrqst['Restaurant_name'] != "Grill 9") or
+         (OldLeader_rdrqst['city'] != "Secunderabad") or
+         (OldLeader_rdrqst['cuisines'] != "Biryani, Chinese, North Indian, Rolls") or
+         (OldLeader_rdrqst['ratings_text'] != "Very Good") or
+         (OldLeader_rdrqst['votes'] != "85988") 
       
        # Get the path for csv file
      - name: "{{ recipe_name }}: Get the path for csv file"
@@ -137,19 +143,21 @@
        with_items:
          - "{{ getLeader_values }}"
        register: OldLeaderUUID
-       no_log: True
- 
+
+     - debug:
+        msg: "{{OldLeaderUUID}}"
+
        # pause the leader
      - name: "{{ recipe_name }}: Pause  leader process."
        debug:
         msg: "Pausing leader process {{ lookup('niova_raftprocess', 'pause', OldLeaderUUID['results'][0]['item']['response'], wantlist=True) }}"
         
-       # verify new leader is elected
      - name: "{{ recipe_name }}: Printing the list of all server"
        include_role:
           name: common
-          tasks_from: get_server_uuid_info   
+          tasks_from: get_server_uuid_info  
 
+       # verify new leader is elected
      - name: "{{ recipe_name }}: Verify new leader is elected successfully"
        include_role:
          name: common
@@ -172,14 +180,12 @@
        with_items:
          - "{{ getNewLeader_values }}"
        register: NewLeaderUUID
-       no_log: True
       
       # check if new leader is elected
      - name: "{{ recipe_name }}: Check if new leader is elected"
        debug:
         msg: "Old leader : {{ OldLeaderUUID }} and New leader : {{ NewLeaderUUID }}"
-       failed_when: OldLeaderUUID == NewLeaderUUID 
-       no_log: True
+       failed_when: OldLeaderUUID == NewLeaderUUID
 
         # read single entry        
      - name: "{{ recipe_name }}: Read single entry to the ZOMATO application"
@@ -192,21 +198,23 @@
        with_items:
          - "{{ ReadOneNewValue }}"
        register: ReadOneNew
-       no_log: True
 
         # comparing read entry of old and new leader 
      - name: "{{ recipe_name }}: Comparing read single entry of the golang app form json output file "
        vars:
-        Readrequest: "{{ ReadOneNew['results'][0]['item']['response'][uid] }}"
+        uid: "{{ app_uuid.stdout }}:0:0:0:0"
+        prev_val: "{{ ReadOne['results'][0]['item']['response'][uid] }}"
+        NewLeader_rdreqst: "{{ ReadOneNew['results'][0]['item']['response'][uid] }}"
        debug:
         msg: "Compare read request of old and new leader"
        failed_when: >
-         (Readrequest['Restaurant_id'] != "96627") and
-         (Readrequest['Restaurant_name'] != "Grill9") and
-         (Readrequest['city'] != "Secunderabad") and
-         (Readrequest['cuisines'] != "Biryani,Chinese,NorthIndian,Rolls") and
-         (Readrequest['ratings_text'] != "VeryGood") and
-         (Readrequest['votes'] != "85988") 
+         (NewLeader_rdreqst['Restaurant_id'] != prev_val['Restaurant_id']) or
+         (NewLeader_rdreqst['Restaurant_name'] != prev_val['Restaurant_name']) or
+         (NewLeader_rdreqst['city'] !=  prev_val['city']) or
+         (NewLeader_rdreqst['cuisines'] !=  prev_val['cuisines']) or
+         (NewLeader_rdreqst['ratings_text'] !=  prev_val['ratings_text']) or
+         (NewLeader_rdreqst['votes'] <= prev_val['votes'])
+         
 
        # generate rncui                                             
      - name: "{{ recipe_name }}: Generate App UUID"
@@ -217,28 +225,29 @@
      - name: "{{ recipe_name }}: Write single key-value pair to ZOMATO Application"
        vars:
         stage: "ZomatoWriteTwo"   
-        cmd: "WriteOne#{{ app_uuid_new.stdout }}:0:0:0:0#11971#Aroma'sHyderabadHouse#Punea#NorthIndian#VeryGood#692#{{ recipe_name }}_{{ stage }}"
+        cmd: "WriteOne#{{ app_uuid_new.stdout }}:0:0:0:0#2500256#Indiana Veg Restaurant#Aurangabad#North Indian, Chinese, Fast Food#Very Good#323#{{ recipe_name }}_{{ stage }}"
         WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
        debug:
          msg: "write single entry"
        with_items:
          - "{{ WriteOneValue }}"
        register: WriteOne
-       no_log: True
 
        # check if write is successfull
      - name: "{{ recipe_name }}: Check if write is successful"
+       vars:
+         uid: "{{ app_uuid_new.stdout }}:0:0:0:0"
        debug:
-         msg: "check if write is successful"
+         msg: "{{ WriteOne }}"
        failed_when: >
-         (WriteOne['results'][0]['item']['status'] != 0) and
-         (WriteOne['results'][0]['item']['response'][uid]['Status'] != 0)
+         (WriteOne['results'][0]['item']['status'] != 0) or
+         (WriteOne['results'][0]['item']['response'][uid]['Status'] != '0')
       
        # read single entry
-     - name: "{{ recipe_name }}: Read value for key: 11971(Restaurant_id) from ZOMATO application"
+     - name: "{{ recipe_name }}: Read value for key: 2500256(Restaurant_id) from ZOMATO application"
        vars:
         stage: "ZomatoReadThree"
-        cmd: "ReadOne#11971#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
+        cmd: "ReadOne#2500256#{{ app_uuid_new.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
         ReadOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
        debug:
          msg: "Read single entry "
@@ -247,16 +256,17 @@
        register: ReadOne
        no_log: True
 
-         # comparing read entry 
-     - name: "{{ recipe_name }}: Comparing read single entry of the ZOMATO Application form json output"
+        # comparing read entry
+     - name: "{{ recipe_name }}: Comparing read single entry of the COVID Application form json output"
        vars:
+        uid: "{{ app_uuid_new.stdout }}:0:0:0:0"
         Readrequest: "{{ ReadOne['results'][0]['item']['response'][uid] }}"
        debug:
-        msg: "Compare read and write "
+        msg: "Compare read and write"
        failed_when: >
-         (Readrequest['Restaurant_id'] != "11971") and
-         (Readrequest['Restaurant_name'] != "Aroma'sHyderabadHouse") and
-         (Readrequest['city'] != "Pune") and
-         (Readrequest['cuisines'] != "NorthIndian") and
-         (Readrequest['ratings_text'] != "VeryGood") and
-         (Readrequest['votes'] != "692")    
+         (Readrequest['Restaurant_id'] != "2500256") or
+         (Readrequest['Restaurant_name'] != "Indiana Veg Restaurant") or
+         (Readrequest['city'] != "Aurangabad") or
+         (Readrequest['cuisines'] != "North Indian, Chinese, Fast Food") or
+         (Readrequest['ratings_text'] != "Very Good") or
+         (Readrequest['votes'] != "646")    
