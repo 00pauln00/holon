@@ -59,7 +59,10 @@
          msg: "write single entry"
        with_items:
          - "{{ WriteOneValue }}"
-       register: WriteOne   
+       register: WriteOne 
+
+     - debug:
+        msg: "{{WriteOne}}"  
      
        # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful" 
@@ -132,7 +135,7 @@
        register: ReadMulti  
        no_log: True
      
-        # get leader
+       # get leader
      - name: "{{ recipe_name}}: Get Leader UUID"
        vars:
          stage: 'getLeader'
@@ -143,9 +146,6 @@
        with_items:
          - "{{ getLeader_values }}"
        register: OldLeaderUUID
-
-     - debug:
-        msg: "{{OldLeaderUUID}}"
 
        # pause the leader
      - name: "{{ recipe_name }}: Pause  leader process."
