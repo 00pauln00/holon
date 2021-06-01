@@ -56,9 +56,11 @@ class LookupModule(LookupBase):
                     return {"status":-1,"msg":"Timeout checking for output file"}
         
         #Output parsing
-        if "Read" in request['Operation']: 
-            return {"status":0,"response":request['Data']}
-        elif "Write" in request['Operation']:
-            return {"status":0,"response":request['Data']}
-        else:
-            return {"status":0,"response":request['Leader_uuid']}
+        try:
+            if "Read" in request['Operation']: 
+                return {"status":0,"response":request['Data']}
+            elif "Write" in request['Operation']:
+                return {"status":0,"response":request['Data']}
+        except:
+            print("response : ", request)
+            return {"status":0,"response":request['LeaderUUID']}
