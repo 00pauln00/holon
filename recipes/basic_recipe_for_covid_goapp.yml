@@ -155,7 +155,6 @@
          (ReadMultiValue[item]['PeopleVaccinated'] < values['dict'][Location]['people_vaccinated']) or
          (ReadMultiValue[item]['TotalVaccinations'] != values['dict'][Location]['total_vaccinations']) and
          (ReadMultiValue[item]['TotalVaccinations'] < values['dict'][Location]['total_vaccinations']) 
-
        loop: "{{ ReadMultiValue.keys()|sort }}"
        register: Readmulti_values 
 
@@ -245,7 +244,7 @@
      - name: "{{ recipe_name}}: Write single key-value pair to Covid Application"
        vars:
           stage: "CovidWriteTwo"
-          cmd: "WriteOne#{{ app_uuid_new.stdout }}:0:0:0:0#SaudiArebia#SB#5000#5000#{{ recipe_name }}_{{ stage }}"
+          cmd: "WriteOne#{{ app_uuid_new.stdout }}:0:0:0:0#Africa#OWID_AFR#5000#2000#{{ recipe_name }}_{{ stage }}"
           WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
        debug:
          msg: "write single entry"
@@ -266,27 +265,28 @@
        no_log: True
 
         # read single entry
-     - name: "{{ recipe_name}}:Read value for key: SaudiArebia(location) from COVID application"
+     - name: "{{ recipe_name}}:Read value for key: Africa(location) from COVID application"
        vars:
           stage: "CovidReadThree"
-          cmd: "ReadOne#SaudiArebia#{{ app_uuid_new.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
+          cmd: "ReadOne#Africa#{{ app_uuid_new.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
           ReadOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
        debug:
          msg: "Read single entry"
        with_items:
          - "{{ ReadOneValue }}"
-       register: ReadOne
+       register: ReadTwo
        no_log: True
 
         # comparing read entry
      - name: "{{ recipe_name }}: Comparing read single entry of the COVID Application form json output"
        vars:
-        uid: "{{ app_uuid_new.stdout }}:0:0:0:0"
-        Readrequest: "{{ ReadOne['results'][0]['item']['response'][uid] }}"
+        uid1: "{{ app_uuid_new.stdout }}:0:0:0:0"
+        Old_rdreqst: "{{ ReadOneNew['results'][0]['item']['response'][uid] }}"
+        Readrequest: "{{ ReadTwo['results'][0]['item']['response'][uid1] }}"
        debug:
-        msg: "Compare {{ Readrequest }}"
+        msg: "Compare read values with previous read value"
        failed_when: >
-         (Readrequest['Location'] != "SaudiArebia") or
-         (Readrequest['IsoCode'] != "SB") or
-         (Readrequest['PeopleVaccinated'] != "5000") or
-         (Readrequest['TotalVaccinations'] != "5000")
+         (Readrequest['Location'] != Old_rdreqst['Location']) or
+         (Readrequest['IsoCode'] != Old_rdreqst['IsoCode']) or
+         (Readrequest['PeopleVaccinated'] <= Old_rdreqst['PeopleVaccinated']) or
+         (Readrequest['TotalVaccinations'] <= Old_rdreqst['TotalVaccinations'])

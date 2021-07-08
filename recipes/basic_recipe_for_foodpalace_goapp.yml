@@ -250,7 +250,7 @@
      - name: "{{ recipe_name }}: Write single key-value pair to foodpalace Application"
        vars:
         stage: "foodpalaceWriteTwo"
-        cmd: "WriteOne#{{ app_uuid_new.stdout }}:0:0:0:0#2500256#Indiana Veg Restaurant#Aurangabad#North Indian, Chinese, Fast Food#Very Good#323#{{ recipe_name }}_{{ stage }}"
+        cmd: "WriteOne#{{ app_uuid_new.stdout }}:0:0:0:0#96627#Grill 9#Secunderabad#Biryani, Chinese, North Indian, Rolls#Very Good#8835747#{{ recipe_name }}_{{ stage }}"
         WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
        debug:
          msg: "write single entry"
@@ -269,29 +269,29 @@
          (WriteOne['results'][0]['item']['response'][uid]['Status'] != '0')
 
        # read single entry
-     - name: "{{ recipe_name }}: Read value for key: 2500256(RestaurantId) from foodpalace Application"
+     - name: "{{ recipe_name }}: Read value for key: 96627(RestaurantId) from foodpalace Application"
        vars:
         stage: "foodpalaceReadThree"
-        cmd: "ReadOne#2500256#{{ app_uuid_new.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
+        cmd: "ReadOne#96627#{{ app_uuid_new.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
         ReadOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
        debug:
          msg: "Read single entry "
        with_items:
          - "{{ ReadOneValue }}"
-       register: ReadOne
-       no_log: True
+       register: ReadTwo
 
         # comparing read entry with write entry 
      - name: "{{ recipe_name }}: Comparing read single entry of the Foodpalace Application form json output"
        vars:
-        uid: "{{ app_uuid_new.stdout }}:0:0:0:0"
-        Readrequest: "{{ ReadOne['results'][0]['item']['response'][uid] }}"
+        uid1: "{{ app_uuid_new.stdout }}:0:0:0:0"
+        Old_rdreqst: "{{ ReadOneNew['results'][0]['item']['response'][uid] }}"
+        Readrequest: "{{ ReadTwo['results'][0]['item']['response'][uid1]}}"
        debug:
-        msg: "Compare read and write"
+        msg: "Compare read and write {{Readrequest}}"
        failed_when: >
-         (Readrequest['RestaurantId'] != "2500256") or
-         (Readrequest['RestaurantName'] != "Indiana Veg Restaurant") or
-         (Readrequest['City'] != "Aurangabad") or
-         (Readrequest['Cuisines'] != "North Indian, Chinese, Fast Food") or
-         (Readrequest['RatingsText'] != "Very Good") or
-         (Readrequest['Votes'] <= "323")
+         (Readrequest['RestaurantId'] != Old_rdreqst['RestaurantId']) or
+         (Readrequest['RestaurantName'] != Old_rdreqst['RestaurantName']) or
+         (Readrequest['City'] != Old_rdreqst['City']) or
+         (Readrequest['Cuisines'] != Old_rdreqst['Cuisines']) or
+         (Readrequest['RatingsText'] != Old_rdreqst['RatingsText'])  or
+         (Readrequest['Votes'] <= Old_rdreqst['Votes'])
