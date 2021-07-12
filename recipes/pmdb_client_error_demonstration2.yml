@@ -179,7 +179,7 @@
       debug:
         msg: "Read until it fails"
       until: lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) and (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_key, wantlist=True)| dict2items | map(attribute='value') | list | first  != "Success")
-      retries: 30
+      retries: 40
       delay: 1
 
     - name: "{{ recipe_name }}: Verify the client parameters after connection timeout"
