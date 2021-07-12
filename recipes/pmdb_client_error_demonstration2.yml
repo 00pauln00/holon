@@ -177,7 +177,10 @@
         where: "/pumice_db_test_client/input"
         lookup_key: "/pumice_db_test_client/pmdb-test-apps/0/status"
       debug:
-        msg: "Read until it fails"
+        msg:
+         - "Read until it fails"
+         - "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_key, wantlist=True)| dict2items | map(attribute='value') | list | first }}"
+
       until: lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) and (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_key, wantlist=True)| dict2items | map(attribute='value') | list | first  != "Success")
       retries: 40
       delay: 1
