@@ -63,15 +63,15 @@ class RaftProcess:
                 logging.error("Error : timeout occur to change process status to %s" % process_status)
                 rc = 1
 
-        if rc == 1:
-            exit()
+        #if rc == 1:
+        #    exit()
 
     def start_process(self, raft_uuid, peer_uuid, base_dir, app_name):
 
         logging.warning("Starting uuid: %s, cluster_type %s" % (peer_uuid, self.process_backend_type))
 
         binary_dir = os.getenv('NIOVA_BIN_PATH')
-    
+
         logging.warning("raft binary path is: %s" % binary_dir)
 
         # Otherwise use the default path
@@ -79,18 +79,18 @@ class RaftProcess:
             binary_dir = "/home/pauln/raft-builds/latest"
 
         # Add complete path to app/pumice/raft executable to bin_path
-        if app_name == "zomato":
+        if app_name == "foodpalace":
             if self.process_type == "server":
-                bin_path = '%s/zomato_app_server' % binary_dir
+                bin_path = '%s/foodpalaceappserver' % binary_dir
             else:
-                bin_path = '%s/zomato_app_client' % binary_dir
+                bin_path = '%s/foodpalaceappclient' % binary_dir
 
         elif app_name == "covid":
             if self.process_type == "server":
                 bin_path = '%s/covid_app_server' % binary_dir
             else:
                 bin_path = '%s/covid_app_client' % binary_dir
-        
+
         #If app_name is not zomato/covid
         else:
             if self.process_backend_type == "pumicedb":
@@ -114,14 +114,14 @@ class RaftProcess:
         If its application then we want the logs in the file
         '''
         temp_file = "%s/%s_log_%s_%s.txt" % (base_dir,app_name,self.process_type, peer_uuid)
-        
+
         fp = open(temp_file, "w")
         print("Raft uuid : ",raft_uuid,"peer uuid : ",peer_uuid)
         if self.process_type =="server":
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid],  stdout = fp, stderr = fp)
         else:
-            if app_name=="zomato" or app_name=="covid":
+            if app_name=="foodpalace" or app_name=="covid":
                 process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid, '-l', base_dir],  stdout = fp, stderr = fp)
             else:
@@ -133,7 +133,7 @@ class RaftProcess:
 
         output_label = "raft-%s.%s" % (self.process_type, self.process_uuid)
         self.process_pid = process_popen.pid
-    
+
         #To check if process is started
         self.Wait_for_process_status("running", self.process_pid)
 
