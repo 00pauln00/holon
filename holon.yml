@@ -67,7 +67,7 @@
            nclients: "{{ nclients }}"
            client_port: "{{ client_port }}"
            srv_port: "{{ srv_port }}"
-           app_type: "{{ app_name }}"
+           app_type: "{{ app_type }}"
 
 
   - name: "Prepare server configs"
