@@ -163,11 +163,11 @@
         name: common
         tasks_from: npeers_for_basic_leader_election
 
-    - name: "{{ recipe_name }}: Pause the number of followers to break the quorum."
+    - name: "{{ recipe_name }}: Kill the number of followers to break the quorum."
       debug:
         msg:
          - "Pausing peer: {{ FollowerUUIDs[item] }}"
-         - "{{ lookup('niova_raftprocess', 'pause', FollowerUUIDs[item], wantlist=True) }}"
+         - "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[item], wantlist=True) }}"
       loop: "{{ range(0, npeers_for_leader_elect | int) | list }}"
 
     - name: "{{ recipe_name }}: Now issue read until read fails i.e till leader timeout occurs and it stops responding to client requests."
@@ -214,11 +214,11 @@
         (demo2_leader_values["/0/term"] != leader_term_val["/0/term"])
 
     # TestCleanup
-    - name: "{{ recipe_name }}: Resume the paused followers as part of test cleanup process."
+    - name: "{{ recipe_name }}: Restart the stopped followers as part of test cleanup process."
       debug:
         msg:
          - "Resuming follower: {{ FollowerUUIDs[item] }}"
-         - "{{ lookup('niova_raftprocess', 'resume', FollowerUUIDs[item], wantlist=True) }}"
+         - "{{ lookup('niova_raftprocess', 'start', FollowerUUIDs[item], wantlist=True) }}"
       loop: "{{ range(0, npeers_for_leader_elect | int) | list }}"
 
     - name: "{{ recipe_name }}: Resetting the election timeout on leader"
