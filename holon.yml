@@ -29,10 +29,17 @@
       disable_post_run: "{{ disable_post_run | default(false) | bool }}"
       num_clients: "{{ num_clients | default(10) }}"
       ClientIndex: 0
+      app_type: "{{ app_name | default('pumicedb') }}"
     failed_when: >
       ((srv_port | int) >= 65536) or
       ((client_port | int) >= 65536) or
       ((backend_type != "raft") and (backend_type != "pumicedb"))
+
+    
+  - name: "print the go application running"
+    debug:
+      msg: "The app running is {{app_type}}"
+
 
   - name: "Check if ports are already in use"
     vars:
@@ -60,6 +67,8 @@
            nclients: "{{ nclients }}"
            client_port: "{{ client_port }}"
            srv_port: "{{ srv_port }}"
+           app_type: "{{ app_name }}"
+
 
   - name: "Prepare server configs"
     set_fact: ClusterInfo="{{lookup('niova_raftconfig', "server", wantlist=True)}}"

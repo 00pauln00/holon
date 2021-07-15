@@ -1,0 +1,6 @@
+---
+
+    - name: "Starting client {{ ClientUUID }}"
+      debug:
+       msg: 
+         - "{{lookup('niova_raftprocess', 'start', ClientUUID, wantlist=True)}}"         

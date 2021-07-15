@@ -1,0 +1,297 @@
+- name: "basic_recipe_for_foodpalace_goapp"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "basic_recipe_for_foodpalace_goapp"
+    parent: None
+    uid: "{{ app_uuid.stdout }}:0:0:0:0"
+  tasks:
+  - block:
+      # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is foodpalace"
+       vars:
+         app_type: "{{ app_type}}"
+       debug:
+         msg: "app_type should be foodpalace"
+       failed_when:
+         (app_type != "foodpalace")
+
+       # start the servers
+     - name: "{{ recipe_name }}: Print the UUIDs of all the servers"
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     - name: "{{ recipe_name }}: Start all the servers in the cluster"
+       include_role:
+          name: common
+          tasks_from: start_server_golang
+       vars:
+          ServerUUID: "{{ NonRunningServers[item] }}"
+       loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+      # start the client
+     - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+       include_role:
+         name: common
+         tasks_from: get_new_client_uuid
+       register: client_uuid
+
+     - debug:
+        msg: "Client UUID: {{ client_uuid }}"
+
+     - name: "{{ recipe_name}}: Start the client for {{ app_type}} Application"
+       include_role:
+         name: common
+         tasks_from: start_client_golang
+       vars:
+         ClientUUID: "{{ client_uuid.stdout }}"
+
+       # generate rncui
+     - name: "{{ recipe_name }}: Generate App UUID"
+       shell: "/usr/bin/uuid"
+       register: app_uuid
+
+       # write single entry
+     - name: "{{ recipe_name }}: Write the single key-value pair to foodpalace Application"
+       vars:
+        stage: "foodpalaceWriteOne"
+        cmd: "WriteOne#{{ app_uuid.stdout }}:0:0:0:0#96627#Grill 9#Secunderabad#Biryani, Chinese, North Indian, Rolls#Very Good#85988#{{ recipe_name }}_{{ stage }}"
+        WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+       debug:
+         msg: "write single entry"
+       with_items:
+         - "{{ WriteOneValue }}"
+       register: WriteOne
+
+       # check if write is successful
+     - name: "{{ recipe_name }}: Check if write is successful"
+       debug:
+         msg: "check if write is successful"
+       failed_when: >
+         (WriteOne['results'][0]['item']['status'] != 0) or
+         (WriteOne['results'][0]['item']['response'][uid]['Status'] != '0')
+
+       # read single entry
+     - name: "{{ recipe_name }}: Read value for key: 96627(RestaurantId) from foodpalace Application"
+       vars:
+        stage: "foodpalaceReadOne"
+        cmd: "ReadOne#96627#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
+        ReadOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+       debug:
+         msg: "read single entry"
+       with_items:
+         - "{{ ReadOneValue }}"
+       register: ReadOne
+     
+      # check if read is successful
+     - name: "{{ recipe_name }}: Check if read is successful"
+       debug:
+        msg: "check if read is successful"
+       failed_when:
+          ReadOne['results'][0]['item']['status'] != 0
+
+       # compare read and write
+     - name: "{{ recipe_name }}: Comparing read and write"
+       vars:
+        OldLeader_rdrqst: "{{ ReadOne['results'][0]['item']['response'][uid] }}"
+       debug:
+        msg: "compare read and write"
+       failed_when: >
+         (OldLeader_rdrqst['RestaurantId'] != "96627") or
+         (OldLeader_rdrqst['RestaurantName'] != "Grill 9") or
+         (OldLeader_rdrqst['City'] != "Secunderabad") or
+         (OldLeader_rdrqst['Cuisines'] != "Biryani, Chinese, North Indian, Rolls") or
+         (OldLeader_rdrqst['RatingsText'] != "Very Good") or
+         (OldLeader_rdrqst['Votes'] != "85988")
+
+       # Get the path for csv file
+     - name: "{{ recipe_name }}: Get the path for csv file"
+       set_fact:
+        NIOVA_BIN_PATH: "{{ lookup('env','NIOVA_BIN_PATH') }}"
+
+       # write multiple entries 
+     - name: "{{ recipe_name }}: Write all entries from csv file to foodpalace Application"
+       vars:
+         stage: "foodpalaceWriteMulti"
+         cmd: "WriteMulti#{{ NIOVA_BIN_PATH }}/foodpalace.csv#{{ recipe_name }}_{{ stage }}"
+         WriteMultiValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+       debug:
+         msg: "write all entries"
+       with_items:
+         - "{{ WriteMultiValue }}"
+       register: WriteMulti
+       no_log: True
+
+       # read multiple entries
+     - name: "{{ recipe_name }}: Read multiple entries to the foodpalace Application through csv file"
+       vars:
+        stage: "foodpalaceReadMulti"
+        cmd: "ReadMulti#{{ recipe_name }}_{{ stage }}"
+        ReadMultiValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+       debug:
+         msg: "read all entries "
+       with_items:
+         - "{{ ReadMultiValue }}"
+       register: ReadMulti
+       no_log: True  
+
+      # convert csv file into json format.
+     - name: Read data from CSV file and return a dictionary
+       read_csv:
+        path: "{{ NIOVA_BIN_PATH }}/foodpalace.csv"
+        key: RestaurantID
+       register: values
+
+      # compare read multiple entries and csv file entries
+     - name: "{{ recipe_name }}: Comparing Read multiple entries and csv file entries of foodpalace Application "
+       vars:
+        ReadMultiValue : "{{ReadMulti['results'][0]['item']['response']}}"
+        Restaurant_id : "{{ReadMultiValue[item]['RestaurantId']}}"
+       debug:
+        msg: "compare read entries with csv file entries"
+       failed_when: >
+         (ReadMultiValue[item]['RestaurantName'] != values['dict'][Restaurant_id]['RestaurantName']) or
+         (ReadMultiValue[item]['RestaurantId'] != values['dict'][Restaurant_id]['RestaurantID']) or
+         (ReadMultiValue[item]['City'] != values['dict'][Restaurant_id]['City']) or
+         (ReadMultiValue[item]['Cuisines'] != values['dict'][Restaurant_id]['Cuisines']) or
+         (ReadMultiValue[item]['Ratings_text'] != values['dict'][Restaurant_id]['Rating_text']) or
+         ((ReadMultiValue[item]['Votes'] != values['dict'][Restaurant_id]['Votes']) and
+         (ReadMultiValue[item]['Votes'] < values['dict'][Restaurant_id]['Votes']))
+       loop: "{{ ReadMultiValue.keys()|sort }}"
+       register: Readmulti_values 
+
+       # get leader
+     - name: "{{ recipe_name}}: Get Leader UUID"
+       vars:
+         stage: 'GetLeader'
+         cmd: "GetLeader#{{ recipe_name }}_{{ stage }}"
+         GetLeader_values: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+       debug:
+         msg: "Get the Leader UUID "
+       with_items:
+         - "{{ GetLeader_values }}"
+       register: OldLeaderUUID
+
+       # pause the leader
+     - name: "{{ recipe_name }}: Pause  leader process."
+       debug:
+        msg: "Pausing leader process {{ lookup('niova_raftprocess', 'pause', OldLeaderUUID['results'][0]['item']['response'], wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: Printing the list of all server"
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+       # verify new leader is elected
+     - name: "{{ recipe_name }}: Verify new leader is elected successfully"
+       include_role:
+         name: common
+         tasks_from: verify_new_leader_election
+       vars:
+         old_leader: "{{OldLeaderUUID['results'][0]['item']['response'] }}"
+         peer_list: "{{ NRunningPeers }}"
+       loop: "{{ range(0, peer_list | length) | list }}"
+       loop_control:
+          loop_var: itr
+
+       # get new leader
+     - name: "{{ recipe_name }}: Get new leader uuid value"
+       vars:
+        stage: "GetLeaderNew"
+        cmd: "GetLeader#{{ recipe_name }}_{{ stage }}"
+        getNewLeader_values: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+       debug:
+         msg: "Get the new Leader UUID"
+       with_items:
+         - "{{ getNewLeader_values }}"
+       register: NewLeaderUUID
+
+      # check if new leader is elected
+     - name: "{{ recipe_name }}: Check if new leader is elected"
+       debug:
+        msg: "Old leader : {{ OldLeaderUUID }} and New leader : {{ NewLeaderUUID }}"
+       failed_when: OldLeaderUUID == NewLeaderUUID
+
+       # read single entry
+     - name: "{{ recipe_name }}: Read single entry to the foodpalace application"
+       vars:
+        stage: "foodpalaceReadTwo"
+        cmd: "ReadOne#96627#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
+        ReadOneNewValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+       debug:
+         msg: "read single entry"
+       with_items:
+         - "{{ ReadOneNewValue }}"
+       register: ReadOneNew
+
+        # comparing read entry of old and new leader
+     - name: "{{ recipe_name }}: Comparing read single entry of the golang app form json output file "
+       vars:
+        uid: "{{ app_uuid.stdout }}:0:0:0:0"
+        prev_val: "{{ ReadOne['results'][0]['item']['response'][uid] }}"
+        NewLeader_rdreqst: "{{ ReadOneNew['results'][0]['item']['response'][uid] }}"
+       debug:
+        msg: "Compare read request of old and new leader"
+       failed_when: >
+         (NewLeader_rdreqst['RestaurantId'] != prev_val['RestaurantId']) or
+         (NewLeader_rdreqst['RestaurantName'] != prev_val['RestaurantName']) or 
+         (NewLeader_rdreqst['City'] !=  prev_val['City']) or
+         (NewLeader_rdreqst['Cuisines'] !=  prev_val['Cuisines']) or
+         (NewLeader_rdreqst['RatingsText'] !=  prev_val['RatingsText'])  or
+         (NewLeader_rdreqst['Votes'] < prev_val['Votes'])
+
+       # generate rncui
+     - name: "{{ recipe_name }}: Generate App UUID"
+       shell: "/usr/bin/uuid"
+       register: app_uuid_new
+
+      # write single entry
+     - name: "{{ recipe_name }}: Write single key-value pair to foodpalace Application"
+       vars:
+        stage: "foodpalaceWriteTwo"
+        cmd: "WriteOne#{{ app_uuid_new.stdout }}:0:0:0:0#96627#Grill 9#Secunderabad#Biryani, Chinese, North Indian, Rolls#Very Good#8835747#{{ recipe_name }}_{{ stage }}"
+        WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+       debug:
+         msg: "write single entry"
+       with_items:
+         - "{{ WriteOneValue }}"
+       register: WriteOne
+
+       # check if write is successfull
+     - name: "{{ recipe_name }}: Check if write is successful"
+       vars:
+         uid: "{{ app_uuid_new.stdout }}:0:0:0:0"
+       debug:
+         msg: "check if write is successful"
+       failed_when: >
+         (WriteOne['results'][0]['item']['status'] != 0) or
+         (WriteOne['results'][0]['item']['response'][uid]['Status'] != '0')
+
+       # read single entry
+     - name: "{{ recipe_name }}: Read value for key: 96627(RestaurantId) from foodpalace Application"
+       vars:
+        stage: "foodpalaceReadThree"
+        cmd: "ReadOne#96627#{{ app_uuid_new.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
+        ReadOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+       debug:
+         msg: "Read single entry "
+       with_items:
+         - "{{ ReadOneValue }}"
+       register: ReadTwo
+
+        # comparing read entry with write entry 
+     - name: "{{ recipe_name }}: Comparing read single entry of the Foodpalace Application form json output"
+       vars:
+        uid1: "{{ app_uuid_new.stdout }}:0:0:0:0"
+        Old_rdreqst: "{{ ReadOneNew['results'][0]['item']['response'][uid] }}"
+        Readrequest: "{{ ReadTwo['results'][0]['item']['response'][uid1]}}"
+       debug:
+        msg: "Compare read and write {{Readrequest}}"
+       failed_when: >
+         (Readrequest['RestaurantId'] != Old_rdreqst['RestaurantId']) or
+         (Readrequest['RestaurantName'] != Old_rdreqst['RestaurantName']) or
+         (Readrequest['City'] != Old_rdreqst['City']) or
+         (Readrequest['Cuisines'] != Old_rdreqst['Cuisines']) or
+         (Readrequest['RatingsText'] != Old_rdreqst['RatingsText'])  or
+         (Readrequest['Votes'] <= Old_rdreqst['Votes'])

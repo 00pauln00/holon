@@ -44,7 +44,6 @@ class RaftProcess:
         self.process_uuid = uuid
         self.process_pid = 0
         self.process_type = process_type
-
     '''
         Method: start_process
         Purpose: Start the process of type process_type
@@ -64,47 +63,69 @@ class RaftProcess:
                 logging.error("Error : timeout occur to change process status to %s" % process_status)
                 rc = 1
 
-        if rc == 1:
-            exit()
+        #if rc == 1:
+        #    exit()
 
-    def start_process(self, raft_uuid, peer_uuid, base_dir):
+    def start_process(self, raft_uuid, peer_uuid, base_dir, app_name):
 
         logging.warning("Starting uuid: %s, cluster_type %s" % (peer_uuid, self.process_backend_type))
 
-        # If user has passed any specific path to use for raft binaries
         binary_dir = os.getenv('NIOVA_BIN_PATH')
+
         logging.warning("raft binary path is: %s" % binary_dir)
 
         # Otherwise use the default path
         if binary_dir == None:
             binary_dir = "/home/pauln/raft-builds/latest"
 
-        if self.process_backend_type == "pumicedb":
+        # Add complete path to app/pumice/raft executable to bin_path
+        if app_name == "foodpalace":
             if self.process_type == "server":
-                bin_path = '%s/pumice-reference-server' % binary_dir
+                bin_path = '%s/foodpalaceappserver' % binary_dir
             else:
-                bin_path = '%s/pumice-reference-client' % binary_dir
-        else:
-            if self.process_type == "server":
-                bin_path = '%s/raft-reference-server' % binary_dir
-            else:
-                bin_path = '%s/raft-reference-client' % binary_dir
+                bin_path = '%s/foodpalaceappclient' % binary_dir
 
+        elif app_name == "covid":
+            if self.process_type == "server":
+                bin_path = '%s/covid_app_server' % binary_dir
+            else:
+                bin_path = '%s/covid_app_client' % binary_dir
+
+        #If app_name is not zomato/covid
+        else:
+            if self.process_backend_type == "pumicedb":
+                if self.process_type == "server":
+                    bin_path = '%s/pumice-reference-server' % binary_dir
+                else:
+                    bin_path = '%s/pumice-reference-client' % binary_dir
+
+            else:
+                if self.process_type == "server":
+                    bin_path = '%s/raft-reference-server' % binary_dir
+                else:
+                    bin_path = '%s/raft-reference-client' % binary_dir
 
         '''
         We want to append the output of raft-server log into the recipe log
         adding information about for which peerid the process has started.
         So first get the raft-server init log into temp file, add the prefix
         and then write it to recipe log.
+
+        If its application then we want the logs in the file
         '''
-        temp_file = "%s/raft_log_%s_%s.txt" % (base_dir, self.process_type, peer_uuid)
+        temp_file = "%s/%s_log_%s_%s.txt" % (base_dir,app_name,self.process_type, peer_uuid)
 
         fp = open(temp_file, "w")
+        print("Raft uuid : ",raft_uuid,"peer uuid : ",peer_uuid)
         if self.process_type =="server":
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid],  stdout = fp, stderr = fp)
         else:
-            process_popen = subprocess.Popen([bin_path, '-r',
+            if app_name=="foodpalace" or app_name=="covid":
+                process_popen = subprocess.Popen([bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid, '-l', base_dir],  stdout = fp, stderr = fp)
+            else:
+                process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid, '-a'],  stdout = fp, stderr = fp)
 
         #Make sure all the ouput gets flushed to the file before closing it
@@ -112,7 +133,7 @@ class RaftProcess:
 
         output_label = "raft-%s.%s" % (self.process_type, self.process_uuid)
         self.process_pid = process_popen.pid
-    
+
         #To check if process is started
         self.Wait_for_process_status("running", self.process_pid)
 
