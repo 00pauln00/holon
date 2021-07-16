@@ -50,6 +50,11 @@
       vars:
          ClientUUID: "{{ client_uuid.stdout }}"
 
+    - name: "{{ recipe_name }}: Get follower-stats from leader peer before restart."
+      include_role:
+         name: common
+         tasks_from: get_follower_stats
+
     - name: "{{ recipe_name }}: Capture the leader's term value for comparison."
       vars:
         stage: "leader_term"
@@ -64,11 +69,6 @@
         msg: "Get the term value for leader: {{ leader_uuid }}"
       no_log: true
  
-    - name: "{{ recipe_name }}: Get follower-stats from leader peer before restart."
-      include_role:
-         name: common
-         tasks_from: get_follower_stats
-
     - name: "{{ recipe_name }}: Set election timeout to 30sec on followers first."
       vars:
         stage: "stage0_set_elec_timeout"
@@ -283,6 +283,17 @@
         loop_var: outer_item
 
     rescue:
+      - name: "{{ recipe_name }}: Failed. Get Leader UUID and corresponding UUIDs for follower peers"
+        include_role:
+          name: common
+          tasks_from: get_follower_stats
+
+      #Get all values from all peers before partitioning.
+      - name: "{{ recipe_name }}: Failed. Get the server information for all running servers."
+        include_role:
+          name: common
+          tasks_from: get_all_values_from_all_peers
+
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
            terminate_recipe: true
