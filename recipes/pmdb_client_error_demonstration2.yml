@@ -170,6 +170,13 @@
          - "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[item], wantlist=True) }}"
       loop: "{{ range(0, npeers_for_leader_elect | int) | list }}"
 
+    - name: "{{ recipe_name }}: Make sure follower processes are terminated"
+      shell: "ps -ef"
+      register: pumice_process
+
+    - debug:
+       msg: "{{ pumice_process }}"
+
     - name: "{{ recipe_name }}: Now issue read until read fails i.e till leader timeout occurs and it stops responding to client requests."
       vars:
         stage: "read_until_fail"
