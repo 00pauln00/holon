@@ -177,6 +177,16 @@
     - debug:
        msg: "{{ pumice_process }}"
 
+    - name: "{{ recipe_name }}: Set the log level to notify"
+      vars:
+        stage: "set_log_level"
+        cmd: "master_log_level@notify"
+        where: "/log_subsystem/master_log_level"
+        leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
+      debug:
+        msg:
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', leader_uuid, cmd, where, wantlist=True) }}"
+
     - name: "{{ recipe_name }}: Now issue read until read fails i.e till leader timeout occurs and it stops responding to client requests."
       vars:
         stage: "read_until_fail"
