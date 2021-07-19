@@ -177,15 +177,24 @@
     - debug:
        msg: "{{ pumice_process }}"
 
-    - name: "{{ recipe_name }}: Set the log level to notify"
+    - name: "{{ recipe_name }}: Set the log level to notify for leader"
       vars:
-        stage: "set_log_level"
+        stage: "set_log_level_leader"
         cmd: "master_log_level@notify"
         where: "/log_subsystem/master_log_level"
         leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
       debug:
         msg:
           - "{{ lookup('niova_ctlrequest', 'apply_cmd', leader_uuid, cmd, where, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Set the log level to notify for client"
+      vars:
+        stage: "set_log_level_client"
+        cmd: "master_log_level@notify"
+        where: "/log_subsystem/master_log_level"
+      debug:
+        msg:
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Now issue read until read fails i.e till leader timeout occurs and it stops responding to client requests."
       vars:
@@ -200,7 +209,7 @@
 
       until: lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) and (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_key, wantlist=True)| dict2items | map(attribute='value') | list | first  != "Success")
       retries: 40
-      delay: 1
+      delay: 2
 
     - name: "{{ recipe_name }}: Verify the client parameters after connection timeout"
       vars:
