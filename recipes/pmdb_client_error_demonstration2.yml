@@ -288,11 +288,18 @@
           name: common
           tasks_from: get_follower_stats
 
-      #Get all values from all peers before partitioning.
+      #Get all values from all peers
       - name: "{{ recipe_name }}: Failed. Get the server information for all running servers."
         include_role:
           name: common
           tasks_from: get_all_values_from_all_peers
+
+      - name: "{{ recipe_name }}: Failed. Get Client values."
+        vars:
+         stage: "demo2_failed_client_info"
+        debug:
+         msg:
+          - "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, client_keys, wantlist=True) }}"
 
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
