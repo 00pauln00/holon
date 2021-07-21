@@ -208,8 +208,8 @@
          - "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_key, wantlist=True)| dict2items | map(attribute='value') | list | first }}"
 
       until: lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) and (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_key, wantlist=True)| dict2items | map(attribute='value') | list | first  != "Success")
-      retries: 40
-      delay: 20
+      retries: 65
+      delay: 1
 
     - name: "{{ recipe_name }}: Verify the client parameters after connection timeout"
       vars:
