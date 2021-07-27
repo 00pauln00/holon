@@ -170,32 +170,6 @@
          - "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[item], wantlist=True) }}"
       loop: "{{ range(0, npeers_for_leader_elect | int) | list }}"
 
-    - name: "{{ recipe_name }}: Make sure follower processes are terminated"
-      shell: "ps -ef"
-      register: pumice_process
-
-    - debug:
-       msg: "{{ pumice_process }}"
-
-    - name: "{{ recipe_name }}: Set the log level to notify for leader"
-      vars:
-        stage: "set_log_level_leader"
-        cmd: "master_log_level@notify"
-        where: "/log_subsystem/master_log_level"
-        leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
-      debug:
-        msg:
-          - "{{ lookup('niova_ctlrequest', 'apply_cmd', leader_uuid, cmd, where, wantlist=True) }}"
-
-    - name: "{{ recipe_name }}: Set the log level to notify for client"
-      vars:
-        stage: "set_log_level_client"
-        cmd: "master_log_level@notify"
-        where: "/log_subsystem/master_log_level"
-      debug:
-        msg:
-          - "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
-
     - name: "{{ recipe_name }}: Now issue read until read fails i.e till leader timeout occurs and it stops responding to client requests."
       vars:
         stage: "read_until_fail"
@@ -302,24 +276,6 @@
         loop_var: outer_item
 
     rescue:
-      - name: "{{ recipe_name }}: Failed. Get Leader UUID and corresponding UUIDs for follower peers"
-        include_role:
-          name: common
-          tasks_from: get_follower_stats
-
-      #Get all values from all peers
-      - name: "{{ recipe_name }}: Failed. Get the server information for all running servers."
-        include_role:
-          name: common
-          tasks_from: get_all_values_from_all_peers
-
-      - name: "{{ recipe_name }}: Failed. Get Client values."
-        vars:
-         stage: "demo2_failed_client_info"
-        debug:
-         msg:
-          - "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, client_keys, wantlist=True) }}"
-
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
            terminate_recipe: true

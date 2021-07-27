@@ -1,7 +1,20 @@
 - name: "Post Run"
   hosts: localhost
+  vars:
+    recipe_name: "post_run"
 
   tasks:
+
+  - name: "Get the status of all running peers before termination"
+    include_role:
+      name: common
+      tasks_from: get_follower_stats
+
+  #Get all values from all peers
+  - name: "{{ recipe_name }}: Get the server information for all running servers."
+    include_role:
+      name: common
+      tasks_from: get_all_values_from_all_peers
 
   - name: "Check if recipe failed and post_run is disabled"
     debug:
