@@ -61,6 +61,7 @@
              client_port: "{{ client_port | int + 100 }}"
              srv_port: "{{ srv_port }}"
              nclients: 1
+             app_type: "pumicedb"
 
     - name: "{{ recipe_name }}: Prepare config for the foreign client."
       set_fact:
