@@ -479,6 +479,10 @@
       debug:
         msg:
           - "Verifying all values after electing new leader {{ collect_all_values }}."
+          - "initial_commit_idx: {{ initial_commit_idx }}"
+          - "initial_term: {{ initial_term }}"
+          - "nwrites: {{ nwrites }}"
+          - "collect_all_values: {{ collect_all_values }}"
       #no_log: True
       failed_when: >
         (collect_all_values['/0/last-applied'] != ((initial_commit_idx | int) + (nwrites | int) + 1)) or
