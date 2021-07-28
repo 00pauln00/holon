@@ -88,6 +88,7 @@
      vars:
        follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
        ServerUUID: "{{ follower_uuids[item] }}"
+       fault_injection_name: "raft_follower_ignores_non_hb_AE_request"
      loop: "{{ range(0, follower_uuids | length) | list }}"
 
    - name: "{{ recipe_name }}: Start client process."
