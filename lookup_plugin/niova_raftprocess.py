@@ -43,17 +43,16 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
 
         # Read the config file.
         binary_dir = os.getenv('NIOVA_BIN_PATH')
-        config_path = "%s/niovakv_config"
+        config_path = "%s/niovakv.config" % binary_dir
 
 
         with open(config_path) as f:
             lines = f.read().splitlines()
 
         node_line = lines[index]
-        Nodes = node_line.split("\\s")
+        node_name = node_line.split()[0]
 
-        node_name = Nodes[0]
-        logging.info("Node Name is: %s", node_name)
+        logging.info("Node Name for starting niovakv_server is: %s", node_name)
 
     if operation == "start":
 
