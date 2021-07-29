@@ -392,9 +392,9 @@
       debug:
         msg: "Verifying values for commit-idx, last-applied and sync-entry-idx for all servers."
       failed_when: >
-            (commit_idx['/0/commit-idx'] != (commit_idx_prev['/0/commit-idx'] + 2)) or
-            (last_applied['/0/last-applied'] != (last_applied_prev['/0/last-applied'] + 2)) or
-            (sync_entry_idx['/0/sync-entry-idx'] != (sync_entry_idx_prev['/0/sync-entry-idx'] + 2))
+            (commit_idx['/0/commit-idx'] <= (commit_idx_prev['/0/commit-idx'])) or
+            (last_applied['/0/last-applied'] <= (last_applied_prev['/0/last-applied'])) or
+            (sync_entry_idx['/0/sync-entry-idx'] <= (sync_entry_idx_prev['/0/sync-entry-idx']))
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Validate term, last-applied-cumulative-crc, sync-entry-term, sync-entry-data-size and sync-entry-crc of all peers after reboot."
