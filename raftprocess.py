@@ -62,7 +62,7 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
 
     return bin_path
 
-def run_process(fp, raft_uuid, peer_uuid, ptype, bin_path, base_dir, config_path, node_name):
+def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, config_path, node_name):
     process_popen = {}
     if ptype =="server":
     	process_popen = subprocess.Popen([bin_path, '-r',
@@ -79,8 +79,8 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, bin_path, base_dir, config_path
                                     stdout = fp, stderr = fp)
         elif app_type == "niovakv":
             process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid, '-l', base_dir],
-                                    '-c', config_path, '-n', node_name,
+                                    raft_uuid, '-u', peer_uuid,
+                                    '-c', config_path, '-n', node_name],
                                     stdout = fp, stderr = fp)
 
 
@@ -160,12 +160,11 @@ class RaftProcess:
         temp_file = "%s/%s_log_%s_%s.txt" % (base_dir, app_type, self.process_type, self.process_uuid)
 
         fp = open(temp_file, "w")
-        print("Raft uuid : ", self.process_raft_uuid, "peer uuid : ", self.process_uuid)
 
-        config_path = "%s/niovakv.config"
+        config_path = "%s/niovakv.config" % binary_dir
 
         process_popen = run_process(fp, self.process_raft_uuid, self.process_uuid,
-                                    self.process_type, bin_path,
+                                    self.process_type, self.process_app_type, bin_path,
                                     base_dir, config_path, node_name)
         #Make sure all the ouput gets flushed to the file before closing it
         os.fsync(fp)
