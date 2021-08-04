@@ -78,9 +78,10 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
                                     raft_uuid, '-u', peer_uuid, '-a'],
                                     stdout = fp, stderr = fp)
         elif app_type == "niovakv":
+            log_path = "%s/%s_niovakv_sevre.log" % (base_dir, peer_uuid)
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid,
-                                    '-c', config_path, '-n', node_name],
+                                    '-c', config_path, '-n', node_name, '-l', log_path],
                                     stdout = fp, stderr = fp)
 
 
