@@ -236,7 +236,7 @@
         type2_fstats_after_restart: "{{ follower_stats_after_restart['results'][0]['item'] }}"
         type2_term_after_restart: "{{ peers_info_after_restart['results'][item]['item'] }}"
       failed_when: >
-        (type2_fstats_after_restart['/0/follower-stats'][item]['next-idx'] != 2) or
+        (type2_fstats_after_restart['/0/follower-stats'][item]['next-idx'] <= 1) or
         (type2_fstats_after_restart['/0/follower-stats'][item]['prev-idx-term'] != type2_term_after_restart['/0/term'])
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 

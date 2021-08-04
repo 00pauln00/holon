@@ -21,6 +21,8 @@
     - name: "{{ recipe_name }}: Initialize the running peers array."
       set_fact:
         NRunningPeers: []
+        LeaderUUID: ""
+        FollowerUUIDs: ""
 
     - name: "{{ recipe_name }}: Get the running server uuids."
       vars:
@@ -35,18 +37,22 @@
         stage: "get_leader_uuid"
       set_fact:
         LeaderUUID: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], '/raft_root_entry/0/leader-uuid', wantlist=True) }}"
+      when: NRunningPeers
       
     - name: "{{ recipe_name }}: Print Leader UUID."
       debug:
         msg: "Leader UUID: {{ LeaderUUID }}"
+      when: LeaderUUID != ""
 
     - name: "Get the FollowerUUIDs list."
       set_fact:
         FollowerUUIDs: "{{ NRunningPeers | difference(LeaderUUID['/0/leader-uuid']) }}"
+      when: LeaderUUID != ""
 
     - name: "{{ recipe_name }}: Print Follower UUIDs."
       debug:
         msg: "{{ FollowerUUIDs }}"
+      when: FollowerUUIDs != ""
 
     - name: "{{ recipe_name }}: Get the follower-stats."
       vars:
@@ -55,3 +61,4 @@
             - "/raft_root_entry/0/follower-stats"
       set_fact:
         GetFollowerStatsInfo: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+      when: LeaderUUID != ""

@@ -115,6 +115,9 @@
           - "{{ client_uuid.stdout }}"
       register: raftclient_output
       failed_when: raftclient_output.rc != 2
+      environment:
+         NIOVA_LOCAL_CTL_SVC_DIR: "{{ ClusterParams['base_dir'] }}/{{ ClusterParams['raft_uuid'] }}/configs"
+
     - debug: var=raftclient_output.rc
   
     - name: "Run with pmdb-client by passing client uuid which is not known to the configuration."
