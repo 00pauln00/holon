@@ -29,19 +29,21 @@ def start_subprocess(cluster_params, Operation, Key, Value, OutfileName,
     config_path = "%s/niovakv.config" % binary_dir
 
     if MultiKey == False:
-        if Operation == "write": 
+        if Operation == "write":
+            print(Operation)
             outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
             process_popen = subprocess.Popen([bin_path,'-c', config_path,
                                              '-l', logfile, '-o', Operation, '-k', Key,
                                              '-v', Value, '-r', outfilePath],
                                              stdout = fp, stderr = fp)
         elif Operation == "read":
+            print(Operation)
             outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
             process_popen = subprocess.Popen([bin_path,'-c', config_path, '-o', Operation,
-                                              '-k', Key, '-v', Value,
+                                              '-l', logfile, '-k', Key, '-v', Value,
                                               '-r', outfilePath],
                                               stdout = fp, stderr = fp)
-        else:         # operation for get leader 
+        else:         # operation for get leader
             outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
             process_popen = subprocess.Popen([bin_path,'-c', config_path, '-o', Operation,
                                               '-k', Key, '-v', Value, '-r', outfilePath],
@@ -55,8 +57,8 @@ def start_subprocess(cluster_params, Operation, Key, Value, OutfileName,
         process_popen = subprocess.Popen([bin_path,'-c', config_path, '-l' , logfile,
                                           '-s', "y", '-n', NumRequest, '-k', Key,
                                           '-v', Value, '-r', outfilePath],
-                                          stdout = fp, stderr = fp) 
-    else: 
+                                          stdout = fp, stderr = fp)
+    else:
         bin_path = '%s/niovakv_client_multi' % binary_dir
         logfile = "%s/%s/niovakvclientlogfile_multi_concurrent.log" % (base_dir, raft_uuid)
         outfilePath = "%s/%s/%s" % (base_dir, raft_uuid , OutfileName)
@@ -64,9 +66,9 @@ def start_subprocess(cluster_params, Operation, Key, Value, OutfileName,
                                           '-n', NumRequest, '-k', Key, '-v', Value,
                                           '-r' , outfilePath],
                                           stdout = fp, stderr = fp)
-   
-    # Sync the log file so all the logs from niovakv client gets written to log file. 
-    os.fsync(fp) 
+
+    # Sync the log file so all the logs from niovakv client gets written to log file.
+    os.fsync(fp)
     return process_popen, outfilePath
 
 def get_the_output(outfilePath):
@@ -108,17 +110,13 @@ class LookupModule(LookupBase):
                                            MultiKey, Sequential)
         output_data = get_the_output(outfile)
 
-        if  MultiKey == False:
-            if "write" in output_data['Request']['Operation']:
-                return {"Request":output_data['Request'],
-                        "Response":output_data['Response']}
-            elif "read" in output_data['Request']['Operation']:
-                return {"Request":output_data['Request'],
-                        "Response":output_data['Response']}
-            else:
-                return {"Request":output_data['Request'],
-                        "Response":output_data['Response']}
-        else: 
-            return output_data
+        if Operation == "write":
+            return {"write":output_data['write']}
+        elif Operation == "read":
+            return {"read":output_data['read']}
+        elif Operation == "getLeader":
+            return {"getLeader":output_data['getLeader']}
+        else:
+            return {"read":output_data['read'], "write":output_data['write']}
 
         return output_data
