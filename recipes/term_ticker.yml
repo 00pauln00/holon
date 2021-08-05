@@ -45,14 +45,14 @@
          msg: "Compare term value: {{ curr_itr_vals }} with {{ next_itr_vals }}"
       no_log: true
       failed_when: >
-        (curr_itr_vals["/0/term"] >= next_itr_vals["/0/term"]) or
-        (curr_itr_vals["/0/voted-for-uuid"] != curr_itr_vals["/0/peer-uuid"]) or
+        (curr_itr_vals["/0/term"] != next_itr_vals["/0/term"]) or
+        (curr_itr_vals["/0/voted-for-uuid"] != curr_itr_vals["/0/voted-for-uuid"]) or
         (curr_itr_vals["/0/leader-uuid"] != "null") or
         (curr_itr_vals["/0/commit-idx"] != -1) or
         (curr_itr_vals["/0/last-applied"] != -1) or
         (curr_itr_vals["/0/last-applied-cumulative-crc"] != 0) or
-        (curr_itr_vals["/0/state"] != "candidate") or
-        (curr_itr_vals["/0/follower-reason"] != "none") or
+        (curr_itr_vals["/0/state"] != "candidate-prevote") or
+        (curr_itr_vals["/0/follower-reason"] != "leader-already-present") or
         (curr_itr_vals["/0/client-requests"] != "deny-leader-not-established")
       loop: "{{ range(0, 4)| list }}"
 
@@ -109,7 +109,7 @@
           before_reboot: "{{ before_reboot_term['results'][0]['item'] }}" 
       debug:
          msg: "Compare before reboot term: {{ before_reboot_term['results'][0]['item']['/0/term'] }} with after reboot term: {{ term_after_reboot['results'][0]['item']['/0/term'] }}"
-      failed_when: before_reboot["/0/term"] >= term_after_reboot['results'][0]['item']["/0/term"]
+      failed_when: before_reboot["/0/term"] != term_after_reboot['results'][0]['item']["/0/term"]
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
