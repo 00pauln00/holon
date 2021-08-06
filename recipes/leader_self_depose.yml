@@ -106,21 +106,10 @@
       vars:
         cli_req_after_pause: "{{ fstat_after_pause['results'][0]['item'] }}"
       debug:
-        msg: "Verify client-requests is deny-may-be-deposed"
+        msg: "Verify client-requests is deny-may-be-deposed {{ cli_req_after_pause }}"
       no_log: true
       failed_when: >
-          cli_req_after_pause['/*/client-requests'] != "deny-may-be-deposed"
-
-    - name: "{{ recipe_name }}: Verify follower's last-ack before and after pausing the followers"
-      vars:
-        before_pause_lack: "{{ fstat_before_pause['results'][0]['item']['/0/follower-stats'][item]['last-ack'] }}"
-        after_pause_lack: "{{ fstat_after_pause['results'][0]['item']['/0/follower-stats'][item]['last-ack'] }}"
-      debug:
-        msg: "Compare before and after pause follower stats last-ack"
-      no_log: true
-      failed_when: >
-        after_pause_lack < before_pause_lack
-      loop: "{{ range(0, FollowerUUIDs | length) | list }}"
+          cli_req_after_pause['/*/client-requests'] != "deny-leader-not-established"
 
     - name: "{{ recipe_name }}: Resume the followers one at a time and verify stages"
       vars:
