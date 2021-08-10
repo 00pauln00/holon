@@ -90,7 +90,7 @@
       loop: "{{ range(0, NRunningPeers | length) | list }}"
       no_log: True
 
-    - name: "{{ recipe_name }}: Verify Leader should report client-requests: 'deny-may-be-deposed'."
+    - name: "{{ recipe_name }}: Verify Leader client-requests changed."
       vars:
         pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         stage: "stage2"
@@ -111,7 +111,8 @@
         msg:
         - "Verifying client-requests is {{ cli_rqst }} on leader."
       no_log: True
-      failed_when: cli_rqst != "redirect-to-leader"
+      failed_when: >
+        (cli_rqst != "redirect-to-leader" and cli_rqst != "deny-leader-not-established")
      
     - name: "{{ recipe_name }}: Apply different timeout values for client requests and observe the behavior."
       include_role:
