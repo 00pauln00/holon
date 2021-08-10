@@ -68,7 +68,7 @@
       with_items:
         - "{{ client_rqst }}"
       register: stage1_value
-      
+
     - name: "{{ recipe_name }}: Verify leader should accept client requests."
       vars:
         cli_rqst: "{{ stage1_value['results'][0]['item']['/0/client-requests'] }}"
@@ -80,13 +80,14 @@
       
     - name: "{{ recipe_name }}: Apply fault injection point on the raft leader 'raft_leader_may_be_deposed'."
       vars:
-         pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
          stage: "fi_leader_may_be_dep"
          cmd: "enabled@true"
          where: "/fault_injection_points/name@raft_leader_may_be_deposed"
-         set_fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', pcrtm_leader_uuid, cmd, where, wantlist=True) }}"
+         set_fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers[item], cmd, where, wantlist=True) }}"
       debug:
-        msg: "{{ set_fault_injection }}"
+        msg:
+         - "{{ set_fault_injection }}"
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
       no_log: True
 
     - name: "{{ recipe_name }}: Verify Leader should report client-requests: 'deny-may-be-deposed'."
@@ -102,15 +103,15 @@
       with_items:
         - "{{ verify_cli_rqst }}"
       register: stage2_value
-      
-    - name: "{{ recipe_name }}: Verify Leader should report client-requests: 'deny-may-be-deposed'."
+
+    - name: "{{ recipe_name }}: Verify Leader should report client-requests: 'redirect-to-leader'."
       vars:
         cli_rqst: "{{ stage2_value['results'][0]['item']['/0/client-requests'] }}"
       debug:
         msg:
         - "Verifying client-requests is {{ cli_rqst }} on leader."
       no_log: True
-      failed_when: cli_rqst != "deny-may-be-deposed"
+      failed_when: cli_rqst != "redirect-to-leader"
      
     - name: "{{ recipe_name }}: Apply different timeout values for client requests and observe the behavior."
       include_role:
@@ -125,14 +126,20 @@
 
     - name: "{{ recipe_name }}: Now remove fault injection point on the raft leader"
       vars:
-         pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
+         #pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
          stage: "disable_fault_injection"
          cmd: "enabled@false"
          where: "/fault_injection_points/name@raft_leader_may_be_deposed"
-         remove_fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', pcrtm_leader_uuid, cmd, where, wantlist=True) }}"
+         remove_fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers[item], cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ remove_fault_injection }}"
       no_log: True
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get Leader UUID."
+      include_role:
+         name: common
+         tasks_from: get_follower_stats
 
     - name: "{{ recipe_name }}: After removing fault injection, Get client request from leader."
       vars:
@@ -213,7 +220,7 @@
       with_items:
         - "{{ check_leader_viable }}"
       register: stage5_value
-      
+
     - name: "{{ recipe_name }}: Verify that leader is still considered viable by the client."
       vars:
         leader_viable: "{{ stage5_value['results'][0]['item']['/0/leader-viable'] }}"
