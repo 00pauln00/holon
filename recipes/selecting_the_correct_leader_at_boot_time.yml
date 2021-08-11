@@ -328,6 +328,7 @@
             no_log: True
             failed_when: >
               (followers_state['/0/state'] != "candidate") and
+              (followers_state['/0/state'] != "candidate-prevote") and
               (followers_state['/0/state'] != "follower")
             loop: "{{ range(0, SelCorLeaderPausedFollowers | length) | list }}"
 
