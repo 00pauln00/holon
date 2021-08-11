@@ -65,7 +65,6 @@
          msg: "Check if write is successful"
        failed_when: >
          (writeres['results'][0]['item']['write']['Response']['Status'] != 0)
-
        # Kill the niovakv-server.
      - name: "{{ recipe_name }}: Kill the niovakv-server."
        debug:
@@ -86,7 +85,7 @@
          jmesquery: 'serf_nodes."{{ client_uuid.stdout }}"'
 
      - debug:
-         msg: "Killed node name is: {{ getnodename }}"
+         msg: "Killed node name is: {{ getNodeName }}"
 
      - name: "{{ recipe_name }}: Wait until node status gets changed."
        vars:
@@ -131,11 +130,8 @@
        failed_when: >
         (rdval['Status'] != 0) or
         (rdval['Response'] != wrval['Value'])
-
-      rescue:
+        
+    rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
           terminate_recipe: true
-
-
-
