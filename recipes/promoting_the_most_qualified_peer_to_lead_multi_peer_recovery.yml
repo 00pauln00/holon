@@ -387,17 +387,21 @@
           - "Verifying state for resumed followers."
       no_log: True
       failed_when: >
+        (followers_state['/0/state'] != "candidate-prevote") and
         (followers_state['/0/state'] != "candidate") and
         (followers_state['/0/state'] != "follower")
 
-    - name: "{{ recipe_name }}: Wait until the followers-to-be-recovered increase their term > leader's term."
+    - name: "{{ recipe_name }}: Wait until the followers-to-be-recovered increase their term == leader's term."
       vars:
         stage: "wait_to_change_term"
         initial_term: "{{ stage1_value['results'][item]['item']['/0/term'] }}"
         raft_key: "/raft_root_entry/0/term"
       debug:
-        msg: "Wait to until term value increases."
-      until: lookup('niova_ctlrequest', 'lookup', Promoting_Selected_Followers[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first > (initial_term | int)
+        msg:
+         - "Wait to until term value >= leader's term."
+         - "Initial term {{ initial_term }}"
+         - "{{ lookup('niova_ctlrequest', 'lookup', Promoting_Selected_Followers[item], raft_key, wantlist=True) | dict2items }}"
+      until: lookup('niova_ctlrequest', 'lookup', Promoting_Selected_Followers[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first >= (initial_term | int)
       retries: 60
       delay: 1
       loop: "{{ range(0, Promoting_Selected_Followers | length) | list }}"
