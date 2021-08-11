@@ -54,13 +54,16 @@
       include_role:
          name: common
          tasks_from: get_follower_stats
-      
+
     - name: "{{ recipe_name }}: Get leader's client-requests."
       vars:
         pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         stage: "stage1"
         raft_key:
             - "/raft_root_entry/0/client-requests"
+            - "/raft_root_entry/0/term"
+            - "/raft_root_entry/0/peer-uuid"
+            - "/raft_root_entry/0/leader-uuid"
         client_rqst: "{{ lookup('niova_ctlrequest', 'lookup', pcrtm_leader_uuid, raft_key, wantlist=True) }}"
       debug:
         msg: "Getting client-requests from leader."
@@ -75,22 +78,35 @@
       debug:
         msg:
         - "Verifying client-requests is {{ cli_rqst }} on leader."
+        - "term {{ stage1_value['results'][0]['item']['/0/term'] }}"
+        - "Leader {{ stage1_value['results'][0]['item']['/0/leader-uuid'] }}"
+        - "Peer {{ stage1_value['results'][0]['item']['/0/peer-uuid'] }}"
       no_log: True
       failed_when: cli_rqst != "accept"
-      
+
+    - name: "{{ recipe_name }}: Apply fault injection point on the raft leader 'raft_leader_deposed_with_cluster_healthy'."
+      vars:
+         pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
+         stage: "fi_leader_dep_with_cluster_healthy"
+         cmd: "enabled@true"
+         where: "/fault_injection_points/name@raft_leader_deposed_with_cluster_healthy"
+         set_fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', pcrtm_leader_uuid, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ set_fault_injection }}"
+      no_log: True
+
     - name: "{{ recipe_name }}: Apply fault injection point on the raft leader 'raft_leader_may_be_deposed'."
       vars:
+         pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
          stage: "fi_leader_may_be_dep"
          cmd: "enabled@true"
          where: "/fault_injection_points/name@raft_leader_may_be_deposed"
-         set_fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers[item], cmd, where, wantlist=True) }}"
+         set_fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', pcrtm_leader_uuid, cmd, where, wantlist=True) }}"
       debug:
-        msg:
-         - "{{ set_fault_injection }}"
-      loop: "{{ range(0, NRunningPeers | length) | list }}"
+        msg: "{{ set_fault_injection }}"
       no_log: True
 
-    - name: "{{ recipe_name }}: Verify Leader client-requests changed."
+    - name: "{{ recipe_name }}: Verify Leader should report client-requests: 'deny-may-be-deposed'."
       vars:
         pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         stage: "stage2"
@@ -104,16 +120,15 @@
         - "{{ verify_cli_rqst }}"
       register: stage2_value
 
-    - name: "{{ recipe_name }}: Verify Leader should report client-requests: 'redirect-to-leader'."
+    - name: "{{ recipe_name }}: Verify Leader should report client-requests: 'deny-may-be-deposed'."
       vars:
         cli_rqst: "{{ stage2_value['results'][0]['item']['/0/client-requests'] }}"
       debug:
         msg:
         - "Verifying client-requests is {{ cli_rqst }} on leader."
       no_log: True
-      failed_when: >
-        (cli_rqst != "redirect-to-leader" and cli_rqst != "deny-leader-not-established")
-     
+      failed_when: cli_rqst != "deny-may-be-deposed"
+
     - name: "{{ recipe_name }}: Apply different timeout values for client requests and observe the behavior."
       include_role:
          name: common
@@ -125,22 +140,27 @@
          - 5
          - 10
 
-    - name: "{{ recipe_name }}: Now remove fault injection point on the raft leader"
+    - name: "{{ recipe_name }}: Now remove fault injection raft_leader_may_be_deposed on the raft leader"
       vars:
-         #pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
-         stage: "disable_fault_injection"
+         pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
+         stage: "disable_fault_injection1"
          cmd: "enabled@false"
          where: "/fault_injection_points/name@raft_leader_may_be_deposed"
-         remove_fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers[item], cmd, where, wantlist=True) }}"
+         remove_fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', pcrtm_leader_uuid, cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ remove_fault_injection }}"
       no_log: True
-      loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    - name: "{{ recipe_name }}: Get Leader UUID."
-      include_role:
-         name: common
-         tasks_from: get_follower_stats
+    - name: "{{ recipe_name }}: Now remove fault injection raft_leader_deposed_with_cluster_healthy on the raft leader"
+      vars:
+         pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
+         stage: "disable_fault_injection"
+         cmd: "enabled@false"
+         where: "/fault_injection_points/name@raft_leader_deposed_with_cluster_healthy"
+         remove_fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', pcrtm_leader_uuid, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ remove_fault_injection }}"
+      no_log: True
 
     - name: "{{ recipe_name }}: After removing fault injection, Get client request from leader."
       vars:
@@ -148,6 +168,9 @@
         stage: "stage3"
         raft_key:
             - "/raft_root_entry/0/client-requests"
+            - "/raft_root_entry/0/term"
+            - "/raft_root_entry/0/peer-uuid"
+            - "/raft_root_entry/0/leader-uuid"
         check_cli_rqst: "{{ lookup('niova_ctlrequest', 'lookup', pcrtm_leader_uuid, raft_key, wantlist=True) }}"
       debug:
         msg: "After removing fault injection, getting client-requests from leader."
@@ -155,16 +178,19 @@
       with_items:
         - "{{ check_cli_rqst }}"
       register: stage3_value
-      
+
     - name: "{{ recipe_name }}: After removing fault injection, verify client request reported as 'accept'."
       vars:
         cli_rqst: "{{ stage3_value['results'][0]['item']['/0/client-requests'] }}"
       debug:
         msg:
         - "Verifying client-requests is {{ cli_rqst }} on leader."
+        - "Term {{ stage3_value['results'][0]['item']['/0/term'] }}"
+        - "Leader UUID {{ stage3_value['results'][0]['item']['/0/leader-uuid'] }}"
+        - "Peer {{ stage3_value['results'][0]['item']['/0/peer-uuid'] }}"
       no_log: True
       failed_when: cli_rqst != "accept"
-      
+
     - name: "{{ recipe_name }}: Lookup the object written by parent recipe."
       vars:
          stage: "lookup_stage"
@@ -174,7 +200,7 @@
       debug:
         msg: "{{ lookup_obj }}"
       no_log: True
-    
+
     - name: "{{ recipe_name }}: Get pmdb-test-apps array values."
       vars:
         stage: "stage4"
@@ -187,7 +213,7 @@
       with_items:
         - "{{ check_pmdb_array }}"
       register: stage4_value
-      
+
     - name: "{{ recipe_name }}: Validate pmdb-test-apps array values."
       vars:
         pmdb_array: "{{ stage4_value['results'][0]['item']['/pumice_db_test_client/pmdb-test-apps'] }}"
@@ -196,7 +222,7 @@
         - "Check pmdb-test-apps array: {{ pmdb_array }}."
       no_log: True
       failed_when: pmdb_array == "null"
-      
+
     - name: "{{ recipe_name }}: Apply fault injection on the client to silently drop non-ping replies from the leader."
       vars:
          stage: "client_fault_injection"
@@ -230,7 +256,7 @@
         - "leader_viable set to {{ leader_viable }}."
       no_log: True
       failed_when: leader_viable != True
-      
+
     - name: "{{ recipe_name }}: Perform the lookup operation again on the same object"
       vars:
          stage: "lookup_stage"
