@@ -130,6 +130,8 @@
           - "{{ client_uuid.stdout }}"
       register: pmdbclient_output
       failed_when: pmdbclient_output.rc == 0
+      environment:
+         NIOVA_LOCAL_CTL_SVC_DIR: "{{ ClusterParams['base_dir'] }}/{{ ClusterParams['raft_uuid'] }}/configs"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
