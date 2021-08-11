@@ -88,7 +88,7 @@
           read_arr:  "{{ multikeyres['results'][0]['item']['Read'] }}"
        loop: "{{ range(0, write_arr | length) | list }}"
 
-     rescue:
+    rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
           terminate_recipe: true
