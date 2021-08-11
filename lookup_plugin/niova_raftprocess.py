@@ -53,6 +53,10 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
         node_name = node_line.split()[0]
 
         logging.info("Node Name for starting niovakv_server is: %s", node_name)
+        if not "serf_nodes" in recipe_conf:
+            recipe_conf['serf_nodes'] = {}
+
+        recipe_conf['serf_nodes'][peer_uuid] = node_name
 
     if operation == "start":
 
@@ -85,7 +89,7 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
     recipe_conf['raft_process'][peer_uuid] = raft_proc_dict
 
     genericcmdobj = GenericCmds()
-    genericcmdobj.recipe_json_dump(recipe_conf) 
+    genericcmdobj.recipe_json_dump(recipe_conf)
     return serverproc.__dict__
 
 '''
