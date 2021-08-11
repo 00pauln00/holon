@@ -1,10 +1,10 @@
-- import_playbook: basic_recipe_for_niovakv.yml
+- import_playbook: add_new_niovakv_server_and_rdwr_operation.yml
 - name: "concurrent_multikey_rdwr_operation"
   hosts: localhost
   connection: local
   vars:
     recipe_name: "concurrent_multikey_rdwr_operation"
-    parent: "basic_recipe_for_niovakv"
+    parent: "add_new_niovakv_server_and_rdwr_operation"
 
   tasks:
   - block:
