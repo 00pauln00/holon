@@ -28,26 +28,33 @@ def start_subprocess(cluster_params, Operation, Key, Value, OutfileName,
     # Prepare config file path for niovakv_client
     config_path = "%s/niovakv.config" % binary_dir
 
+    outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
+
     if MultiKey == False:
         if Operation == "write":
-            print(Operation)
-            outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
             process_popen = subprocess.Popen([bin_path,'-c', config_path,
                                              '-l', logfile, '-o', Operation, '-k', Key,
                                              '-v', Value, '-r', outfilePath],
                                              stdout = fp, stderr = fp)
         elif Operation == "read":
-            print(Operation)
-            outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
             process_popen = subprocess.Popen([bin_path,'-c', config_path, '-o', Operation,
                                               '-l', logfile, '-k', Key, '-v', Value,
                                               '-r', outfilePath],
                                               stdout = fp, stderr = fp)
-        else:         # operation for get leader
-            outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
+
+        elif Operation == "getLeader":         # operation for get leader
             process_popen = subprocess.Popen([bin_path,'-c', config_path, '-o', Operation,
-                                              '-k', Key, '-v', Value, '-r', outfilePath],
+                                              '-r', outfilePath],
                                               stdout = fp, stderr = fp)
+        elif Operation == "membership":
+            process_popen = subprocess.Popen([bin_path,'-c', config_path, '-o', Operation,
+                                              '-r', outfilePath],
+                                              stdout = fp, stderr = fp)
+        else:
+           logging.error("Invalid Operation passed to start niovakv_client: %s", Operation)
+           os.fsync(fp)
+           exit(1)
+
 
     elif (( MultiKey == True ) and ( Sequential == True )):
 
@@ -96,6 +103,7 @@ class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
         Operation = terms[0]
+        print(Operation)
         Key = terms[1]
         Value = terms[2]
         OutfileName = terms[3]
@@ -116,7 +124,10 @@ class LookupModule(LookupBase):
             return {"read":output_data['read']}
         elif Operation == "getLeader":
             return {"getLeader":output_data['getLeader']}
+        elif Operation == "membership":
+            return {"membership":output_data}
         else:
-            return {"read":output_data['read'], "write":output_data['write']}
+            return output_data
+            
 
         return output_data
