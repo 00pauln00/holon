@@ -1,16 +1,16 @@
-- import_playbook: basic_recipe_for_niovakv.yml
-- name: "add_new_niovakv_server_and_rdwr_operation"
+- import_playbook: get_leader_operation.yml
+- name: "get_membership_details"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "add_new_niovakv_server_and_rdwr_operation"
-    parent: "basic_recipe_for_niovakv"
+    recipe_name: "get_membership_details"
+    parent: "get_leader_operation"
 
   tasks:
   - block:
-    - name: "Check if parent recipe failed"
-      debug: msg="Check if parent recipe {{ parent }} failed"
-      failed_when: terminate_recipe == true
+     - name: "Check if parent recipe failed"
+       debug: msg="Check if parent recipe {{ parent }} failed"
+       failed_when: terminate_recipe == true
 
       # check for the app_type
      - name: "{{ recipe_name }}: Check if the app_type is 'niovakv'."
@@ -42,12 +42,13 @@
        pause:
         seconds: 5
 
-     - name: "{{ recipe_name }}: Starting niovakv_client to write the value."
+      # Write key-value before killing niovakv-server.
+     - name: "{{ recipe_name }}: Write the key-value before killing the niovakv-server."
        vars:
          Operation: "write"
-         Key: "Key222"
-         Value: "Value222"
-         OutfileName: "write1"
+         Key: "China"
+         Value: "population"
+         OutfileName: "wrkey"
          NumRequest: 0
          MultiKey: False
          Sequential : False
@@ -58,9 +59,6 @@
           - "{{ nkvclires }}"
        register: writeres
 
-     - debug:
-         msg: "{{ writeres }}"
-
        # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"
        debug:
@@ -68,12 +66,51 @@
        failed_when: >
          (writeres['results'][0]['item']['write']['Response']['Status'] != 0)
 
-     - name: "{{ recipe_name }}: Starting niovakv_client to read the value."
+       # Kill the niovakv-server.
+     - name: "{{ recipe_name }}: Kill the niovakv-server."
+       debug:
+        msg: "killing the niovakv-server: {{ lookup('niova_raftprocess', 'kill', client_uuid.stdout, wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: prepare path to read recipe JSON file."
+       shell: cat "{{base_dir}}"/"{{raft_uuid}}".json
+       register: result
+
+     - name: "{{ recipe_name }}: Convert output to JSON format."
+       set_fact:
+         getNodeDetails: "{{ result.stdout | from_json }}"
+
+     - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
+       set_fact:
+         getNodeName: "{{ getNodeDetails | json_query(jmesquery) }}"
+       vars:
+         jmesquery: 'serf_nodes."{{ client_uuid.stdout }}"'
+
+     - debug:
+         msg: "Killed node name is: {{ getnodename }}"
+
+     - name: "{{ recipe_name }}: Wait until node status gets changed."
+       vars:
+         Operation: "membership"
+         Key: ""
+         Value: ""
+         OutfileName: "nodestatus"
+         NumRequest: 0
+         MultiKey: False
+         Sequential: False
+       debug:
+         msg: "Verifying node status"
+       until: lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNodeName) | map(attribute='Status') | list | first == "failed"
+       loop: "{{ range(0, 10) | list }}"
+       loop_control:
+          pause: 1
+
+     # Read key-value after killing node.
+     - name: "{{ recipe_name }}: Read the value of requested key."
        vars:
          Operation: "read"
-         Key: "Key222"
+         Key: "China"
          Value: ""
-         OutfileName: "read1"
+         OutfileName: "rdval"
          NumRequest: 0
          MultiKey: False
          Sequential : False
@@ -84,10 +121,7 @@
           - "{{ nkvclires }}"
        register: readres
 
-     - debug:
-         msg: "{{ readres }}"
-
-     - name: "{{ recipe_name }}: compare values after sucessful read operation."
+     - name: "{{ recipe_name }}: compare values after successful read operation."
        vars:
          wrval: "{{ writeres['results'][0]['item']['write']['Request'] }}"
          rdval: "{{ readres['results'][0]['item']['read']['Response'] }}"
@@ -98,12 +132,10 @@
         (rdval['Status'] != 0) or
         (rdval['Response'] != wrval['Value'])
 
-     rescue:
+      rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
           terminate_recipe: true
-
-
 
 
 
