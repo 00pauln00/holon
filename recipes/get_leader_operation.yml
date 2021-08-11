@@ -3,11 +3,15 @@
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "get_leader_operation.yml"
+    recipe_name: "get_leader_operation"
     parent: "basic_recipe_for_niovakv"
 
   tasks:
   - block:
+     - name: "Check if parent recipe failed"
+       debug: msg="Check if parent recipe {{ parent }} failed"
+       failed_when: terminate_recipe == true
+
       # check for the app_type
      - name: "{{ recipe_name }}: Check if the app_type is 'niovakv'."
        vars:
@@ -135,5 +139,11 @@
        failed_when: >
         (rdval['Status'] != 0) or
         (rdval['Response'] != wrval['Value'])
+
+     rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+          terminate_recipe: true
+
 
 
