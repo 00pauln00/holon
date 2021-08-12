@@ -138,7 +138,7 @@
       debug:
         msg: "Waiting for write completion"
       until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/raft_client_root_entry/0/recent-ops-wr/0/status', wantlist=True) |
-              dict2items | list | first != "null")
+              dict2items | map(attribute='value')| list | first != "null")
       retries: 3
       delay: 1
 
