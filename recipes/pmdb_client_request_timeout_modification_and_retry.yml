@@ -77,7 +77,7 @@
         - "Verifying client-requests is {{ cli_rqst }} on leader."
       no_log: True
       failed_when: cli_rqst != "accept"
-      
+
     - name: "{{ recipe_name }}: Disable recv on client from leader" 
       vars:
         pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
@@ -109,7 +109,7 @@
       debug:
         msg: "{{ enable_recv }}"
 
-    - name: "{{ recipe_name }}: After removing fault injection, Get client request from leader."
+    - name: "{{ recipe_name }}: After enabling recv from leader, Get client request from leader."
       vars:
         pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         stage: "stage3"
@@ -122,8 +122,8 @@
       with_items:
         - "{{ check_cli_rqst }}"
       register: stage3_value
-      
-    - name: "{{ recipe_name }}: After removing fault injection, verify client request reported as 'accept'."
+
+    - name: "{{ recipe_name }}: Verify client request reported as 'accept'."
       vars:
         cli_rqst: "{{ stage3_value['results'][0]['item']['/0/client-requests'] }}"
       debug:
@@ -131,7 +131,7 @@
         - "Verifying client-requests is {{ cli_rqst }} on leader."
       no_log: True
       failed_when: cli_rqst != "accept"
-      
+
     - name: "{{ recipe_name }}: Lookup the object written by parent recipe."
       vars:
          stage: "lookup_stage"
@@ -141,7 +141,7 @@
       debug:
         msg: "{{ lookup_obj }}"
       no_log: True
-    
+
     - name: "{{ recipe_name }}: Get pmdb-test-apps array values."
       vars:
         stage: "stage4"
@@ -154,7 +154,7 @@
       with_items:
         - "{{ check_pmdb_array }}"
       register: stage4_value
-      
+
     - name: "{{ recipe_name }}: Validate pmdb-test-apps array values."
       vars:
         pmdb_array: "{{ stage4_value['results'][0]['item']['/pumice_db_test_client/pmdb-test-apps'] }}"
@@ -195,7 +195,7 @@
       debug:
         msg:
         - "leader_viable set to {{ leader_viable }}."
-      no_log: True
+      #no_log: True
       failed_when: leader_viable != True
       
     - name: "{{ recipe_name }}: Perform the lookup operation again on the same object"
