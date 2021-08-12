@@ -209,6 +209,19 @@
           - "{{ sync_ent_idx_followers_after_write_vals }}"
       register: sync_entry_idx_followers_after_write
 
+    - name: "{{ recipe_name }}: Wait till leader's sync-entry-idx advances by 1"
+      vars:
+        cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
+        leader_sync_entry_idx_before: "{{ sync_entry_idx_leader_before_write['results'][0]['item'] }}"
+        stage: "wait_for_sync_idx_inc"
+        raft_keys:
+            - "/raft_root_entry/0/sync-entry-idx"
+      debug:
+       msg: "Wait for sync-entry-idx to advance by 1"
+      until: lookup('niova_ctlrequest', 'lookup', cuwr_leader_uuid_before, raft_keys, wantlist=True) | dict2items | map(attribute='value') | list | first | int != leader_sync_entry_idx_before | int + 1
+      retries: 10
+      delay: 1
+      
     - name: "{{ recipe_name }}: Get sync-entry-idx value for leader after write."
       vars:
         cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"
