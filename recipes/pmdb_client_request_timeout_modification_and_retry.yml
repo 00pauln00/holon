@@ -174,7 +174,18 @@
         msg: "{{ client_fault_injection }}"
       no_log: True
 
-    - pause: seconds=1 
+
+    - name: "{{ recipe_name }}: wait until leader is viable"
+      vars:
+        stage: "stage5"
+        raft_key:
+            - "/raft_client_root_entry/0/leader-viable"
+      debug:
+       msg: "Wait till leader-vaible is true"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | bool != True
+      loop: "{{ range(0, 10) | list }}"
+      loop_control:
+        pause: 1
 
     - name: "{{ recipe_name }}: Get the leader-viable value from client."
       vars:
@@ -188,7 +199,7 @@
       with_items:
         - "{{ check_leader_viable }}"
       register: stage5_value
-      
+
     - name: "{{ recipe_name }}: Verify that leader is still considered viable by the client."
       vars:
         leader_viable: "{{ stage5_value['results'][0]['item']['/0/leader-viable'] }}"
@@ -208,8 +219,6 @@
         msg: "{{ lookup_op }}"
       no_log: True
 
-    - pause: seconds=1
-
     - name: "{{ recipe_name }}: Disable fault injection on the client."
       vars:
          stage: "remove_fault_injection"
@@ -219,8 +228,6 @@
       debug: 
         msg: "{{ disable_fault_injection }}"
       no_log: True
-
-    - pause: seconds=1
 
     - name: "{{ recipe_name }}: Verify that last-request-tag matches with tag in recent ops."
       vars:
