@@ -1,0 +1,301 @@
+- import_playbook: basic_raft_operation_with_client_activity.yml
+  when: ClusterParams['ctype'] == "pumicedb"
+
+- name: "preVote_basic_implementation"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "preVote_basic_implementation"
+     parent: "basic_raft_ops_w_client_act"
+     requirement: "pumicedb"
+     num_writes: 1
+
+  tasks:
+  - block:
+    - name: "Check if parent recipe failed."
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster."
+      include_role:
+        name: common
+        tasks_from: recipe_compatibility_requirement
+
+    - name: "{{ recipe_name }}: Get cluster information."
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
+
+    - name: "{{ recipe_name }}: Get term, commit index value of all servers before disabling."
+      vars:
+         stage: "verify_info_before_disabling_peers"
+         Peer: "{{ FollowerUUIDs  }}"
+         allPeers: "{{ Peer + [LeaderUUID['/0/leader-uuid']] }}"
+         raft_keys:
+              - "/raft_root_entry/0/term"
+              - "/raft_root_entry/0/commit-idx"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', allPeers, raft_keys, wantlist=true) }}"
+      debug:
+        msg: "{{ peer_values }}"
+      with_items:
+        - "{{ peer_values }}"
+      register: value_info
+
+    - name: "{{ recipe_name }}: Disable Msg(Recv) from server 4 to other peers except server 2."  
+      vars:
+        serverList: "{{ FollowerUUIDs | difference(FollowerUUIDs[1]) }}"
+        newList: "{{ serverList + [LeaderUUID['/0/leader-uuid']] }}"
+        disablePeerList: "{{ newList | difference(FollowerUUIDs[2]) }}"
+        stage: "disable_msg_recv"
+        cmd: "net_recv_enabled@false"
+        where: "/ctl_svc_nodes/uuid@{{ disablePeerList[item] }}"
+        disfrmPeer4: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[2], cmd, where, wantlist=True) }}"
+      debug:
+        msg: " disable msg recv {{ disfrmPeer4 }}"
+      loop: "{{ range(0, disablePeerList | length) | list }}"
+
+    - name: "{{ recipe_name }}: Disable message rcv from server 5 to followers except leader."
+      vars:
+         stage: "disable_netrcv_peer5"
+         disablePeerList: "{{ FollowerUUIDs | difference(FollowerUUIDs[3]) }}"
+         cmd: "net_recv_enabled@false"
+         where: "/ctl_svc_nodes/uuid@{{ disablePeerList[item] }}"
+         disfrmPeer5: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[3], cmd, where, wantlist=True) }}"
+      debug:
+        msg: "disable msg recv {{ disfrmPeer5 }}"
+      loop: "{{ range(0, disablePeerList | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get the cluster information again after starting the peers"
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Get term, state, leader value from all servers."
+      vars:
+         stage: "info_all_servers"
+         Peer: "{{ FollowerUUIDs  }}"
+         allPeers: "{{ Peer + [LeaderUUID['/0/leader-uuid']] }}"
+         raft_keys:
+              - "/raft_root_entry/0/term"
+              - "/raft_root_entry/0/leader-uuid"
+              - "/raft_root_entry/0/state"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', allPeers, raft_keys, wantlist=true) }}"
+      debug:
+        msg: "{{ peer_values }}"
+      with_items:
+        - "{{ peer_values }}"
+      register: running_peers_info
+
+    - name: "{{ recipe_name }}: Verify leader, term, state for server 1, 2, 3."
+      vars:
+        rmPeer4: "{{ FollowerUUIDs | difference(FollowerUUIDs[2]) }}"
+        rmPeer5: "{{ rmPeer4 | difference(FollowerUUIDs[3]) }}"
+        remainingPeers: "{{ rmPeer5 + [LeaderUUID['/0/leader-uuid']] }}"
+        term_prev: "{{ running_peers_info['results'][item]['item']['/0/term'] }}"
+        term_next: "{{ running_peers_info['results'][item + 1]['item']['/0/term'] }}"
+      debug:
+        msg: "Verify values for peer."
+      failed_when: >
+          (running_peers_info['results'][item]['item']["/0/leader-uuid"] != LeaderUUID["/0/leader-uuid"]) or
+          (term_prev != term_next) or
+          ((running_peers_info['results'][item]['item']["/0/state"] != "leader") and
+          (running_peers_info['results'][item]['item']["/0/state"] != "follower"))
+      loop: "{{ range(0, remainingPeers | length - 1) | list }}"
+
+    - name: "{{ recipe_name }}: Initialize an empty list of array for server 4."
+      set_fact:
+        prevotePeers: []
+
+    - set_fact:
+        prevotePeers: "{{ prevotePeers + [FollowerUUIDs[2]] }}"
+
+    - name: "{{ recipe_name }}: Get the state and commit index of server 4."
+      vars:
+         stage: "verifyState_server4"
+         raft_keys:
+              - "/raft_root_entry/0/state"  
+              - "/raft_root_entry/0/commit-idx" 
+         prevote_values: "{{ lookup('niova_ctlrequest', 'lookup', prevotePeers, raft_keys, wantlist=true) }}"
+      debug:
+        msg: "{{ prevote_values }}"
+      with_items:
+        - "{{ prevote_values }}"
+      register: prevotePeerVal
+
+    - name: "{{ recipe_name }}: Get Commit index value from all servers before write operation."
+      vars:
+         stage: "verify_Commit_before_write"
+         rmPeer4: "{{ FollowerUUIDs }}"
+         remainingPeers: "{{ rmPeer4 + [LeaderUUID['/0/leader-uuid']] }}"
+         raft_keys:
+             - "/raft_root_entry/0/peer-uuid"
+             - "/ctl_svc_nodes/*/net_recv_enabled"
+             - "/raft_root_entry/0/leader-uuid"
+             - "/raft_root_entry/0/commit-idx"
+             - "/raft_root_entry/0/term"
+             - "/raft_root_entry/0/state"
+             - "/raft_root_entry/0/client-requests" 
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', remainingPeers, raft_keys, wantlist=true) }}"
+      debug:
+        msg: "commit index before write operation"
+      with_items:
+        - "{{ peer_values }}"
+      register: running_peers_info_before_write
+
+    - name: "{{ recipe_name }}: Get unused client uuid for starting the client."
+      include_role:
+        name: common
+        tasks_from: get_new_client_uuid
+      register: client_uuid
+
+    - debug:
+        msg: "Client UUID: {{ client_uuid.stdout }}"
+
+    - name: "{{ recipe_name }}: Generate App UUID."
+      shell: "/usr/bin/uuid"
+      register: app_uuid1
+
+    - name: "{{ recipe_name }}: Start the client."
+      include_role:
+         name: common
+         tasks_from: start_client
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
+   #Perform write.
+    - name: "{{ recipe_name}}: Write at seqno 0 and perform the write."
+      vars:
+        stage: "write"
+        cmd: "input@{{ app_uuid1.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
+        where: "/pumice_db_test_client/input"
+      set_fact:
+         write_ops: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Get Commit index value from all servers after write operation."
+      vars:
+         stage: "verify_Commit_index_after_Write"
+         Peer: "{{ FollowerUUIDs }}"
+         remainingPeers: "{{ Peer + [LeaderUUID['/0/leader-uuid']] }}"
+         raft_keys:
+             - "/raft_root_entry/0/peer-uuid"
+             - "/ctl_svc_nodes/*/net_recv_enabled"
+             - "/raft_root_entry/0/leader-uuid"
+             - "/raft_root_entry/0/commit-idx"
+             - "/raft_root_entry/0/state"
+             - "/raft_root_entry/0/client-requests"
+             - "/raft_root_entry/0/term"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', remainingPeers, raft_keys, wantlist=true) }}"
+      debug:
+        msg: "{{ peer_values }} "
+      with_items:
+        - "{{ peer_values }}"
+      register: running_peers_info1
+
+    - name: "{{ recipe_name }}: Get the commit from server 4."
+      vars:
+         stage: "verifyState_server4"
+         raft_keys:  
+              - "/raft_root_entry/0/commit-idx" 
+         prevote_values: "{{ lookup('niova_ctlrequest', 'lookup', prevotePeers, raft_keys, wantlist=true) }}"
+      debug:
+        msg: "{{ prevote_values }} "
+      with_items:
+        - "{{ prevote_values }}"
+      register: prevotePeerValue
+    
+    - name: "{{ recipe_name }}: Verify commit index for all servers except server 4."
+      vars:
+        Peers: "{{ FollowerUUIDs | difference(FollowerUUIDs[2]) }}"
+        allPeers: "{{ Peers + [LeaderUUID['/0/leader-uuid']] }}"
+        commit_prev: "{{ running_peers_info_before_write['results'][item]['item']['/0/commit-idx'] }}"
+        commit_next:  "{{ running_peers_info1['results'][item]['item']['/0/commit-idx'] }}"
+      debug:
+        msg: "Verify values for peer. {{commit_prev}} and {{commit_next}}"
+      failed_when: >
+          (commit_next < commit_prev) 
+      loop: "{{ range(0, allPeers | length ) | list }}"
+
+    - name: "{{ recipe_name }}: Verify commit index of 4 server."
+      vars:
+        commit_prev: "{{ prevotePeerVal['results'][0]['item']['/0/commit-idx'] }}"
+        commit_next:  "{{ prevotePeerValue['results'][0]['item']['/0/commit-idx'] }}"
+      debug:
+        msg: "Verify values for peer. {{commit_prev}} and {{commit_next}}"
+      failed_when: >
+         (commit_next != commit_prev) 
+
+    - name: "{{ recipe_name }}: Enable Msg(Recv) from 4 to other peers."
+      vars:
+        serverList: "{{ FollowerUUIDs | difference(FollowerUUIDs[1]) }}"
+        newList: "{{ serverList + [LeaderUUID['/0/leader-uuid']] }}"
+        enablePeerList: "{{ newList | difference(FollowerUUIDs[2]) }}"
+        stage: "enable_msg_recv"
+        cmd: "net_recv_enabled@true"
+        where: "/ctl_svc_nodes/uuid@{{ enablePeerList[item] }}"
+        enfrmPeer4: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[2], cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ enfrmPeer4 }}"
+      loop: "{{ range(0, enablePeerList | length) | list }}"
+
+    - name: "{{ recipe_name }}: Enable message rcv from server 5 to followers except leader."
+      vars:
+         stage: "enable_netrcv_peer5"
+         enablePeerList: "{{ FollowerUUIDs | difference(FollowerUUIDs[3]) }}"
+         cmd: "net_recv_enabled@true"
+         where: "/ctl_svc_nodes/uuid@{{ enablePeerList[item] }}"
+         disfrmPeer5: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[3], cmd, where, wantlist=True) }}"
+      debug:
+        msg: "disable msg recv {{ disfrmPeer5 }}"
+      loop: "{{ range(0, enablePeerList | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get Commit index value from all servers after recv."
+      vars:
+         stage: "verify_Commit_index_after_Recv_Enable"
+         rmPeer4: "{{ FollowerUUIDs }}"
+         allPeers: "{{ rmPeer4 + [LeaderUUID['/0/leader-uuid']] }}"
+         raft_keys:
+             - "/raft_root_entry/0/peer-uuid"
+             - "/ctl_svc_nodes/*/net_recv_enabled"
+             - "/raft_root_entry/0/leader-uuid"
+             - "/raft_root_entry/0/state"
+             - "/raft_root_entry/0/client-requests"
+             - "/raft_root_entry/0/term"
+             - "/raft_root_entry/0/commit-idx"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', allPeers, raft_keys, wantlist=true) }}"
+      debug:
+        msg: "{{ peer_values }}"
+      with_items:
+        - "{{ peer_values }}"
+      register: running_peers_info2
+
+    - name: "{{ recipe_name }}: Get term, commit index value after enabling all servers."
+      vars:
+         stage: "verify_info_after_enabling_server"
+         rmPeer4: "{{ FollowerUUIDs }}"
+         allPeers: "{{ rmPeer4 + [LeaderUUID['/0/leader-uuid']] }}"
+         raft_keys:
+              - "/raft_root_entry/0/term"
+              - "/raft_root_entry/0/commit-idx"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', allPeers, raft_keys, wantlist=true) }}"
+      debug:
+        msg: "{{ peer_values }}"
+      with_items:
+        - "{{ peer_values }}"
+      register: value_info2
+
+    - name: "{{ recipe_name }}: Verify term for all servers."
+      vars:
+        rmPeer4: "{{ FollowerUUIDs }}"
+        allPeers: "{{ rmPeer4 + [LeaderUUID['/0/leader-uuid']] }}"
+        term_prev: "{{ value_info['results'][item]['item']['/0/term'] }}"
+        term_next: "{{ value_info2['results'][item + 1]['item']['/0/term'] }}"
+        commit_prev: "{{ value_info['results'][item]['item']['/0/commit-idx'] }}"
+        commit_next:  "{{ value_info2['results'][item]['item']['/0/commit-idx'] }}"
+      debug:
+        msg: "Verify values for peer."
+      failed_when: >
+          (term_prev != term_next) or
+          (commit_next <= commit_prev) 
+      loop: "{{ range(0, allPeers | length - 1) | list }}"
+
+
