@@ -22,12 +22,78 @@ def check_for_process_status(pid, process_status):
             itr = 0
         itr += 1
 
+def get_executable_path(process_type, app_type, backend_type, binary_dir):
+
+    bin_path = ""
+    # Add complete path to app/pumice/raft executable to bin_path
+    if app_type == "foodpalace":
+        if process_type == "server":
+            bin_path = '%s/foodpalaceappserver' % binary_dir
+        else:
+            bin_path = '%s/foodpalaceappclient' % binary_dir
+
+    elif app_type == "covid":
+        if process_type == "server":
+            bin_path = '%s/covid_app_server' % binary_dir
+        else:
+            bin_path = '%s/covid_app_client' % binary_dir
+
+    elif app_type == "niovakv":
+        if process_type == "server":
+            bin_path = '%s/niovakv_pmdbserver' % binary_dir
+        else:
+            bin_path = '%s/niovakv_server' % binary_dir
+
+    elif app_type == "pumicedb":
+        if backend_type == "pumicedb":
+            if process_type == "server":
+                bin_path = '%s/pumice-reference-server' % binary_dir
+            else:
+                bin_path = '%s/pumice-reference-client' % binary_dir
+
+        else:
+            if process_type == "server":
+                bin_path = '%s/raft-reference-server' % binary_dir
+            else:
+                bin_path = '%s/raft-reference-client' % binary_dir
+    else:
+        logging.error("Invalid app type" % app_type)
+        exit(1)
+
+    return bin_path
+
+def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, config_path, node_name):
+    process_popen = {}
+    if ptype =="server":
+    	process_popen = subprocess.Popen([bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid],
+                                    stdout = fp, stderr = fp)
+    else:
+        if app_type == "foodpalace" or app_type == "covid":
+            process_popen = subprocess.Popen([bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid, '-l', base_dir],
+                                    stdout = fp, stderr = fp)
+        elif app_type == "pumicedb":
+            process_popen = subprocess.Popen([bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid, '-a'],
+                                    stdout = fp, stderr = fp)
+        elif app_type == "niovakv":
+            log_path = "%s/%s_niovakv_sevre.log" % (base_dir, peer_uuid)
+            process_popen = subprocess.Popen([bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid,
+                                    '-c', config_path, '-n', node_name, '-l', log_path],
+                                    stdout = fp, stderr = fp)
+
+
+    return process_popen
+
 class RaftProcess:
 
     process_type = ''
+    process_app_type = ''
+    process_raft_uuid = ''
     process_uuid = ''
     process_status = ''
-    process_popen = {}
     process_backend_type = ''
     process_pid = 0
 
@@ -39,11 +105,13 @@ class RaftProcess:
                             created.
                     @process_type: Type of the process(server or client)
     '''
-    def __init__(self, backend_type, uuid, process_type):
+    def __init__(self, backend_type, raft_uuid, uuid, process_type, app_type):
         self.process_backend_type = backend_type
+        self.process_raft_uuid = raft_uuid
         self.process_uuid = uuid
         self.process_pid = 0
         self.process_type = process_type
+        self.process_app_type = app_type
     '''
         Method: start_process
         Purpose: Start the process of type process_type
@@ -66,45 +134,22 @@ class RaftProcess:
         #if rc == 1:
         #    exit()
 
-    def start_process(self, raft_uuid, peer_uuid, base_dir, app_name):
+    def start_process(self, base_dir, node_name):
 
-        logging.warning("Starting uuid: %s, cluster_type %s" % (peer_uuid, self.process_backend_type))
+        logging.warning("Starting uuid: %s, cluster_type %s" % (self.process_uuid, self.process_backend_type))
 
         binary_dir = os.getenv('NIOVA_BIN_PATH')
 
         logging.warning("raft binary path is: %s" % binary_dir)
 
+        app_type = self.process_app_type
         # Otherwise use the default path
         if binary_dir == None:
             binary_dir = "/home/pauln/raft-builds/latest"
 
         # Add complete path to app/pumice/raft executable to bin_path
-        if app_name == "foodpalace":
-            if self.process_type == "server":
-                bin_path = '%s/foodpalaceappserver' % binary_dir
-            else:
-                bin_path = '%s/foodpalaceappclient' % binary_dir
 
-        elif app_name == "covid":
-            if self.process_type == "server":
-                bin_path = '%s/covid_app_server' % binary_dir
-            else:
-                bin_path = '%s/covid_app_client' % binary_dir
-
-        #If app_name is not zomato/covid
-        else:
-            if self.process_backend_type == "pumicedb":
-                if self.process_type == "server":
-                    bin_path = '%s/pumice-reference-server' % binary_dir
-                else:
-                    bin_path = '%s/pumice-reference-client' % binary_dir
-
-            else:
-                if self.process_type == "server":
-                    bin_path = '%s/raft-reference-server' % binary_dir
-                else:
-                    bin_path = '%s/raft-reference-client' % binary_dir
-
+        bin_path = get_executable_path(self.process_type, app_type, self.process_backend_type, binary_dir)
         '''
         We want to append the output of raft-server log into the recipe log
         adding information about for which peerid the process has started.
@@ -113,21 +158,15 @@ class RaftProcess:
 
         If its application then we want the logs in the file
         '''
-        temp_file = "%s/%s_log_%s_%s.txt" % (base_dir,app_name,self.process_type, peer_uuid)
+        temp_file = "%s/%s_log_%s_%s.txt" % (base_dir, app_type, self.process_type, self.process_uuid)
 
         fp = open(temp_file, "w")
-        print("Raft uuid : ",raft_uuid,"peer uuid : ",peer_uuid)
-        if self.process_type =="server":
-            process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid],  stdout = fp, stderr = fp)
-        else:
-            if app_name=="foodpalace" or app_name=="covid":
-                process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid, '-l', base_dir],  stdout = fp, stderr = fp)
-            else:
-                process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid, '-a'],  stdout = fp, stderr = fp)
 
+        config_path = "%s/niovakv.config" % binary_dir
+
+        process_popen = run_process(fp, self.process_raft_uuid, self.process_uuid,
+                                    self.process_type, self.process_app_type, bin_path,
+                                    base_dir, config_path, node_name)
         #Make sure all the ouput gets flushed to the file before closing it
         os.fsync(fp)
 
@@ -157,6 +196,8 @@ class RaftProcess:
         #Print <process_type.peer_index> at the start of raft log messages
         for line in Lines:
             logging.warning("<{}>:{}".format(output_label, line.strip()))
+
+
 
     '''
         Method: pause_process

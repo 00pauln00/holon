@@ -18,26 +18,56 @@ on the server/client.
 	@operation: operation to perform on the peer.
 	@proc_type: Process type (server/client)
 '''
-def niova_raft_process_ops(recipe_conf, cluster_type, peer_uuid, operation, proc_type, app_name):
+def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
+                           cluster_params):
 
     raft_uuid = recipe_conf['raft_config']['raft_uuid']
     base_dir =  recipe_conf['raft_config']['base_dir_path']
+    app_type = cluster_params['app_type']
+    node_name = ""
 
     if operation != "start":
         pid = int(recipe_conf['raft_process'][peer_uuid]['process_pid'])
 
-    serverproc = RaftProcess(cluster_type, peer_uuid, proc_type)
+    serverproc = RaftProcess(cluster_params['ctype'], raft_uuid,
+                             peer_uuid, proc_type, app_type)
+
+    if proc_type == "client" and app_type == "niovakv":
+        '''
+         Find out the Node name for the niovakv_server which starts pmdbclient
+         Get the clientuuid index and use the index to find the name from node
+         config file.
+        '''
+        client_uuid_array = recipe_conf['client_uuid_array']
+        index = client_uuid_array.index(peer_uuid)
+
+        # Read the config file.
+        binary_dir = os.getenv('NIOVA_BIN_PATH')
+        config_path = "%s/niovakv.config" % binary_dir
+
+
+        with open(config_path) as f:
+            lines = f.read().splitlines()
+
+        node_line = lines[index]
+        node_name = node_line.split()[0]
+
+        logging.info("Node Name for starting niovakv_server is: %s", node_name)
+        if not "serf_nodes" in recipe_conf:
+            recipe_conf['serf_nodes'] = {}
+
+        recipe_conf['serf_nodes'][peer_uuid] = node_name
 
     if operation == "start":
 
         ctlsvc_path = "%s/configs" % base_dir
         logging.info("base dir: %s" % base_dir)
         logging.info("ctlsvc_path: %s" % ctlsvc_path)
-        logging.info("cluster_type: %s" % cluster_type)
+        logging.info("cluster_type: %s" % cluster_params['ctype'])
 
         inotifyobj = InotifyPath(base_dir, True)
         inotifyobj.export_ctlsvc_path(ctlsvc_path)
-        serverproc.start_process(raft_uuid, peer_uuid, base_dir,app_name)
+        serverproc.start_process(base_dir, node_name)
 
     elif operation == "pause":
         serverproc.pause_process(pid)
@@ -59,7 +89,7 @@ def niova_raft_process_ops(recipe_conf, cluster_type, peer_uuid, operation, proc
     recipe_conf['raft_process'][peer_uuid] = raft_proc_dict
 
     genericcmdobj = GenericCmds()
-    genericcmdobj.recipe_json_dump(recipe_conf) 
+    genericcmdobj.recipe_json_dump(recipe_conf)
     return serverproc.__dict__
 
 '''
@@ -131,6 +161,28 @@ def niova_client_config_create(client_uuid, recipe_conf_dict, cluster_params):
     # Add the entry of this new client uuid into the client_uuid_array
     recipe_conf_dict['client_uuid_array'].append(client_uuid)
 
+
+def initialize_logger(cluster_params):
+    log_path = "%s/%s/%s.log" % (cluster_params['base_dir'],
+                                 cluster_params['raft_uuid'],
+                                 cluster_params['raft_uuid'])
+
+    logging.basicConfig(filename=log_path, filemode='a',
+                        level=logging.DEBUG,
+                        format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
+
+
+def load_recipe_op_config(cluster_params):
+    recipe_conf = {}
+    raft_json_fpath = "%s/%s/%s.json" % (cluster_params['base_dir'],
+                                         cluster_params['raft_uuid'],
+                                         cluster_params['raft_uuid'])
+    if os.path.exists(raft_json_fpath):
+        with open(raft_json_fpath, "r+", encoding="utf-8") as json_file:
+            recipe_conf = json.load(json_file)
+
+    return recipe_conf
+
 '''
 Main function for raftprocess lookup.
 '''
@@ -141,36 +193,37 @@ class LookupModule(LookupBase):
         proc_operation = terms[0]
         uuid = terms[1]
 
-        # Initialize the logger
-        log_path = "%s/%s/%s.log" % (cluster_params['base_dir'], cluster_params['raft_uuid'], cluster_params['raft_uuid'])
+        sleep_after_op = False
 
-        logging.basicConfig(filename=log_path, filemode='a', level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
+        if len(terms) == 3:
+            # User asked to sleep after operation completion.
+            sleep_after_op = True
+            sinfo = terms[2]
+
+        # Initialize the logger
+        initialize_logger(cluster_params)
 
         logging.warning("Peer uuid passed: %s" % uuid)
 
-        recipe_conf = {}
-        raft_json_fpath = "%s/%s/%s.json" % (cluster_params['base_dir'], cluster_params['raft_uuid'], cluster_params['raft_uuid'])
-        if os.path.exists(raft_json_fpath):
-            with open(raft_json_fpath, "r+", encoding="utf-8") as json_file:
-                recipe_conf = json.load(json_file)
+        # Load the recipe_operation config
+        recipe_conf = load_recipe_op_config(cluster_params)
 
         '''
         Find out the type of the process (server or client) looking at its UUID
         '''
         proc_type = niova_raft_process_get_proc_type(uuid, recipe_conf)
-        
+
         if proc_type == "client" and proc_operation == "start":
 
             # Prepare the client config if it's already not created.
             niova_client_config_create(uuid, recipe_conf, cluster_params)
 
         # Perform the operation on the peer.
-        #To know the application to start
-        app_name = cluster_params['app_type']
-            
-        niova_obj_dict = niova_raft_process_ops(recipe_conf, cluster_type, uuid, proc_operation, proc_type, app_name)
-        if len(terms) == 3:
+        niova_obj_dict = niova_raft_process_ops(uuid, proc_operation,
+                                                proc_type, recipe_conf,
+                                                cluster_params)
+        if sleep_after_op == True:
             logging.info("sleep after the operation")
-            sleep_info = terms[2]
+            sleep_info = sinfo
             sleep_nsec = int(sleep_info['sleep_after_cmd'])
             time.sleep(sleep_nsec)

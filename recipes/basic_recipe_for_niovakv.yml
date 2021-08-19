@@ -1,0 +1,109 @@
+- name: "basic_recipe_for_niovakv"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "basic_recipe_for_niovakv"
+    parent: None
+
+  tasks:
+  - block:
+      # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'niovakv'."
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "niovakv")
+
+       # start pmdb servers.
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     - name: "{{ recipe_name }}: Get unused client-uuid."
+       include_role:
+         name: common
+         tasks_from: get_new_client_uuid
+       register: client_uuid
+
+     - debug:
+        msg: "Client UUID: {{ client_uuid }}"
+
+     # Start all PMDB servers.
+     - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
+       include_role:
+         name: common
+         tasks_from: start_server
+       vars:
+         ServerUUID: "{{ NonRunningServers[item] }}"
+       loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+      #Start niovakv_server
+     - name: "{{ recipe_name }}: Start new niovakv server which starts pmdb client."
+       include_role:
+         name: common
+         tasks_from: start_client_golang
+       vars:
+         ClientUUID: "{{ client_uuid.stdout }}"
+
+     - name: "{{ recipe_name }}: Pause for 5 seconds to build app cache."
+       pause:
+        seconds: 5
+
+     - name: "{{ recipe_name }}: Starting niovakv_client to write the value."
+       vars:
+         Operation: "write"
+         Key: "Key111"
+         Value: "Value111"
+         OutfileName: "wrop"
+         NumRequest: 0
+         MultiKey: False
+         Sequential : False
+         nkvclires: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from niovakv_client."
+       with_items:
+          - "{{ nkvclires }}"
+       register: writeres
+
+       # check if write is successful
+     - name: "{{ recipe_name }}: Check if write is successful"
+       debug:
+         msg: "Check if write is successful"
+       failed_when: >
+         (writeres['results'][0]['item']['write']['Response']['Status'] != 0)
+
+     - name: "{{ recipe_name }}: Starting niovakv_client to read the value."
+       vars:
+         Operation: "read"
+         Key: "Key111"
+         Value: ""
+         OutfileName: "rdop"
+         NumRequest: 0
+         MultiKey: False
+         Sequential : False
+         nkvclires: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
+       debug:
+         msg: "Read value from niovakv_client."
+       with_items:
+          - "{{ nkvclires }}"
+       register: readres
+
+     - name: "{{ recipe_name }}: compare values after sucessful write/read operation."
+       vars:
+         wrval: "{{ writeres['results'][0]['item']['write']['Request'] }}"
+         rdval: "{{ readres['results'][0]['item']['read']['Response'] }}"
+       debug:
+         msg:
+          - "Verifying parameter after read operation"
+       failed_when: >
+        (rdval['Status'] != 0) or
+        (rdval['Response'] != wrval['Value'])
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+          terminate_recipe: true
+
