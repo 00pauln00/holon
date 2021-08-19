@@ -1,0 +1,29 @@
+    - name: "{{ recipe_name }}: Get 'ctl_svc_nodes' list to verify 'net_rcv_enabled'."
+      vars:
+        stage: "afterDisable"
+        raft_keys:
+             - "/ctl_svc_nodes"
+      set_fact:
+         ctl_svc_nodes:  "{{ lookup('niova_ctlrequest', 'lookup', DisconnectedPeer, raft_keys, wantlist=True) }}"
+
+    - debug:
+        msg: "{{ ctl_svc_nodes }}"
+
+    - name: "{{ recipe_name }}: Gather net_rcv_enabled values for peers to be disabled."
+      vars:
+        uuid: "{{ item['uuid'] }}"
+        nre: "{{ item['net_recv_enabled'] }}"
+        net_rcv_enabled: []
+      set_fact:
+         net_rcv_enabled: "{{ net_rcv_enabled + [nre] }}"
+      loop: "{{ ctl_svc_nodes['//ctl_svc_nodes'] }}"
+      when: uuid == DisablePeerList
+
+      #no_log: True
+
+    - name: "{{ recipe_name }}: Check if peers are disabled."
+      debug:
+        msg: "Check if peers are disabled."
+      failed_when: item != false
+      loop: "{{ net_rcv_enabled }}"
+
