@@ -1,10 +1,10 @@
-- import_playbook: get_leader_operation.yml
-- name: "get_membership_details"
+- import_playbook: niovakv_leader_election.yml
+- name: "niovakv_surf_membership_check"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "get_membership_details"
-    parent: "get_leader_operation"
+    recipe_name: "niovakv_surf_membership_check"
+    parent: "niovakv_leader_election"
 
   tasks:
   - block:

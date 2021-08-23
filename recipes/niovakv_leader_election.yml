@@ -1,9 +1,9 @@
 - import_playbook: basic_recipe_for_niovakv.yml
-- name: "get_leader_operation"
+- name: "niovakv_leader_election"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "get_leader_operation"
+    recipe_name: "niovakv_leader_election"
     parent: "basic_recipe_for_niovakv"
 
   tasks:

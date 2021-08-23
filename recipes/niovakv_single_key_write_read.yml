@@ -1,9 +1,9 @@
 - import_playbook: basic_recipe_for_niovakv.yml
-- name: "add_new_niovakv_server_and_rdwr_operation"
+- name: "niovakv_single_key_write_read"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "add_new_niovakv_server_and_rdwr_operation"
+    recipe_name: "niovakv_single_key_write_read"
     parent: "basic_recipe_for_niovakv"
 
   tasks:
