@@ -1,10 +1,10 @@
-- import_playbook: add_new_niovakv_server_and_rdwr_operation.yml
+- import_playbook: niovakv_single_key_write_read.yml
 - name: "concurrent_multikey_rdwr_operation"
   hosts: localhost
   connection: local
   vars:
     recipe_name: "concurrent_multikey_rdwr_operation"
-    parent: "add_new_niovakv_server_and_rdwr_operation"
+    parent: "niovakv_single_key_write_read"
 
   tasks:
   - block:
