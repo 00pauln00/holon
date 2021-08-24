@@ -195,29 +195,6 @@
       loop_control:
         pause: 1
 
-    - name: "{{ recipe_name}}: Enable debug."
-      vars:
-        stage: "enable_debug"
-        getPeersExceptServer4: "{{ NRunningPeers | difference(server4) }}"
-        cmd: "master_log_level@debug"
-        where: "/log_subsystem/master_log_level@warn"
-        debug_on: "{{lookup('niova_ctlrequest', 'apply_cmd', getPeersExceptServer4, cmd, where, wantlist=True)}}"
-      debug:
-        msg: "{{ debug_on }}"
-
-    - name: "{{ recipe_name}}: Get all data after enabling log_level."
-      vars:
-         stage: "getDebugLevel"
-         getPeersExceptServer4: "{{ NRunningPeers | difference(server4) }}"
-         raft_keys:
-             - "/raft_root_entry/0/leader-uuid"
-             - "/raft_root_entry/0/commit-idx"
-             - "/raft_root_entry/0/term"
-             - "/raft_root_entry/0/state"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', getPeersExceptServer4, raft_keys, wantlist=true) }}"
-      debug:
-        msg: "lookup after enabling log_level {{ peer_values }}"
-
     - name: "{{ recipe_name}}: Wait until commit-idx gets incremented."
       vars:
         getPeersExceptServer4: "{{ NRunningPeers | difference(server4) }}"
