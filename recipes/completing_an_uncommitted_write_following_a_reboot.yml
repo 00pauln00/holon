@@ -219,7 +219,7 @@
       debug:
        msg: "Wait for sync-entry-idx to advance by 1"
       until: lookup('niova_ctlrequest', 'lookup', cuwr_leader_uuid_before, raft_keys, wantlist=True) | dict2items | map(attribute='value') | list | first | int != leader_sync_entry_idx_before | int + 1
-      retries: 10
+      retries: 60
       delay: 1
       
     - name: "{{ recipe_name }}: Get sync-entry-idx value for leader after write."
