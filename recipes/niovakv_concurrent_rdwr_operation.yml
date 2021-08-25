@@ -78,7 +78,7 @@
         name: common
         tasks_from: verify_ops_success
        vars:
-          write_arr: "{{ multikeyres['results'][0]['item']['Write'] }}"
+          write_arr: "{{ multikeyres['results'][0]['item']['write'] }}"
           write_vals: "{{ write_arr[item]['Request']['Value'] }}"
           write_key: "{{ write_arr[item]['Request']['Key'] }}"
           read_arr:  "{{ multikeyres['results'][0]['item']['Read'] }}"
