@@ -1,11 +1,11 @@
 - import_playbook: basic_leader_election.yml
-- name: "prevote_corner_case_part2"
+- name: "prevote_corner_case2"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "prevote_corner_case_part2"
+     recipe_name: "prevote_corner_case2"
      parent: "basic_leader_election"
-     num_writes: 1
+     num_writes: 5
      raft_keys:
               - "/raft_root_entry/0/peer-uuid"
               - "/raft_root_entry/0/leader-uuid"
@@ -88,6 +88,10 @@
       loop_control:
         pause: 1
 
+    - name: Pause for 20 seconds to reflect the write on all peers.
+      pause:
+        seconds: 20
+
     # check raft values on all the peers
     - name: "{{ recipe_name }}: Get Commit index value from all servers after single write."
       vars:
@@ -122,10 +126,6 @@
       loop: "{{ range(0, NRunningPeersBefore | length) | list }}"
       no_log: True
 
-    - name: Pause for 20 seconds to build app cache
-      pause:
-        seconds: 20
-
     - name: "{{ recipe_name }}: Wait until leader election happens."
       vars:
          stage: "wait_leader_election"
@@ -159,21 +159,23 @@
       no_log: true
       with_items:
          - "{{ raft_root_entry }}"
-      register: raft_root_vals_after_ele
+         
 
-   #TODO Check if all peers have same commit index 
-  - set_fact:
+    - set_fact:
        peer_info: []
 
-  - name: "{{ recipe_name }}: Verify commit-idx on all peers."
+   #TODO Check if all peers have same commit index 
+  - name: "{{ recipe_name }}: Verify commit-idx , term remains same  on all peers."
     vars:
       stage: "verify_raft_values"
       raft_keys:
               - "/raft_root_entry/0/commit-idx"
+              - "/raft_root_entry/0/term"
     set_fact:
       peer_info: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
     failed_when: >
-      (peer_info[itr]['/0/commit-idx'] != peer_info[itr+1]['/0/commit-idx']) 
+      (peer_info[itr]['/0/commit-idx'] != peer_info[itr+1]['/0/commit-idx']) or
+      (peer_info[itr]['/0/term'] != peer_info[itr+1]['/0/term']) 
     loop: "{{ range(0, NRunningPeers | length - 1)| list }}"
     loop_control:
        loop_var: itr
