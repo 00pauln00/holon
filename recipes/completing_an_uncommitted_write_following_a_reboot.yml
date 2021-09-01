@@ -5,8 +5,8 @@
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "Completing an Uncommitted Write Following a Reboot"
-     parent: "Healthy Raftserver Cluster Type-2"
+     recipe_name: "completing_uncommitted_write_reboot"
+     parent: "healthy_raftserver_cluster_type2"
      requirement: "pumicedb"
      num_writes: 0
      cuwr_num_peer_started_after_reboot: []
