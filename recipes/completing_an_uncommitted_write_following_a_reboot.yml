@@ -254,14 +254,14 @@
       failed_when: sync_entry_idx_before['/0/sync-entry-idx'] != sync_entry_idx_after['/0/sync-entry-idx']
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
-    - name: "Enable debug on all peers."
-      vars:
-        stage: "enable_debug_on_all"
-        cmd: "master_log_level@debug"
-        where: "/log_subsystem/master_log_level@warn"
-        debug_on: "{{lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True)}}"
-      debug:
-        msg: "{{ debug_on }}"
+    #- name: "Enable debug on all peers."
+    #  vars:
+    #     stage: "enable_debug_on_all"
+    #    cmd: "master_log_level@debug"
+    #    where: "/log_subsystem/master_log_level@warn"
+    #    debug_on: "{{lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True)}}"
+    #  debug:
+    #    msg: "{{ debug_on }}"
 
     - name: "{{ recipe_name }}: Verify that sync-entry-idx of leader is advanced by 1."
       vars:
