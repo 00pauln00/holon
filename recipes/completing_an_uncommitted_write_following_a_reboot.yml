@@ -153,6 +153,13 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
       no_log: True
 
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
     - name: "{{ recipe_name }}: Perform write on the client."
       vars:
         stage: "write"
