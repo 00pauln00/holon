@@ -180,14 +180,14 @@
       loop_control:
         pause: 1
 
-    - name: "Enable debug on client."
-      vars:
-        stage: "enable_debug_on_client"
-        cmd: "master_log_level@debug"
-        where: "/log_subsystem/master_log_level@warn"
-        debug_on: "{{lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True)}}"
-      debug:
-        msg: "{{ debug_on }}"
+    #- name: "Enable debug on client."
+    #  vars:
+    #    stage: "enable_debug_on_client"
+    #    cmd: "master_log_level@debug"
+    #    where: "/log_subsystem/master_log_level@warn"
+    #    debug_on: "{{lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True)}}"
+    #  debug:
+    #    msg: "{{ debug_on }}"
 
     #Verify that write operation failed with timeout error.
     - name: "{{ recipe_name }}: Get values for pmdb-request-history."
