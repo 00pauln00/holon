@@ -35,17 +35,45 @@
          name: common
          tasks_from: prevote_corner_case
 
-    #Enabling Msg(Recv) from peer4 to the cluster.
-    - name: "{{ recipe_name }}: Enable Msg(Recv) from peer4 to the cluster."
+    #Enabling Msg(Recv) net_recv_enabled  from peer4 to the cluster.
+    - name: "{{ recipe_name }}: Enable Msg(Recv) net_recv_enabled from peer4 to the cluster."
       vars:
-        stage: "enable_peers_mode"
+        stage: "enable_recv"
         cmd: "net_recv_enabled@true"
-        where: "/ctl_svc_nodes/uuid@{{ NRunningPeersBefore[item] }}"
-        enable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4, cmd, where, wantlist=True) }}"
+        where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
+        enable_net_rcv: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where, wantlist=True) }}"
       debug:
-        msg: "{{ enable_mode }}"
-      loop: "{{ range(0, NRunningPeersBefore | length) | list }}"
+        msg: "{{ enable_net_rcv }}"
       no_log: True
+
+    #Enabling Msg(Send) net_send_enabled from peer4 to the cluster.
+    - name: "{{ recipe_name }}: Enable Msg(Send) net_send_enabled from peer4 to the cluster."
+      vars:
+        stage: "enable_send"
+        cmd: "net_send_enabled@true"
+        where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
+        enable_send: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ enable_send }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Get 'ctl_svc_nodes' list for all peers."
+      vars:
+        stage: "after_enable_all"
+        raft_keys:
+             - "/ctl_svc_nodes"
+      set_fact:
+         ctl_svc_nodes_en: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeersBefore, raft_keys, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Verify ctl_svc_nodes/net_recv_enabled and ctl_svc_nodes/net_send_enabled on all peers for peer 4."
+      include_role:
+         name: common
+         tasks_from: verify_net_send_recv_enabled
+      vars:
+        ctl_svc_nodes_arr: "{{ ctl_svc_nodes_en[idx]['//ctl_svc_nodes'] }}"
+      loop: "{{ range(0, ctl_svc_nodes_en | length) | list }}"
+      loop_control:
+         loop_var: idx
 
     - name: "{{ recipe_name }}: Get term value of peer 4 after enabling."
       vars:
@@ -81,6 +109,7 @@
          tasks_from: get_follower_stats
 
     - set_fact: LeaderUUID_after="{{ LeaderUUID['/0/leader-uuid'] }}"
+
     - name: "{{ recipe_name }}: Check if new leader is elected."
       debug:
         msg: "Check if new leader is elected."
