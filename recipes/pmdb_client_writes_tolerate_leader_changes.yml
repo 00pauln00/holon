@@ -82,6 +82,16 @@
     - debug:
         msg: "smaller_cluster: {{ smaller_cluster }}"
 
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ ClientUUIDS[itr] }}"
+      loop: "{{ range(0, ClientUUIDS | length) |list }}"
+      loop_control:
+              loop_var: itr
+
     #Start 500 num_writes from both clients.
     - name: "Perform write operations for multiple clients."
       include_role:
@@ -221,6 +231,16 @@
       include_role:
         name: common
         tasks_from: verify_crc_on_all_peers
+
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ ClientUUIDS[itr] }}"
+      loop: "{{ range(0, ClientUUIDS | length) |list }}"
+      loop_control:
+              loop_var: itr
 
     #After verifying server side values, Do 500 num_writes from both clients.
     - name: "Perform write operations for multiple clients."

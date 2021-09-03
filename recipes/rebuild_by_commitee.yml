@@ -55,8 +55,8 @@
          original_leader: "{{ LeaderUUID | dict2items | map(attribute='value') | list | first }}"
 
     - name: "{{ recipe_name }}: Pause number of followers."
-      set_fact:  
-         pause_followers: "{{ lookup('niova_raftprocess', 'pause', FollowerUUIDs[item], wantlist=True) }}" 
+      set_fact:
+         pause_followers: "{{ lookup('niova_raftprocess', 'pause', FollowerUUIDs[item], wantlist=True) }}"
          inactive_followers: "{{ inactive_followers | default([]) + [FollowerUUIDs[item]] }}"
       loop: "{{ range(0, number_of_followers_to_pause | int) | list }}"
 
@@ -72,6 +72,13 @@
         tasks_from: create_app_uuid_set
       vars:
         number_of_apps: "{{ number_of_app_uuids }}"
+
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
 
     #Perform write operations for multiple clients. (passing one client at a time.)
     - name: "{{ recipe_name }}: Perform write operations for multiple clients."
@@ -110,7 +117,7 @@
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     #Set the value for fault_injected_peers.
-    - set_fact: 
+    - set_fact:
          fault_injected_peers: "{{ NRunningPeers }}"
 
     #Unpause inactive followers.

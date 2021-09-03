@@ -17,7 +17,7 @@
       include_role:
          name: common
          tasks_from: recipe_compatibility_requirement
- 
+
     - name: "{{ recipe_name }}: Get the list of all running peer UUIDs"
       include_role:
          name: common
@@ -78,7 +78,7 @@
       no_log: True
       failed_when: cli_rqst != "accept"
 
-    - name: "{{ recipe_name }}: Disable recv on client from leader" 
+    - name: "{{ recipe_name }}: Disable recv on client from leader"
       vars:
         pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         stage: "disable_recv_from_leader"
@@ -99,7 +99,7 @@
          - 5
          - 10
 
-    - name: "{{ recipe_name }}: Enable recv on client from leader" 
+    - name: "{{ recipe_name }}: Enable recv on client from leader"
       vars:
         pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         stage: "enable_recv_from_leader"
@@ -163,7 +163,7 @@
         - "Check pmdb-test-apps array: {{ pmdb_array }}."
       no_log: True
       failed_when: pmdb_array == "null"
-      
+
     - name: "{{ recipe_name }}: Apply fault injection on the client to silently drop non-ping replies from the leader."
       vars:
          stage: "client_fault_injection"
@@ -174,41 +174,13 @@
         msg: "{{ client_fault_injection }}"
       no_log: True
 
-
-    - name: "{{ recipe_name }}: wait until leader is viable"
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
       vars:
-        stage: "stage5"
-        raft_key:
-            - "/raft_client_root_entry/0/leader-viable"
-      debug:
-       msg: "Wait till leader-vaible is true"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | bool != True
-      loop: "{{ range(0, 10) | list }}"
-      loop_control:
-        pause: 1
+        ClientUUID: "{{ client_uuid.stdout }}"
 
-    - name: "{{ recipe_name }}: Get the leader-viable value from client."
-      vars:
-        stage: "stage5"
-        raft_key:
-            - "/raft_client_root_entry/0/leader-viable"
-        check_leader_viable: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) }}"
-      debug:
-        msg: "Get the leader viable value."
-      no_log: True
-      with_items:
-        - "{{ check_leader_viable }}"
-      register: stage5_value
-
-    - name: "{{ recipe_name }}: Verify that leader is still considered viable by the client."
-      vars:
-        leader_viable: "{{ stage5_value['results'][0]['item']['/0/leader-viable'] }}"
-      debug:
-        msg:
-        - "leader_viable set to {{ leader_viable }}."
-      #no_log: True
-      failed_when: leader_viable != True
-      
     - name: "{{ recipe_name }}: Perform the lookup operation again on the same object"
       vars:
          stage: "lookup_stage"
@@ -225,7 +197,7 @@
          cmd: "enabled@false"
          where: "/fault_injection_points/name@raft_client_udp_recv_handler_process_reply_bypass"
          disable_fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
-      debug: 
+      debug:
         msg: "{{ disable_fault_injection }}"
       no_log: True
 
@@ -242,7 +214,7 @@
       with_items:
         - "{{ check_recent_ops }}"
       register: stage6_value
-    
+
     - name: "{{ recipe_name }}: Get the recent-ops-rd array"
       vars:
         stage: "stage_recent_ops"
@@ -255,7 +227,7 @@
       with_items:
         - "{{ check_values }}"
       register: stage7_value
-      
+
     - name: "{{ recipe_name }}: Get the last request from the recent ops array."
       vars:
         get_stage7: "{{ stage7_value['results'][0]['item'] }}"
@@ -263,7 +235,7 @@
          Cli_Req_MoTo_attempts: "{{ get_stage7['/0/recent-ops-rd'][0]['attempts'] }}"
          Cli_Req_MoTo_rpc_user_tag: "{{ get_stage7['/0/recent-ops-rd'][0]['rpc-user-tag'] }}"
          Cli_Req_MoTo_completion_time: "{{ get_stage7['/0/recent-ops-rd'][0]['completion-time-ms'] }}"
-      
+
     - name: "{{ recipe_name }}: Validate the last request from the recent ops array."
       vars:
         get_status: "{{ stage6_value['results'][0]['item']['/0/status'] }}"
@@ -278,7 +250,7 @@
         ((get_lrt | int) != (Cli_Req_MoTo_rpc_user_tag | int)) or
         ((Cli_Req_MoTo_attempts | int) < 1) or
         ((Cli_Req_MoTo_completion_time | int) < 1000) and ((Cli_Req_MoTo_completion_time | int) > 2000)
-      
+
     - name: "{{ recipe_name }}: Set the 'default-request-timeout-sec' to its default value (i.e.60)"
       vars:
          stage: "recipe_cleanup_stage"

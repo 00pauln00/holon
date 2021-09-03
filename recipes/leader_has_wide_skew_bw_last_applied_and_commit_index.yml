@@ -53,6 +53,13 @@
       vars:
         ClientUUID: "{{ client_uuid.stdout }}"
 
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
     - name: "{{ recipe_name }}: Perform the write {{ num_writes }} times."
       vars:
         stage: "num_writes"
