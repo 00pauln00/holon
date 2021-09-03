@@ -7,7 +7,7 @@
   vars:
      recipe_name: "pmdb_multiple_clients_subapps"
      parent: "healthy_raftserver_cluster_type1"
-     requirement: "pumicedb"    
+     requirement: "pumicedb"
      number_of_app_uuids: 5
 
   tasks:
@@ -20,7 +20,7 @@
       include_role:
         name: common
         tasks_from: recipe_compatibility_requirement
-        
+
     #start multiple clients using common task.
     - name: "{{ recipe_name }}: start multiple clients."
       include_role:
@@ -45,6 +45,16 @@
          random_num_writes_list: "{{ random_num_writes_list | default([]) + [num_writes] }}"
       loop: "{{ range(0, number_of_app_uuids) | list }}"
 
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ ClientUUIDS[itr] }}"
+      loop: "{{ range(0, ClientUUIDS | length) |list }}"
+      loop_control:
+              loop_var: itr
+
     #Perform write operations for multiple clients. (passing one client at a time.)
     - name: "Perform write operations for multiple clients."
       include_role:
@@ -56,7 +66,7 @@
       loop: "{{ range(0, ClientUUIDS | length) |list }}"
       loop_control:
           loop_var: idx
-      
+
     #wait for write operations to complete.
     - name: "{{ recipe_name }}: wait for write completion."
       include_role:

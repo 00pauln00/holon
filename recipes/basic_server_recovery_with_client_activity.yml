@@ -7,7 +7,7 @@
      parent: "healthy_raftserver_cluster_type2"
      requirement: "pumicedb"
      num_writes: 100
-    
+
   tasks:
   - block:
     - name: "Check if parent recipe failed"
@@ -145,6 +145,13 @@
       vars:
         ClientUUID: "{{ client_uuid.stdout }}"
 
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
     - name: "Recovery Client."
       set_fact:
         RecoveryClient: "{{ client_uuid.stdout }}"
@@ -207,7 +214,7 @@
       include_role:
          name: common
          tasks_from: get_follower_stats
-  
+
     - name: "{{ recipe_name }}: Recheck the follower-stats from leader."
       vars:
         recheck_follower_info: "{{ GetFollowerStatsInfo }}"
@@ -217,7 +224,7 @@
       with_items:
         - "{{ recheck_follower_info }}"
       register: recheck_fstats
-  
+
     - name: "{{ recipe_name }}: Verify next-idx for alive followers, it should be (original-next-idx + NumWrites)."
       vars:
         follower0: "{{ bsr_pause_follower }}"
@@ -326,7 +333,7 @@
       debug:
         msg: "{{ read_cmd }}"
       no_log: True
-  
+
     - name: "{{ recipe_name }}: Read the client parameters."
       vars:
         stage: "stage5"

@@ -144,6 +144,13 @@
       vars:
         ClientUUID: "{{ client_uuid.stdout }}"
 
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
     - name: "{{ recipe_name }}: Decrease client request timeout to 1 sec."
       vars:
         stage: "decrease_client_timeout"
@@ -221,7 +228,7 @@
       until: lookup('niova_ctlrequest', 'lookup', cuwr_leader_uuid_before, raft_keys, wantlist=True) | dict2items | map(attribute='value') | list | first | int != leader_sync_entry_idx_before | int + 1
       retries: 60
       delay: 1
-      
+
     - name: "{{ recipe_name }}: Get sync-entry-idx value for leader after write."
       vars:
         cuwr_leader_uuid_before: "{{ leader_values['results'][0]['item']['/0/leader-uuid'] }}"

@@ -1,4 +1,4 @@
-- import_playbook: healthy_raftserver_cluster_type2.yml 
+- import_playbook: healthy_raftserver_cluster_type2.yml
   when: ClusterParams['ctype'] == "pumicedb"
 
 - name: "Rollback during startup"
@@ -110,7 +110,7 @@
       with_items:
           - "{{ raft_values_leader_after_vals }}"
       register: raft_values_leader_after
-   
+
     #Verify that the cluster is in a same state.
     - name: "{{ recipe_name }}: Get raft_root_entry values after starting all followers."
       vars:
