@@ -70,28 +70,45 @@
            (sync_entry_crc != sync_entry_crc_next)
       loop: "{{ range(0, NRunningPeers | length-1) | list }}"
 
-     #Disabling Msg(Recv) from peer4 to the cluster.
-    - name: "{{ recipe_name }}: Disable Msg(Recv) from peer4 to the cluster."
+    #Disabling Msg(Recv) net_recv_enabled  from peer4 to the cluster.
+    - name: "{{ recipe_name }}: Disable Msg(Recv) net_recv_enabled from peer4 to the cluster."
       vars:
         stage: "disable_peers_mode"
         cmd: "net_recv_enabled@false"
-        where: "/ctl_svc_nodes/uuid@{{ NRunningPeersBefore[item] }}"
-        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4, cmd, where, wantlist=True) }}"
+        where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
+        disable_net_rcv: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where, wantlist=True) }}"
       debug:
-        msg: "{{ disable_mode }}"
-      loop: "{{ range(0, NRunningPeersBefore | length) | list }}"
+        msg: "{{ disable_net_rcv }}"
       no_log: True
 
-    - name: "{{ recipe_name }}: Verify ctl_svc_nodes/net_recv_enabled for peer 4."
+    #Disabling Msg(Send) net_send_enabled from peer4 to the cluster.
+    - name: "{{ recipe_name }}: Disable Msg(Send) net_send_enabled from peer4 to the cluster."
+      vars:
+        stage: "disable_peers_mode"
+        cmd: "net_send_enabled@false"
+        where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
+        disable_send: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ disable_send }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Get 'ctl_svc_nodes' list for all peers."
+      vars:
+        stage: "after_disable_all"
+        raft_keys:
+             - "/ctl_svc_nodes"
+      set_fact:
+         ctl_svc_nodes: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeersBefore, raft_keys, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Verify ctl_svc_nodes/net_recv_enabled and ctl_svc_nodes/net_send_enabled on all peers for peer 4."
       include_role:
          name: common
-         tasks_from: verify_ctl_svc_nodes
+         tasks_from: verify_net_send_recv_disabled
       vars:
-        DisconnectedPeer: "{{ peer4 }}"
-        DisablePeerList: "{{ NRunningPeersBefore[idx] }}"
-      loop: "{{ range(0, NRunningPeersBefore | length) | list }}"
+        ctl_svc_nodes_arr: "{{ ctl_svc_nodes[idx]['//ctl_svc_nodes'] }}"
+      loop: "{{ range(0, ctl_svc_nodes | length) | list }}"
       loop_control:
-          loop_var: idx
+         loop_var: idx
 
     - name: "{{ recipe_name }}: Get term value of peer4 before applying fault injection."
       vars:
