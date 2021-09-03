@@ -23,7 +23,7 @@
     - name: "Check if parent recipe failed"
       debug: msg="Check if parent recipe {{ parent }} failed"
       failed_when: terminate_recipe == true
-   
+
     - name: "Verifying recipe compatibility requirements."
       include_role:
          name: common
@@ -42,13 +42,20 @@
     - name: "{{ recipe_name }}: Prepare parameter to pass across recipes"
       set_fact:
         Demo2Rncui: "{{ app_uuid.stdout }}:0:0:0:0"
- 
+
     - name: "{{ recipe_name }}: Starting client {{ client_uuid.stdout }}"
       include_role:
          name: common
          tasks_from: start_client
       vars:
          ClientUUID: "{{ client_uuid.stdout }}"
+
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
 
     - name: "{{ recipe_name }}: Get follower-stats from leader peer before restart."
       include_role:
@@ -60,7 +67,7 @@
         stage: "leader_term"
         raft_key:
            - "/raft_root_entry/0/term"
-        leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}" 
+        leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         term: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_key, wantlist=True) }}"
       with_items:
         - "{{ term }}"
@@ -68,7 +75,7 @@
       debug:
         msg: "Get the term value for leader: {{ leader_uuid }}"
       no_log: true
- 
+
     - name: "{{ recipe_name }}: Set election timeout to 30sec on followers first."
       vars:
         stage: "stage0_set_elec_timeout"
@@ -228,7 +235,7 @@
         where: "/raft_net_info/election-timeout-ms"
         leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
       debug:
-        msg:  
+        msg:
           - "{{ lookup('niova_ctlrequest', 'apply_cmd', leader_uuid, cmd, where, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Resetting the election timeout on followers"
@@ -237,7 +244,7 @@
         cmd: "election-timeout-ms@300"
         where: "/raft_net_info/election-timeout-ms"
       debug:
-        msg:  
+        msg:
           - "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where, wantlist=True) }}"
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 

@@ -55,6 +55,13 @@
       debug:
         msg: "{{ debug_on }}"
 
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
     - name: "{{ recipe_name }}: Lookup on non-existing object."
       vars:
          stage: "lookup_stage"

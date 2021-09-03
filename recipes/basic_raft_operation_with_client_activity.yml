@@ -56,15 +56,12 @@
       vars:
         ClientUUID: "{{ client_uuid.stdout }}"
 
-    - name: "{{ recipe_name }}: Wait till client reports leader-viable = true"
-      debug:
-        msg: "Wait till client reports leader-viable = true"
-      no_log: True
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
       vars:
-        stage: "browca_leader_viable"
-      until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/raft_client_root_entry/0/leader-viable', wantlist=True) | dict2items | map(attribute='value') | list | first | bool != false)
-      retries: 10
-      delay: 2
+        ClientUUID: "{{ client_uuid.stdout }}"
 
     - name: "{{ recipe_name }}: Get raft_uuid and leader_uuid."
       vars:
@@ -84,7 +81,6 @@
       vars:
         stage: "stage1"
         raft_keys:
-          - "/raft_client_root_entry/0/leader-viable"
           - "/raft_client_root_entry/0/last-request-sent"
           - "/raft_client_root_entry/0/last-request-ack"
           - "/raft_client_root_entry/0/raft-uuid"
@@ -97,7 +93,7 @@
       with_items:
         - "{{ cli_vals }}"
       register: client_values
-  
+
     - name: "{{ recipe_name }}: Verify the client parameters"
       vars:
         client_info: "{{ client_values['results'][0]['item'] }}"
@@ -110,8 +106,7 @@
             (client_info['/0/state'] != "client") or
             (client_info['/0/leader-uuid'] != uuids['/0/leader-uuid']) or
             (client_info['/0/last-request-sent'] != "Thu Jan 01 00:00:00 UTC 1970") or
-            (client_info['/0/last-request-ack'] != "Thu Jan 01 00:00:00 UTC 1970") or
-            (client_info['/0/leader-viable'] != true)
+            (client_info['/0/last-request-ack'] != "Thu Jan 01 00:00:00 UTC 1970")
 
     - name: "{{ recipe_name}}: Snapshot the State of the Raft Servers before doing any writes on client."
       vars:
@@ -189,7 +184,7 @@
             (client_vals_after_wr['results'][0]['item']['/0/pmdb-write-pending'] != false) or
             (client_vals_after_wr['results'][0]['item']['/0/app-sync'] != true) or
             (client_vals_after_wr['results'][0]['item']['/0/app-seqno'] != num_writes)
-  
+
     - name: "{{ recipe_name }}: Get follower-stats from leader."
       include_role:
          name: common
@@ -214,9 +209,9 @@
         msg: "Server side verifications."
       failed_when: >
          (follower_stats_after_wr['/0/follower-stats'][item]['next-idx'] != (follower_stats_before_wr['/0/follower-stats'][item]['next-idx'] + num_writes)) or
-         (follower_stats_after_wr['/0/follower-stats'][item]['prev-idx-term'] != term_before_wr['/0/term']) 
+         (follower_stats_after_wr['/0/follower-stats'][item]['prev-idx-term'] != term_before_wr['/0/term'])
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
-  
+
     - name: "{{ recipe_name}}: Get the last-ack for all the followers"
       vars:
         bca_last_ack_arr: []
@@ -258,7 +253,7 @@
          (srv_latest_vals['/0/sync-entry-idx'] != (num_writes + srv_before_wr_vals['/0/sync-entry-idx'])) or
          (srv_latest_vals['/0/sync-entry-term'] != srv_before_wr_vals['/0/term'])
       loop: "{{ range(0, NRunningPeers | length)| list }}"
-   
+
     - name: "{{ recipe_name}}: Verify that term, last-applied-cumulative-crc, sync-entry-term, sync-entry-data-size and sync-entry-crc are same on all peers"
       vars:
         curr_itr_vals: "{{ running_srv_vals['results'][item]['item'] }}"
