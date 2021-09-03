@@ -77,8 +77,11 @@ class GenericCmds:
     '''
     def raft_json_load(self, fpath):
         # SLeep for 1 sec if file has not got created yet.
-        while os.path.exists(fpath) == False:
+        retry = 60
+        while os.path.exists(fpath) == False and retry >= 0:
+            retry = retry - 1
             time.sleep(1)
+
 
         with open(fpath) as f:
             data = json.load(f)
