@@ -1,5 +1,18 @@
 ---
 
+
+    - name: "{{ recipe_name }}: Send cmd before starting server."
+      vars:
+        stage: "init_start_server"
+        wait_for_ofile: False
+        cmd: "ignore_timer_events@false"
+        where: "/raft_net_info/ignore_timer_events"
+        copy_to: "init"
+        init_server: "{{lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, cmd, where, wantlist=True)}}"
+      debug:
+        msg: "{{ init_server }}"
+      no_log:  True
+
     - name: "Start the peer"
       debug:
        msg: "{{lookup('niova_raftprocess', 'start', ServerUUID, wantlist=True)}}"
