@@ -81,5 +81,5 @@
           write_arr: "{{ multikeyres['results'][0]['item']['write'] }}"
           write_vals: "{{ write_arr[item]['Request']['Value'] }}"
           write_key: "{{ write_arr[item]['Request']['Key'] }}"
-          read_arr:  "{{ multikeyres['results'][0]['item']['Read'] }}"
+          read_arr:  "{{ multikeyres['results'][0]['item']['read'] }}"
        loop: "{{ range(0, write_arr | length) | list }}"
