@@ -5,6 +5,9 @@
        msg: "{{lookup('niova_raftprocess', 'start', ServerUUID, wantlist=True)}}"
       no_log: True
 
+    - pause:
+        seconds: 3
+
     - name: "Wait for server process to bootup completely"
       debug:
         msg: "Wait till bootup completes for Peer {{ ServerUUID }}."
