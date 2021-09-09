@@ -19,7 +19,7 @@
               - "/raft_root_entry/0/state"
               - "/raft_root_entry/0/last-applied"
               - "/raft_root_entry/0/last-applied-cumulative-crc"
-  
+
   tasks:
   - block:
     - name: "Check if parent recipe failed"
@@ -88,6 +88,13 @@
       vars:
         ClientUUID: "{{ client_uuid.stdout }}"
 
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
     - name: "{{ recipe_name }}: Get the cluster information again after stopping the peer."
       include_role:
          name: common
@@ -99,12 +106,12 @@
          name: common
          tasks_from: get_follower_stats
 
-    #Get the peers to be disabled. 
+    #Get the peers to be disabled.
     - set_fact: peer1="{{ FollowerUUIDs |  random }}"
     - set_fact: peer2="{{ FollowerUUIDs  | difference(peer1) | random }}"
     - set_fact: peers_to_disable="{{ [] + [peer1] + [peer2] }}"
 
-    - set_fact: 
+    - set_fact:
          prevote_leader_before: "{{ LeaderUUID['/0/leader-uuid'] }}"
 
     - name: "{{ recipe_name }}: Get the raft values before disabling peers."
@@ -192,7 +199,7 @@
          name: common
          tasks_from: get_follower_stats
 
-    - set_fact: 
+    - set_fact:
          prevote_leader_after: "{{ LeaderUUID['/0/leader-uuid'] }}"
 
     - name: "{{ recipe_name }}: Check if new leader is elected"
