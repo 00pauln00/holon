@@ -24,6 +24,7 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
     raft_uuid = recipe_conf['raft_config']['raft_uuid']
     base_dir =  recipe_conf['raft_config']['base_dir_path']
     app_type = cluster_params['app_type']
+    coalesced_wr = cluster_params['coal_wr']
     node_name = ""
 
     if operation != "start":
@@ -61,13 +62,14 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
     if operation == "start":
 
         ctlsvc_path = "%s/configs" % base_dir
-        logging.info("base dir: %s" % base_dir)
-        logging.info("ctlsvc_path: %s" % ctlsvc_path)
-        logging.info("cluster_type: %s" % cluster_params['ctype'])
+        logging.warning("base dir: %s" % base_dir)
+        logging.warning("ctlsvc_path: %s" % ctlsvc_path)
+        logging.warning("cluster_type: %s" % cluster_params['ctype'])
+        logging.warning("coalesced_wr: %s" % cluster_params['coal_wr'])
 
         inotifyobj = InotifyPath(base_dir, True)
         inotifyobj.export_ctlsvc_path(ctlsvc_path)
-        serverproc.start_process(base_dir, node_name)
+        serverproc.start_process(base_dir, node_name, coalesced_wr)
 
     elif operation == "pause":
         serverproc.pause_process(pid)

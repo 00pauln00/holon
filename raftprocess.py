@@ -62,10 +62,15 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
 
     return bin_path
 
-def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, config_path, node_name):
+def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, config_path, node_name, coalesced_wr):
     process_popen = {}
     if ptype =="server":
-    	process_popen = subprocess.Popen([bin_path, '-r',
+        if app_type == "pumicedb" and coalesced_wr == "1":
+            process_popen = subprocess.Popen([bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid, '-c'],
+                                    stdout = fp, stderr = fp)
+        else:
+            process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid],
                                     stdout = fp, stderr = fp)
     else:
@@ -134,7 +139,7 @@ class RaftProcess:
         #if rc == 1:
         #    exit()
 
-    def start_process(self, base_dir, node_name):
+    def start_process(self, base_dir, node_name, coalesced_wr):
 
         logging.warning("Starting uuid: %s, cluster_type %s" % (self.process_uuid, self.process_backend_type))
 
@@ -166,7 +171,7 @@ class RaftProcess:
 
         process_popen = run_process(fp, self.process_raft_uuid, self.process_uuid,
                                     self.process_type, self.process_app_type, bin_path,
-                                    base_dir, config_path, node_name)
+                                    base_dir, config_path, node_name, coalesced_wr)
         #Make sure all the ouput gets flushed to the file before closing it
         os.fsync(fp)
 
