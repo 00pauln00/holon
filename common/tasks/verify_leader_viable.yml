@@ -1,8 +1,8 @@
 
     # Wait until client reports leader-viable = true
-    - name: "{{ recipe_name }}: Wait untill client reports leader-viable = true"
+    - name: "{{ recipe_name }}: Wait until client reports leader-viable = true"
       vars:
-        stage: "client_leader_viable"
+        stage: "verify_leader_viable"
       debug:
         msg:
          - "Wait till client reports leader-viable = true"
