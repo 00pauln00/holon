@@ -1,10 +1,10 @@
-- import_playbook: basic_leader_election.yml
+- import_playbook: basic_leader_election2.yml
 - name: "leader_overthrow"
   hosts: localhost
   connection: local
   vars:
      recipe_name: "leader_overthrow"
-     parent: "basic_leader_election"
+     parent: "basic_leader_election2"
     
   tasks:
   - block:

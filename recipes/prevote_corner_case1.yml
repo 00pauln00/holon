@@ -1,10 +1,10 @@
-- import_playbook: basic_leader_election.yml
+- import_playbook: basic_leader_election2.yml
 - name: "prevote_corner_case1"
   hosts: localhost
   connection: local
   vars:
      recipe_name: "prevote_corner_case1"
-     parent: "basic_leader_election"
+     parent: "basic_leader_election2"
      raft_keys:
               - "/raft_root_entry/0/peer-uuid"
               - "/raft_root_entry/0/leader-uuid"

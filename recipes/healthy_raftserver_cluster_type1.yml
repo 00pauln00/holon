@@ -1,10 +1,10 @@
-- import_playbook: basic_leader_election.yml
+- import_playbook: basic_leader_election2.yml
 - name: "healthy_raftserver_cluster_type1"
   hosts: localhost
   connection: local
   vars:
      recipe_name: "healthy_raftserver_cluster_type1"
-     parent: "basic_leader_election"
+     parent: "basic_leader_election2"
      FollowerUUIDs: []
      type1_last_ack_arr: []
   tasks:
