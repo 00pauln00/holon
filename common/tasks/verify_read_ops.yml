@@ -1,0 +1,12 @@
+---
+
+    - name: "Verify read operation per application."
+      include_role:
+        name: common
+        tasks_from: verify_read_per_app
+      vars:
+        pmdb_app: "{{ pmdb_apps[index] }}"
+      loop: "{{ range(0, pmdb_apps | length) |list }}"
+      loop_control:
+          loop_var: index
+
