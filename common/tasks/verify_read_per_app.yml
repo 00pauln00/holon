@@ -1,0 +1,39 @@
+---
+    - name: "{{ recipe_name }}: Perform read operation."
+      vars:
+        stage: "read_client"
+        cmd: "input@{{ pmdb_app }}:0:0:0:0.read"
+        where: "/pumice_db_test_client/input"
+        read_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', ClientUUID, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ read_cmd }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Read the client parameters."
+      vars:
+        stage: "stage1"
+        raft_keys:
+            - "/pumice_db_test_client/pmdb-test-apps/0/last-request-tag"
+            - "/pumice_db_test_client/pmdb-test-apps/0/status"
+            - "/pumice_db_test_client/pmdb-test-apps/0/app-seqno"
+            - "/pumice_db_test_client/pmdb-request-history"
+        client_read_verification: "{{ lookup('niova_ctlrequest', 'lookup', ClientUUID, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Getting last-request-tag."
+      no_log: True
+      with_items:
+          - "{{ client_read_verification }}"
+      register: stage1_value
+
+    - name: "{{ recipe_name }}: Verify that read is successful."
+      vars:
+        running_peers: "{{ NRunningPeers }}"
+        get_stage1: "{{ stage1_value['results'][0]['item'] }}"
+      debug:
+        msg: "Verify that read is successful"
+      no_log: True
+      failed_when: >
+        (get_stage1['/0/status'] != "Success") or
+        (get_stage1['/0/app-seqno'] != num_writes) or
+        (get_stage1['/pumice_db_test_client/pmdb-request-history'][0]['op'] != "read") or
+        (get_stage1['/pumice_db_test_client/pmdb-request-history'][0]['status'] != "Success")
