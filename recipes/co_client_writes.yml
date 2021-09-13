@@ -17,6 +17,10 @@
       debug: msg="Check if parent recipe {{ parent }} failed"
       failed_when: terminate_recipe == true
 
+    - name: "{{ recipe_name }}: Check if coalesced write flag is set before starting to run the recipe."
+      debug: msg="Check if coalesced write flag is set before starting to run the recipe."
+      failed_when: coalesced_wr == 1
+
     - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
       include_role:
         name: common
