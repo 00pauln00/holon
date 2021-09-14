@@ -38,8 +38,8 @@
     set_fact:
       jsondata: "{{ result.stdout | from_json }}"
 
-  - name: "Get dmesg"
-    shell: dmesg
+  - name: "Get list of used ports"
+    shell: netstat -tulpn
     register: result
 
   - debug:
