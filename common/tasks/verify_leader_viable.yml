@@ -1,15 +1,14 @@
 
-    - name: "{{ recipe_name }}: wait until leader is viable."
+    # Wait until client reports leader-viable = true
+    - name: "{{ recipe_name }}: Wait until client reports leader-viable = true"
       vars:
-        stage: "wait_until_leader_viable"
-        raft_key:
-            - "/raft_client_root_entry/0/leader-viable"
+        stage: "verify_leader_viable"
       debug:
-       msg: "Wait until leader-vaible set to true"
-      until: lookup('niova_ctlrequest', 'lookup', ClientUUID, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | bool != True
-      loop: "{{ range(0, 60) | list }}"
-      loop_control:
-        pause: 1
+        msg:
+         - "Wait till client reports leader-viable = true"
+      until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/raft_client_root_entry/0/leader-viable', wantlist=True) | dict2items | map(attribute='value') | list | first == true)
+      retries: 60
+      delay: 1
 
     - name: "{{ recipe_name }}: Validate leader-viable is 'true'."
       vars:

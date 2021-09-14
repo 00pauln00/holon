@@ -1,0 +1,166 @@
+---
+
+    - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
+    - set_fact: NRunningPeersBefore="{{ NRunningPeers }}"
+    - set_fact: peer4="{{ NonRunningServers[0] }}"
+
+    - name: "{{ recipe_name }}: Get the leader and follower uuids."
+      include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+    - set_fact: LeaderUUID_before="{{ LeaderUUID['/0/leader-uuid'] }}"
+
+    - name: "{{ recipe_name }}: Start peer 4"
+      include_role:
+        name: common
+        tasks_from: start_server
+      vars:
+        ServerUUID: "{{ NonRunningServers[0] }}"
+
+    - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Get raft_root_entry values of all peers."
+      vars:
+        stage: "stage0"
+        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+      debug:
+         msg: "Getting raft_root_entry for all servers."
+      no_log: true
+      with_items:
+         - "{{ raft_root_entry }}"
+      register: raft_root_entry_all
+
+    #Verify raft-root-entry values for all peers.
+    - name: "{{ recipe_name }}: Compare raft_root_entry values of all peers."
+      vars:
+        term: "{{ raft_root_entry_all['results'][item]['item']['/0/term'] }}"
+        term_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/term'] }}"
+        commit_idx: "{{ raft_root_entry_all['results'][item]['item']['/0/commit-idx'] }}"
+        commit_idx_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/commit-idx'] }}"
+        last_applied: "{{ raft_root_entry_all['results'][item]['item']['/0/last-applied'] }}"
+        last_applied_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/last-applied'] }}"
+        last_applied_cum_crc: "{{ raft_root_entry_all['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
+        last_applied_cum_crc_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/last-applied-cumulative-crc'] }}"
+        sync_entry_idx: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-idx'] }}"
+        sync_entry_idx_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-idx'] }}"
+        sync_entry_term: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-term'] }}"
+        sync_entry_term_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-term'] }}"
+        sync_entry_data_size: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-data-size'] }}"
+        sync_entry_data_size_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-data-size'] }}"
+        sync_entry_crc: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-crc'] }}"
+        sync_entry_crc_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-crc'] }}"
+      debug:
+        msg: "Compare raft_root_entry values of all peers."
+      failed_when: >
+           (term != term_next) or
+           (commit_idx != commit_idx_next) or
+           (last_applied != last_applied_next) or
+           (last_applied_cum_crc != last_applied_cum_crc_next) or
+           (sync_entry_idx != sync_entry_idx_next) or
+           (sync_entry_term != sync_entry_term_next) or
+           (sync_entry_data_size != sync_entry_data_size_next) or
+           (sync_entry_crc != sync_entry_crc_next)
+      loop: "{{ range(0, NRunningPeers | length-1) | list }}"
+
+    #Disabling Msg(Recv) net_recv_enabled  from peer4 to the cluster.
+    - name: "{{ recipe_name }}: Disable Msg(Recv) net_recv_enabled from peer4 to the cluster."
+      vars:
+        stage: "disable_peers_mode"
+        cmd: "net_recv_enabled@false"
+        where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
+        disable_net_rcv: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ disable_net_rcv }}"
+      no_log: True
+
+    #Disabling Msg(Send) net_send_enabled from peer4 to the cluster.
+    - name: "{{ recipe_name }}: Disable Msg(Send) net_send_enabled from peer4 to the cluster."
+      vars:
+        stage: "disable_peers_mode"
+        cmd: "net_send_enabled@false"
+        where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
+        disable_send: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ disable_send }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Get 'ctl_svc_nodes' list for all peers."
+      vars:
+        stage: "after_disable_all"
+        raft_keys:
+             - "/ctl_svc_nodes"
+      set_fact:
+         ctl_svc_nodes: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeersBefore, raft_keys, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Verify ctl_svc_nodes/net_recv_enabled and ctl_svc_nodes/net_send_enabled on all peers for peer 4."
+      include_role:
+         name: common
+         tasks_from: verify_net_send_recv_disabled
+      vars:
+        ctl_svc_nodes_arr: "{{ ctl_svc_nodes[idx]['//ctl_svc_nodes'] }}"
+      loop: "{{ range(0, ctl_svc_nodes | length) | list }}"
+      loop_control:
+         loop_var: idx
+
+    - name: "{{ recipe_name }}: Get term value of peer4 before applying fault injection."
+      vars:
+        stage: "get_term_before"
+        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', peer4, '/raft_root_entry/0/term', wantlist=True) }}"
+      debug:
+         msg: "Getting raft_root_entry for all servers."
+      no_log: true
+      with_items:
+         - "{{ raft_root_entry }}"
+      register: peer4_term_before
+
+    #Apply fault injection on peer4.
+    - name: "{{ recipe_name }}: Set fault injection {{ fault_injection_name }} on peer4."
+      vars:
+        stage: "fault_injection"
+        cmd: "enabled@true"
+        fault_injection_name: "raft_pvc_becomes_candidate"
+        where: "/fault_injection_points/name@{{ fault_injection_name }}"
+      set_fact:
+         fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4, cmd, where, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Get list of fault-injections."
+      vars:
+        stage: "fault_injection_check"
+        raft_keys:
+           - "/fault_injection_points"
+      set_fact:
+         fault_injection_points: "{{ lookup('niova_ctlrequest', 'lookup', peer4, raft_keys, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Get fault_injection_point_enabled for peer4."
+      vars:
+         fault_injection_name: "raft_pvc_becomes_candidate"
+      set_fact:
+         fault_injection_point_enabled: "{{ fault_injection_points['//fault_injection_points'][index]['enabled'] }}"
+      when: (fault_injection_points['//fault_injection_points'][index]['name'] == fault_injection_name)
+      loop: "{{  range(0, fault_injection_points['//fault_injection_points'] |length) | list }}"
+      loop_control:
+          loop_var: index
+
+    - name: "{{ recipe_name }}: Get term value of peer4 after applying fault injection."
+      vars:
+        stage: "fault_inject_get_term"
+        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', peer4, '/raft_root_entry/0/term', wantlist=True) }}"
+      debug:
+         msg: "Getting raft_root_entry for all servers."
+      no_log: true
+      with_items:
+         - "{{ raft_root_entry }}"
+      register: peer4_term_after_fi
+
+    - name: "{{ recipe_name }}: Check if term is getting incremented after applying fault injection."
+      debug:
+        msg: "Check if term is getting incremented"
+      failed_when: peer4_term_after_fi['results'][0]['item']['/0/term'] ==  peer4_term_before['results'][0]['item']['/0/term']

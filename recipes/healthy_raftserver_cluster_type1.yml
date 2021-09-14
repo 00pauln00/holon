@@ -1,10 +1,10 @@
-- import_playbook: basic_leader_election.yml
+- import_playbook: basic_leader_election2.yml
 - name: "healthy_raftserver_cluster_type1"
   hosts: localhost
   connection: local
   vars:
      recipe_name: "healthy_raftserver_cluster_type1"
-     parent: "basic_leader_election"
+     parent: "basic_leader_election2"
      FollowerUUIDs: []
      type1_last_ack_arr: []
   tasks:
@@ -32,7 +32,7 @@
               - "/raft_root_entry/0/state"
               - "/raft_root_entry/0/last-applied"
               - "/raft_root_entry/0/last-applied-cumulative-crc"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], raft_keys, wantlist=True) }}"
       debug:
         msg: "Get the raft values for running peers"
       no_log: true

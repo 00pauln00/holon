@@ -1,10 +1,10 @@
-- import_playbook: basic_leader_election.yml
+- import_playbook: basic_leader_election2.yml
 - name: "leader_self_depose"
   hosts: localhost
   connection: local
   vars:
      recipe_name: "leader_self_depose"
-     parent: "basic_leader_election"
+     parent: "basic_leader_election2"
      self_depose_leader_info: []
      self_depose_case1: False
      self_depose_case2: False

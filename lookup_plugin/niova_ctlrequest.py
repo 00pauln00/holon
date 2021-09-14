@@ -34,7 +34,7 @@ def niova_ctlreq_cmd_send(recipe_conf, ctlreq_dict, peer_uuid):
     if 'copy_to' in ctlreq_dict:
        copy_to = ctlreq_dict['copy_to']
 
-    if cmd == "ignore_timer_events@true" and copy_to == "init":
+    if copy_to == "init":
         input_base = inotify_input_base.PRIVATE_INIT
 
     if 'wait_for_ofile' in ctlreq_dict:

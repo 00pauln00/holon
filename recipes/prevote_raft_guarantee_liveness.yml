@@ -70,7 +70,8 @@
         where: "/ctl_svc_nodes/uuid@{{ disablePeersfrmserver4[item] }}"
         disfrmPeer4: "{{ lookup('niova_ctlrequest', 'apply_cmd', server4, cmd, where, wantlist=True) }}"
       debug:
-        msg: "Disable net_recv_enabled from server 4 {{ disfrmPeer4 }}"
+        msg: "Disable net_recv_enabled from server 4c {{ disfrmPeer4 }}"
+      no_log: True
       loop: "{{ range(0, disablePeersfrmserver4 | length) | list }}"
       loop_control:
         pause: 1
@@ -94,6 +95,7 @@
          disfrmPeer5: "{{ lookup('niova_ctlrequest', 'apply_cmd', server5, cmd, where, wantlist=True) }}"
       debug:
         msg: "Disable net_recv_enabled from server 5 {{ disfrmPeer5 }}"
+      no_log: True
       loop: "{{ range(0, disablePeersfrmserver5 | length) | list }}"
       loop_control:
         pause: 1
@@ -257,6 +259,7 @@
         enfrmPeer4: "{{ lookup('niova_ctlrequest', 'apply_cmd', server4, cmd, where, wantlist=True) }}"
       debug:
         msg: "Enable net_recv_enabled from server 4 {{ enfrmPeer4 }}"
+      no_log: True
       loop: "{{ range(0, disablePeersfrmserver4 | length) | list }}"
       loop_control:
         pause: 1
@@ -280,6 +283,7 @@
          enfrmPeer5: "{{ lookup('niova_ctlrequest', 'apply_cmd', server5, cmd, where, wantlist=True) }}"
       debug:
         msg: "Enable net_recv_enabled from server 5 {{ enfrmPeer5 }}"
+      no_log: True
       loop: "{{ range(0, disablePeersfrmserver5 | length) | list }}"
       loop_control:
         pause: 1

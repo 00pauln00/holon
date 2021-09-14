@@ -1,0 +1,244 @@
+- import_playbook: basic_leader_election2.yml
+- name: "prevote_checkquorum"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "prevote_checkquorum"
+     parent: "basic_leader_election2"
+     FollowerUUIDs: []
+     num_writes: 5
+     raft_keys:
+              - "/raft_root_entry/0/peer-uuid"
+              - "/raft_root_entry/0/leader-uuid"
+              - "/raft_root_entry/0/term"
+              - "/raft_root_entry/0/commit-idx"
+              - "/raft_root_entry/0/sync-entry-idx"
+              - "/raft_root_entry/0/sync-entry-term"
+              - "/raft_root_entry/0/sync-entry-crc"
+              - "/raft_root_entry/0/sync-entry-data-size"
+              - "/raft_root_entry/0/state"
+              - "/raft_root_entry/0/last-applied"
+              - "/raft_root_entry/0/last-applied-cumulative-crc"
+
+  tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Store the UUIDs for peers which needs to be started"
+      set_fact:
+         peers_to_be_started : "{{ NonRunningServers }}"
+
+    - name: "{{ recipe_name }}: Start the remaining peers"
+      include_role:
+        name: common
+        tasks_from: start_server
+      vars:
+        ServerUUID: "{{ peers_to_be_started[item] }}"
+      loop: "{{ range(0, peers_to_be_started | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get the cluster information again after starting the peers"
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Get the raft values."
+      vars:
+         stage: "stage0_prevote_get_all"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Get the raft values for running peers"
+      no_log: true
+      with_items:
+       - "{{ peer_values }}"
+      register: stage0_raftvals
+
+    - name: "{{ recipe_name }}: Get the leader and follower uuids."
+      include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+    - name: "{{ recipe_name }}: Stop one of the peer process."
+      vars:
+        peer_to_kill: "{{ FollowerUUIDs | random }}"
+      debug:
+        msg: "{{ lookup('niova_raftprocess', 'kill', peer_to_kill, wantlist=True) }}"
+
+    #Start client
+    - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+      include_role:
+        name: common
+        tasks_from: get_new_client_uuid
+      register: client_uuid
+
+    - name: "{{ recipe_name }}: Generate App UUID"
+      shell: "/usr/bin/uuid"
+      register: app_uuid
+
+    - name: "{{ recipe_name }}: Start client process"
+      include_role:
+        name: common
+        tasks_from: start_client
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
+    - name: "{{ recipe_name }}: Get the cluster information again after stopping the peer."
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
+
+    - name: "{{ recipe_name }}: Get the leader and follower uuids."
+      include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+    #Get the peers to be disabled.
+    - set_fact: peer1="{{ FollowerUUIDs |  random }}"
+    - set_fact: peer2="{{ FollowerUUIDs  | difference(peer1) | random }}"
+    - set_fact: peers_to_disable="{{ [] + [peer1] + [peer2] }}"
+
+    - set_fact:
+         prevote_leader_before: "{{ LeaderUUID['/0/leader-uuid'] }}"
+
+    - name: "{{ recipe_name }}: Get the raft values before disabling peers."
+      vars:
+         stage: "prevote_get_all"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', peers_to_disable, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Get the raft values for running peers"
+      no_log: true
+      with_items:
+       - "{{ peer_values }}"
+      register: prevote_get_all
+
+     #Disabling Msg(Recv) from leader to disabled peers.
+    - name: "{{ recipe_name }}: Disable Msg(Recv) from leader to disabled peers."
+      vars:
+        stage: "disable_peers_mode"
+        cmd: "net_recv_enabled@false"
+        where: "/ctl_svc_nodes/uuid@{{ peers_to_disable[item] }}"
+        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ disable_mode }}"
+      loop: "{{ range(0, peers_to_disable | length) | list }}"
+
+    - name: "{{ recipe_name }}: Verify that message received is disabled successfully on leader."
+      vars:
+        stage: "get_all_leader"
+        raft_keys:
+             - "/ctl_svc_nodes"
+      set_fact:
+         ctl_svc_nodes:  "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Gather net_rcv_enabled values for peers to be disabled."
+      vars:
+        uuid: "{{ item['uuid'] }}"
+        nre: "{{ item['net_recv_enabled'] }}"
+        net_rcv_enabled: []
+      set_fact:
+         net_rcv_enabled: "{{ net_rcv_enabled + [nre] }}"
+      loop: "{{ ctl_svc_nodes['//ctl_svc_nodes'] }}"
+      when: uuid == peers_to_disable[0] or uuid == peers_to_disable[1]
+      no_log: True
+
+    - name: "{{ recipe_name }}: Check if peers are disabled."
+      debug:
+        msg: "Check if peers are disabled"
+      failed_when: item != false
+      loop: "{{ net_rcv_enabled }}"
+
+    - name: "{{ recipe_name }}: Get the raft values after disabling peers."
+      vars:
+         stage: "prevote_get_all"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Get the raft values for running peers"
+      no_log: true
+      with_items:
+       - "{{ peer_values }}"
+      register: get_all_after_disable
+
+    #Perform write.
+    - name: "{{ recipe_name}}: Write at seqno 0 and perform the write."
+      vars:
+        stage: "write"
+        cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
+        where: "/pumice_db_test_client/input"
+      set_fact:
+         write_ops: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+
+
+    - name: "{{ recipe_name }}: Wait until leader election happens"
+      vars:
+         stage: "wait_leader_election"
+      debug:
+        msg: "Waiting for leader election"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+      retries: 4
+      delay: 1
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+      loop_control:
+        pause: 2
+
+    - name: "{{ recipe_name }}: Get the leader and follower uuids."
+      include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+    - set_fact:
+         prevote_leader_after: "{{ LeaderUUID['/0/leader-uuid'] }}"
+
+    - name: "{{ recipe_name }}: Check if new leader is elected"
+      debug:
+        msg: "Check if new leader is elected"
+      failed_when: prevote_leader_before == prevote_leader_after
+
+    - name: "{{ recipe_name }}: Get the raft values after leader election"
+      vars:
+         stage: "prevote_get_all_after"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Get the raft values for running peers"
+      no_log: true
+      with_items:
+       - "{{ peer_values }}"
+      register: prevote_get_all_after
+
+    #Check that term has been incremented only after leader election.
+    - name: "{{ recipe_name }}: Verify raft values after leader election"
+      vars:
+        term: "{{ prevote_get_all_after['results'][item]['item'] }}"
+        term_prev: "{{ stage0_raftvals['results'][item]['item'] }}"
+        commit_idx: "{{ prevote_get_all_after['results'][item]['item'] }}"
+        last_applied: "{{ prevote_get_all_after['results'][item]['item'] }}"
+        sync_entry_idx: "{{  prevote_get_all_after['results'][item]['item'] }}"
+        commit_idx_prev: "{{ stage0_raftvals['results'][item]['item'] }}"
+        last_applied_prev: "{{ stage0_raftvals['results'][item]['item'] }}"
+        sync_entry_idx_prev: "{{  stage0_raftvals['results'][item]['item'] }}"
+      debug:
+        msg: "Verifying raft values after leader election"
+      failed_when: >
+            (term['/0/term'] <= term_prev['/0/term']) or
+            (commit_idx['/0/commit-idx'] <= (commit_idx_prev['/0/commit-idx'])) or
+            (last_applied['/0/last-applied'] <= (last_applied_prev['/0/last-applied'])) or
+            (sync_entry_idx['/0/sync-entry-idx'] <= (sync_entry_idx_prev['/0/sync-entry-idx']))
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true

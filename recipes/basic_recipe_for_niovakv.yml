@@ -35,7 +35,7 @@
      - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
        include_role:
          name: common
-         tasks_from: start_server
+         tasks_from: start_server_golang
        vars:
          ServerUUID: "{{ NonRunningServers[item] }}"
        loop: "{{ range(0, NonRunningServers | length) | list }}"
