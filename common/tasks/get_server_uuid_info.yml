@@ -21,6 +21,7 @@
     - name: "Initialize the running peers array"
       set_fact:
         NRunningPeers: []
+        NonRunningServers: []
 
     - name: "Get the running server uuids"
       vars:

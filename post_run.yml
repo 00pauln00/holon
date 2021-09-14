@@ -38,6 +38,13 @@
     set_fact:
       jsondata: "{{ result.stdout | from_json }}"
 
+  - name: "Get dmesg"
+    shell: dmesg
+    register: result
+
+  - debug:
+     msg: "{{ result.stdout }}"
+
   - name: "Kill the processes after recipe execution"
     set_fact:
        kill_peer="{{lookup('niova_raftprocess', 'kill', raft_processes[item]['process_uuid'], wantlist=True)}}"

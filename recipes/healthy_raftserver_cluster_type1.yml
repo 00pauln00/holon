@@ -5,7 +5,6 @@
   vars:
      recipe_name: "healthy_raftserver_cluster_type1"
      parent: "basic_leader_election2"
-     FollowerUUIDs: []
      type1_last_ack_arr: []
   tasks:
   - block:
@@ -40,14 +39,13 @@
        - "{{ peer_values }}"
       register: stage0_values
 
-    - name: "{{ recipe_name }}: Get the non-running peers list and select remaining peers to start"
-      include_role:
-         name: common
-         tasks_from: get_server_uuid_info
-
     - name: "{{ recipe_name }}: Store the UUIDs for peers which needs to be started"
       set_fact:
        type1_peers_to_be_started : "{{ NonRunningServers }}"
+
+    - name: "{{ recipe_name }}: Show list of Peers to be started"
+      debug:
+        msg: "{{ type1_peers_to_be_started }}"
 
     - name: "{{ recipe_name }}: Start the remaining peers"
       include_role:
