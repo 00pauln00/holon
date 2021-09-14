@@ -1,4 +1,4 @@
-- import_playbook: basic_leader_election2.yml
+- import_playbook: basic_leader_election.yml
 - name: "healthy_raftserver_cluster_type1"
   hosts: localhost
   connection: local
