@@ -1,0 +1,110 @@
+- name: "basic_recipe_for_lkvt_client"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "basic_recipe_for_lkvt_client"
+    parent: None
+
+  tasks:
+  - block:
+       # Check for the app_type.
+     - name: "{{ recipe_name }}: Check if the app_type is 'niovakv'"
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "niovakv")
+
+       # Start pmdb servers.
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     - name: "{{ recipe_name }}: Get unused client-uuid."
+       include_role:
+         name: common
+         tasks_from: get_new_client_uuid
+       register: client_uuid
+
+     - debug:
+        msg: "Client UUID: {{ client_uuid }}"
+
+      # Start all PMDB servers.
+     - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
+       include_role:
+         name: common
+         tasks_from: start_server_golang
+       vars:
+         ServerUUID: "{{ NonRunningServers[item] }}"
+       loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+      # Start niovakv_server.
+     - name: "{{ recipe_name }}: Start new niovakv server which starts pmdb client."
+       include_role:
+         name: common
+         tasks_from: start_client_golang
+       vars:
+         ClientUUID: "{{ client_uuid.stdout }}"
+
+     - name: "{{ recipe_name }}: Pause for 5 seconds to build app cache."
+       pause:
+        seconds: 5
+
+      # Start lkvt_client to write the value.
+     - name: "{{ recipe_name }}: Starting lkvt_client to write the value."
+       vars:
+         database_type: 0
+         size_of_key: 10
+         key_prefix: "key"
+         seed_random_generator: 1
+         size_of_value: 20
+         no_of_operations: 10
+         precent_put_get: 1
+         no_of_concurrent_req: 2
+         nkvclires: "{{ lookup('lkvt_client', database_type, size_of_key, key_prefix, seed_random_generator,
+                        size_of_value, no_of_operations, precent_put_get, no_of_concurrent_req, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from lkvt_client."
+       with_items:
+          - "{{ nkvclires }}"
+       register: writeres
+
+       # Check if write is successful.
+     - name: "{{ recipe_name }}: Check if Put is successful"
+       debug:
+         msg: "Check if write is successful"
+       failed_when: >
+         ( writeres['results'][0]['item']['Put_failures'] != 0 )
+
+      # Start lkvt_client to read the value.
+     - name: "{{ recipe_name }}: Starting lkvt_client to read the value."
+       vars:
+         database_type: 0
+         size_of_key: 10
+         key_prefix: "key"
+         seed_random_generator: 1
+         size_of_value: 20
+         no_of_operations: 10
+         precent_put_get: 0
+         no_of_concurrent_req: 2
+         nkvclires: "{{ lookup('lkvt_client', database_type, size_of_key, key_prefix, seed_random_generator,
+                        size_of_value, no_of_operations, precent_put_get, no_of_concurrent_req, wantlist=True) }}"
+       debug:
+         msg: "Read key-value from lkvt_client."
+       with_items:
+          - "{{ nkvclires }}"
+       register: readres
+
+       # Check if read is successful.
+     - name: "{{ recipe_name }}: Check if Get is successful"
+       debug:
+         msg: "Check if read is successful"
+       failed_when: >
+         ( readres['results'][0]['item']['Get_failures'] != 0 )
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+          terminate_recipe: true
