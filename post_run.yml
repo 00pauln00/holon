@@ -48,7 +48,7 @@
   - name: "Kill the processes after recipe execution"
     set_fact:
        kill_peer="{{lookup('niova_raftprocess', 'kill', raft_processes[item]['process_uuid'], wantlist=True)}}"
-    when: raft_processes[item]['process_status'] == "running"
+    when: raft_processes[item]['process_status'] == "running" or raft_processes[item]['process_status'] == "paused"
     loop: "{{ range(0, raft_processes | length) | list }}"
 
   - name: "Check status post run"
