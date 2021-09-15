@@ -231,6 +231,16 @@
         (last_verification_aftr_rm_fault_inject[item]['/0/last-applied'] != last_verification_aftr_rm_fault_inject[item]['/0/commit-idx'])
       loop: "{{ range(0, FollowerUUIDs | length)| list }}"
 
+    - name: "{{ recipe_name }}: Set the 'default-request-timeout-sec' to its default value (i.e.60)"
+      vars:
+         stage: "recipe_cleanup_stage"
+         cmd: "default-request-timeout-sec@60"
+         where: "/raft_client_root_entry/default-request-timeout-sec"
+         default_timeout: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ default_timeout }}"
+      no_log: True
+
     - name: "{{ recipe_name }}: After setting timeout perform the write {{ num_writes }} times."
       vars:
         stage: "aftr_rm_fault_inject_num_writes"
@@ -266,4 +276,7 @@
          (last_write_vals['/0/pmdb-seqno'] != (num_writes - 1)) or
          (last_write_vals['/0/app-seqno'] != num_writes)
 
-
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
