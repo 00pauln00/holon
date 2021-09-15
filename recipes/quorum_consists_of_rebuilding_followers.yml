@@ -170,6 +170,13 @@
         name: common
         tasks_from: verify_crc_on_all_peers
 
+    - name: "{{ recipe_name }}: Resume active followers."
+      vars:
+         active_followers: "{{ FollowerUUIDs | difference(inactive_followers) }}"
+      set_fact:
+         resume_active_followers: "{{ lookup('niova_raftprocess', 'resume', active_followers[item], wantlist=True) }}"
+      loop: "{{ range(0, active_followers | length) | list }}"
+
     rescue:
       - name: "Recipe failed"
         set_fact:
