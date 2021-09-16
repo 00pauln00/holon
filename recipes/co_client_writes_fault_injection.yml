@@ -1,0 +1,115 @@
+- import_playbook: healthy_raftserver_cluster_type1.yml
+  when: ClusterParams['ctype'] == "pumicedb"
+
+- name: "co_client_writes"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "co_client_writes"
+     parent: "healthy_raftserver_cluster_type1"
+     requirement: "pumicedb"
+     number_of_app_uuids: 100
+     num_writes: 1
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    - name: "{{ recipe_name }}: Check if coalesced write flag is set before starting to run the recipe."
+      debug: msg="Check if coalesced write flag is set before starting to run the recipe."
+      failed_when: coalesced_wr | int != 1
+
+    - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
+      include_role:
+        name: common
+        tasks_from: recipe_compatibility_requirement
+
+    #start single client.
+    - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+      include_role:
+        name: common
+        tasks_from: get_new_client_uuid
+      register: client_uuid
+
+    - debug:
+        msg: "Client UUID: {{ client_uuid }}"
+
+    - name: "{{ recipe_name }}: Start client process"
+      include_role:
+        name: common
+        tasks_from: start_client
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
+    #Create set of required number of app_uuids.
+    - name: "{{ recipe_name }}: Get set of required number of app_uuids."
+      include_role:
+        name: common
+        tasks_from: create_app_uuid_set
+      vars:
+        number_of_apps: "{{ number_of_app_uuids }}"
+
+    - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_on_all_followers_and_verify
+      vars:
+        ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        fault_injection_name: "coalesced_writes"
+
+    #Perform write operations on single client. (passing different app uuids from a single client.)
+    - name: "{{ recipe_name }}: Perform write operations on single client."
+      include_role:
+         name: common
+         tasks_from: perform_writes
+      vars:
+        pmdb_apps: "{{ pmdb_app_uuids }}"
+        constant_number_of_writes: 1
+        ClientUUID: "{{ client_uuid.stdout }}"  
+
+      # Wait until write completes from client
+    - name: "{{ recipe_name}}: Wait until write completes from client."
+      vars:
+        stage: "wait_for_write_op"
+        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+      debug:
+        msg: "Waiting for client to finish writing"
+      until: ((lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list) != (num_writes - 1))
+      loop: "{{ range(0, 10) | list }}"
+      loop_control:
+          pause: 1
+
+    - name: "{{ recipe_name }}: Get the value of coalesced-wr-cnt."
+      vars:
+        stage: "get_coalesced_wr_cnt"
+        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], '/raft_root_entry/0/coalesced-wr-cnt', wantlist=True) }}"
+      debug:
+         msg: "Getting raft_root_entry for all servers."
+      no_log: true
+      with_items:
+         - "{{ raft_root_entry }}"
+      register: coalesced_wr_cnt
+
+    #Verify client parameters after successful write operations.
+    - name: "{{ recipe_name }}: Verify client parameters."
+      include_role:
+        name: common
+        tasks_from: verify_client_parameters
+      vars:
+        Client_UUID: "{{ client_uuid.stdout }}"
+
+    #Perform read operations.
+    - name: "{{ recipe_name }}: Perform read operations on single  client."
+      include_role:
+        name: common
+        tasks_from: verify_read_ops
+      vars:
+        pmdb_apps: "{{ pmdb_app_uuids }}"
+        ClientUUID: "{{ client_uuid.stdout }}"
+     
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
