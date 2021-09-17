@@ -42,7 +42,7 @@ def start_subprocess(cluster_params, Operation, Key, Value, OutfileName,
                                               '-r', outfilePath, '-n', NumRequest],
                                               stdout = fp, stderr = fp)
 
-        elif Operation == "getLeader":         # operation for get leader
+        elif Operation == "leader":         # operation for get leader
             process_popen = subprocess.Popen([bin_path,'-c', config_path, '-o', Operation,
                                               '-r', outfilePath],
                                               stdout = fp, stderr = fp)
