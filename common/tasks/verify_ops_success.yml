@@ -2,13 +2,16 @@
 
 - name: "Compare sequential write/read Values."
   vars:
-    read_key: "{{ read_arr[itr]['Request'] }}"
-    read_val: "{{ read_arr[itr]['Response'] }}"
-  debug:
-    msg: "Verifying values after sequential multi key-value"
-  failed_when: write_key == read_key['Key'] and write_vals != read_val['Response']
+     read_key: "{{ read_arr[itr]['Request'] }}"
+  set_fact:
+     read_val: "{{ read_arr[itr]['Response'] }}"
+  when: write_key == read_key['Key']
   loop: "{{ range(0, read_arr | length) | list }}"
   loop_control:
        loop_var: itr
 
+- name: "Check for value"
+  debug:
+    msg: "Check for value"
+  failed_when: write_vals != read_val['Response']
 
