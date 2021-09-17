@@ -46,8 +46,8 @@
      - name: "{{ recipe_name }}: Start niovakv client to multi-key write/read sequentially."
        vars:
          Operation: "write/read"
-         Key: "India111"
-         Value: "Asia111"
+         Key: "russia"
+         Value: "sputnic"
          OutfileName: "multikey"
          NumRequest: 10
          MultiKey: True
