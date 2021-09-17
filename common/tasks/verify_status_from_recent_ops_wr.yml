@@ -1,0 +1,34 @@
+---
+
+  - name: "{{ recipe_name }}: Get recent-ops-wr array"
+    vars:
+      stage: "getrecent-ops-wr"
+      raft_key:
+          - "/raft_client_root_entry/0/recent-ops-wr"
+    set_fact:
+      verify_recent_ops_wr: "{{ lookup('niova_ctlrequest', 'lookup', ClientUUID, raft_key, wantlist=True) }}"
+
+  - name: "{{ recipe_name }}: Get 'status' for app_uuid1."
+    set_fact:
+       statusForUUID1: "{{ verify_recent_ops_wr['/0/recent-ops-wr'][itr]['status'] }}"
+    when: verify_recent_ops_wr['/0/recent-ops-wr'][itr]['sub-app-user-id'] == AppUUID1
+    loop: "{{  range(0, verify_recent_ops_wr['/0/recent-ops-wr'] | length) | list }}"
+    loop_control:
+       loop_var: itr
+
+  - debug:
+      msg: "Verify write request with app_uuid1 gets expired."
+    failed_when: statusForUUID1 != "Connection timed out"
+
+  - name: "{{ recipe_name }}: Get 'status' for app_uuid2."
+    set_fact:
+       statusForUUID2: "{{ verify_recent_ops_wr['/0/recent-ops-wr'][idx]['status'] }}"
+    when: verify_recent_ops_wr['/0/recent-ops-wr'][idx]['sub-app-user-id'] == AppUUID2
+    loop: "{{  range(0, verify_recent_ops_wr['/0/recent-ops-wr'] | length) | list }}"
+    loop_control:
+       loop_var: idx
+
+  - debug:
+      msg: "Verify write request with app_uuid2 gets expired."
+    failed_when: statusForUUID2 != "Success"
+
