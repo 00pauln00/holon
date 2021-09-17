@@ -28,7 +28,7 @@
          Key: "Country"
          Value: "India"
          OutfileName: "beforeWrite"
-         NumRequest: 0
+         NumRequest: 1
          MultiKey: False
          Sequential : False
          nkvclires: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
@@ -43,12 +43,12 @@
        debug:
          msg: "Check if write is successful"
        failed_when: >
-         (writeres['results'][0]['item']['write']['Response']['Status'] != 0)
+         (writeres['results'][0]['item']['write'][0]['Response']['Status'] != 0)
 
        # Get leader.
      - name: "{{ recipe_name}}: Get Leader UUID"
        vars:
-         Operation: "getLeader"
+         Operation: "leader"
          Key: ""
          Value: ""
          OutfileName: "getLeader"
@@ -68,7 +68,7 @@
        # Kill the leader.
      - name: "{{ recipe_name }}: Kill the leader."
        vars:
-         old_leader: "{{ OldLeaderUUID['results'][0]['item']['getLeader']['Response']['Response'] }}"
+         old_leader: "{{ OldLeaderUUID['results'][0]['item']['Leader-UUID'] }}"
        debug:
         msg: "killing the leader {{ lookup('niova_raftprocess', 'kill', old_leader, wantlist=True) }}"
 
@@ -83,7 +83,7 @@
          name: common
          tasks_from: verify_new_leader_election
        vars:
-         old_leader: "{{ OldLeaderUUID['results'][0]['item']['getLeader']['Response']['Response'] }}"
+         old_leader: "{{ OldLeaderUUID['results'][0]['item']['Leader-UUID'] }}"
          peer_list: "{{ NRunningPeers }}"
        loop: "{{ range(0, peer_list | length) | list }}"
        loop_control:
@@ -92,7 +92,7 @@
       # Get newly elected leader.
      - name: "{{ recipe_name}}: Get New Leader UUID"
        vars:
-         Operation: "getLeader"
+         Operation: "leader"
          Key: ""
          Value: ""
          OutfileName: "getLeader"
@@ -119,7 +119,7 @@
          Key: "Country"
          Value: ""
          OutfileName: "afterRead"
-         NumRequest: 0
+         NumRequest: 1
          MultiKey: False
          Sequential : False
          nkvclires: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
@@ -131,8 +131,8 @@
 
      - name: "{{ recipe_name }}: compare values after successful read operation."
        vars:
-         wrval: "{{ writeres['results'][0]['item']['write']['Request'] }}"
-         rdval: "{{ readres['results'][0]['item']['read']['Response'] }}"
+         wrval: "{{ writeres['results'][0]['item']['write'][0]['Request'] }}"
+         rdval: "{{ readres['results'][0]['item']['read'][0]['Response'] }}"
        debug:
          msg:
           - "Verifying parameter after read operation"
