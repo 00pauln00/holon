@@ -163,7 +163,7 @@
       failed_when: part2_stage['/0/leader-uuid'] != LeaderUUID['/0/leader-uuid']
 
     #On smaller Cluster, check for leader's client-requests report ‘deny-may-be-depose’
-    - name: "{{ recipe_name }}: Wait until the leader notices 'deny-may-be-depose'."
+    - name: "{{ recipe_name }}: Wait until the leader notices 'deny-leader-not-established'."
       include_role:
          name: common
          tasks_from: check_cli_rqst_of_small_cluster_leader
