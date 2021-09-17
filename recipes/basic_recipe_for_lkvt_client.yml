@@ -76,7 +76,12 @@
        debug:
          msg: "Check if write is successful"
        failed_when: >
-         ( writeres['results'][0]['item']['Put_failures'] != 0 )
+         ( writeres['results'][0]['item']['Put_failures'] != 0 ) or
+         ( writeres['results'][0]['item']['Put_count'] != writeres['results'][0]['item']['Request_count'] ) or
+         ( writeres['results'][0]['item']['Get_count'] != 0 ) or
+         ( writeres['results'][0]['item']['Put_success'] != writeres['results'][0]['item']['Request_count']) or
+         ( writeres['results'][0]['item']['Get_failures'] != 0 ) or
+         ( writeres['results'][0]['item']['Get_success'] != 0 ) 
 
       # Start lkvt_client to read the value.
      - name: "{{ recipe_name }}: Starting lkvt_client to read the value."
@@ -102,7 +107,12 @@
        debug:
          msg: "Check if read is successful"
        failed_when: >
-         ( readres['results'][0]['item']['Get_failures'] != 0 )
+         ( readres['results'][0]['item']['Get_failures'] != 0 ) or
+         ( readres['results'][0]['item']['Put_count'] != 0 ) or
+         ( readres['results'][0]['item']['Put_success'] != 0 ) or
+         ( readres['results'][0]['item']['Get_failures'] != 0 ) or
+         ( readres['results'][0]['item']['Get_count'] != readres['results'][0]['item']['Request_count'] ) or
+         ( readres['results'][0]['item']['Get_success'] != readres['results'][0]['item']['Request_count'] ) 
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
