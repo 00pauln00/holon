@@ -6,7 +6,7 @@
       debug:
         msg:
          - "Wait till client reports leader-viable = true"
-      until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/raft_client_root_entry/0/leader-viable', wantlist=True) | dict2items | map(attribute='value') | list | first == true)
+      until: (lookup('niova_ctlrequest', 'lookup', ClientUUID, '/raft_client_root_entry/0/leader-viable', wantlist=True) | dict2items | map(attribute='value') | list | first == true)
       retries: 60
       delay: 1
 
