@@ -45,15 +45,6 @@
          random_num_writes_list: "{{ random_num_writes_list | default([]) + [num_writes] }}"
       loop: "{{ range(0, number_of_app_uuids) | list }}"
 
-    - name: "{{ recipe_name }}: Verify leader is viable."
-      include_role:
-        name: common
-        tasks_from: verify_leader_viable
-      vars:
-        ClientUUID: "{{ ClientUUIDS[itr] }}"
-      loop: "{{ range(0, ClientUUIDS | length) |list }}"
-      loop_control:
-              loop_var: itr
 
     #Perform write operations for multiple clients. (passing one client at a time.)
     - name: "Perform write operations for multiple clients."
