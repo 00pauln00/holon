@@ -34,12 +34,12 @@ def start_subprocess(cluster_params, Operation, Key, Value, OutfileName,
         if Operation == "write":
             process_popen = subprocess.Popen([bin_path,'-c', config_path,
                                              '-l', logfile, '-o', Operation, '-k', Key,
-                                             '-v', Value, '-r', outfilePath],
+                                             '-v', Value, '-r', outfilePath , '-n', NumRequest ],
                                              stdout = fp, stderr = fp)
         elif Operation == "read":
             process_popen = subprocess.Popen([bin_path,'-c', config_path, '-o', Operation,
                                               '-l', logfile, '-k', Key, '-v', Value,
-                                              '-r', outfilePath],
+                                              '-r', outfilePath, '-n', NumRequest],
                                               stdout = fp, stderr = fp)
 
         elif Operation == "getLeader":         # operation for get leader
@@ -55,10 +55,8 @@ def start_subprocess(cluster_params, Operation, Key, Value, OutfileName,
            os.fsync(fp)
            exit(1)
 
-
     elif (( MultiKey == True ) and ( Sequential == True )):
 
-        bin_path = '%s/niovakv_client_multi' % binary_dir
         logfile = "%s/%s/niovakvclientlogfile_multi_sequential.log" % (base_dir, raft_uuid)
         outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
         process_popen = subprocess.Popen([bin_path,'-c', config_path, '-l' , logfile,
@@ -66,7 +64,6 @@ def start_subprocess(cluster_params, Operation, Key, Value, OutfileName,
                                           '-v', Value, '-r', outfilePath],
                                           stdout = fp, stderr = fp)
     else:
-        bin_path = '%s/niovakv_client_multi' % binary_dir
         logfile = "%s/%s/niovakvclientlogfile_multi_concurrent.log" % (base_dir, raft_uuid)
         outfilePath = "%s/%s/%s" % (base_dir, raft_uuid , OutfileName)
         process_popen = subprocess.Popen([bin_path,'-c', config_path, '-l', logfile,
@@ -103,7 +100,6 @@ class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
         Operation = terms[0]
-        print(Operation)
         Key = terms[1]
         Value = terms[2]
         OutfileName = terms[3]
@@ -117,6 +113,7 @@ class LookupModule(LookupBase):
                                            Value, OutfileName, NumRequest,
                                            MultiKey, Sequential)
         output_data = get_the_output(outfile)
+
 
         if Operation == "write":
             return {"write":output_data['write']}

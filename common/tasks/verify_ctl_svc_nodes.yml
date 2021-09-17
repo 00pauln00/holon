@@ -6,9 +6,6 @@
       set_fact:
          GetCtlSvcNodes:  "{{ lookup('niova_ctlrequest', 'lookup', DisconnectedPeer, raft_keys, wantlist=True) }}"
 
-    - debug:
-        msg: "{{ GetCtlSvcNodes }}"
-
     - name: "{{ recipe_name }}: Gather 'net_recv_enabled' values for peers to be disabled."
       vars:
         uuid: "{{ item['uuid'] }}"

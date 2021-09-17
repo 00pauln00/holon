@@ -14,4 +14,4 @@
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
       loop_control:
-        pause: 2
+        pause: 1

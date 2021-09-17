@@ -265,7 +265,7 @@
     - name: "{{ recipe_name }}: After resuming the followers, new leader might have got elected."
       vars:
         stage: "test-cleanup-get-leader"
-        leader_obj: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/leader-uuid', wantlist=True) }}"
+        leader_obj: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry/0/leader-uuid', wantlist=True) }}"
       set_fact: demo2_new_leader_uuid="{{ leader_obj['/0/leader-uuid'] }}"
 
     - name: "{{ recipe_name }}: After resuming followers valiadate it's aliveness"
