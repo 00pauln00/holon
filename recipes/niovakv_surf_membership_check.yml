@@ -49,7 +49,7 @@
          Key: "China"
          Value: "population"
          OutfileName: "wrkey"
-         NumRequest: 0
+         NumRequest: 1
          MultiKey: False
          Sequential : False
          nkvclires: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
@@ -59,12 +59,14 @@
           - "{{ nkvclires }}"
        register: writeres
 
-       # check if write is successful
+     # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"
        debug:
          msg: "Check if write is successful"
        failed_when: >
-         (writeres['results'][0]['item']['write']['Response']['Status'] != 0)
+             writeres['results'][0]['item']['write'][0]['Response']['Validate'] != true or
+             writeres['results'][0]['item']['write'][0]['Response']['Status'] != 0
+
        # Kill the niovakv-server.
      - name: "{{ recipe_name }}: Kill the niovakv-server."
        debug:
@@ -110,7 +112,7 @@
          Key: "China"
          Value: ""
          OutfileName: "rdval"
-         NumRequest: 0
+         NumRequest: 1
          MultiKey: False
          Sequential : False
          nkvclires: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
@@ -122,8 +124,8 @@
 
      - name: "{{ recipe_name }}: compare values after successful read operation."
        vars:
-         wrval: "{{ writeres['results'][0]['item']['write']['Request'] }}"
-         rdval: "{{ readres['results'][0]['item']['read']['Response'] }}"
+         wrval: "{{ writeres['results'][0]['item']['write'][0]['Request'] }}"
+         rdval: "{{ readres['results'][0]['item']['read'][0]['Response'] }}"
        debug:
          msg:
           - "Verifying parameter after read operation"
