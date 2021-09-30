@@ -1,14 +1,14 @@
 - import_playbook: basic_raft_operation_with_client_activity.yml
   when: ClusterParams['ctype'] == "pumicedb"
 
-- name: "raft_guarantee_liveness_with_preVote"
+- name: "prevote_raft_guarantee_liveness"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "raft_guarantee_liveness_with_preVote"
+     recipe_name: "prevote_raft_guarantee_liveness"
      parent: "basic_raft_ops_w_client_act"
      requirement: "pumicedb"
-     num_writes: 1
+     num_writes: 100
 
   tasks:
   - block:
@@ -199,12 +199,11 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
       debug:
         msg: "Waiting for client to finish writing"
-      until: ((lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list) != (num_writes - 1))
-      loop: "{{ range(0, 10) | list }}"
-      loop_control:
-        pause: 1
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
+      retries: 100
+      delay: 1
 
-    - name: "{{ recipe_name}}: Wait until commit-idx gets incremented."
+    - name: "{{ recipe_name}}: Wait until commit-idx gets incremented on all peers except server 4."
       vars:
         getPeersExceptServer4: "{{ NRunningPeers | difference(server4) }}"
         stage: "wait_for_commitId"
@@ -212,7 +211,7 @@
       debug:
         msg: "Wait until commit-idx gets incremented"
       until: lookup('niova_ctlrequest', 'lookup', getPeersExceptServer4[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (get_values_from_all[0]['/0/commit-idx'] + num_writes)
-      retries: 30
+      retries: 100
       delay: 1
       loop: "{{ range(0, getPeersExceptServer4 | length) | list }}"
 
@@ -231,7 +230,7 @@
         - "{{ peer_values }}"
       register: getAllVal
 
-    - name: "{{ recipe_name }}: Verify write operation is successful or not on other peers except server 4."
+    - name: "{{ recipe_name }}: After successful write operation, verify all values same on other peers except server 4."
       vars:
         getPeersExceptServer4: "{{ NRunningPeers | difference(server4) }}"
         curr_val: "{{ getAllVal['results'][item]['item'] }}"
@@ -239,7 +238,8 @@
         msg: "Verify values for all peers excluding server 4"
       failed_when: >
           (curr_val['/0/leader-uuid'] != get_values_from_all[item]['/0/leader-uuid']) or
-          (curr_val['/0/term'] != get_values_from_all[item]['/0/term'])
+          (curr_val['/0/term'] != get_values_from_all[item]['/0/term']) or
+          (curr_val['/0/commit-idx'] != get_values_from_all[item]['/0/commit-idx'] + num_writes)
       loop: "{{ range(0, getPeersExceptServer4 | length) | list }}"
 
     - name: "{{ recipe_name }}: Verify the write operation should not happen to server 4."
@@ -299,7 +299,7 @@
       loop_control:
           loop_var: itr
 
-    - name: "{{ recipe_name }}: Get the commi-idx, term and leader-uuid after enabling the 'disableNetRecv'."
+    - name: "{{ recipe_name }}: Get the commi-idx, term and leader-uuid after enabling the 'net_recv_enabled'."
       vars:
          stage: "verifyAllPeers"
          raft_keys:
