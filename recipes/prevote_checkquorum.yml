@@ -135,6 +135,7 @@
       debug:
         msg: "{{ disable_mode }}"
       loop: "{{ range(0, peers_to_disable | length) | list }}"
+      no_log: true
 
     - name: "{{ recipe_name }}: Verify that message received is disabled successfully on leader."
       vars:
@@ -180,7 +181,6 @@
         where: "/pumice_db_test_client/input"
       set_fact:
          write_ops: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
-
 
     - name: "{{ recipe_name }}: Wait until leader election happens"
       vars:
@@ -237,6 +237,44 @@
             (last_applied['/0/last-applied'] <= (last_applied_prev['/0/last-applied'])) or
             (sync_entry_idx['/0/sync-entry-idx'] <= (sync_entry_idx_prev['/0/sync-entry-idx']))
       loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    #Recipe cleanup
+    #Enabling Msg(Recv) net_recv_enabled from leader to disabled peers."
+    - name: "{{ recipe_name }}: Enable Msg(Recv) net_recv_enabled from leader to disabled peers."
+      vars:
+        stage: "enable_recv"
+        cmd: "net_recv_enabled@true"
+        where: "/ctl_svc_nodes/uuid@{{ peers_to_disable[item] }}"
+        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ disable_mode }}"
+      loop: "{{ range(0, peers_to_disable | length) | list }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Get 'ctl_svc_nodes' list for all peers."
+      vars:
+        stage: "after_enable_all"
+        raft_keys:
+             - "/ctl_svc_nodes"
+      set_fact:
+         ctl_svc_nodes_en: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Gather net_rcv_enabled values for peers to be enabled."
+      vars:
+        uuid: "{{ item['uuid'] }}"
+        nre: "{{ item['net_recv_enabled'] }}"
+        net_rcv_enabled_vals: []
+      set_fact:
+         net_rcv_enabled_vals: "{{ net_rcv_enabled_vals + [nre] }}"
+      loop: "{{ ctl_svc_nodes_en['//ctl_svc_nodes'] }}"
+      when: uuid == peers_to_disable[0] or uuid == peers_to_disable[1]
+      no_log: True
+
+    - name: "{{ recipe_name }}: Check if peers are enabled."
+      debug:
+        msg: "Check if peers are enabled"
+      failed_when: item != true
+      loop: "{{ net_rcv_enabled_vals }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
