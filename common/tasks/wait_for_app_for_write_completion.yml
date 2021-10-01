@@ -7,7 +7,7 @@
         pmdb_test_apps_pmdb_seqno: "{{ lookup('niova_ctlrequest', 'lookup', Client_UUID, raft_keys, wantlist=True) | dict2items | map(attribute='value') | list }}"
       debug:
         msg:
-          - "Waiting for writes completition"
+          - "Waiting for writes completion"
       until: pmdb_test_apps_pmdb_seqno != (exp_list[index | int] | int - 1)
       loop: "{{ range(0, 10) | list }}"
       loop_control:
