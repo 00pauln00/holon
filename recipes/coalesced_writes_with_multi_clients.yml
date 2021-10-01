@@ -1,11 +1,11 @@
 - import_playbook: healthy_raftserver_cluster_type1.yml
   when: ClusterParams['ctype'] == "pumicedb"
 
-- name: "co_client_writes"
+- name: "coalesced_writes_with_multi_clients"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "co_client_writes"
+     recipe_name: "coalesced_writes_with_multi_clients"
      parent: "healthy_raftserver_cluster_type1"
      requirement: "pumicedb"
      number_of_app_uuids: 100
