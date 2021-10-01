@@ -481,6 +481,16 @@
             (op['op'] != "read") or
             (status['status'] != "Success")
 
+    # Recipe Cleanup
+    - name: "{{ recipe_name }}: Reset the client request timeout to default timeout i.e. 60sec."
+      vars:
+         stage: "reset_cli_timeout"
+         cmd: "default-request-timeout-sec@60"
+         where: "/raft_client_root_entry/default-request-timeout-sec"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+      no_log: True
+
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
