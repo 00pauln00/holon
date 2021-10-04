@@ -245,9 +245,9 @@
         stage: "enable_recv"
         cmd: "net_recv_enabled@true"
         where: "/ctl_svc_nodes/uuid@{{ peers_to_disable[item] }}"
-        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
+        enable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
       debug:
-        msg: "{{ disable_mode }}"
+        msg: "{{ enable_mode }}"
       loop: "{{ range(0, peers_to_disable | length) | list }}"
       no_log: true
 
