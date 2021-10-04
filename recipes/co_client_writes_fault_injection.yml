@@ -54,7 +54,7 @@
     - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
       include_role:
         name: common
-        tasks_from: set_fault_injection_on_all_followers_and_verify
+        tasks_from: set_fault_injection_and_verify
       vars:
         ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
         fault_injection_name: "coalesced_writes"
@@ -67,7 +67,7 @@
       vars:
         pmdb_apps: "{{ pmdb_app_uuids }}"
         constant_number_of_writes: 1
-        ClientUUID: "{{ client_uuid.stdout }}"  
+        ClientUUID: "{{ client_uuid.stdout }}"
 
       # Wait until write completes from client
     - name: "{{ recipe_name}}: Wait until write completes from client."
@@ -108,7 +108,7 @@
       vars:
         pmdb_apps: "{{ pmdb_app_uuids }}"
         ClientUUID: "{{ client_uuid.stdout }}"
-     
+
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
