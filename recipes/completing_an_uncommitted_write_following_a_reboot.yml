@@ -131,7 +131,7 @@
     - name: "{{ recipe_name }}: Ignore writes on all followers using fault injection."
       include_role:
         name: common
-        tasks_from: set_fault_injection_on_all_followers_and_verify
+        tasks_from: set_fault_injection_and_verify
       vars:
         ServerUUID: "{{ FollowerUUIDs[item] }}"
         fault_injection_name: "raft_follower_ignores_non_hb_AE_request"

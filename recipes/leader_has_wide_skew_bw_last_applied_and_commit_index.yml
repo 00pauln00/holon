@@ -105,7 +105,7 @@
     - name: "{{ recipe_name }}: Ignore writes on all running peers using fault injection."
       include_role:
         name: common
-        tasks_from: set_fault_injection_on_all_followers_and_verify
+        tasks_from: set_fault_injection_and_verify
       vars:
         ServerUUID: "{{ NRunningPeers[item] }}"
         fault_injection_name: "raft_server_bypass_sm_apply"
