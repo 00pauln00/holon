@@ -1,8 +1,8 @@
-- name: "basic_recipe_for_lkvt_client"
+- name: "multiple_niovakvservers_with_higher_ops"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "basic_recipe_for_lkvt_client"
+    recipe_name: "multiple_niovakvservers_with_higher_ops"
     parent: None
 
   tasks:
@@ -22,14 +22,14 @@
           name: common
           tasks_from: get_server_uuid_info
 
-     - name: "{{ recipe_name }}: Get unused client-uuid."
+       #Get multiple client uuids using common task.
+     - name: "Get multiple client uuids."
+       vars:
+         number_of_clients: 5
        include_role:
          name: common
-         tasks_from: get_new_client_uuid
-       register: client_uuid
-
-     - debug:
-        msg: "Client UUID: {{ client_uuid }}"
+         tasks_from: get_multiple_client_uuids
+       loop: "{{ range(0, number_of_clients) | list }}" #loop for no. of required client uuids.
 
       # Start all PMDB servers.
      - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
@@ -40,29 +40,26 @@
          ServerUUID: "{{ NonRunningServers[item] }}"
        loop: "{{ range(0, NonRunningServers | length) | list }}"
 
-      # Start niovakv_server.
+      #Start niovakv_server.
      - name: "{{ recipe_name }}: Start new niovakv server which starts pmdb client."
        include_role:
          name: common
          tasks_from: start_client_golang
        vars:
-         ClientUUID: "{{ client_uuid.stdout }}"
-
-     - name: "{{ recipe_name }}: Pause for 5 seconds to build app cache."
-       pause:
-        seconds: 5
+         ClientUUID: "{{ ClientUUIDS[item] }}"
+       loop: "{{ range(0, ClientUUIDS | length) |list }}"
 
      # Start lkvt_client to write the value.
      - name: "{{ recipe_name }}: Starting lkvt_client to write the value."
        vars:
          database_type: 0
          size_of_key: 10
-         key_prefix: "key"
+         key_prefix: "Paro"
          seed_random_generator: 1
          size_of_value: 20
-         no_of_operations: 10
+         no_of_operations: 10000
          precent_put_get: 1
-         no_of_concurrent_req: 2
+         no_of_concurrent_req: 20
          wait_for_outfile: false
          nkvclires: "{{ lookup('lkvt_client', database_type, size_of_key, key_prefix, seed_random_generator,
                         size_of_value, no_of_operations, precent_put_get, no_of_concurrent_req, wait_for_outfile, wantlist=True) }}"
@@ -76,13 +73,17 @@
        vars:
          outfile_path: "{{ writeres['results'][0]['item'] }}"
          wait_for_outfile: True
-         timeout: 10             # this time shot be equal to no_of_operations
+         timeout: 10000             # this time shot be equal to no_of_operations
          nkvclires: "{{ lookup('lkvt_client', outfile_path, wait_for_outfile, timeout, wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
           - "{{ nkvclires }}"
        register: write_op
+
+     - name: "{{ recipe_name }}: Get the information for number of request distributions across multiple niovakv servers."
+       debug:
+         msg: "{{ write_op['results'][0]['item']['NkvcClient']['NkvRequestDistributionCount'] }}"
 
       #Check if write is successful.
      - name: "{{ recipe_name }}: Check if Put is successful"
@@ -92,21 +93,21 @@
          ( write_op['results'][0]['item']['Put_failures'] != 0 ) or
          ( write_op['results'][0]['item']['Get_count'] != 0 ) or
          ( write_op['results'][0]['item']['Get_failures'] != 0 ) or
-         ( write_op['results'][0]['item']['Get_success'] != 0 ) or
-         ( write_op['results'][0]['item']['Put_count'] != write_op['results'][0]['item']['Request_count'] ) or
-         ( write_op['results'][0]['item']['Put_success'] != write_op['results'][0]['item']['Request_count']) 
+         ( write_op['results'][0]['item']['Get_success'] != 0 ) 
+     #    ( write_op['results'][0]['item']['Put_count'] != write_op['results'][0]['item']['Request_count'] ) or
+     #    ( write_op['results'][0]['item']['Put_success'] != write_op['results'][0]['item']['Request_count']) 
 
-      #Start lkvt_client to read the value.
+     #Start lkvt_client to read the value.
      - name: "{{ recipe_name }}: Starting lkvt_client to read the value."
        vars:
          database_type: 0
          size_of_key: 10
-         key_prefix: "key"
+         key_prefix: "Paro"
          seed_random_generator: 1
          size_of_value: 20
-         no_of_operations: 10
+         no_of_operations: 10000
          precent_put_get: 0
-         no_of_concurrent_req: 2
+         no_of_concurrent_req: 20
          wait_for_outfile: false
          nkvclires: "{{ lookup('lkvt_client', database_type, size_of_key, key_prefix, seed_random_generator,
                         size_of_value, no_of_operations, precent_put_get, no_of_concurrent_req, wait_for_outfile, wantlist=True) }}"
@@ -120,7 +121,7 @@
        vars:
          outfile_path: "{{ readres['results'][0]['item'] }}"
          wait_for_outfile: True
-         timeout: 10             # this time shot be equal to no_of_operations
+         timeout: 10000            # this time shot be equal to no_of_operations
          nkvclires: "{{ lookup('lkvt_client', outfile_path, wait_for_outfile, timeout, wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
@@ -128,7 +129,11 @@
           - "{{ nkvclires }}"
        register: read_op
 
-      #Check if read is successful.
+     - name: "{{ recipe_name }}: Get the information for number of request distributions across multiple niovakv servers."
+       debug:
+         msg: "{{ read_op['results'][0]['item']['NkvcClient']['NkvRequestDistributionCount'] }}"
+
+     #Check if read is successful.
      - name: "{{ recipe_name }}: Check if Get is successful"
        debug:
          msg: "Check if read is successful"
@@ -136,11 +141,12 @@
          ( read_op['results'][0]['item']['Get_failures'] != 0 ) or
          ( read_op['results'][0]['item']['Put_count'] != 0 ) or
          ( read_op['results'][0]['item']['Put_success'] != 0 ) or
-         ( read_op['results'][0]['item']['Get_failures'] != 0 ) or
-         ( read_op['results'][0]['item']['Get_count'] != read_op['results'][0]['item']['Request_count'] ) or
-         ( read_op['results'][0]['item']['Get_success'] != read_op['results'][0]['item']['Request_count'])
-
+         ( read_op['results'][0]['item']['Get_failures'] != 0 ) 
+      #   ( read_op['results'][0]['item']['Get_count'] != read_op['results'][0]['item']['Request_count'] ) or
+      #   ( read_op['results'][0]['item']['Get_success'] != read_op['results'][0]['item']['Request_count'])
+    
+      #task to check of request is send to all servers
     rescue:
-     - name: "Recipe: {{ recipe_name }} failed"
-       set_fact:
-         terminate_recipe: true
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+          terminate_recipe: true
