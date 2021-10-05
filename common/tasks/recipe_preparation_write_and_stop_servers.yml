@@ -84,7 +84,7 @@
    - name: "{{ recipe_name }}: Set fault injection on all followers and verify through common task."
      include_role:
        name: common
-       tasks_from: set_fault_injection_on_all_followers_and_verify
+       tasks_from: set_fault_injection_and_verify
      vars:
        follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
        ServerUUID: "{{ follower_uuids[item] }}"
