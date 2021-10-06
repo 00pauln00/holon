@@ -1,15 +1,15 @@
 - import_playbook: healthy_raftserver_cluster_type1.yml
   when: ClusterParams['ctype'] == "pumicedb"
 
-- name: "co_client_writes"
+- name: "coalesced_writes_with_multi_clients"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "co_client_writes"
+     recipe_name: "coalesced_writes_with_multi_clients"
      parent: "healthy_raftserver_cluster_type1"
      requirement: "pumicedb"
      number_of_app_uuids: 100
-     num_writes: 1
+     coalesced_num_writes: 1
 
   tasks:
   - block:
@@ -49,7 +49,7 @@
          tasks_from: perform_writes
       vars:
         pmdb_apps: "{{ pmdb_app_uuids }}"
-        constant_number_of_writes: 1
+        constant_number_of_writes: "{{ coalesced_num_writes }}"
         ClientUUID: "{{ ClientUUIDS[idx] }}"
       loop: "{{ range(0, ClientUUIDS | length) |list }}"
       loop_control:
@@ -85,6 +85,7 @@
       vars:
         pmdb_apps: "{{ pmdb_app_uuids }}"
         ClientUUID: "{{ ClientUUIDS[idx] }}"
+        recipe_num_writes: "{{ coalesced_num_writes }}"
       loop: "{{ range(0, ClientUUIDS | length) |list }}"
       loop_control:
          loop_var: idx

@@ -67,7 +67,7 @@
       vars:
         pmdb_apps: "{{ pmdb_app_uuids }}"
         constant_number_of_writes: 1
-        ClientUUID: "{{ client_uuid.stdout }}"  
+        ClientUUID: "{{ client_uuid.stdout }}"
 
     # Wait until write completes from client
     - name: "{{ recipe_name}}: Wait until write completes from client."

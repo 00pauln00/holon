@@ -6,6 +6,7 @@
         tasks_from: verify_read_per_app
       vars:
         pmdb_app: "{{ pmdb_apps[index] }}"
+        rec_number_of_writes: "{{ recipe_num_writes }}"
       loop: "{{ range(0, pmdb_apps | length) |list }}"
       loop_control:
           loop_var: index

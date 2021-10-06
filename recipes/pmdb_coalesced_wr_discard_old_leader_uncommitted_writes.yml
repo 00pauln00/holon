@@ -55,7 +55,7 @@
     - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
       include_role:
         name: common
-        tasks_from: set_fault_injection_on_all_followers_and_verify
+        tasks_from: set_fault_injection_and_verify
       vars:
         ServerUUID: "{{ stage1_value['results'][0]['item']['/0/leader-uuid'] }}"
         fault_injection_name: "coalesced_writes"
