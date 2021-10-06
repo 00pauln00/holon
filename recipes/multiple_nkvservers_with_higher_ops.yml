@@ -94,8 +94,8 @@
          ( write_op['results'][0]['item']['Get_count'] != 0 ) or
          ( write_op['results'][0]['item']['Get_failures'] != 0 ) or
          ( write_op['results'][0]['item']['Get_success'] != 0 ) 
-     #    ( write_op['results'][0]['item']['Put_count'] != write_op['results'][0]['item']['Request_count'] ) or
-     #    ( write_op['results'][0]['item']['Put_success'] != write_op['results'][0]['item']['Request_count']) 
+         ( write_op['results'][0]['item']['Put_count'] != write_op['results'][0]['item']['Request_count'] ) or
+         ( write_op['results'][0]['item']['Put_success'] != write_op['results'][0]['item']['Request_count']) 
 
      #Start lkvt_client to read the value.
      - name: "{{ recipe_name }}: Starting lkvt_client to read the value."
@@ -142,8 +142,8 @@
          ( read_op['results'][0]['item']['Put_count'] != 0 ) or
          ( read_op['results'][0]['item']['Put_success'] != 0 ) or
          ( read_op['results'][0]['item']['Get_failures'] != 0 ) 
-      #   ( read_op['results'][0]['item']['Get_count'] != read_op['results'][0]['item']['Request_count'] ) or
-      #   ( read_op['results'][0]['item']['Get_success'] != read_op['results'][0]['item']['Request_count'])
+         ( read_op['results'][0]['item']['Get_count'] != read_op['results'][0]['item']['Request_count'] ) or
+         ( read_op['results'][0]['item']['Get_success'] != read_op['results'][0]['item']['Request_count'])
     
       #task to check of request is send to all servers
     rescue:
