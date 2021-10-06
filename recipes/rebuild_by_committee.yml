@@ -42,7 +42,7 @@
 
     #Get leader uuid.
     - set_fact:
-         original_leader: "{{ LeaderUUID | dict2items | map(attribute='value') | list | first }}"
+         rebuild_orig_leader: "{{ LeaderUUID | dict2items | map(attribute='value') | list | first }}"
 
     - name: "{{ recipe_name }}: Get the list of peer UUIDs before pausing followers."
       include_role:
@@ -56,7 +56,7 @@
       loop: "{{ range(0, number_of_followers_to_pause | int) | list }}"
 
     - set_fact:
-         unpaused_followers: "{{ FollowerUUIDs | difference(inactive_followers) }}"
+         rebuild_unpaused_followers: "{{ FollowerUUIDs | difference(inactive_followers) }}"
 
     - name: "{{ recipe_name }}: Get the list of peer UUIDs after pausing followers."
       include_role:
@@ -78,8 +78,8 @@
       vars:
         ClientUUID: "{{ client_uuid.stdout }}"
 
-    #Perform write operations for multiple clients. (passing one client at a time.)
-    - name: "{{ recipe_name }}: Perform write operations for multiple clients."
+    #Perform write operations.
+    - name: "{{ recipe_name }}: Perform write operations."
       include_role:
          name: common
          tasks_from: perform_writes
@@ -101,22 +101,22 @@
         cmd:  "num_remaining@5"
         where: "/fault_injection_points/name@raft_follower_ignores_non_hb_AE_request"
       set_fact:
-         set_num_remaining: "{{ lookup('niova_ctlrequest', 'apply_cmd', unpaused_followers[item], cmd, where, wantlist=True) }}"
-      loop: "{{ range(0, unpaused_followers | length) | list }}"
+         set_num_remaining: "{{ lookup('niova_ctlrequest', 'apply_cmd', rebuild_unpaused_followers[item], cmd, where, wantlist=True) }}"
+      loop: "{{ range(0, rebuild_unpaused_followers | length) | list }}"
 
     #Apply fault injection on unpaused followers."
-    - name: "{{ recipe_name }}: Ignore writes on unpaused_followers using fault injection."
+    - name: "{{ recipe_name }}: Ignore writes on rebuild_unpaused_followers using fault injection."
       include_role:
         name: common
         tasks_from: set_fault_injection_and_verify
       vars:
-        ServerUUID: "{{ unpaused_followers[item] }}"
+        ServerUUID: "{{ rebuild_unpaused_followers[item] }}"
         fault_injection_name: "raft_follower_ignores_non_hb_AE_request"
-      loop: "{{ range(0, unpaused_followers | length) | list }}"
+      loop: "{{ range(0, rebuild_unpaused_followers | length) | list }}"
 
     #Set the value for fault_injected_peers.
     - set_fact:
-         fault_injected_peers: "{{ unpaused_followers }}"
+         reb_fault_injected_peers: "{{ rebuild_unpaused_followers }}"
 
     - name: "{{ recipe_name }}: Get the list of peer UUIDs after unpausing followers."
       include_role:
@@ -126,7 +126,7 @@
     - name: "{{ recipe_name }}: Get commit-idx values of unpaused followers after applying fault injection."
       vars:
         stage: "get_commit_idx"
-        commit_idx_vals: "{{ lookup('niova_ctlrequest', 'lookup', unpaused_followers, '/raft_root_entry/0/commit-idx', wantlist=True) }}"
+        commit_idx_vals: "{{ lookup('niova_ctlrequest', 'lookup', rebuild_unpaused_followers, '/raft_root_entry/0/commit-idx', wantlist=True) }}"
       debug:
         msg: "{{ commit_idx_vals }}"
       with_items:
@@ -144,8 +144,8 @@
       debug:
         msg: "Verifying if commit-idx of unpaused followers is greater than 101."
       failed_when: >
-         (commit_idx0 |int < 101) or
-         (commit_idx1 |int < 101)
+         (commit_idx0 |int <= 101) or
+         (commit_idx1 |int <= 101)
       loop: "{{ range(0, 10) | list }}"
 
     - name: "{{ recipe_name }}: Compare commit-idx of unpaused followers and verify if they are not increasing."
@@ -161,10 +161,19 @@
             (commit_idx1 != commit_idx1_next)
       loop: "{{ range(0, 9) | list }}"
 
+    - name: "{{ recipe_name }}: Verify if num_remaining is 0."
+      include_role:
+        name: common
+        tasks_from: verify_num_remaining
+      vars:
+        ServerUUID: "{{ rebuild_unpaused_followers[item] }}"
+        fault_injection_name: "raft_follower_ignores_non_hb_AE_request"
+      loop: "{{ range(0, rebuild_unpaused_followers | length) | list }}"
+
     #Kill original leader.
     - name: "{{ recipe_name }}: Kill original leader."
       debug:
-        msg: "Killing original leader {{ lookup('niova_raftprocess', 'kill', original_leader, wantlist=True) }}"
+        msg: "Killing original leader {{ lookup('niova_raftprocess', 'kill', rebuild_orig_leader, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Wait until leader election happens."
       include_role:
@@ -181,24 +190,15 @@
         name: common
         tasks_from: get_server_uuid_info
 
-    - name: "{{ recipe_name }}: Verify if num_remaining is 0."
-      include_role:
-        name: common
-        tasks_from: verify_num_remaining
-      vars:
-        ServerUUID: "{{ unpaused_followers[item] }}"
-        fault_injection_name: "raft_follower_ignores_non_hb_AE_request"
-      loop: "{{ range(0, unpaused_followers | length) | list }}"
-
     #Remove previously applied fault injection.
     - name: "{{ recipe_name }}: Remove previously applied fault injection."
       include_role:
         name: common
         tasks_from: remove_fault_injection_and_verify
       vars:
-        ServerUUID: "{{ fault_injected_peers[item] }}"
+        ServerUUID: "{{ reb_fault_injected_peers[item] }}"
         fault_injection_name: "raft_follower_ignores_non_hb_AE_request"
-      loop: "{{ range(0, fault_injected_peers | length) | list }}"
+      loop: "{{ range(0, reb_fault_injected_peers | length) | list }}"
 
     #See if recovery happens with new leader.
     - name: "{{ recipe_name }}: Get commit-idx of all running peers and wait until all running peers show same commit idx."
@@ -233,7 +233,7 @@
         name: common
         tasks_from: start_server
       vars:
-        ServerUUID: "{{ original_leader }}"
+        ServerUUID: "{{ rebuild_orig_leader }}"
 
     rescue:
       - name: "Recipe failed"
