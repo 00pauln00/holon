@@ -66,7 +66,8 @@
                 no_of_concurrent_req: 20,
                 wait_for_outfile: false,
                 choose_algorithm: 0,
-                specific_server_name: ""
+                specific_server_name: "", 
+                outfileName: "write_operation" 
                }
         nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
        debug:
@@ -74,12 +75,13 @@
        with_items:
           - "{{ nkvclires }}"
        register: writeres
+       no_log: true
 
      - name: "{{ recipe_name }}: Check for outfile."
        vars:
         outfile_parameters: {
           outfile_path: "{{ writeres['results'][0]['item'] }}",
-          wait_for_outfile: True,
+          wait_for_outfile: True, 
           timeout: 10
           }
         nkvclires: "{{ lookup('lkvt_client', outfile_parameters , wantlist=True) }}"
@@ -88,6 +90,7 @@
        with_items:
           - "{{ nkvclires }}"
        register: write_op
+       no_log: true
 
       #Check if write is successful.
      - name: "{{ recipe_name }}: Check if Put is successful"
@@ -115,7 +118,8 @@
                 no_of_concurrent_req: 20,
                 wait_for_outfile: false,
                 choose_algorithm: 0,
-                specific_server_name: ""
+                specific_server_name: "" ,
+                outfileName: "read_operation" 
                }
         nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
        debug:
@@ -123,13 +127,14 @@
        with_items:
           - "{{ nkvclires }}"
        register: readres
+       no_log: true
 
      - name: "{{ recipe_name }}: Check for outfile."
        vars:
          outfile_parameters: {
           outfile_path: "{{ readres['results'][0]['item']}}",
           wait_for_outfile: True,
-          timeout: 10
+          timeout: 10 
           }
          nkvclires: "{{ lookup('lkvt_client', outfile_parameters, wantlist=True) }}"
        debug:
@@ -137,6 +142,7 @@
        with_items:
           - "{{ nkvclires }}"
        register: read_op
+       no_log: true
 
       #Check if read is successful.
      - name: "{{ recipe_name }}: Check if Get is successful"
@@ -149,7 +155,7 @@
          ( read_op['results'][0]['item']['Get_failures'] != 0 ) or
          ( read_op['results'][0]['item']['Get_count'] != read_op['results'][0]['item']['Request_count'] ) or
          ( read_op['results'][0]['item']['Get_success'] != read_op['results'][0]['item']['Request_count'])
-
+  
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
