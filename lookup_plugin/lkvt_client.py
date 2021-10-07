@@ -95,13 +95,9 @@ class LookupModule(LookupBase):
                                                      choose_algorithm, specific_server_name)
             return outfile
         else:
-            print("in else")
             outfile_path = str(terms[0]['outfile_path'])
-            print(outfile_path)
             wait_for_outfile = terms[0]['wait_for_outfile']
-            print(wait_for_outfile)
             timeout = terms[0]['timeout']
-            print(timeout)
 
             if  wait_for_outfile == True:
                 output_data = get_the_output(outfile_path, timeout)
