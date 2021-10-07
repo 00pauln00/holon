@@ -103,16 +103,6 @@
       loop_control:
         pause: 2
 
-      #Remove fault injection on peer4.
-#    - name: "{{ recipe_name }}: Remove fault injection {{ fault_injection_name }} on peer4."
-#      vars:
-#        stage: "fault_injection"
-#        cmd: "enabled@false"
-#        fault_injection_name: "raft_pvc_becomes_candidate"
-#        where: "/fault_injection_points/name@{{ fault_injection_name }}"
-#      set_fact:
-#        fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4, cmd, where, wantlist=True) }}"
-
      #Remove fault injection on peer4.
     - name: "{{ recipe_name }}: Remove fault injection {{ fault_injection_name }} on peer4."
       vars:
