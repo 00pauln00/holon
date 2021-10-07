@@ -4,7 +4,6 @@
   vars:
     recipe_name: "multiple_nkvservers_with_higher_ops_stop_and_reboot"
     parent: None
-    no_of_operations: 10000
 
   tasks:
   - block:
@@ -51,23 +50,29 @@
        loop: "{{ range(0, ClientUUIDS | length) |list }}"
 
      # Start lkvt_client to write the value.
-     - name: "{{ recipe_name }}: Perform write operation."
+     - name: "{{ recipe_name }}: Perform write operation with random server."
        vars:
-         database_type: 0
-         size_of_key: 10
-         key_prefix: "key"
-         seed_random_generator: 1
-         size_of_value: 20
-         precent_put_get: 1
-         no_of_concurrent_req: 10
-         wait_for_outfile: false
-         nkvclires: "{{ lookup('lkvt_client', database_type, size_of_key, key_prefix, seed_random_generator,
-                        size_of_value, no_of_operations, precent_put_get, no_of_concurrent_req, wait_for_outfile, wantlist=True) }}"
+         parameters: {
+                database_type: 0,
+                size_of_key: 10,
+                key_prefix: "Paro",
+                seed_random_generator: 1,
+                size_of_value: 20,
+                no_of_operations: 10000,
+                precent_put_get: 1,
+                no_of_concurrent_req: 20,
+                wait_for_outfile: false,
+                choose_algorithm: 0,
+                specific_server_name: "",
+                outfileName: "writeres_random_server"
+               }
+         nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
           - "{{ nkvclires }}"
        register: writeres
+       no_log: true
 
      #Stop niovakv servers.
      - name: "{{ recipe_name }}: Stop niovakv server."
@@ -118,18 +123,23 @@
 
      - name: "{{ recipe_name }}: Check for outfile."
        vars:
-         outfile_path: "{{ writeres['results'][0]['item'] }}"
-         wait_for_outfile: True
-         nkvclires: "{{ lookup('lkvt_client', outfile_path, wait_for_outfile, no_of_operations, wantlist=True) }}"
+        outfile_parameters: {
+          outfile_path: "{{ writeres['results'][0]['item'] }}",
+          wait_for_outfile: True,
+          timeout: 10000
+          }
+        nkvclires: "{{ lookup('lkvt_client', outfile_parameters , wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
           - "{{ nkvclires }}"
        register: write_op
+       no_log: true
 
      - name: "{{ recipe_name }}: Get the information for number of request distributions across multiple niovakv servers."
        debug:
-         msg: "{{ write_op['results'][0]['item']['NkvcClient']['NkvRequestDistributionCount'] }}"
+         msg: "{{ write_op['results'][0]['item']['NkvcClient']['RequestDistribution'] }}"
+       no_log: true
 
       #Check if write is successful.
      - name: "{{ recipe_name }}: Check if Put is successful"
@@ -144,38 +154,50 @@
          ( write_op['results'][0]['item']['Get_success'] != 0 )
 
      #Start lkvt_client to read the value.
-     - name: "{{ recipe_name }}: Perform read operation."
+     - name: "{{ recipe_name }}: Perform read operation random server."
        vars:
-         database_type: 0
-         size_of_key: 10
-         key_prefix: "key"
-         seed_random_generator: 1
-         size_of_value: 20
-         precent_put_get: 0
-         no_of_concurrent_req: 2
-         wait_for_outfile: false
-         nkvclires: "{{ lookup('lkvt_client', database_type, size_of_key, key_prefix, seed_random_generator,
-                        size_of_value, no_of_operations, precent_put_get, no_of_concurrent_req, wait_for_outfile, wantlist=True) }}"
+        parameters: {
+                database_type: 0,
+                size_of_key: 10,
+                key_prefix: "Paro",
+                seed_random_generator: 1,
+                size_of_value: 20,
+                no_of_operations: 10000,
+                precent_put_get: 0,
+                no_of_concurrent_req: 20,
+                wait_for_outfile: false,
+                choose_algorithm: 0,
+                specific_server_name: "",
+                outfileName: "readres_random_server"
+
+               }
+        nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
        debug:
          msg: "Read key-value from lkvt_client."
        with_items:
           - "{{ nkvclires }}"
        register: readres
+       no_log: true
 
      - name: "{{ recipe_name }}: Check for outfile."
        vars:
-         outfile_path: "{{ readres['results'][0]['item'] }}"
-         wait_for_outfile: True
-         nkvclires: "{{ lookup('lkvt_client', outfile_path, wait_for_outfile, no_of_operations, wantlist=True) }}"
+        outfile_parameters: {
+          outfile_path: "{{ readres['results'][0]['item']}}",
+          wait_for_outfile: True,
+          timeout: 10000
+          }
+        nkvclires: "{{ lookup('lkvt_client', outfile_parameters, wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
           - "{{ nkvclires }}"
        register: read_op
+       no_log: true
 
      - name: "{{ recipe_name }}: Get the information for number of request distributions across multiple niovakv servers."
        debug:
-         msg: "{{ read_op['results'][0]['item']['NkvcClient']['NkvRequestDistributionCount'] }}"
+         msg: "{{ read_op['results'][0]['item']['NkvcClient']['RequestDistribution'] }}"
+       no_log: true
 
      #Check if read is successful.
      - name: "{{ recipe_name }}: Check if Get is successful"
@@ -188,6 +210,168 @@
          ( read_op['results'][0]['item']['Get_failures'] != 0 ) or
          ( read_op['results'][0]['item']['Get_count'] != read_op['results'][0]['item']['Request_count'] ) or
          ( read_op['results'][0]['item']['Get_success'] != read_op['results'][0]['item']['Request_count'])
+
+     # Start lkvt_client to write the value.
+     - name: "{{ recipe_name }}: Perform write operation with round robin manner."
+       vars:
+         parameters: {
+                database_type: 0,
+                size_of_key: 10,
+                key_prefix: "Paro",
+                seed_random_generator: 1,
+                size_of_value: 20,
+                no_of_operations: 10000,
+                precent_put_get: 1,
+                no_of_concurrent_req: 20,
+                wait_for_outfile: false,
+                choose_algorithm: 1,
+                specific_server_name: "",
+                outfileName: "writeres_round_robin"
+               }
+         nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from lkvt_client."
+       with_items:
+          - "{{ nkvclires }}"
+       register: writeres_option1
+       no_log: true
+
+     - name: "{{ recipe_name }}: Check for outfile."
+       vars:
+        outfile_parameters: {
+          outfile_path: "{{ writeres_option1['results'][0]['item'] }}",
+          wait_for_outfile: True,
+          timeout: 10000
+          }
+        nkvclires: "{{ lookup('lkvt_client', outfile_parameters , wantlist=True) }}"
+       debug:
+         msg: "Write key-value from lkvt_client."
+       with_items:
+          - "{{ nkvclires }}"
+       register: write_op_option1
+       no_log: true
+
+     #Start lkvt_client to read the value.
+     - name: "{{ recipe_name }}: Perform read operation round robin."
+       vars:
+        parameters: {
+                database_type: 0,
+                size_of_key: 10,
+                key_prefix: "Paro",
+                seed_random_generator: 1,
+                size_of_value: 20,
+                no_of_operations: 10000,
+                precent_put_get: 0,
+                no_of_concurrent_req: 20,
+                wait_for_outfile: false,
+                choose_algorithm: 0,
+                specific_server_name: "",
+                outfileName: "readres_round_robin"
+
+               }
+        nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
+       debug:
+         msg: "Read key-value from lkvt_client."
+       with_items:
+          - "{{ nkvclires }}"
+       register: readres_option1
+       no_log: true
+
+     - name: "{{ recipe_name }}: Check for outfile."
+       vars:
+        outfile_parameters: {
+          outfile_path: "{{ readres_option1['results'][0]['item']}}",
+          wait_for_outfile: True,
+          timeout: 10000
+          }
+        nkvclires: "{{ lookup('lkvt_client', outfile_parameters, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from lkvt_client."
+       with_items:
+          - "{{ nkvclires }}"
+       register: read_op_option1
+       no_log: true
+
+     # Start lkvt_client to write the value.
+     - name: "{{ recipe_name }}: Perform write operation with specific server."
+       vars:
+         parameters: {
+                database_type: 0,
+                size_of_key: 10,
+                key_prefix: "Paro",
+                seed_random_generator: 1,
+                size_of_value: 20,
+                no_of_operations: 10000,
+                precent_put_get: 1,
+                no_of_concurrent_req: 20,
+                wait_for_outfile: false,
+                choose_algorithm: 2,
+                specific_server_name: "Node1",
+                outfileName: "writeres_specific_server"
+               }
+         nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from lkvt_client."
+       with_items:
+          - "{{ nkvclires }}"
+       register: writeres_option2
+       no_log: true
+
+     - name: "{{ recipe_name }}: Check for outfile."
+       vars:
+        outfile_parameters: {
+          outfile_path: "{{ writeres_option2['results'][0]['item'] }}",
+          wait_for_outfile: True,
+          timeout: 10000
+          }
+        nkvclires: "{{ lookup('lkvt_client', outfile_parameters , wantlist=True) }}"
+       debug:
+         msg: "Write key-value from lkvt_client."
+       with_items:
+          - "{{ nkvclires }}"
+       register: write_op_option2
+       no_log: true
+
+     #Start lkvt_client to read the value.
+     - name: "{{ recipe_name }}: Perform read operation specific server."
+       vars:
+        parameters: {
+                database_type: 0,
+                size_of_key: 10,
+                key_prefix: "Paro",
+                seed_random_generator: 1,
+                size_of_value: 20,
+                no_of_operations: 10000,
+                precent_put_get: 0,
+                no_of_concurrent_req: 20,
+                wait_for_outfile: false,
+                choose_algorithm: 0,
+                specific_server_name: "",
+                outfileName: "readres_specific_server"
+
+               }
+        nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
+       debug:
+         msg: "Read key-value from lkvt_client."
+       with_items:
+          - "{{ nkvclires }}"
+       register: readres_option2
+       no_log: true
+
+     - name: "{{ recipe_name }}: Check for outfile."
+       vars:
+        outfile_parameters: {
+          outfile_path: "{{ readres_option2['results'][0]['item']}}",
+          wait_for_outfile: True,
+          timeout: 10000
+          }
+        nkvclires: "{{ lookup('lkvt_client', outfile_parameters, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from lkvt_client."
+       with_items:
+          - "{{ nkvclires }}"
+       register: read_op_option2
+       no_log: true
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
