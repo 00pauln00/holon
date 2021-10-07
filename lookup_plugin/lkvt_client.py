@@ -11,7 +11,7 @@ import subprocess
 def start_subprocess(cluster_params, database_type, size_of_key, 
                         key_prefix, seed_random_generator, size_of_value,
                         no_of_operations, precent_put_get, no_of_concurrent_req,
-                        choose_algorithm, specific_server_name):
+                        choose_algorithm, specific_server_name, outfileName):
     base_dir = cluster_params['base_dir']
     app_name = cluster_params['app_type']
     raft_uuid = cluster_params['raft_uuid']
@@ -30,19 +30,14 @@ def start_subprocess(cluster_params, database_type, size_of_key,
     # Prepare config file path for niovakv_client
     config_path = "%s/niovakv.config" % binary_dir
 
-    if precent_put_get == "1":
-        outfilePath = "%s/%s/lkvt_Put_outfile" % (base_dir, raft_uuid)
-    elif precent_put_get == "0":
-        outfilePath = "%s/%s/lkvt_Get_outfile" % (base_dir, raft_uuid)
-    else : 
-         outfilePath = "%s/%s/lkvt_outfile" % (base_dir, raft_uuid)
-
+    outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, outfileName)
+    
     process_popen = subprocess.Popen([bin_path, '-d', database_type, '-ks', size_of_key,
                                          '-kp', key_prefix, '-s', seed_random_generator,
                                          '-vs', size_of_value, '-n', no_of_operations, 
                                          '-pp', precent_put_get, '-c', no_of_concurrent_req,
-                                         '-jp', outfilePath ,'-cp', config_path,
-                                         '-ca', choose_algorithm, '-ss', specific_server_name],
+                                         '-jp', outfilePath ,'-cp', config_path, 
+                                         '-ca', choose_algorithm, '-ss', specific_server_name], 
                                          stdout = fp, stderr = fp)
 
     # Sync the log file so all the logs from niovakv client gets written to log file.
@@ -83,16 +78,17 @@ class LookupModule(LookupBase):
             size_of_value  = str(terms[0]["size_of_value"])
             no_of_operations = str(terms[0]["no_of_operations"])
             precent_put_get = str(terms[0]["precent_put_get"])
-            no_of_concurrent_req = str(terms[0]["size_of_key"])
+            no_of_concurrent_req = str(terms[0]["no_of_concurrent_req"])
             choose_algorithm = str(terms[0]["choose_algorithm"])
-            specific_server_name = str(terms[0]["no_of_operations"])
+            specific_server_name = str(terms[0]["specific_server_name"])
+            outfileName = str(terms[0]["outfileName"])
             cluster_params = kwargs['variables']['ClusterParams']
 
             # Start the niovakv_client and perform the specified operation e.g write/read/getLeader.
             process,outfile = start_subprocess(cluster_params, database_type, size_of_key, key_prefix,
                                                      seed_random_generator, size_of_value,
                                                      no_of_operations, precent_put_get, no_of_concurrent_req,
-                                                     choose_algorithm, specific_server_name)
+                                                     choose_algorithm, specific_server_name, outfileName)
             return outfile
         else:
             outfile_path = str(terms[0]['outfile_path'])
