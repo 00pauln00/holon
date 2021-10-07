@@ -1,11 +1,11 @@
 - import_playbook: healthy_raftserver_cluster_type1.yml
   when: ClusterParams['ctype'] == "pumicedb"
 
-- name: "co_client_writes"
+- name: "coalesced_writes_with_single_client"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "co_client_writes"
+     recipe_name: "coalesced_writes_with_single_client"
      parent: "healthy_raftserver_cluster_type1"
      requirement: "pumicedb"
      number_of_app_uuids: 100
@@ -69,7 +69,7 @@
         constant_number_of_writes: 1
         ClientUUID: "{{ client_uuid.stdout }}"
 
-      # Wait until write completes from client
+    # Wait until write completes from client
     - name: "{{ recipe_name}}: Wait until write completes from client."
       vars:
         stage: "wait_for_write_op"
@@ -107,8 +107,47 @@
         tasks_from: verify_read_ops
       vars:
         pmdb_apps: "{{ pmdb_app_uuids }}"
+        recipe_num_writes : 1
         ClientUUID: "{{ client_uuid.stdout }}"
 
+    #Remove fault injection from leader
+    - name: "{{ recipe_name }}: Apply cmd to remove fault injection from the leader."
+      vars:
+        stage: "recipe_cleanup"
+        cmd: "enabled@false"
+        where: "/fault_injection_points/name@coalesced_writes"
+        remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ remove_fault_inject }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Get fault_injection_points array to remove fault injection."
+      vars:
+        stage: "stage6"
+        raft_key:
+           - "/fault_injection_points"
+        remove_fi: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+      debug:
+        msg: "Getting fault_injection_points array."
+      no_log: True
+      with_items:
+          - "{{ remove_fi }}"
+      register: stage6_value
+
+    - name: "{{ recipe_name }}: Get 'enabled' value for 'coalesced_writes' to remove fault injection."
+      vars:
+        fi_value: "{{ stage6_value['results'][0]['item'] }}"
+      set_fact:
+        Coalesced_write_fault_injection: "{{ fi_value['//fault_injection_points'][item]['enabled'] }}"
+      when: (fi_value['//fault_injection_points'][item]['name'] == "coalesced_writes")
+      loop: "{{  range(0, fi_value['//fault_injection_points'] | length) | list }}"
+
+    - name: "{{ recipe_name }}: Verify fault injection is removed from leader."
+      debug:
+        msg: "{{ Coalesced_write_fault_injection }}"
+      no_log: True
+      failed_when: Coalesced_write_fault_injection != False
+    
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
