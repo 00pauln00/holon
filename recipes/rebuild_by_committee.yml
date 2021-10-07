@@ -41,8 +41,12 @@
         tasks_from: get_follower_stats
 
     #Get leader uuid.
-    - set_fact:
-         rebuild_orig_leader: "{{ LeaderUUID | dict2items | map(attribute='value') | list | first }}"
+    - name: "{{ recipe_name }}: Set value for original leader."
+      vars:
+        ori_leader: "{{ LeaderUUID | dict2items | map(attribute='value') | list | first }}"
+      debug: var=ori_leader
+      register: reb_orig_leader
+      no_log: true
 
     - name: "{{ recipe_name }}: Get the list of peer UUIDs before pausing followers."
       include_role:
@@ -52,11 +56,11 @@
     - name: "{{ recipe_name }}: Pause number of followers."
       set_fact:
          pause_followers: "{{ lookup('niova_raftprocess', 'pause', FollowerUUIDs[item], wantlist=True) }}"
-         inactive_followers: "{{ inactive_followers | default([]) + [FollowerUUIDs[item]] }}"
+         reb_inactive_followers: "{{ reb_inactive_followers | default([]) + [FollowerUUIDs[item]] }}"
       loop: "{{ range(0, number_of_followers_to_pause | int) | list }}"
 
     - set_fact:
-         rebuild_unpaused_followers: "{{ FollowerUUIDs | difference(inactive_followers) }}"
+         rebuild_unpaused_followers: "{{ FollowerUUIDs | difference(reb_inactive_followers) }}"
 
     - name: "{{ recipe_name }}: Get the list of peer UUIDs after pausing followers."
       include_role:
@@ -91,8 +95,8 @@
     #Unpause inactive followers.
     - name: "{{ recipe_name }}: Resume inactive followers."
       debug:
-        msg: "Resuming inactive followers {{ lookup('niova_raftprocess', 'resume', inactive_followers[item], wantlist=True) }}"
-      loop: "{{ range(0, inactive_followers | length) | list }}"
+        msg: "Resuming inactive followers {{ lookup('niova_raftprocess', 'resume', reb_inactive_followers[item], wantlist=True) }}"
+      loop: "{{ range(0, reb_inactive_followers | length) | list }}"
 
     #Set num_remaining = 5.
     - name: "{{ recipe_name }}: Set num remaining = 5 for unpaused followers."
@@ -100,9 +104,10 @@
         stage: "set_num_remaining"
         cmd:  "num_remaining@5"
         where: "/fault_injection_points/name@raft_follower_ignores_non_hb_AE_request"
-      set_fact:
-         set_num_remaining: "{{ lookup('niova_ctlrequest', 'apply_cmd', rebuild_unpaused_followers[item], cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', rebuild_unpaused_followers[item], cmd, where, wantlist=True) }}"
       loop: "{{ range(0, rebuild_unpaused_followers | length) | list }}"
+      no_log: true
 
     #Apply fault injection on unpaused followers."
     - name: "{{ recipe_name }}: Ignore writes on rebuild_unpaused_followers using fault injection."
@@ -113,10 +118,6 @@
         ServerUUID: "{{ rebuild_unpaused_followers[item] }}"
         fault_injection_name: "raft_follower_ignores_non_hb_AE_request"
       loop: "{{ range(0, rebuild_unpaused_followers | length) | list }}"
-
-    #Set the value for fault_injected_peers.
-    - set_fact:
-         reb_fault_injected_peers: "{{ rebuild_unpaused_followers }}"
 
     - name: "{{ recipe_name }}: Get the list of peer UUIDs after unpausing followers."
       include_role:
@@ -173,7 +174,7 @@
     #Kill original leader.
     - name: "{{ recipe_name }}: Kill original leader."
       debug:
-        msg: "Killing original leader {{ lookup('niova_raftprocess', 'kill', rebuild_orig_leader, wantlist=True) }}"
+        msg: "Killing original leader {{ lookup('niova_raftprocess', 'kill', reb_orig_leader['ori_leader'], wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Wait until leader election happens."
       include_role:
@@ -196,9 +197,9 @@
         name: common
         tasks_from: remove_fault_injection_and_verify
       vars:
-        ServerUUID: "{{ reb_fault_injected_peers[item] }}"
+        ServerUUID: "{{ rebuild_unpaused_followers[item] }}"
         fault_injection_name: "raft_follower_ignores_non_hb_AE_request"
-      loop: "{{ range(0, reb_fault_injected_peers | length) | list }}"
+      loop: "{{ range(0, rebuild_unpaused_followers | length) | list }}"
 
     #See if recovery happens with new leader.
     - name: "{{ recipe_name }}: Get commit-idx of all running peers and wait until all running peers show same commit idx."
@@ -233,7 +234,7 @@
         name: common
         tasks_from: start_server
       vars:
-        ServerUUID: "{{ rebuild_orig_leader }}"
+        ServerUUID: "{{ reb_orig_leader['ori_leader'] }}"
 
     rescue:
       - name: "Recipe failed"
