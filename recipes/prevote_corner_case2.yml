@@ -297,15 +297,16 @@
         debug:
           msg: "{{ disable_mode_send_client }}"
 
-      #Remove fault injection on peer4.
+     #Remove fault injection on peer4.
       - name: "{{ recipe_name }}: Remove fault injection {{ fault_injection_name }} on peer4."
         vars:
-          stage: "fault_injection"
+          stage: "recipe_cleanup_fault_injection"
           cmd: "enabled@false"
-          fault_injection_name: "raft_pvc_becomes_candidate"
-          where: "/fault_injection_points/name@{{ fault_injection_name }}"
-        set_fact:
-          fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4, cmd, where, wantlist=True) }}"
+          where: "/fault_injection_points/name@raft_pvc_becomes_candidate"
+          remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4, cmd, where, wantlist=True) }}"
+        debug:
+          msg: "{{ remove_fault_inject }}"
+        no_log: True
 
       - name: "{{ recipe_name }}: Get list of fault-injections."
         vars:
