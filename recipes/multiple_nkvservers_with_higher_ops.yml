@@ -162,7 +162,7 @@
          ( read_op['results'][0]['item']['Get_failures'] != 0 ) or
          ( read_op['results'][0]['item']['Get_count'] != read_op['results'][0]['item']['Request_count'] ) or
          ( read_op['results'][0]['item']['Get_success'] != read_op['results'][0]['item']['Request_count'])
-    
+            
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
