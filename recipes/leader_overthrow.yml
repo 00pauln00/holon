@@ -50,12 +50,8 @@
          stage: "stage1_rcv_false"
          cmd: "net_recv_enabled@false"
          where: "/ctl_svc_nodes/net_recv_enabled@true"
-         recv_false: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       debug:
-        msg: "Disable message receive on peer: "
-      with_items:
-        - "{{ recv_false }}"
-      register: all_peers_recv_false
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
 
     # TODO do we need this?
@@ -74,10 +70,9 @@
          net_rcv: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_keys, wantlist=True) }}"
       debug:
         msg:
-         - "Verify parameters for peer: {{ NRunningPeers[item] }}"
+         - "Verify parameters for peer: {{ NRunningPeers }}"
          - "initial term {{ initial_vals['/0/term'] }}"
          - "initial leader uuid: {{ initial_vals['/0/leader-uuid'] }}"
-
       failed_when: >
            (net_rcv["/*/net_recv_enabled"] != False) or
            (net_rcv["/0/leader-uuid"] != "null") or
@@ -85,6 +80,7 @@
            (net_rcv["/0/client-requests"] != "deny-leader-not-established") or
            (net_rcv["/0/term"] != initial_vals["/0/term"])
       loop: "{{ range(0, NRunningPeers|length) | list }}"
+      no_log: true
 
     - name: "{{ recipe_name }}: Lets sleep for sometime before checking the values"
       wait_for:
@@ -102,10 +98,9 @@
          stage: "stage2_set_leader"
          cmd: "net_recv_enabled@true"
          where: "/ctl_svc_nodes/uuid@{{ overthrow_leader_to_be }}"
-         set_leader_id: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers[item], cmd, where, wantlist=True) }}"
       debug:
-        msg: "Setting leader-to-be uuid on peer: {{ NRunningPeers[item] }}"
-      loop: "{{ range(0, NRunningPeers|length) | list }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
 
     - pause: seconds=3
 
@@ -153,6 +148,7 @@
         (stage2_vals["/0/client-requests"] != "deny-leader-not-established") or
         (stage2_vals["/0/term"] != initial_vals["/0/term"])
       loop: "{{ range(0, NRunningPeers|length) | list }}"
+      no_log: true
 
     - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
       vars:
@@ -161,15 +157,6 @@
          where: "/ctl_svc_nodes/net_recv_enabled@false"
       debug:
        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', overthrow_leader_to_be, cmd, where, wantlist=True) }}"
-      no_log: true
-
-    - name: "{{ recipe_name }}: Make sure enable message receive on all peers for leader overthrow"
-      vars:
-         stage: "net_rcv_true_on_all"
-         cmd: "net_recv_enabled@true"
-         where: "/ctl_svc_nodes/net_recv_enabled@false"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
 
     - name: "{{ recipe_name }}: Verify new leader is elected successfully"
@@ -182,6 +169,16 @@
       retries: 10
       delay: 2
       loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Make sure enable message receive on all peers for leader overthrow"
+      vars:
+         npeersExceptLeaderToBe: "{{ NRunningPeers | difference(overthrow_leader_to_be) }}"
+         stage: "net_rcv_true_on_all"
+         cmd: "net_recv_enabled@true"
+         where: "/ctl_svc_nodes/net_recv_enabled@false"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', npeersExceptLeaderToBe, cmd, where, wantlist=True) }}"
+      no_log: true
 
     - name: "{{ recipe_name }}: Verify that message received is enabled successfully on all peers"
       vars:
