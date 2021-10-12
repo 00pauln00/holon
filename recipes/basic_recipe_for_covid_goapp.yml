@@ -64,6 +64,7 @@
        with_items:
          - "{{ WriteOneValue }}"
        register: WriteOne
+       no_log: True
 
        # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"
@@ -84,6 +85,7 @@
        with_items:
          - "{{ ReadOneValue }}"
        register: ReadOne
+       no_log: True
 
      - name: "{{ recipe_name }}: Check if read is successful"
        debug:
@@ -169,6 +171,7 @@
        with_items:
          - "{{ getLeader_values }}"
        register: OldLeaderUUID
+       no_log: True
 
        # pause the leader
      - name: "{{ recipe_name }}: Pause  leader process."
@@ -203,12 +206,14 @@
        with_items:
          - "{{ getNewLeader_values }}"
        register: NewLeaderUUID
+       no_log: True
 
        # check if new leader is elected
      - name: "{{ recipe_name}}: Check if new leader is elected"
        debug:
          msg: "Old leader : {{ OldLeaderUUID }} and New leader : {{ NewLeaderUUID }}"
        failed_when: OldLeaderUUID == NewLeaderUUID
+       no_log: True
 
        # read single entry
      - name: "{{ recipe_name}}: Read value for key: Africa(location) from COVID application"
@@ -221,6 +226,7 @@
        with_items:
          - "{{ ReadOneNewValue }}"
        register: ReadOneNew
+       no_log: True
 
         # comparing read entry of old and new leader
      - name: "{{ recipe_name }}: Comparing read single entry of the golang app form json output file "
