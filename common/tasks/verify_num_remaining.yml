@@ -1,0 +1,20 @@
+---
+    - name: "{{ recipe_name }}: Get list of fault-injections."
+      vars:
+        stage: "fault_injection_check"
+        raft_keys:
+           - "/fault_injection_points"
+      set_fact:
+         fault_injection_points: "{{ lookup('niova_ctlrequest', 'lookup', ServerUUID, raft_keys, wantlist=True) }}"
+   
+    - name: "{{ recipe_name }}: Verify fault injected on followers properly."
+      set_fact:
+         num_rem_vals: "{{ fault_injection_points['//fault_injection_points'][index]['num_remaining'] }}"
+      when: (fault_injection_points['//fault_injection_points'][index]['name'] == fault_injection_name)
+      loop: "{{  range(0, fault_injection_points['//fault_injection_points'] |length) | list }}"
+      loop_control:
+          loop_var: index
+
+    - debug:
+        msg: "{{ recipe_name }}: Check if num_remaining is 0."
+      failed_when: num_rem_vals | int != 0

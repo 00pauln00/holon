@@ -117,7 +117,7 @@
             - "/raft_root_entry/0/client-requests"
         check_cli_rqst: "{{ lookup('niova_ctlrequest', 'lookup', pcrtm_leader_uuid, raft_key, wantlist=True) }}"
       debug:
-        msg: "After removing fault injection, getting client-requests from leader."
+        msg: "After enabling net recv from leader, getting client-requests from leader."
       no_log: True
       with_items:
         - "{{ check_cli_rqst }}"

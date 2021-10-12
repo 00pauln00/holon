@@ -1,14 +1,14 @@
 - import_playbook: basic_raft_operation_with_client_activity.yml
   when: ClusterParams['ctype'] == "pumicedb"
 
-- name: "raft_guarantee_liveness_with_preVote"
+- name: "prevote_raft_guarantee_liveness"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "raft_guarantee_liveness_with_preVote"
+     recipe_name: "prevote_raft_guarantee_liveness"
      parent: "basic_raft_ops_w_client_act"
      requirement: "pumicedb"
-     num_writes: 1
+     num_writes: 100
 
   tasks:
   - block:
@@ -86,6 +86,7 @@
       loop: "{{ range(0, disablePeersfrmserver4 | length) | list }}"
       loop_control:
           loop_var: idx
+      no_log: True
 
     - name: "{{ recipe_name }}: Disable message rcv from server 5 to followers except leader."
       vars:
@@ -141,6 +142,7 @@
       with_items:
         - "{{ peer_values }}"
       register: origInfo
+      no_log: True
 
     - name: "{{ recipe_name }}: Verify leader, term, state for server 1, 2 and 3."
       vars:
@@ -178,12 +180,62 @@
       vars:
         ClientUUID: "{{ client_uuid.stdout }}"
 
+      # Disable send on client from the peer4
+    - name: "{{ recipe_name }}: Disable send on client from the peer4."
+      vars:
+        stage: "disable_send_peers_mode_client"
+        cmd: "net_send_enabled@false"
+        where: "/ctl_svc_nodes/uuid@{{ server4 }}"
+        disable_mode_send_client: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ disable_mode_send_client }}"
+      no_log: True
+
+      # Disable recv on client from the peer4
+    - name: "{{ recipe_name }}: Disable recv on all peers from the peer4."
+      vars:
+        stage: "disable_recv_peers_mode_client"
+        cmd: "net_recv_enabled@false"
+        where: "/ctl_svc_nodes/uuid@{{ server4 }}"
+        disable_mode_send_client: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ disable_mode_send_client }}"
+      no_log: True
+
     - name: "{{ recipe_name }}: Verify leader is viable."
       include_role:
         name: common
         tasks_from: verify_leader_viable
       vars:
         ClientUUID: "{{ client_uuid.stdout }}"
+
+      # Get client info
+    - name: "{{ recipe_name}}: Get the parameters for client."
+      vars:
+        stage: "stage1"
+        raft_keys:
+          - "/raft_client_root_entry/0/leader-viable"
+          - "/raft_client_root_entry/0/last-request-sent"
+          - "/raft_client_root_entry/0/last-request-ack"
+          - "/raft_client_root_entry/0/raft-uuid"
+          - "/raft_client_root_entry/0/state"
+          - "/raft_client_root_entry/0/leader-uuid"
+        cli_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Get the values for client"
+      with_items:
+        - "{{ cli_vals }}"
+      register: client_values
+      no_log: True
+
+    - name: "{{ recipe_name }}: leader remains same for client as well"
+      vars:
+        clientLeader: "{{ client_values['results'][0]['item']['/0/leader-uuid'] }}"
+        actualLeader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+      debug:
+        msg: "Verify leader remains same"
+      failed_when: >
+          ( clientLeader != actualLeader)
 
     - name: "{{ recipe_name}}: Write at seqno 0 and perform the write {{ num_writes }} times."
       vars:
@@ -199,12 +251,11 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
       debug:
         msg: "Waiting for client to finish writing"
-      until: ((lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list) != (num_writes - 1))
-      loop: "{{ range(0, 10) | list }}"
-      loop_control:
-        pause: 1
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
+      retries: 100
+      delay: 1
 
-    - name: "{{ recipe_name}}: Wait until commit-idx gets incremented."
+    - name: "{{ recipe_name}}: Wait until commit-idx gets incremented on all peers except server 4."
       vars:
         getPeersExceptServer4: "{{ NRunningPeers | difference(server4) }}"
         stage: "wait_for_commitId"
@@ -212,7 +263,7 @@
       debug:
         msg: "Wait until commit-idx gets incremented"
       until: lookup('niova_ctlrequest', 'lookup', getPeersExceptServer4[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (get_values_from_all[0]['/0/commit-idx'] + num_writes)
-      retries: 30
+      retries: 100
       delay: 1
       loop: "{{ range(0, getPeersExceptServer4 | length) | list }}"
 
@@ -230,8 +281,9 @@
       with_items:
         - "{{ peer_values }}"
       register: getAllVal
+      no_log: True
 
-    - name: "{{ recipe_name }}: Verify write operation is successful or not on other peers except server 4."
+    - name: "{{ recipe_name }}: After successful write operation, verify all values same on other peers except server 4."
       vars:
         getPeersExceptServer4: "{{ NRunningPeers | difference(server4) }}"
         curr_val: "{{ getAllVal['results'][item]['item'] }}"
@@ -239,7 +291,8 @@
         msg: "Verify values for all peers excluding server 4"
       failed_when: >
           (curr_val['/0/leader-uuid'] != get_values_from_all[item]['/0/leader-uuid']) or
-          (curr_val['/0/term'] != get_values_from_all[item]['/0/term'])
+          (curr_val['/0/term'] != get_values_from_all[item]['/0/term']) or
+          (curr_val['/0/commit-idx'] != get_values_from_all[item]['/0/commit-idx'] + num_writes)
       loop: "{{ range(0, getPeersExceptServer4 | length) | list }}"
 
     - name: "{{ recipe_name }}: Verify the write operation should not happen to server 4."
@@ -299,7 +352,7 @@
       loop_control:
           loop_var: itr
 
-    - name: "{{ recipe_name }}: Get the commi-idx, term and leader-uuid after enabling the 'disableNetRecv'."
+    - name: "{{ recipe_name }}: Get the commi-idx, term and leader-uuid after enabling the 'net_recv_enabled'."
       vars:
          stage: "verifyAllPeers"
          raft_keys:
@@ -324,6 +377,28 @@
           ((getAllPeerVal['results'][item]['item']['/0/state'] != "leader") and
           (getAllPeerVal['results'][item]['item']['/0/state'] != "follower"))
       loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+      # Disable send on client from the peer4
+    - name: "{{ recipe_name }}: Enable send on client from the peer4."
+      vars:
+        stage: "disable_send_peers_mode_client"
+        cmd: "net_send_enabled@true"
+        where: "/ctl_svc_nodes/uuid@{{ server4 }}"
+        disable_mode_send_client: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ disable_mode_send_client }}"
+      no_log: True
+
+      # Disable recv on client from the peer4
+    - name: "{{ recipe_name }}: Enable recv on all peers from the peer4."
+      vars:
+        stage: "disable_recv_peers_mode_client"
+        cmd: "net_recv_enabled@true"
+        where: "/ctl_svc_nodes/uuid@{{ server4 }}"
+        disable_mode_send_client: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ disable_mode_send_client }}"
+      no_log: True
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

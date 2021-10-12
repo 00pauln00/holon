@@ -142,7 +142,7 @@
       failed_when: >
           (stage3_values['results'][item]['item']["/0/leader-uuid"] != stage0_values['results'][0]['item']["/0/leader-uuid"]) or
           ((stage3_values['results'][item]['item']["/0/term"] != stage0_values['results'][0]['item']["/0/term"]) and
-          (stage3_values['results'][item]['item']["/0/term"] != orig_follower_info['results'][0]['item']['/0/follower-stats'][item]['prev-idx-term'])) or
+          (stage3_values['results'][item]['item']["/0/term"] != GetFollowerStatsInfo['/0/follower-stats'][0]['prev-idx-term'])) or
           ((stage3_values['results'][item]['item']["/0/state"] != "leader") and
           (stage3_values['results'][item]['item']["/0/state"] != "follower")) or
           (stage3_values['results'][item]['item']["/0/commit-idx"] != 0) or

@@ -1,4 +1,5 @@
 ---
+
     - name: "{{ recipe_name }}: Perform read operation."
       vars:
         stage: "read_client"
@@ -34,6 +35,6 @@
       no_log: True
       failed_when: >
         (get_stage1['/0/status'] != "Success") or
-        (get_stage1['/0/app-seqno'] != num_writes) or
+        (get_stage1['/0/app-seqno'] != rec_number_of_writes | int) or
         (get_stage1['/pumice_db_test_client/pmdb-request-history'][0]['op'] != "read") or
         (get_stage1['/pumice_db_test_client/pmdb-request-history'][0]['status'] != "Success")

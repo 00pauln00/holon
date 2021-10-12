@@ -10,7 +10,8 @@ import subprocess
 
 def start_subprocess(cluster_params, database_type, size_of_key, 
                         key_prefix, seed_random_generator, size_of_value,
-                        no_of_operations, precent_put_get, no_of_concurrent_req):
+                        no_of_operations, precent_put_get, no_of_concurrent_req,
+                        choose_algorithm, specific_server_name, outfileName):
     base_dir = cluster_params['base_dir']
     app_name = cluster_params['app_type']
     raft_uuid = cluster_params['raft_uuid']
@@ -29,18 +30,14 @@ def start_subprocess(cluster_params, database_type, size_of_key,
     # Prepare config file path for niovakv_client
     config_path = "%s/niovakv.config" % binary_dir
 
-    if precent_put_get == "1":
-        outfilePath = "%s/%s/lkvt_Put_outfile" % (base_dir, raft_uuid)
-    elif precent_put_get == "0":
-        outfilePath = "%s/%s/lkvt_Get_outfile" % (base_dir, raft_uuid)
-    else : 
-         outfilePath = "%s/%s/lkvt_outfile" % (base_dir, raft_uuid)
-
+    outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, outfileName)
+    
     process_popen = subprocess.Popen([bin_path, '-d', database_type, '-ks', size_of_key,
                                          '-kp', key_prefix, '-s', seed_random_generator,
                                          '-vs', size_of_value, '-n', no_of_operations, 
                                          '-pp', precent_put_get, '-c', no_of_concurrent_req,
-                                         '-jp', outfilePath ,'-cp', config_path ], 
+                                         '-jp', outfilePath ,'-cp', config_path, 
+                                         '-ca', choose_algorithm, '-ss', specific_server_name], 
                                          stdout = fp, stderr = fp)
 
     # Sync the log file so all the logs from niovakv client gets written to log file.
@@ -72,29 +69,32 @@ def get_the_output(outfilePath, timeout):
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
-        if len(terms) == 9:
-            wait_for_outfile = terms[8]
-            if wait_for_outfile == False:
-                database_type = str(terms[0])
-                size_of_key = str(terms[1])
-                key_prefix = terms[2]
-                seed_random_generator = str(terms[3])
-                size_of_value  = str(terms[4])
-                no_of_operations = str(terms[5])
-                precent_put_get = str(terms[6])
-                no_of_concurrent_req = str(terms[7])
-                cluster_params = kwargs['variables']['ClusterParams']
+        wait_for_outfile = terms[0]["wait_for_outfile"]
+        if wait_for_outfile == False:
+            database_type = str(terms[0]["database_type"])
+            size_of_key = str(terms[0]["size_of_key"])
+            key_prefix = str(terms[0]["key_prefix"])
+            seed_random_generator = str(terms[0]["seed_random_generator"])
+            size_of_value  = str(terms[0]["size_of_value"])
+            no_of_operations = str(terms[0]["no_of_operations"])
+            precent_put_get = str(terms[0]["precent_put_get"])
+            no_of_concurrent_req = str(terms[0]["no_of_concurrent_req"])
+            choose_algorithm = str(terms[0]["choose_algorithm"])
+            specific_server_name = str(terms[0]["specific_server_name"])
+            outfileName = str(terms[0]["outfileName"])
+            cluster_params = kwargs['variables']['ClusterParams']
 
-                # Start the niovakv_client and perform the specified operation e.g write/read/getLeader.
-                process,outfile = start_subprocess(cluster_params, database_type, size_of_key, key_prefix,
+            # Start the niovakv_client and perform the specified operation e.g write/read/getLeader.
+            process,outfile = start_subprocess(cluster_params, database_type, size_of_key, key_prefix,
                                                      seed_random_generator, size_of_value,
-                                                     no_of_operations, precent_put_get, no_of_concurrent_req)
-                return outfile
+                                                     no_of_operations, precent_put_get, no_of_concurrent_req,
+                                                     choose_algorithm, specific_server_name, outfileName)
+            return outfile
         else:
-            outfile_path = str(terms[0])
-            wait_for_outfile = terms[1]
-            timeout = terms[2]
+            outfile_path = str(terms[0]['outfile_path'])
+            wait_for_outfile = terms[0]['wait_for_outfile']
+            timeout = terms[0]['timeout']
 
-            if len(terms) == 3 and wait_for_outfile == True:
+            if  wait_for_outfile == True:
                 output_data = get_the_output(outfile_path, timeout)
                 return output_data
