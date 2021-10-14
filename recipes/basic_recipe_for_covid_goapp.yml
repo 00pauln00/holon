@@ -58,6 +58,12 @@
 
      - debug: var=pout
 
+     - name: list covid app client process
+       shell:  ps -ef| grep covid_app_client
+       register: covid_client
+
+     - debug: var=covid_client
+
        # generate rncui
      - name: "{{ recipe_name }}: Generate App UUID"
        shell: "/usr/bin/uuid"
