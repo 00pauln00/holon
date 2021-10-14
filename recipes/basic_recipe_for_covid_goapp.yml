@@ -48,6 +48,16 @@
        vars:
          ClientUUID: "{{ client_uuid.stdout }}"
 
+     - name: Pause for 10 seconds
+       pause:
+         seconds: 10
+
+     - name: list processes
+       shell: ps -ef| grep covid
+       register: pout
+
+     - debug: var=pout
+
        # generate rncui
      - name: "{{ recipe_name }}: Generate App UUID"
        shell: "/usr/bin/uuid"
@@ -64,7 +74,7 @@
        with_items:
          - "{{ WriteOneValue }}"
        register: WriteOne
-       no_log: True
+       #no_log: True
 
        # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"
