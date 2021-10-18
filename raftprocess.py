@@ -67,11 +67,11 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
     if ptype =="server":
         if app_type == "pumicedb" and coalesced_wr == "1":
             process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid, '-a', '-c'],
+                                    raft_uuid, '-u', peer_uuid, '-c'],
                                     stdout = fp, stderr = fp)
         else:
             process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid, '-a'],
+                                    raft_uuid, '-u', peer_uuid],
                                     stdout = fp, stderr = fp)
     else:
         if app_type == "foodpalace" or app_type == "covid":
