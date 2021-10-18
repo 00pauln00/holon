@@ -5,16 +5,16 @@
   vars:
      recipe_name: "bulk_recovery_with_staleDB"
      parent: "bulk_recovery_with_emptyDB"
-     num_writes: 10000
+     num_writes: 1000
+     number_of_app_uuids: 2
      raft_root_entry_keys:
               - "/raft_root_entry/0/leader-uuid"
-              - "/raft_root_entry/0/peer-uuid"
               - "/raft_root_entry/0/term"
               - "/raft_root_entry/0/commit-idx"
-              - "/raft_root_entry/0/sync-entry-idx"
-              - "/raft_root_entry/0/state"
               - "/raft_root_entry/0/lowest-idx"
               - "/raft_root_entry/0/checkpoint-idx"
+              - "/raft_net_info/max-scan-entries"
+              - "/raft_net_info/log-reap-factor"
 
   tasks:
   - block:
@@ -77,14 +77,23 @@
       vars:
         ClientUUID: "{{ client_uuid.stdout }}"
 
-    - name: "{{ recipe_name}}: Write at seqno 0 and perform the write {{ num_writes }} times."
+      #Create set of required number of app_uuids.
+    - name: "Get set of required number of app_uuids."
+      include_role:
+        name: common
+        tasks_from: create_app_uuid_set
       vars:
-        stage: "write"
-        cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
-        where: "/pumice_db_test_client/input"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
-      no_log: true
+        number_of_apps: 2
+
+    #Perform write operations.
+    - name: "Perform write operations for multiple clients."
+      include_role:
+         name: common
+         tasks_from: perform_writes
+      vars:
+        pmdb_apps: "{{ pmdb_app_uuids }}"
+        ClientUUID: "{{ client_uuid.stdout }}"
+        constant_number_of_writes: "{{ num_writes }}"
 
     - name: "{{ recipe_name}}: Wait until all write completes from client"
       vars:
@@ -95,35 +104,21 @@
       retries: 500
       delay: 1
 
-    - name: "{{ recipe_name}}: Get the client parameters after successful write completion."
+    #Verify client parameters after successful write operations.
+    - name: "{{ recipe_name }}: Verify client parameters."
+      include_role:
+        name: common
+        tasks_from: verify_client_parameters
       vars:
-        app_uuid_string: "{{ app_uuid.stdout }}:0:0:0:0"
-        stage: "aftrWrComp"
-        raft_client_keys:
-          - "/pumice_db_test_client/pmdb-test-apps/0/app-user-id"
-          - "/pumice_db_test_client/pmdb-test-apps/0/status"
-          - "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
-          - "/pumice_db_test_client/pmdb-test-apps/0/pmdb-write-pending"
-          - "/pumice_db_test_client/pmdb-test-apps/0/app-sync"
-          - "/pumice_db_test_client/pmdb-test-apps/0/app-seqno"
-        client_vals_after_wr: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_client_keys, wantlist=True) }}"
-      debug:
-        msg: "Verify parameters after successful write operation"
-      failed_when: >
-            (client_vals_after_wr['/0/app-user-id'] != app_uuid_string) or
-            (client_vals_after_wr['/0/status'] != "Success") or
-            (client_vals_after_wr['/0/pmdb-seqno'] != (num_writes - 1)) or
-            (client_vals_after_wr['/0/pmdb-write-pending'] != false) or
-            (client_vals_after_wr['/0/app-sync'] != true) or
-            (client_vals_after_wr['/0/app-seqno'] != num_writes)
+        Client_UUID: "{{ client_uuid.stdout }}"
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all peers after write operation."
       vars:
-         orig_CI: "{{ origValues['results'][item]['item']['/0/commit-idx'] }}"
+         origCI: "{{ origValues['results'][item]['item']['/0/commit-idx'] }}"
          stage: "getValsFrmAll"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes | int) + (orig_CI | int)
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
       retries: 60
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -146,7 +141,6 @@
     - name: "{{ recipe_name }}: Set max-scan-entries on peer4."
       vars:
         stage: "set_max_scan_entries"
-        wait_for_ofile: False
         cmd: "max-scan-entries@1000"
         where: "/raft_net_info/max-scan-entries"
         key: "/raft_net_info/max-scan-entries"
@@ -157,13 +151,22 @@
     - name: "{{ recipe_name }}: Set log-reap-factor on peer4."
       vars:
         stage: "set_log_reap_factor"
-        wait_for_ofile: False
         cmd: "log-reap-factor@2"
         where: "/raft_net_info/log-reap-factor"
         key: "/raft_net_info/log-reap-factor"
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', newlyStartedPeer4['results'][0]['item'], cmd, where, wantlist=True) }}"
       no_log: true
+
+    - name: "{{ recipe_name }}: Verify max-scan-entries and log-reap-factor on peer 4."
+      vars:
+         stage: "verifyMSEandLRPOnPeer4"
+         getPeer4Val: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys, wantlist=True) }}"
+      debug:
+        msg: "Verify max-scan-entries and log-reap-factor are set properly on peer 4."
+      failed_when: >
+           (getPeer4Val["/raft_net_info/max-scan-entries"] != 1000) or
+           (getPeer4Val["/raft_net_info/log-reap-factor"] != 2)
 
     - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
       include_role:
@@ -172,13 +175,22 @@
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on newly started peer."
       vars:
-         orig_CI: "{{ origValues['results'][0]['item']['/0/commit-idx'] }}"
+         origCI: "{{ origValues['results'][0]['item']['/0/commit-idx'] }}"
          stage: "getCIFrmPeer4"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes | int) + (orig_CI | int)
+      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
       retries: 60
       delay: 1
+
+    - name: "{{ recipe_name }}: Verify checkpoint-idx gets changed on newly started peer after write operation."
+      vars:
+         stage: "verifyCPOnPeer4"
+         getCPOnPeer4: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys, wantlist=True) }}"
+      debug:
+        msg: "Verify checkpoint-idx gets changed on peer 4."
+      failed_when: >
+           (getCPOnPeer4["/0/checkpoint-idx"] == -1)
 
     - name: "{{ recipe_name }}: Verify leader-uuid, term and commit-idx on all peers"
       vars:
@@ -190,8 +202,38 @@
       failed_when: >
            (getAll["/0/leader-uuid"] != initial_vals["/0/leader-uuid"]) or
            (getAll["/0/term"] != initial_vals["/0/term"]) or
-           (getAll["/0/commit-idx"] != initial_vals["/0/commit-idx"] + num_writes)
-      loop: "{{ range(0, NRunningPeers|length) | list }}"
+           (getAll["/0/commit-idx"] != ((num_writes | int) * (number_of_app_uuids | int)) + initial_vals["/0/commit-idx"])
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Apply cmd to remove fault injection from all peers."
+      vars:
+        stage: "recipe_cleanup"
+        cmd: "enabled@false"
+        where: "/fault_injection_points/name@raft_force_set_max_scan_entries"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Reset default max-scan-entries on all peers."
+      vars:
+        stage: "resetMaxScanEntriesOnAll"
+        cmd: "max-scan-entries@100000"
+        where: "/raft_net_info/max-scan-entries"
+        key: "/raft_net_info/max-scan-entries"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Reset default log-reap-factor on all peers."
+      vars:
+        stage: "resetLRPOnAll"
+        cmd: "log-reap-factor@5"
+        where: "/raft_net_info/log-reap-factor"
+        key: "/raft_net_info/log-reap-factor"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
 
 
 
