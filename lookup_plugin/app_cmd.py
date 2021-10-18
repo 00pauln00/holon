@@ -13,7 +13,7 @@ class LookupModule(LookupBase):
         uuid = terms[1]
         cluster_params = kwargs['variables']['ClusterParams']
         
-
+        print("Request cmd received:",cmd)
         #Open the application log and get pid
         raft_json_fpath = "%s/%s/%s.json" % (cluster_params['base_dir'], cluster_params['raft_uuid'], cluster_params['raft_uuid'])
         if os.path.exists(raft_json_fpath):
@@ -39,6 +39,7 @@ class LookupModule(LookupBase):
         counter = 0
         timeout = 2500
         client_json = "%s/%s/%s.json" % (cluster_params['base_dir'],cluster_params['raft_uuid'],fname)
+        print(client_json)
         while True:
             if os.path.exists(client_json):
                 try:
@@ -61,4 +62,5 @@ class LookupModule(LookupBase):
             elif "Write" in request['Operation']:
                 return {"status":0,"response":request['Data']}
         except:
+            print("response : ", request)
             return {"status":0,"response":request['LeaderUUID']}
