@@ -10,11 +10,6 @@
      requirement: "pumicedb"
      rebuild_num_writes: 1000
      number_of_app_uuids: 1
-     raft_root_entry_keys:
-              - "/raft_root_entry/0/leader-uuid"
-              - "/raft_root_entry/0/peer-uuid"
-              - "/raft_root_entry/0/term"
-              - "/raft_root_entry/0/commit-idx"
 
   tasks:
   - block:
