@@ -1,3 +1,15 @@
+  - name: "{{ recipe_name }}: Wait until last-applied-cumulative-crc and sync-entry-crc values are same on all peers."
+    vars:
+      stage: "get_crc_val"
+      crc_key:
+        - "/raft_root_entry/0/last-applied-cumulative-crc"
+        - "/raft_root_entry/0/sync-entry-crc"
+    debug:
+      msg: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, crc_key, wantlist=True) }}"
+    loop: "{{ range(0, 30) | list }}"
+    loop_control:
+       pause: 1
+
   - set_fact:
        crc_on_all_peers: []
 
