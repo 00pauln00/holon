@@ -1,45 +1,71 @@
 from ansible.plugins.lookup import LookupBase
-import fcntl
 import sys
 import json
 import termios
 import os
 import time
+import subprocess
+from inotifypath import *
+
+def initialize_logger(cluster_params):
+    log_path = "%s/%s/%s.log" % (cluster_params['base_dir'],
+                                 cluster_params['raft_uuid'],
+                                 cluster_params['raft_uuid'])
+
+    logging.basicConfig(filename=log_path, filemode='a',
+                        level=logging.DEBUG,
+                        format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
+
+def load_recipe_op_config(cluster_params):
+    recipe_conf = {}
+    raft_json_fpath = "%s/%s/%s.json" % (cluster_params['base_dir'],
+                                         cluster_params['raft_uuid'],
+                                         cluster_params['raft_uuid'])
+    if os.path.exists(raft_json_fpath):
+        with open(raft_json_fpath, "r+", encoding="utf-8") as json_file:
+            recipe_conf = json.load(json_file)
+
+    return recipe_conf
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values[cmd,client_uuid]
         cmd = terms[0]
-        uuid = terms[1]
+        client_uuid = terms[1]
         cluster_params = kwargs['variables']['ClusterParams']
-        
-        print("Request cmd received:",cmd)
-        #Open the application log and get pid
-        raft_json_fpath = "%s/%s/%s.json" % (cluster_params['base_dir'], cluster_params['raft_uuid'], cluster_params['raft_uuid'])
-        if os.path.exists(raft_json_fpath):
-            with open(raft_json_fpath, "r+", encoding="utf-8") as json_file:
-                recipe_conf = json.load(json_file)
-                pid = int(recipe_conf['raft_process'][uuid]['process_pid'])
+
+        #Initialize the logger
+        initialize_logger(cluster_params)
+
+        raft_uuid = cluster_params['raft_uuid']
+        app_name = cluster_params['app_type'] 
+        recipe_conf = load_recipe_op_config(cluster_params)
+        base_dir =  recipe_conf['raft_config']['base_dir_path']
         
         #Get operation and file_name from cmd
         opcode,fname = cmd.split("#")[0],cmd.split("#")[-1] 
+        temp_file = "%s/%s_log_Pmdb_%s_%s.txt" % (base_dir, app_name, "client", client_uuid)
+        fp = open(temp_file, "w")
+         
+        #Prepare path for executables.
+        binary_dir = os.getenv('NIOVA_BIN_PATH')
+        if app_name == "covid":
+            bin_path = '%s/covid_app_client' % binary_dir
+        else:
+            bin_path = '%s/foodpalaceappclient' % binary_dir
 
-        #Send the cmd to application client through proc
-        path="/proc/{}/fd/0".format(pid)
-        cmd+="\n"
-        try:
-            with open(path, 'w') as fd:
-                for c in cmd:
-                    fcntl.ioctl(fd, termios.TIOCSTI, c)
-        except:
-            #Client is not running
-            return {"status":-1,"msg":"Client is not running!"}
+        ctlsvc_path = "%s/configs" % base_dir
+        inotifyobj = InotifyPath(base_dir, True)
+        inotifyobj.export_ctlsvc_path(ctlsvc_path)
 
+        #start client process and pass the cmd.
+        process_popen = subprocess.Popen([bin_path,'-r', raft_uuid,'-u',client_uuid,'-l', base_dir,'-c',cmd],
+                                             stdout = fp, stderr = fp)
+        
         #Wait till output json file created
         counter = 0
         timeout = 2500
         client_json = "%s/%s/%s.json" % (cluster_params['base_dir'],cluster_params['raft_uuid'],fname)
-        print(client_json)
         while True:
             if os.path.exists(client_json):
                 try:
@@ -62,5 +88,4 @@ class LookupModule(LookupBase):
             elif "Write" in request['Operation']:
                 return {"status":0,"response":request['Data']}
         except:
-            print("response : ", request)
             return {"status":0,"response":request['LeaderUUID']}
