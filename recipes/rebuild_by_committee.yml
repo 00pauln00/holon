@@ -201,20 +201,37 @@
         fault_injection_name: "raft_follower_ignores_non_hb_AE_request"
       loop: "{{ range(0, rebuild_unpaused_followers | length) | list }}"
 
-    #See if recovery happens with new leader.
+     #See if recovery happens with new leader.
     - name: "{{ recipe_name }}: Get commit-idx of all running peers and wait until all running peers show same commit idx."
       vars:
         stage: "get_commit_idx"
-        raft_key:
-          - "/raft_root_entry/0/commit-idx"
-        get_commit_idx: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_key, wantlist=True) }}"
-        commit_idx_has_unique_val: "{{ get_commit_idx | map(attribute='/0/commit-idx')| list | unique | length == 1 }}"
+        get_commit_idx: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/commit-idx', wantlist=True) }}"
+        commit_idx_has_unique_val: "{{ get_commit_idx | map(attribute='/0/commit-idx') | list | unique | length == 1 }}"
       debug:
         msg: "Waiting until all running peers show same commit idx"
-      until: commit_idx_has_unique_val == true
-      loop: "{{ range(0, 10) | list }}"
+      loop: "{{ range(0, 30) | list }}"
       loop_control:
-          pause: 0.5
+         pause: 1
+
+    - name: "{{ recipe_name }}: Get commit-idx values of all peers before reboot."
+      vars:
+        stage: "get_cm_idx_after_itr"
+        cmidx: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/commit-idx', wantlist=True) }}"
+      debug:
+         msg: "Getting commit-idx for all servers."
+      no_log: true
+      with_items:
+         - "{{ cmidx }}"
+      register: commit_idx_all
+
+    - name: "{{ recipe_name }}: Compare commit-idx values of all peers."
+      vars:
+        commit_idx: "{{ commit_idx_all['results'][item]['item']['/0/commit-idx'] }}"
+        commit_idx_next: "{{ commit_idx_all['results'][item +1]['item']['/0/commit-idx'] }}"
+      debug:
+        msg: "Compare commit-idx values of all peers."
+      failed_when: commit_idx != commit_idx_next
+      loop: "{{ range(0, NRunningPeers | length-1) | list }}"
 
     - name: "{{ recipe_name }}: Wait until all running peers show same last-applied-cumulative-crc."
       include_role:

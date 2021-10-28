@@ -1,0 +1,6 @@
+---
+
+    - name: "Stopping client {{ ClientUUID }}"
+      debug:
+       msg: 
+         - "{{lookup('niova_raftprocess', 'kill', ClientUUID, wantlist=True)}}"         

@@ -67,7 +67,11 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
     if ptype =="server":
         if app_type == "pumicedb" and coalesced_wr == "1":
             process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid, '-c'],
+                                    raft_uuid, '-u', peer_uuid, '-a', '-c'],
+                                    stdout = fp, stderr = fp)
+        elif app_type == "pumicedb" and coalesced_wr == "0":
+            process_popen = subprocess.Popen([bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid, '-a'],
                                     stdout = fp, stderr = fp)
         else:
             process_popen = subprocess.Popen([bin_path, '-r',

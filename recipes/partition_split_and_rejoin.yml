@@ -271,7 +271,7 @@
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and sync-entry-crc are same on all peers."
+    - name: "{{ recipe_name }}: Verify all values same on all peers."
       include_role:
         name: common
         tasks_from: verify_raft_values_on_all_peers
