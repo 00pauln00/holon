@@ -5,12 +5,13 @@
   vars:
      recipe_name: "bulk_recovery_basic_scenario"
      parent: "basic_leader_election2"
-     num_writes: 300
+     num_writes: 10000
      raft_root_entry_keys:
               - "/raft_root_entry/0/leader-uuid"
               - "/raft_root_entry/0/peer-uuid"
               - "/raft_root_entry/0/term"
               - "/raft_root_entry/0/commit-idx"
+              - "/raft_root_entry/0/lowest-idx"
               - "/raft_root_entry/0/checkpoint-idx"
               - "/raft_net_info/max-scan-entries"
               - "/raft_net_info/log-reap-factor"
@@ -55,7 +56,7 @@
       vars:
         stage: "setMaxScanEntriesOnAll"
         wait_for_ofile: False
-        cmd: "max-scan-entries@100"
+        cmd: "max-scan-entries@1000"
         where: "/raft_net_info/max-scan-entries"
         key: "/raft_net_info/max-scan-entries"
       debug:
@@ -80,7 +81,7 @@
       debug:
         msg: "Verify max-scan-entries and log-reap-factor are set properly on all peers."
       failed_when: >
-           (getVal["/raft_net_info/max-scan-entries"] != 100) or
+           (getVal["/raft_net_info/max-scan-entries"] != 1000) or
            (getVal["/raft_net_info/log-reap-factor"] != 2)
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
@@ -136,7 +137,7 @@
       debug:
         msg: "Waiting for client to finish writing"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
-      retries: 100
+      retries: 500
       delay: 1
 
     - name: "{{ recipe_name}}: Get the client parameters after successful write."
@@ -170,12 +171,13 @@
       debug:
         msg: "Verify checkpoint-idx gets changed on all peers."
       failed_when: >
-           (getCPOnAll["/0/checkpoint-idx"] < 100)
+           (getCPOnAll["/0/checkpoint-idx"] == -1) or
+           (getCPOnAll["/0/lowest-idx"] == -1)
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Get commit-idx from all peers except peer4."
       vars:
-         stage: "origValAftr300Wr"
+         stage: "origValAftr10000Wr"
          getValAftr300Wr: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/commit-idx', wantlist=True) }}"
       debug:
         msg: "Get commit-idx from all peers"
@@ -202,7 +204,7 @@
       vars:
         stage: "set_max_scan_entries"
         wait_for_ofile: False
-        cmd: "max-scan-entries@100"
+        cmd: "max-scan-entries@1000"
         where: "/raft_net_info/max-scan-entries"
         key: "/raft_net_info/max-scan-entries"
       debug:
@@ -227,7 +229,7 @@
       debug:
         msg: "Verify max-scan-entries and log-reap-factor are set properly on peer 4."
       failed_when: >
-           (getPeer4Val["/raft_net_info/max-scan-entries"] != 100) or
+           (getPeer4Val["/raft_net_info/max-scan-entries"] != 1000) or
            (getPeer4Val["/raft_net_info/log-reap-factor"] != 2)
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on newly started peer."
@@ -247,7 +249,8 @@
       debug:
         msg: "Verify checkpoint-idx gets changed on peer 4."
       failed_when: >
-           (getCPOnPeer4["/0/checkpoint-idx"] < 100)
+           (getCPOnPeer4["/0/checkpoint-idx"] == -1) or
+           (getCPOnPeer4["/0/lowest-idx"] == -1)
 
     #Apply fault injection on peer4."
     - name: "{{ recipe_name }}: Ignore writes on peer4 using fault injection."
@@ -263,10 +266,10 @@
       register: app_uuid1
 
     #Perform write operations.
-    - name: "{{ recipe_name}}: Perform 200 writes."
+    - name: "{{ recipe_name}}: Perform 7000 writes."
       vars:
-        nwrites: 200
-        stage: "againWrite200"
+        nwrites: 7000
+        stage: "againWrite7000"
         cmd: "input@{{ app_uuid1.stdout }}:0:0:0:0.write:0.{{ nwrites }}"
         where: "/pumice_db_test_client/input"
       debug:
@@ -275,8 +278,8 @@
 
     - name: "{{ recipe_name}}: Wait until all write completes from client"
       vars:
-        nwrites: 200
-        stage: "waitToComp200Wr"
+        nwrites: 7000
+        stage: "waitToComp7000Wr"
       debug:
         msg: "Waiting for client to finish writing"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (nwrites - 1)
@@ -285,8 +288,8 @@
 
     - name: "{{ recipe_name}}: Get the client parameters after successful write."
       vars:
-        nwrites: 200
-        stage: "aftr200Wr"
+        nwrites: 7000
+        stage: "aftr7000Wr"
         aftrWr: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cli_root_entry_keys, wantlist=True) }}"
       debug:
         msg: "Verifying Client parameters"
@@ -304,14 +307,14 @@
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all peers except peer4."
       vars:
-         nwrites: 200
+         nwrites: 7000
          origCI: "{{ origValAftrWr['results'][0]['item']['/0/commit-idx'] }}"
          npeersExceptPeer4: "{{ NRunningPeers | difference(newlyStartedPeer4['results'][0]['item']) }}"
          stage: "cidOnAllPeersExceptPeer4"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers except peer4"
       until: lookup('niova_ctlrequest', 'lookup', npeersExceptPeer4[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((origCI | int) + (nwrites | int))
-      retries: 60
+      retries: 500
       delay: 1
       loop: "{{ range(0, npeersExceptPeer4 | length) | list }}"
 

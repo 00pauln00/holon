@@ -5,7 +5,7 @@
   vars:
      recipe_name: "bulk_recovery_with_emptyDB"
      parent: "basic_leader_election2"
-     num_writes: 1000
+     num_writes: 7000
      number_of_app_uuids: 2
      raft_root_entry_keys:
               - "/raft_root_entry/0/leader-uuid"
@@ -169,7 +169,8 @@
       debug:
         msg: "Verify checkpoint-idx gets changed on all peers."
       failed_when: >
-           (getCPOnAll["/0/checkpoint-idx"] == -1)
+           (getCPOnAll["/0/checkpoint-idx"] == -1) or
+           (getCPOnAll["/0/lowest-idx"] == -1)
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Start new peer with empty DB."
@@ -241,7 +242,8 @@
       debug:
         msg: "Verify checkpoint-idx gets changed on peer 4."
       failed_when: >
-           (getCPOnPeer4["/0/checkpoint-idx"] == -1)
+           (getCPOnPeer4["/0/checkpoint-idx"] == -1) or
+           (getCPOnPeer4["/0/lowest-idx"] == -1)
 
     - name: "{{ recipe_name }}: Verify leader-uuid, term and commit-idx on all peers"
       vars:

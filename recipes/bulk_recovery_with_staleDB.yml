@@ -5,7 +5,7 @@
   vars:
      recipe_name: "bulk_recovery_with_staleDB"
      parent: "bulk_recovery_with_emptyDB"
-     num_writes: 1000
+     num_writes: 7000
      number_of_app_uuids: 2
      raft_root_entry_keys:
               - "/raft_root_entry/0/leader-uuid"
@@ -104,14 +104,6 @@
       retries: 500
       delay: 1
 
-    #Verify client parameters after successful write operations.
-    - name: "{{ recipe_name }}: Verify client parameters."
-      include_role:
-        name: common
-        tasks_from: verify_client_parameters
-      vars:
-        Client_UUID: "{{ client_uuid.stdout }}"
-
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all peers after write operation."
       vars:
          origCI: "{{ origValues['results'][item]['item']['/0/commit-idx'] }}"
@@ -190,7 +182,8 @@
       debug:
         msg: "Verify checkpoint-idx gets changed on peer 4."
       failed_when: >
-           (getCPOnPeer4["/0/checkpoint-idx"] == -1)
+           (getCPOnPeer4["/0/checkpoint-idx"] == -1) or
+           (getCPOnPeer4["/0/lowest-idx"] == -1)
 
     - name: "{{ recipe_name }}: Verify leader-uuid, term and commit-idx on all peers"
       vars:
