@@ -10,12 +10,12 @@
   - block:
       # check for the app_type
      - name: "{{ recipe_name }}: Check if the app_type is covid"
-       vars: 
+       vars:
          app_type: "{{ app_type}}"
        debug:
          msg: "app_type should be covid"
        failed_when:
-         (app_type != "covid") 
+         (app_type != "covid")
 
        # start the servers
      - name: "{{ recipe_name }}: Print the UUIDs of all the servers"
@@ -41,28 +41,9 @@
      - debug:
         msg: "Client UUID: {{ client_uuid }}"
 
-     - name: "{{ recipe_name}}: Start the client for {{ app_type}} Application"
-       include_role:
-         name: common
-         tasks_from: start_client_golang
-       vars:
-         ClientUUID: "{{ client_uuid.stdout }}"
-
-     - name: Pause for 10 seconds
+     - name: "{{ recipe_name }}: Pause for 3 seconds"
        pause:
-         seconds: 10
-
-     - name: list processes
-       shell: ps -ef| grep covid
-       register: pout
-
-     - debug: var=pout
-
-     - name: list covid app client process
-       shell:  ps -ef| grep covid_app_client
-       register: covid_client
-
-     - debug: var=covid_client
+         seconds: 3
 
        # generate rncui
      - name: "{{ recipe_name }}: Generate App UUID"
@@ -80,7 +61,7 @@
        with_items:
          - "{{ WriteOneValue }}"
        register: WriteOne
-       #no_log: True
+       no_log: True
 
        # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"
@@ -172,9 +153,9 @@
          (ReadMultiValue[item]['PeopleVaccinated'] != values['dict'][Location]['people_vaccinated']) and
          (ReadMultiValue[item]['PeopleVaccinated'] < values['dict'][Location]['people_vaccinated']) or
          (ReadMultiValue[item]['TotalVaccinations'] != values['dict'][Location]['total_vaccinations']) and
-         (ReadMultiValue[item]['TotalVaccinations'] < values['dict'][Location]['total_vaccinations']) 
+         (ReadMultiValue[item]['TotalVaccinations'] < values['dict'][Location]['total_vaccinations'])
        loop: "{{ ReadMultiValue.keys()|sort }}"
-       register: Readmulti_values 
+       register: Readmulti_values
 
        # get leader
      - name: "{{ recipe_name}}: Get Leader UUID"
@@ -255,7 +236,7 @@
        failed_when: >
          (NewLeader_rdreqst['Location'] != prev_val['Location']) or
          (NewLeader_rdreqst['IsoCode'] != prev_val['IsoCode']) or
-         (NewLeader_rdreqst['PeopleVaccinated'] < prev_val['PeopleVaccinated']) 
+         (NewLeader_rdreqst['PeopleVaccinated'] < prev_val['PeopleVaccinated'])
 
        # generate rncui
      - name: "{{ recipe_name }}: Generate App UUID"
