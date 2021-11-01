@@ -201,6 +201,19 @@
         msg: "{{ disable_fault_injection }}"
       no_log: True
 
+    - name: "{{ recipe_name }}: Wait until client side values gets updated."
+      vars:
+        stage: "waitToUpdateVals"
+        raft_keys:
+            - "/pumice_db_test_client/pmdb-test-apps/0/last-request-tag"
+            - "/pumice_db_test_client/pmdb-test-apps/0/status"
+            - "/raft_client_root_entry/0/recent-ops-rd"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+      loop: "{{ range(0, 30) | list }}"
+      loop_control:
+         pause: 1
+
     - name: "{{ recipe_name }}: Verify that last-request-tag matches with tag in recent ops."
       vars:
         stage: "stage6_last_rqst"
