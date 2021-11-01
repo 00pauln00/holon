@@ -61,7 +61,7 @@
        with_items:
          - "{{ WriteOneValue }}"
        register: WriteOne
-       no_log: True
+       #no_log: True
 
        # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"
@@ -82,7 +82,7 @@
        with_items:
          - "{{ ReadOneValue }}"
        register: ReadOne
-       no_log: True
+       #no_log: True
 
      - name: "{{ recipe_name }}: Check if read is successful"
        debug:
@@ -118,7 +118,7 @@
        with_items:
          - "{{ WriteMultiValue }}"
        register: WriteMulti
-       no_log: True
+       #no_log: True
 
         # read multiple entries
      - name: "{{ recipe_name}}: Read all entry to the COVID application through csv file"
@@ -131,7 +131,7 @@
        with_items:
          - "{{ ReadMultiValue }}"
        register: ReadMulti
-       no_log: True
+       #no_log: True
 
     # convert csv file into json format.
      - name: Read data from CSV file and return a dictionary
@@ -168,7 +168,7 @@
        with_items:
          - "{{ getLeader_values }}"
        register: OldLeaderUUID
-       no_log: True
+       #no_log: True
 
        # pause the leader
      - name: "{{ recipe_name }}: Pause  leader process."
@@ -203,14 +203,14 @@
        with_items:
          - "{{ getNewLeader_values }}"
        register: NewLeaderUUID
-       no_log: True
+       #no_log: True
 
        # check if new leader is elected
      - name: "{{ recipe_name}}: Check if new leader is elected"
        debug:
          msg: "Old leader : {{ OldLeaderUUID }} and New leader : {{ NewLeaderUUID }}"
        failed_when: OldLeaderUUID == NewLeaderUUID
-       no_log: True
+       #no_log: True
 
        # read single entry
      - name: "{{ recipe_name}}: Read value for key: Africa(location) from COVID application"
@@ -223,7 +223,7 @@
        with_items:
          - "{{ ReadOneNewValue }}"
        register: ReadOneNew
-       no_log: True
+       #no_log: True
 
         # comparing read entry of old and new leader
      - name: "{{ recipe_name }}: Comparing read single entry of the golang app form json output file "
@@ -254,7 +254,7 @@
        with_items:
          - "{{ WriteOneValue }}"
        register: WriteOne
-       no_log: True
+       #no_log: True
 
         # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"
@@ -265,7 +265,7 @@
        failed_when: >
          (WriteOne['results'][0]['item']['status'] != 0) or
          (WriteOne['results'][0]['item']['response'][uid]['Status'] != '0')
-       no_log: True
+       #no_log: True
 
         # read single entry
      - name: "{{ recipe_name}}:Read value for key: Africa(location) from COVID application"
@@ -278,7 +278,7 @@
        with_items:
          - "{{ ReadOneValue }}"
        register: ReadTwo
-       no_log: True
+       #no_log: True
 
         # comparing read entry
      - name: "{{ recipe_name }}: Comparing read single entry of the COVID Application form json output"
