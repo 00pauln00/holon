@@ -210,7 +210,7 @@
             - "/raft_client_root_entry/0/recent-ops-rd"
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
-      loop: "{{ range(0, 30) | list }}"
+      loop: "{{ range(0, 60) | list }}"
       loop_control:
          pause: 1
 
