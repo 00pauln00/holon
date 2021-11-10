@@ -1,5 +1,5 @@
 - import_playbook: basic_leader_election2.yml
-- name: "Bulk Recovery rsyc implementation"
+- name: "Bulk Recovery rsync implementation"
   hosts: localhost
   connection: local
   vars:
@@ -217,6 +217,12 @@
       loop_control:
           loop_var: index
 
+    - name: "{{ recipe_name }}: Verify fault injection is removed from peer4."
+      debug:
+        msg: "{{ fault_injection_point_enabled }}"
+      no_log: True
+      failed_when: fault_injection_point_enabled != False
+
     - name: "{{ recipe_name }}: Set max-scan-entries on peer4."
       vars:
         stage: "set_max_scan_entries"
@@ -304,7 +310,8 @@
         peer_info: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
       failed_when: >
           (peer_info[itr]['/0/commit-idx'] != peer_info[itr+1]['/0/commit-idx']) or
-          (peer_info[itr]['/0/term'] != peer_info[itr+1]['/0/term'])
+          (peer_info[itr]['/0/term'] != peer_info[itr+1]['/0/term']) or
+          (peer_info[itr]['/0/leader-uuid'] != peer_info[itr+1]['/0/leader-uuid'])
       loop: "{{ range(0, NRunningPeers | length - 1)| list }}"
       loop_control:
         loop_var: itr
