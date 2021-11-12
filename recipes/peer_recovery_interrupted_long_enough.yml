@@ -238,13 +238,13 @@
       failed_when: chkp_idx | int == -1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    - name: "{{ recipe_name }}: Check if lowest entry index is increasing."
+    - name: "{{ recipe_name }}: Check if lowest index is increasing."
       vars:
-        lowest_entry_idx_prv: "{{ stage1_values['results'][item]['item']['/0/lowest-idx'] }}"
-        lowest_entry_idx_nxt: "{{ stage2_values['results'][item]['item']['/0/lowest-idx'] }}" 
+        prev_lowest_idx: "{{ stage1_values['results'][item]['item']['/0/lowest-idx'] }}"
+        next_lowest_idx: "{{ stage2_values['results'][item]['item']['/0/lowest-idx'] }}"
       debug:
-        msg: "Check if lowest entry index is increasing."
-      failed_when: lowest_entry_idx_nxt <= lowest_entry_idx_prv
+        msg: "Check if lowest index is increasing."
+      failed_when: next_lowest_idx <= prev_lowest_idx
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     #recipe-cleanup.
