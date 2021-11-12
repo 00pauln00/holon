@@ -61,7 +61,7 @@
        with_items:
          - "{{ WriteOneValue }}"
        register: WriteOne
-       #no_log: True
+       no_log: True
 
        # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"
@@ -82,7 +82,7 @@
        with_items:
          - "{{ ReadOneValue }}"
        register: ReadOne
-       #no_log: True
+       no_log: True
 
      - name: "{{ recipe_name }}: Check if read is successful"
        debug:
@@ -118,7 +118,7 @@
        with_items:
          - "{{ WriteMultiValue }}"
        register: WriteMulti
-       #no_log: True
+       no_log: True
 
         # read multiple entries
      - name: "{{ recipe_name}}: Read all entry to the COVID application through csv file"
@@ -131,7 +131,7 @@
        with_items:
          - "{{ ReadMultiValue }}"
        register: ReadMulti
-       #no_log: True
+       no_log: True
 
     # convert csv file into json format.
      - name: Read data from CSV file and return a dictionary
@@ -141,7 +141,7 @@
        register: values
 
       # compare read multiple entries and csv file entries
-     - name: "{{ recipe_name }}: Comparing Read multiple entries and csv file entries of foodpalace Application "
+     - name: "{{ recipe_name }}: Comparing Read multiple entries and csv file entries of COVID Application "
        vars:
         ReadMultiValue : "{{ReadMulti['results'][0]['item']['response']}}"
         Location : "{{ReadMultiValue[item]['Location']}}"
@@ -180,6 +180,10 @@
           name: common
           tasks_from: get_server_uuid_info
 
+     - name: "{{ recipe_name }}: Pause for 3 seconds"
+       pause:
+         seconds: 3
+
        # verify new leader is elected
      - name: "{{ recipe_name }}: Verify new leader is elected successfully"
        include_role:
@@ -203,14 +207,27 @@
        with_items:
          - "{{ getNewLeader_values }}"
        register: NewLeaderUUID
-       #no_log: True
+       no_log: True
 
        # check if new leader is elected
      - name: "{{ recipe_name}}: Check if new leader is elected"
        debug:
          msg: "Old leader : {{ OldLeaderUUID }} and New leader : {{ NewLeaderUUID }}"
        failed_when: OldLeaderUUID == NewLeaderUUID
-       #no_log: True
+       no_log: True
+
+     - name: "{{ recipe_name }}: Resume previous  leader process."
+       debug:
+        msg: "Resuming leader process {{ lookup('niova_raftprocess', 'resume', OldLeaderUUID['results'][0]['item']['response'], wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: Pause for 4 seconds"
+       pause:
+         seconds: 4
+
+     - name: "{{ recipe_name }}: Printing the list of all server"
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
 
        # read single entry
      - name: "{{ recipe_name}}: Read value for key: Africa(location) from COVID application"
@@ -223,7 +240,7 @@
        with_items:
          - "{{ ReadOneNewValue }}"
        register: ReadOneNew
-       #no_log: True
+       no_log: True
 
         # comparing read entry of old and new leader
      - name: "{{ recipe_name }}: Comparing read single entry of the golang app form json output file "
@@ -254,7 +271,7 @@
        with_items:
          - "{{ WriteOneValue }}"
        register: WriteOne
-       #no_log: True
+       no_log: True
 
         # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"
@@ -265,7 +282,7 @@
        failed_when: >
          (WriteOne['results'][0]['item']['status'] != 0) or
          (WriteOne['results'][0]['item']['response'][uid]['Status'] != '0')
-       #no_log: True
+       no_log: True
 
         # read single entry
      - name: "{{ recipe_name}}:Read value for key: Africa(location) from COVID application"
@@ -278,7 +295,7 @@
        with_items:
          - "{{ ReadOneValue }}"
        register: ReadTwo
-       #no_log: True
+       no_log: True
 
         # comparing read entry
      - name: "{{ recipe_name }}: Comparing read single entry of the COVID Application form json output"
@@ -293,3 +310,8 @@
          (Readrequest['IsoCode'] != Old_rdreqst['IsoCode']) or
          (Readrequest['PeopleVaccinated'] <= Old_rdreqst['PeopleVaccinated']) or
          (Readrequest['TotalVaccinations'] <= Old_rdreqst['TotalVaccinations'])
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+          terminate_recipe: true
