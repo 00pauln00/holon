@@ -1,5 +1,5 @@
 - import_playbook: basic_leader_election2.yml
-- name: "Bulk Recovery rsyc implementation"
+- name: "Bulk Recovery rsync implementation"
   hosts: localhost
   connection: local
   vars:
@@ -127,7 +127,7 @@
         name: common
         tasks_from: create_app_uuid_set
       vars:
-        number_of_apps: 2
+        number_of_apps: "{{number_of_app_uuids}}"
 
     #Perform write operations.
     - name: "Perform write operations for multiple clients."
@@ -217,6 +217,21 @@
       loop_control:
           loop_var: index
 
+    - name: "{{ recipe_name }}: Verify fault injection is removed from peer4."
+      debug:
+        msg: "{{ fault_injection_point_enabled }}"
+      no_log: True
+      failed_when: fault_injection_point_enabled != False
+
+    - name: "{{ recipe_name }}: Apply fault injection on peer4."
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ NRunningPeers[item] }}"
+        fault_injection_name: "raft_force_set_max_scan_entries"
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
     - name: "{{ recipe_name }}: Set max-scan-entries on peer4."
       vars:
         stage: "set_max_scan_entries"
@@ -252,9 +267,9 @@
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on newly started peer."
       vars:
          origCI: "{{ running_peers_info['results'][0]['item']['/0/commit-idx'] }}"
-         stage: "getCIFrmPeer4"
+         stage: "getRootValuesFrmPeer4"
       debug:
-        msg: "Verify Commit-Idx get incrementing on all peers."
+        msg: "Verify Commit-Idx get incrementing on peer 4."
       until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
       retries: 100
       delay: 1
@@ -270,7 +285,7 @@
            (getCPOnPeer4["/0/lowest-idx"] == -1)
 
     # Check raft values on peer4.
-    - name: "{{ recipe_name }}: Get Commit index value of newlyStartedPeer4."
+    - name: "{{ recipe_name }}: Get raft root  values of newlyStartedPeer4."
       vars:
         stage: "get_root_entry_values_after_starting_peer4"
         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys, wantlist=true) }}"
@@ -283,7 +298,7 @@
 
     - name: "{{ recipe_name }}: Get Commit index value from NRunningPeers servers."
       vars:
-        stage: "get_root_entry_values"
+        stage: "get_root_entry_values_after_starting-peer4"
         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_root_entry_keys, wantlist=true) }}" 
       debug:
         msg: "{{ peer_values }} "
@@ -300,14 +315,46 @@
           - "/raft_root_entry/0/commit-idx"
           - "/raft_root_entry/0/term"
           - "/raft_root_entry/0/leader-uuid"
-      set_fact:
         peer_info: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+      debug:
+        msg: " Verify commit-idx, term and leader-uuid remains same on all peers "
       failed_when: >
           (peer_info[itr]['/0/commit-idx'] != peer_info[itr+1]['/0/commit-idx']) or
-          (peer_info[itr]['/0/term'] != peer_info[itr+1]['/0/term'])
+          (peer_info[itr]['/0/term'] != peer_info[itr+1]['/0/term']) or
+          (peer_info[itr]['/0/leader-uuid'] != peer_info[itr+1]['/0/leader-uuid'])
       loop: "{{ range(0, NRunningPeers | length - 1)| list }}"
       loop_control:
         loop_var: itr
+
+    - name: "{{ recipe_name }}: Apply cmd to remove fault injection from all peers."
+      vars:
+        stage: "recipe_cleanup"
+        cmd: "enabled@false"
+        where: "/fault_injection_points/name@raft_force_set_max_scan_entries"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Reset default max-scan-entries on all peers."
+      vars:
+        stage: "resetMaxScanEntriesOnAll"
+        cmd: "max-scan-entries@100000"
+        where: "/raft_net_info/max-scan-entries"
+        key: "/raft_net_info/max-scan-entries"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Reset default log-reap-factor on all peers."
+      vars:
+        stage: "resetLRPOnAll"
+        cmd: "log-reap-factor@5"
+        where: "/raft_net_info/log-reap-factor"
+        key: "/raft_net_info/log-reap-factor"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

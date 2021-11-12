@@ -162,7 +162,7 @@
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    - name: "{{ recipe_name }}: Verify checkpoint-idx gets changed on all 3 peers after write operation."
+    - name: "{{ recipe_name }}: Verify checkpoint-idx and lowest-idx gets changed on all 3 peers after write operation."
       vars:
          stage: "verifyCPOnAll"
          getCPOnAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys, wantlist=True) }}"
@@ -235,7 +235,7 @@
       retries: 60
       delay: 1
 
-    - name: "{{ recipe_name }}: Verify checkpoint-idx gets changed on newly started peer after write operation."
+    - name: "{{ recipe_name }}: Verify checkpoint-idx and lowest-idx gets changed on newly started peer after write operation."
       vars:
          stage: "verifyCPOnPeer4"
          getCPOnPeer4: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys, wantlist=True) }}"
