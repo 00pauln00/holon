@@ -141,7 +141,7 @@
        register: values
 
       # compare read multiple entries and csv file entries
-     - name: "{{ recipe_name }}: Comparing Read multiple entries and csv file entries of foodpalace Application "
+     - name: "{{ recipe_name }}: Comparing Read multiple entries and csv file entries of COVID Application "
        vars:
         ReadMultiValue : "{{ReadMulti['results'][0]['item']['response']}}"
         Location : "{{ReadMultiValue[item]['Location']}}"
@@ -168,7 +168,7 @@
        with_items:
          - "{{ getLeader_values }}"
        register: OldLeaderUUID
-       no_log: True
+       #no_log: True
 
        # pause the leader
      - name: "{{ recipe_name }}: Pause  leader process."
@@ -179,6 +179,10 @@
        include_role:
           name: common
           tasks_from: get_server_uuid_info
+
+     - name: "{{ recipe_name }}: Pause for 3 seconds"
+       pause:
+         seconds: 3
 
        # verify new leader is elected
      - name: "{{ recipe_name }}: Verify new leader is elected successfully"
@@ -211,6 +215,19 @@
          msg: "Old leader : {{ OldLeaderUUID }} and New leader : {{ NewLeaderUUID }}"
        failed_when: OldLeaderUUID == NewLeaderUUID
        no_log: True
+
+     - name: "{{ recipe_name }}: Resume previous  leader process."
+       debug:
+        msg: "Resuming leader process {{ lookup('niova_raftprocess', 'resume', OldLeaderUUID['results'][0]['item']['response'], wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: Pause for 4 seconds"
+       pause:
+         seconds: 4
+
+     - name: "{{ recipe_name }}: Printing the list of all server"
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
 
        # read single entry
      - name: "{{ recipe_name}}: Read value for key: Africa(location) from COVID application"
@@ -293,3 +310,8 @@
          (Readrequest['IsoCode'] != Old_rdreqst['IsoCode']) or
          (Readrequest['PeopleVaccinated'] <= Old_rdreqst['PeopleVaccinated']) or
          (Readrequest['TotalVaccinations'] <= Old_rdreqst['TotalVaccinations'])
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+          terminate_recipe: true

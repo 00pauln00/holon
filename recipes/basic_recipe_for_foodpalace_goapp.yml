@@ -288,3 +288,8 @@
          (Readrequest['Cuisines'] != Old_rdreqst['Cuisines']) or
          (Readrequest['RatingsText'] != Old_rdreqst['RatingsText'])  or
          (Readrequest['Votes'] <= Old_rdreqst['Votes'])
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+          terminate_recipe: true

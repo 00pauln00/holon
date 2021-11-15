@@ -69,18 +69,20 @@ class LookupModule(LookupBase):
         while True:
             if os.path.exists(client_json):
                 try:
-                    with open(client_json, "r+", encoding="utf-8") as json_file:
-                        request = json.load(json_file)
+                    with open(client_json, "r", encoding="utf-8") as json_file:
+                        if len(json_file.readlines()) != 0:
+                                json_file.seek(0)
+                                request = json.load(json_file)
                 except:
                     return {"status":-1,"msg":"Invalid json format in output file"}
                 break
             else:
                 #Wait, fail at max count
                 counter += 1
-                time.sleep(0.1)
+                time.sleep(0.5)
                 if counter == timeout:
                     return {"status":-1,"msg":"Timeout checking for output file"}
-        
+
         #Output parsing
         try:
             if "Read" in request['Operation']: 
