@@ -78,7 +78,7 @@
         number_of_apps: 1
 
     #Perform write operations.
-    - name: "Perform write operations for multiple clients."
+    - name: "Perform write operations."
       include_role:
          name: common
          tasks_from: perform_writes
@@ -158,7 +158,7 @@
         number_of_apps: 1
 
     #Perform write operations.
-    - name: "Perform write operations for multiple clients."
+    - name: "Perform write operations."
       include_role:
          name: common
          tasks_from: perform_writes
