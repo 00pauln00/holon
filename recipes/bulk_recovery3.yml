@@ -1,9 +1,9 @@
 - import_playbook: basic_leader_election2.yml
-- name: "Bulk Recovery Basic Scenario"
+- name: "Bulk Recovery Recipe3"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "bulk_recovery_basic_scenario"
+     recipe_name: "bulk_recovery3"
      parent: "basic_leader_election2"
      num_writes: 10000
      raft_root_entry_keys:
@@ -11,8 +11,8 @@
               - "/raft_root_entry/0/peer-uuid"
               - "/raft_root_entry/0/term"
               - "/raft_root_entry/0/commit-idx"
-              - "/raft_root_entry/0/lowest-idx"
               - "/raft_root_entry/0/checkpoint-idx"
+              - "/raft_root_entry/0/lowest-idx"
               - "/raft_net_info/max-scan-entries"
               - "/raft_net_info/log-reap-factor"
      cli_root_entry_keys:
@@ -55,7 +55,6 @@
     - name: "{{ recipe_name }}: Set max-scan-entries on all peers."
       vars:
         stage: "setMaxScanEntriesOnAll"
-        wait_for_ofile: False
         cmd: "max-scan-entries@1000"
         where: "/raft_net_info/max-scan-entries"
         key: "/raft_net_info/max-scan-entries"
@@ -66,7 +65,6 @@
     - name: "{{ recipe_name }}: Set log-reap-factor on all peers."
       vars:
         stage: "setLRPOnAll"
-        wait_for_ofile: False
         cmd: "log-reap-factor@2"
         where: "/raft_net_info/log-reap-factor"
         key: "/raft_net_info/log-reap-factor"
@@ -140,22 +138,9 @@
       retries: 500
       delay: 1
 
-    - name: "{{ recipe_name}}: Get the client parameters after successful write."
-      vars:
-        stage: "lookup"
-        client_vals_after_wr: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cli_root_entry_keys, wantlist=True) }}"
-      debug:
-        msg: "Verifying Client parameters"
-      failed_when: >
-            (client_vals_after_wr['/0/status'] != "Success") or
-            (client_vals_after_wr['/0/pmdb-seqno'] != (num_writes - 1)) or
-            (client_vals_after_wr['/0/pmdb-write-pending'] != false) or
-            (client_vals_after_wr['/0/app-sync'] != true) or
-            (client_vals_after_wr['/0/app-seqno'] != num_writes)
-
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all peers after write operation."
       vars:
-         origCI: "{{ stage0_values['results'][item]['item']['/0/commit-idx'] }}"
+         origCI: "{{ stage0_values['results'][0]['item']['/0/commit-idx'] }}"
          stage: "getValsFrmAll"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
@@ -175,15 +160,16 @@
            (getCPOnAll["/0/lowest-idx"] == -1)
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    - name: "{{ recipe_name }}: Get commit-idx from all peers except peer4."
+    - name: "{{ recipe_name }}: Get all values after 1st set of writes."
       vars:
          stage: "origValAftr10000Wr"
-         getValAftr300Wr: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/commit-idx', wantlist=True) }}"
+         getValAftr10000Wr: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_root_entry_keys, wantlist=True) }}"
       debug:
-        msg: "Get commit-idx from all peers"
+        msg: "Get commit-idx from all peers: {{ getValAftr10000Wr }}"
+      no_log: true
       with_items:
-        - "{{ getValAftr300Wr }}"
-      register: origValAftrWr
+        - "{{ getValAftr10000Wr }}"
+      register: after1stWr
 
     - name: "{{ recipe_name }}: Start new peer."
       include_role:
@@ -232,142 +218,285 @@
            (getPeer4Val["/raft_net_info/max-scan-entries"] != 1000) or
            (getPeer4Val["/raft_net_info/log-reap-factor"] != 2)
 
-    - name: "{{ recipe_name }}: Verify commit-idx gets incremented on newly started peer."
-      vars:
-         origCI: "{{ stage0_values['results'][0]['item']['/0/commit-idx'] }}"
-         stage: "getCIFrmPeer4"
-      debug:
-        msg: "Verify Commit-Idx get incrementing on peer4."
-      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes | int) + (origCI | int)
-      retries: 60
-      delay: 1
-
-    - name: "{{ recipe_name }}: Verify checkpoint-idx gets changed on newly started peer after write operation."
-      vars:
-         stage: "verifyCPOnPeer4"
-         getCPOnPeer4: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys, wantlist=True) }}"
-      debug:
-        msg: "Verify checkpoint-idx gets changed on peer 4."
-      failed_when: >
-           (getCPOnPeer4["/0/checkpoint-idx"] == -1) or
-           (getCPOnPeer4["/0/lowest-idx"] == -1)
-
-    #Apply fault injection on peer4."
-    - name: "{{ recipe_name }}: Ignore writes on peer4 using fault injection."
+    - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
       include_role:
-        name: common
-        tasks_from: set_fault_injection_and_verify
+         name: common
+         tasks_from: get_server_uuid_info
+
+    #Disabling Msg(Send) net_send_enabled  from peer4 to the leader.
+    - name: "{{ recipe_name }}: Disable Msg(Send) net_send_enabled from peer4 to the leader."
       vars:
-        ServerUUID: "{{ newlyStartedPeer4['results'][0]['item'] }}"
-        fault_injection_name: "raft_follower_ignores_non_hb_AE_request"
+        origLeader: "{{ stage0_values['results'][0]['item']['/0/leader-uuid'] }}"
+        stage: "disableSend"
+        cmd: "net_send_enabled@false"
+        where: "/ctl_svc_nodes/uuid@{{ newlyStartedPeer4['results'][0]['item'] }}"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', origLeader, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    #Disabling Msg(Recv) net_recv_enabled  from peer4 to the leader.
+    - name: "{{ recipe_name }}: Disable Msg(Recv) net_recv_enabled from peer4 to the leader."
+      vars:
+        origLeader: "{{ stage0_values['results'][0]['item']['/0/leader-uuid'] }}"
+        stage: "disableRecv"
+        cmd: "net_recv_enabled@false"
+        where: "/ctl_svc_nodes/uuid@{{ newlyStartedPeer4['results'][0]['item'] }}"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', origLeader, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    # Disable send on client from the peer4
+    - name: "{{ recipe_name }}: Disable send on client from the peer4."
+      vars:
+        stage: "disable_net_send"
+        cmd: "net_send_enabled@false"
+        where: "/ctl_svc_nodes/uuid@{{ newlyStartedPeer4['results'][0]['item'] }}"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    # Disable recv on client from the peer4
+    - name: "{{ recipe_name }}: Disable recv on client from the peer4."
+      vars:
+        stage: "disable_net_recv"
+        cmd: "net_recv_enabled@false"
+        where: "/ctl_svc_nodes/uuid@{{ newlyStartedPeer4['results'][0]['item'] }}"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+      no_log: true
 
     - name: "{{ recipe_name }}: Generate App UUID"
       shell: "/usr/bin/uuid"
       register: app_uuid1
 
-    #Perform write operations.
-    - name: "{{ recipe_name}}: Perform 7000 writes."
+    - name: "{{ recipe_name }}: Get values from peer4 after 1st write set."
       vars:
-        nwrites: 7000
-        stage: "againWrite7000"
+         stage: "aftr1stWrPeer4"
+         get1stWrPeer4: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys, wantlist=True) }}"
+      debug:
+        msg: "Get values from peer4: {{ get1stWrPeer4 }}"
+      no_log: true
+      with_items:
+        - "{{ get1stWrPeer4 }}"
+      register: after1stWrForPeer4
+
+    #Perform write operations.
+    - name: "{{ recipe_name}}: Again Perform 2nd set of 10000 writes."
+      vars:
+        nwrites: 10000
+        stage: "againWrite10000"
         cmd: "input@{{ app_uuid1.stdout }}:0:0:0:0.write:0.{{ nwrites }}"
         where: "/pumice_db_test_client/input"
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
       no_log: true
 
-    - name: "{{ recipe_name}}: Wait until all write completes from client"
+    - name: "{{ recipe_name}}: Wait until 2nd set of 10000 write completes from client"
       vars:
-        nwrites: 7000
-        stage: "waitToComp7000Wr"
+        nwrites: 10000
+        stage: "waitToCompWr"
       debug:
         msg: "Waiting for client to finish writing"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (nwrites - 1)
-      retries: 100
-      delay: 1
-
-    - name: "{{ recipe_name}}: Get the client parameters after successful write."
-      vars:
-        nwrites: 7000
-        stage: "aftr7000Wr"
-        aftrWr: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cli_root_entry_keys, wantlist=True) }}"
-      debug:
-        msg: "Verifying Client parameters"
-      failed_when: >
-            (aftrWr['/0/status'] != "Success") or
-            (aftrWr['/0/pmdb-seqno'] != (nwrites - 1)) or
-            (aftrWr['/0/pmdb-write-pending'] != false) or
-            (aftrWr['/0/app-sync'] != true) or
-            (aftrWr['/0/app-seqno'] != nwrites)
-
-    - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
-      include_role:
-         name: common
-         tasks_from: get_server_uuid_info
-
-    - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all peers except peer4."
-      vars:
-         nwrites: 7000
-         origCI: "{{ origValAftrWr['results'][0]['item']['/0/commit-idx'] }}"
-         npeersExceptPeer4: "{{ NRunningPeers | difference(newlyStartedPeer4['results'][0]['item']) }}"
-         stage: "cidOnAllPeersExceptPeer4"
-      debug:
-        msg: "Verify Commit-Idx get incrementing on all peers except peer4"
-      until: lookup('niova_ctlrequest', 'lookup', npeersExceptPeer4[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((origCI | int) + (nwrites | int))
       retries: 500
       delay: 1
-      loop: "{{ range(0, npeersExceptPeer4 | length) | list }}"
 
-    - name: "{{ recipe_name }}: Get commit-idx from all peers except peer4."
+    - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all 3 peers except peer4.."
       vars:
-         stage: "getCI"
-         npeersExceptPeer4: "{{ NRunningPeers | difference(newlyStartedPeer4['results'][0]['item']) }}"
-         getCI: "{{ lookup('niova_ctlrequest', 'lookup', npeersExceptPeer4, '/raft_root_entry/0/commit-idx', wantlist=True) }}"
+         nwrites: 10000
+         origCI: "{{ after1stWr['results'][0]['item']['/0/commit-idx'] }}"
+         exceptPeer4: "{{ NRunningPeers | difference(newlyStartedPeer4['results'][0]['item']) }}"
+         stage: "getCIfrmfrmAllexceptPeer4"
       debug:
-        msg: "Get commit-idx from all peers"
-      with_items:
-        - "{{ getCI }}"
-      register: currCI
+        msg: "Verify Commit-Idx get incrementing on all peers except peer4."
+      until: lookup('niova_ctlrequest', 'lookup', exceptPeer4[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == (nwrites | int) + (origCI | int)
+      retries: 60
+      delay: 1
+      loop: "{{ range(0, exceptPeer4 | length) | list }}"
 
-    - name: "{{ recipe_name }}: Verify commit-idx is not updated on peer4."
+    - name: "{{ recipe_name }}: Verify after disabling send/recv checkpoint-idx and lowest-idx should increment on other peers except peer4."
       vars:
-         stage: "verifyCIdxOnPeer4"
-         peer4CIdx: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx', wantlist=True) }}"
+         stage: "origValAftr10000Wr"
+         aftr1stWrVal: "{{ after1stWr['results'][item]['item'] }}"
+         exceptPeer4: "{{ NRunningPeers | difference(newlyStartedPeer4['results'][0]['item']) }}"
+         verifyAftr2ndWr: "{{ lookup('niova_ctlrequest', 'lookup', exceptPeer4[item], raft_root_entry_keys, wantlist=True) }}"
       debug:
-        msg: "Verify commit-idx on peer4."
-      failed_when: >
-           (peer4CIdx["/0/commit-idx"] == currCI['results'][0]['item']['/0/commit-idx'])
+        msg: "Verify parameters after 2nd write set"
+      failed_when:
+        (verifyAftr2ndWr["/0/checkpoint-idx"] <= aftr1stWrVal["/0/checkpoint-idx"]) or
+        (verifyAftr2ndWr["/0/lowest-idx"] <= aftr1stWrVal["/0/lowest-idx"]) or
+        (verifyAftr2ndWr["/0/commit-idx"] <= aftr1stWrVal["/0/commit-idx"])
+      loop: "{{ range(0, exceptPeer4 | length) | list }}"
 
-    #Remove previously applied fault injection.
-    - name: "{{ recipe_name }}: Remove previously applied fault injection."
-      include_role:
-        name: common
-        tasks_from: remove_fault_injection_and_verify
+    - name: "{{ recipe_name }}: Verify after disabling send/recv checkpoint-idx and lowest-idx is not incremented on peer4."
       vars:
-        ServerUUID: "{{ newlyStartedPeer4['results'][0]['item'] }}"
-        fault_injection_name: "raft_follower_ignores_non_hb_AE_request"
-
-    - name: "{{ recipe_name }}: Verify commit-idx gets incremented on peer4."
-      vars:
-         stage: "getCIOnPeer4"
+         stage: "origValAftr10000Wr"
+         aftr1stWrVal: "{{ after1stWrForPeer4['results'][0]['item'] }}"
+         verifyPeer4: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys, wantlist=True) }}"
       debug:
-        msg: "Verify Commit-Idx get incrementing on peer4."
-      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == currCI['results'][0]['item']['/0/commit-idx']
+        msg: "Verify parameters after 2nd write set"
+      failed_when:
+        (verifyPeer4["/0/checkpoint-idx"] != aftr1stWrVal["/0/checkpoint-idx"]) or
+        (verifyPeer4["/0/lowest-idx"] != aftr1stWrVal["/0/lowest-idx"]) or
+        (verifyPeer4["/0/commit-idx"] != aftr1stWrVal["/0/commit-idx"])
+
+    #Enabling Msg(Send) net_send_enabled from peer4 to the leader.
+    - name: "{{ recipe_name }}: Enable Msg(Send) net_send_enabled from peer4 to the leader."
+      vars:
+        origLeader: "{{ stage0_values['results'][0]['item']['/0/leader-uuid'] }}"
+        stage: "enableSend"
+        cmd: "net_send_enabled@true"
+        where: "/ctl_svc_nodes/uuid@{{ newlyStartedPeer4['results'][0]['item'] }}"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', origLeader, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    #Enabling Msg(Recv) net_recv_enabled from peer4 to the leader.
+    - name: "{{ recipe_name }}: Enable Msg(Recv) net_recv_enabled from peer4 to the leader."
+      vars:
+        origLeader: "{{ stage0_values['results'][0]['item']['/0/leader-uuid'] }}"
+        stage: "enableRecv"
+        cmd: "net_recv_enabled@true"
+        where: "/ctl_svc_nodes/uuid@{{ newlyStartedPeer4['results'][0]['item'] }}"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', origLeader, cmd, where, wantlist=True) }}"
+
+    # Enabling Msg(send) from peer4 to the client.
+    - name: "{{ recipe_name }}: Enable Msg(send) from peer4 to the client."
+      vars:
+        stage: "enable_msg_send"
+        cmd: "net_send_enabled@true"
+        where: "/ctl_svc_nodes/uuid@{{ newlyStartedPeer4['results'][0]['item'] }}"
+      debug:
+          msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    # Enabling Msg(recv) from peer4 to the client.
+    - name: "{{ recipe_name }}: Enable Msg(recv) from peer4 to the client."
+      vars:
+        stage: "enable_msg_recv"
+        cmd: "net_recv_enabled@true"
+        where: "/ctl_svc_nodes/uuid@{{ newlyStartedPeer4['results'][0]['item'] }}"
+      debug:
+          msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Verify commit-idx gets incremented on peer4 after enabling send/recv."
+      vars:
+         nwrites: 10000
+         origCI: "{{ after1stWr['results'][0]['item']['/0/commit-idx'] }}"
+         stage: "getCIfrmPeer4"
+      debug:
+        msg: "Verify Commit-Idx get incrementing on all peers."
+      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == (nwrites | int) + (origCI | int)
       retries: 60
       delay: 1
 
-    - name: "{{ recipe_name }}: Verify leader-uuid, term and commit-idx on all peers"
+    #Set peer4 as a leader.
+    - name: "{{ recipe_name }}: Disable message receive on all peers to set peer4 as a leader."
       vars:
-         initial_vals: "{{ stage0_values['results'][0]['item']}}"
-         stage: "recipeCleanUp"
-         getAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys, wantlist=True) }}"
+         stage: "disableRecvOnAll"
+         cmd: "net_recv_enabled@false"
+         where: "/ctl_svc_nodes/net_recv_enabled@true"
       debug:
-        msg: "Verify all values on all peers."
-      failed_when: >
-           (getAll["/0/leader-uuid"] != initial_vals["/0/leader-uuid"]) or
-           (getAll["/0/term"] != initial_vals["/0/term"]) or
-           (getAll["/0/commit-idx"] != currCI['results'][0]['item']['/0/commit-idx'])
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Selected leader-to-be"
+      set_fact:
+        peer4Leader_to_be: "{{ newlyStartedPeer4['results'][0]['item'] }}"
+
+    - debug:
+        msg: "Leader to be: {{ peer4Leader_to_be }}"
+
+    - name: "{{ recipe_name }}: Enable receive on all peers from the leader-to-be."
+      vars:
+         stage: "enableOnAllFrmLeaderToBe"
+         cmd: "net_recv_enabled@true"
+         where: "/ctl_svc_nodes/uuid@{{ peer4Leader_to_be }}"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
+      vars:
+         stage: "enableOnPeer4"
+         cmd: "net_recv_enabled@true"
+         where: "/ctl_svc_nodes/net_recv_enabled@false"
+      debug:
+       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4Leader_to_be, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Verify new leader is elected successfully"
+      vars:
+         stage: "verifyNewLeader"
+      debug:
+        msg:
+         - "Waiting for new leader election"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first == peer4Leader_to_be
+      retries: 10
+      delay: 2
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
+    - set_fact: appUUIDList="{{ [] + [app_uuid.stdout] + [app_uuid1.stdout] }}"
 
+    - name: "{{ recipe_name }}: perform and verify client read."
+      vars:
+        stage: "read_client"
+        cmd: "input@{{ appUUIDList[item] }}:0:0:0:0.read"
+        where: "/pumice_db_test_client/input"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+      loop: "{{ range(0, appUUIDList | length) | list }}"
+      no_log: true
+
+    - name: "{{ recipe_name}}: Wait to change app-validated-seqno."
+      vars:
+        stage: "wait_for_validated_seqno"
+      debug:
+        msg: "Waiting to change app-validated-seqno"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/app-validated-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes)
+      retries: 60
+      delay: 1
+
+    - name: "{{ recipe_name }}: Verify read operation."
+      include_role:
+        name: common
+        tasks_from: verify_read_with_diff_appUUID
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+        idx: "{{ app_itr }}"
+        nwrites: "{{ num_writes }}"
+      loop: "{{ range(0, appUUIDList | length) | list }}"
+      loop_control:
+          loop_var: app_itr
+
+    - name: "{{ recipe_name }}: Apply cmd to remove fault injection from all peers."
+      vars:
+        stage: "recipe_cleanup"
+        cmd: "enabled@false"
+        where: "/fault_injection_points/name@raft_force_set_max_scan_entries"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Reset default max-scan-entries on all peers."
+      vars:
+        stage: "resetMaxScanEntriesOnAll"
+        cmd: "max-scan-entries@100000"
+        where: "/raft_net_info/max-scan-entries"
+        key: "/raft_net_info/max-scan-entries"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Reset default log-reap-factor on all peers."
+      vars:
+        stage: "resetLRPOnAll"
+        cmd: "log-reap-factor@5"
+        where: "/raft_net_info/log-reap-factor"
+        key: "/raft_net_info/log-reap-factor"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
 
