@@ -10,12 +10,12 @@
   - block:
       # check for the app_type
      - name: "{{ recipe_name }}: Check if the app_type is covid"
-       vars: 
+       vars:
          app_type: "{{ app_type}}"
        debug:
          msg: "app_type should be covid"
        failed_when:
-         (app_type != "covid") 
+         (app_type != "covid")
 
        # start the servers
      - name: "{{ recipe_name }}: Print the UUIDs of all the servers"
@@ -41,12 +41,9 @@
      - debug:
         msg: "Client UUID: {{ client_uuid }}"
 
-     - name: "{{ recipe_name}}: Start the client for {{ app_type}} Application"
-       include_role:
-         name: common
-         tasks_from: start_client_golang
-       vars:
-         ClientUUID: "{{ client_uuid.stdout }}"
+     - name: "{{ recipe_name }}: Pause for 3 seconds"
+       pause:
+         seconds: 3
 
        # generate rncui
      - name: "{{ recipe_name }}: Generate App UUID"
@@ -64,6 +61,7 @@
        with_items:
          - "{{ WriteOneValue }}"
        register: WriteOne
+       no_log: True
 
        # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"
@@ -84,6 +82,7 @@
        with_items:
          - "{{ ReadOneValue }}"
        register: ReadOne
+       no_log: True
 
      - name: "{{ recipe_name }}: Check if read is successful"
        debug:
@@ -142,7 +141,7 @@
        register: values
 
       # compare read multiple entries and csv file entries
-     - name: "{{ recipe_name }}: Comparing Read multiple entries and csv file entries of foodpalace Application "
+     - name: "{{ recipe_name }}: Comparing Read multiple entries and csv file entries of COVID Application "
        vars:
         ReadMultiValue : "{{ReadMulti['results'][0]['item']['response']}}"
         Location : "{{ReadMultiValue[item]['Location']}}"
@@ -154,9 +153,9 @@
          (ReadMultiValue[item]['PeopleVaccinated'] != values['dict'][Location]['people_vaccinated']) and
          (ReadMultiValue[item]['PeopleVaccinated'] < values['dict'][Location]['people_vaccinated']) or
          (ReadMultiValue[item]['TotalVaccinations'] != values['dict'][Location]['total_vaccinations']) and
-         (ReadMultiValue[item]['TotalVaccinations'] < values['dict'][Location]['total_vaccinations']) 
+         (ReadMultiValue[item]['TotalVaccinations'] < values['dict'][Location]['total_vaccinations'])
        loop: "{{ ReadMultiValue.keys()|sort }}"
-       register: Readmulti_values 
+       register: Readmulti_values
 
        # get leader
      - name: "{{ recipe_name}}: Get Leader UUID"
@@ -169,6 +168,7 @@
        with_items:
          - "{{ getLeader_values }}"
        register: OldLeaderUUID
+       #no_log: True
 
        # pause the leader
      - name: "{{ recipe_name }}: Pause  leader process."
@@ -179,6 +179,10 @@
        include_role:
           name: common
           tasks_from: get_server_uuid_info
+
+     - name: "{{ recipe_name }}: Pause for 3 seconds"
+       pause:
+         seconds: 3
 
        # verify new leader is elected
      - name: "{{ recipe_name }}: Verify new leader is elected successfully"
@@ -203,12 +207,27 @@
        with_items:
          - "{{ getNewLeader_values }}"
        register: NewLeaderUUID
+       no_log: True
 
        # check if new leader is elected
      - name: "{{ recipe_name}}: Check if new leader is elected"
        debug:
          msg: "Old leader : {{ OldLeaderUUID }} and New leader : {{ NewLeaderUUID }}"
        failed_when: OldLeaderUUID == NewLeaderUUID
+       no_log: True
+
+     - name: "{{ recipe_name }}: Resume previous  leader process."
+       debug:
+        msg: "Resuming leader process {{ lookup('niova_raftprocess', 'resume', OldLeaderUUID['results'][0]['item']['response'], wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: Pause for 4 seconds"
+       pause:
+         seconds: 4
+
+     - name: "{{ recipe_name }}: Printing the list of all server"
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
 
        # read single entry
      - name: "{{ recipe_name}}: Read value for key: Africa(location) from COVID application"
@@ -221,6 +240,7 @@
        with_items:
          - "{{ ReadOneNewValue }}"
        register: ReadOneNew
+       no_log: True
 
         # comparing read entry of old and new leader
      - name: "{{ recipe_name }}: Comparing read single entry of the golang app form json output file "
@@ -233,7 +253,7 @@
        failed_when: >
          (NewLeader_rdreqst['Location'] != prev_val['Location']) or
          (NewLeader_rdreqst['IsoCode'] != prev_val['IsoCode']) or
-         (NewLeader_rdreqst['PeopleVaccinated'] < prev_val['PeopleVaccinated']) 
+         (NewLeader_rdreqst['PeopleVaccinated'] < prev_val['PeopleVaccinated'])
 
        # generate rncui
      - name: "{{ recipe_name }}: Generate App UUID"
@@ -290,3 +310,8 @@
          (Readrequest['IsoCode'] != Old_rdreqst['IsoCode']) or
          (Readrequest['PeopleVaccinated'] <= Old_rdreqst['PeopleVaccinated']) or
          (Readrequest['TotalVaccinations'] <= Old_rdreqst['TotalVaccinations'])
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+          terminate_recipe: true

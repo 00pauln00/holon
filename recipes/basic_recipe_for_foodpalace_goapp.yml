@@ -40,13 +40,6 @@
      - debug:
         msg: "Client UUID: {{ client_uuid }}"
 
-     - name: "{{ recipe_name}}: Start the client for {{ app_type}} Application"
-       include_role:
-         name: common
-         tasks_from: start_client_golang
-       vars:
-         ClientUUID: "{{ client_uuid.stdout }}"
-
        # generate rncui
      - name: "{{ recipe_name }}: Generate App UUID"
        shell: "/usr/bin/uuid"
@@ -295,3 +288,8 @@
          (Readrequest['Cuisines'] != Old_rdreqst['Cuisines']) or
          (Readrequest['RatingsText'] != Old_rdreqst['RatingsText'])  or
          (Readrequest['Votes'] <= Old_rdreqst['Votes'])
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+          terminate_recipe: true
