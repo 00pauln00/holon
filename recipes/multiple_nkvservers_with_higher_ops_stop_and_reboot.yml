@@ -144,12 +144,12 @@
        with_items:
           - "{{ nkvclires }}"
        register: write_op
-       no_log: true
+       #no_log: true
 
      - name: "{{ recipe_name }}: Get the information for number of request distributions across multiple niovakv servers."
        debug:
          msg: "{{ write_op['results'][0]['item']['NkvcClient']['RequestDistribution'] }}"
-       no_log: true
+       #no_log: true
 
       #Check if write is successful.
      - name: "{{ recipe_name }}: Check if Put is successful"
@@ -186,7 +186,7 @@
        with_items:
           - "{{ nkvclires }}"
        register: readres
-       no_log: true
+       #no_log: true
 
      - name: "{{ recipe_name }}: Check for outfile."
        vars:
@@ -201,12 +201,12 @@
        with_items:
           - "{{ nkvclires }}"
        register: read_op
-       no_log: true
+       #no_log: true
 
      - name: "{{ recipe_name }}: Get the information for number of request distributions across multiple niovakv servers."
        debug:
          msg: "{{ read_op['results'][0]['item']['NkvcClient']['RequestDistribution'] }}"
-       no_log: true
+       #no_log: true
 
      #Check if read is successful.
      - name: "{{ recipe_name }}: Check if Get is successful"
@@ -243,7 +243,7 @@
        with_items:
           - "{{ nkvclires }}"
        register: writeres_option1
-       no_log: true
+       #no_log: true
 
      - name: "{{ recipe_name }}: Check for outfile."
        vars:
@@ -258,7 +258,7 @@
        with_items:
           - "{{ nkvclires }}"
        register: write_op_option1
-       no_log: true
+       #no_log: true
 
      #Start lkvt_client to read the value.
      - name: "{{ recipe_name }}: Perform read operation round robin."
@@ -284,7 +284,7 @@
        with_items:
           - "{{ nkvclires }}"
        register: readres_option1
-       no_log: true
+       #no_log: true
 
      - name: "{{ recipe_name }}: Check for outfile."
        vars:
@@ -299,7 +299,7 @@
        with_items:
           - "{{ nkvclires }}"
        register: read_op_option1
-       no_log: true
+       #no_log: true
 
      # Start lkvt_client to write the value.
      - name: "{{ recipe_name }}: Perform write operation with specific server."
@@ -324,7 +324,7 @@
        with_items:
           - "{{ nkvclires }}"
        register: writeres_option2
-       no_log: true
+       #no_log: true
 
      - name: "{{ recipe_name }}: Check for outfile."
        vars:
@@ -339,7 +339,7 @@
        with_items:
           - "{{ nkvclires }}"
        register: write_op_option2
-       no_log: true
+       #no_log: true
 
      #Start lkvt_client to read the value.
      - name: "{{ recipe_name }}: Perform read operation specific server."
