@@ -77,6 +77,8 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
         serverproc.resume_process(pid)
     elif operation == "kill":
         serverproc.kill_process(pid)
+    elif operation == "kill_child":
+        serverproc.kill_child_process(pid)
 
     json_string = json.dumps(serverproc.__dict__)
     raft_proc_dict = json.loads(json_string)
