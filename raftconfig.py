@@ -148,7 +148,8 @@ class RaftConfig:
         '''
         client_conf_path = "%s/%s.raft_client" % (self.server_config_path, client_uuid)
         cl_fd = basicioobj.open_file(client_conf_path)
-        client_buff = "RAFT              %s\nIPADDR            %s\nCLIENT_PORT       %s\n" % (self.raft_uuid, ip_address, client_port)
+        #client_buff = "RAFT              %s\nIPADDR            %s\nCLIENT_PORT       %s\n" % (self.raft_uuid, ip_address, client_port)
+        client_buff = "RAFT              %s\nIPADDR            %s\n" % (self.raft_uuid, ip_address)
         # Write the config file
         basicioobj.write_file(cl_fd, client_buff)
         # close the file

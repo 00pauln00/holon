@@ -48,13 +48,13 @@ def get_the_output(outfilePath, timeout):
     outfile = outfilePath+'.json'
     counter = 0
     if timeout < 20:
-        timeout = 120
+        timeout = 200
 
     # Wait till the output json file gets created.
     while True:
         if not os.path.exists(outfile):
             counter += 1
-            time.sleep(0.1)
+            time.sleep(0.5)
             if counter == timeout:
                 return {"status":-1,"msg":"Timeout checking for output file"}
         else:
