@@ -5,7 +5,7 @@
   vars:
      recipe_name: "peer_recovery_interrupted_long_enough"
      parent: "basic_leader_election2"
-     pri_num_writes: 6000
+     pri_num_writes: 10000
      raft_root_entry_keys:
               - "/raft_root_entry/0/leader-uuid"
               - "/raft_root_entry/0/term"
@@ -113,7 +113,7 @@
       include_role:
          name: common
          tasks_from: get_follower_stats
-    
+
     - name: "{{ recipe_name }}: Kill the leader."
       debug:
         msg:  "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True) }}"
@@ -122,7 +122,7 @@
     - name: "{{ recipe_name }}: Store previous leader uuid."
       vars:
         prv_ldr: "{{ LeaderUUID['/0/leader-uuid'] }}"
-      debug: 
+      debug:
         msg: "Store previous leader."
       with_items:
           - "{{ prv_ldr }}"
@@ -233,7 +233,7 @@
     - name: "{{ recipe_name }}: Check for checkpoint-idx."
       vars:
         chkp_idx: "{{ stage2_values['results'][item]['item']['/0/checkpoint-idx'] }}"
-      debug: 
+      debug:
         msg: "Check for checkpoint-idx."
       failed_when: chkp_idx | int == -1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
