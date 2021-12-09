@@ -76,10 +76,6 @@
   - name: "Prepare server configs"
     set_fact: ClusterInfo="{{lookup('niova_raftconfig', "server", wantlist=True)}}"
 
-  - name: "Prepare client configs"
-    set_fact:
-       ClientList="{{lookup('niova_raftconfig', "client", wantlist=True)}}"
-
   - name: "Show the values"
     debug:
       msg:
@@ -91,8 +87,6 @@
         - "Recipe: {{ recipe }}"
         - "Raft params: {{ ClusterParams }}"
         - "Disable post run : {{ disable_post_run }}"
-        - "Used client index: {{ ClientIndex }}"
-        - "Client list: {{ ClientList }}"
 
 - import_playbook: recipes/"{{ recipe }}"
   vars:

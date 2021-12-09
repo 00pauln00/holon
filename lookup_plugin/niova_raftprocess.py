@@ -157,8 +157,8 @@ def niova_client_config_create(client_uuid, recipe_conf_dict, cluster_params):
     clients. Get the count of number of servers and already started clients.
     And use the next client port for this new client.
     '''
-    new_client_port = niova_get_unused_client_port(cluster_params, client_uuid_array)
-    raftconfobj.generate_client_conf(genericcmdobj, client_uuid, "127.0.0.1", new_client_port)
+    #new_client_port = niova_get_unused_client_port(cluster_params, client_uuid_array)
+    #raftconfobj.generate_client_conf(genericcmdobj, client_uuid, "127.0.0.1", new_client_port)
 
     # Add the entry of this new client uuid into the client_uuid_array
     recipe_conf_dict['client_uuid_array'].append(client_uuid)
