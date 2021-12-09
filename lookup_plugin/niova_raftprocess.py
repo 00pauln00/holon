@@ -33,7 +33,7 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
     serverproc = RaftProcess(cluster_params['ctype'], raft_uuid,
                              peer_uuid, proc_type, app_type)
 
-    if proc_type == "client" and app_type == "niovakv":
+    if proc_type == "client" and app_type == "niovakv" or proc_type == "client" and app_type == "controlplane":
         '''
          Find out the Node name for the niovakv_server which starts pmdbclient
          Get the clientuuid index and use the index to find the name from node
@@ -54,10 +54,12 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
         node_name = node_line.split()[0]
 
         logging.info("Node Name for starting niovakv_server is: %s", node_name)
+        print("node name is :", node_name)
         if not "serf_nodes" in recipe_conf:
             recipe_conf['serf_nodes'] = {}
 
         recipe_conf['serf_nodes'][peer_uuid] = node_name
+        
 
     if operation == "start":
 
