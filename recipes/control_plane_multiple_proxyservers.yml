@@ -1,0 +1,56 @@
+- name: "control_plane_multiple_proxyservers"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "control_plane_multiple_proxyservers"
+    parent: None
+
+  tasks:
+  - block:
+     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "controlplane")
+
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+       #Get multiple client uuids using common task.
+     - name: "Get multiple client uuids."
+       vars:
+         number_of_clients: 1
+       include_role:
+         name: common
+         tasks_from: get_multiple_client_uuids
+       loop: "{{ range(0, number_of_clients) | list }}"
+
+      # Start all PMDB servers.
+     - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
+       include_role:
+         name: common
+         tasks_from: start_server_golang
+       vars:
+         ServerUUID: "{{ NonRunningServers[item] }}"
+       loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+     - name: "{{ recipe_name }}: Start new proxy servers."
+       include_role:
+         name: common
+         tasks_from: start_proxy_server
+       vars:
+         ClientUUID: "{{ ClientUUIDS[item] }}"
+       loop: "{{ range(0, ClientUUIDS | length) |list }}"
+
+     - name: "{{ recipe_name }}: Kill one of the proxy server."
+       debug:
+         msg:  "{{ lookup('niova_raftprocess', 'kill', ClientUUIDS[0], wantlist=True) }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+          terminate_recipe: true
