@@ -71,8 +71,8 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
 def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, config_path, node_name, coalesced_wr):
     process_popen = {}
     
-    binary_dir = os.getenv('NIOVA_BIN_PATH')
-    gossipNodes = "%s/gossipNodes" % binary_dir
+    # binary_dir = os.getenv('NIOVA_BIN_PATH')
+    gossipNodes = "%s/gossipNodes" %  base_dir
 
     if ptype =="server":
         if app_type == "pumicedb" and coalesced_wr == "1":
@@ -106,10 +106,10 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
                                     raft_uuid, '-u', peer_uuid,
                                     '-c', config_path, '-n', node_name, '-l', log_path],
                                     stdout = fp, stderr = fp)
-        elif app_type == "controlplane":%
-            log_path = "%s/%s_control_plane_proxy_server.log"  (base_dir, peer_uuid)
+        elif app_type == "controlplane":
+            log_path = "%s/%s_control_plane_proxy_server.log" % (base_dir, peer_uuid)
             process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid, '-pa', gossipNodes ,
+                                    raft_uuid, '-u', peer_uuid, '-pa', gossipNodes,
                                     '-c', config_path, '-n', node_name, '-l', log_path],
                                     stdout = fp, stderr = fp)
 

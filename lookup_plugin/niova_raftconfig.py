@@ -36,6 +36,7 @@ def niova_server_conf_create(cluster_params):
     recipe_conf = { "raft_config" : raft_conf_dict }
 
     genericcmdobj.recipe_json_dump(recipe_conf) 
+    print(raftconfobj.__dict__)
     return raftconfobj.__dict__
 
 def niova_client_conf_create(cluster_params):
@@ -70,20 +71,58 @@ def niova_client_conf_create(cluster_params):
     genericcmdobj.recipe_json_dump(recipe_conf)
     return recipe_conf['client_uuid_array']
 
+def control_plane_Gossipnode_conf_create(cluster_params, peer_uuids):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    npeers = int(cluster_params['npeers'])
+    port = int(cluster_params['srv_port'])
+    port = port + 5 
+    recipe_conf = {}
+    basicioobj = BasicIO()
+    genericcmdobj = GenericCmds()
+
+
+    gossipnodes = []
+    for peer in peer_uuids:
+        data = "127.0.0.1 %d %d %s\n" % ( port, port+1,peer)
+    #    print(data)
+        gossipnodes.append(data)
+        port=port+2
+
+    gossip_path = base_dir + "/" + raft_uuid  + '/'+ "gossipNodes"
+    #print("in raftconfig" , gossip_path)
+
+    file = open(gossip_path,"w")
+    file.writelines(gossipnodes)
+    file.close()
+
+    
+
+
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
         cluster_params = kwargs['variables']['ClusterParams']
         config_type = terms[0]
-
+    
         if config_type == "server":
             '''
             Create server and raft config files
             '''
             raftconfobj_dict = niova_server_conf_create(cluster_params)
 
+        elif config_type == "controlplane":
+            peer_uuids= terms[1]
+            #print(peer_uuids)
+
+            '''
+            Create gossip node config files
+            '''
+            raftconfobj_dict = control_plane_Gossipnode_conf_create(cluster_params,peer_uuids)
+
         else:
             '''
             Create client config files
             '''
             raftconfobj_dict = niova_client_conf_create(cluster_params)
+            
         return raftconfobj_dict
