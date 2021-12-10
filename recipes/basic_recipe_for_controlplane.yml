@@ -16,8 +16,8 @@
        failed_when:
          (app_type != "controlplane")
 
-  - name: "Prepare gossip node configs"
-    set_fact: ClusterInfo="{{lookup('niova_raftconfig', "server", wantlist=True)}}"
+     - name: "Prepare gossip node configs"
+       set_fact: ClusterInfo="{{lookup('niova_raftconfig', "server", wantlist=True)}}"
 
        # start pmdb servers.
      - name: "{{ recipe_name }}: get the list of non-running servers."
