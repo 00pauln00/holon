@@ -36,7 +36,6 @@ def niova_server_conf_create(cluster_params):
     recipe_conf = { "raft_config" : raft_conf_dict }
 
     genericcmdobj.recipe_json_dump(recipe_conf) 
-    print(raftconfobj.__dict__)
     return raftconfobj.__dict__
 
 def niova_client_conf_create(cluster_params):
@@ -71,11 +70,12 @@ def niova_client_conf_create(cluster_params):
     genericcmdobj.recipe_json_dump(recipe_conf)
     return recipe_conf['client_uuid_array']
 
-def control_plane_Gossipnode_conf_create(cluster_params, peer_uuids):
+def control_plane_Gossipnode_conf_create(cluster_params, peer_uuids , client_uuids):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     npeers = int(cluster_params['npeers'])
     port = int(cluster_params['srv_port'])
+    nclients = int(cluster_params['nclients'])
     port = port + 5 
     recipe_conf = {}
     basicioobj = BasicIO()
@@ -83,20 +83,27 @@ def control_plane_Gossipnode_conf_create(cluster_params, peer_uuids):
 
 
     gossipnodes = []
+    serfData = None
+    peer = None
     for peer in peer_uuids:
-        data = "127.0.0.1 %d %d %s\n" % ( port, port+1,peer)
-    #    print(data)
+        data = "127.0.0.1 %d %d %s\n" % ( port, port+1, peer)
         gossipnodes.append(data)
         port=port+2
 
     gossip_path = base_dir + "/" + raft_uuid  + '/'+ "gossipNodes"
-    #print("in raftconfig" , gossip_path)
+    serfConfPath = base_dir + "/" + raft_uuid  + '/'+ "serfconfig"
 
     file = open(gossip_path,"w")
     file.writelines(gossipnodes)
     file.close()
 
-    
+    for client in client_uuids:
+        serfConfPath = base_dir + "/" + raft_uuid  + '/'+ "serfconfig_%s" % client
+        serfData = "Node_%s 127.0.0.1 %d %d %d\n" % (client, port + 10, port + 11, port + 12)
+        port = port + 3 
+        serf_file = open(serfConfPath,"w")
+        serf_file.write(serfData)
+        serf_file.close()
 
 
 class LookupModule(LookupBase):
@@ -112,12 +119,13 @@ class LookupModule(LookupBase):
 
         elif config_type == "controlplane":
             peer_uuids= terms[1]
+            client_uuids = terms[2]
             #print(peer_uuids)
 
             '''
             Create gossip node config files
             '''
-            raftconfobj_dict = control_plane_Gossipnode_conf_create(cluster_params,peer_uuids)
+            raftconfobj_dict = control_plane_Gossipnode_conf_create(cluster_params, peer_uuids, client_uuids)
 
         else:
             '''

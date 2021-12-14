@@ -190,8 +190,12 @@ class RaftProcess:
 
         fp = open(temp_file, "w")
 
-        config_path = "%s/niovakv.config" % binary_dir
-
+        if app_type== "niovakv":
+            config_path = "%s/niovakv.config" % binary_dir
+        else: 
+            node_name  = "Node_"+self.process_uuid
+            config_path = "%s/serfconfig_%s" % (base_dir , self.process_uuid )
+        
         process_popen = run_process(fp, self.process_raft_uuid, self.process_uuid,
                                     self.process_type, self.process_app_type, bin_path,
                                     base_dir, config_path, node_name, coalesced_wr)
