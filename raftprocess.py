@@ -72,7 +72,7 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
     process_popen = {}
     
     # binary_dir = os.getenv('NIOVA_BIN_PATH')
-    gossipNodes = "%s/gossipNodes" %  base_dir
+    gossipNodes = "%s/gossipNodes" % base_dir
 
     if ptype =="server":
         if app_type == "pumicedb" and coalesced_wr == "1":
@@ -84,8 +84,9 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
                                     raft_uuid, '-u', peer_uuid, '-a'],
                                     stdout = fp, stderr = fp)
         elif app_type == "controlplane":
+            log_path = "%s/%s_pmdbServer.log" % (base_dir, peer_uuid)
             process_popen = subprocess.Popen([bin_path , '-g',  gossipNodes , '-r',
-                                    raft_uuid, '-u', peer_uuid],
+                                    raft_uuid, '-u', peer_uuid, '-l' , log_path],
                                     stdout = fp, stderr = fp)
         else:
             process_popen = subprocess.Popen([bin_path, '-r',

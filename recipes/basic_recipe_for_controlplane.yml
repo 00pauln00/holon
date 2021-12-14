@@ -4,7 +4,7 @@
   vars:
     recipe_name: "basic_recipe_for_controlplane"
     parent: None
-    number_of_clients: 10
+    number_of_clients: 3
 
   tasks:
   - block:
