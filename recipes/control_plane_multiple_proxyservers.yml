@@ -3,6 +3,8 @@
   connection: local
   vars:
     recipe_name: "control_plane_multiple_proxyservers"
+    number_of_clients: 5
+    number_of_app_uuids: 1
     parent: None
 
   tasks:
@@ -15,21 +17,37 @@
        failed_when:
          (app_type != "controlplane")
 
+     # start pmdb servers.
      - name: "{{ recipe_name }}: get the list of non-running servers."
        include_role:
           name: common
           tasks_from: get_server_uuid_info
 
-       #Get multiple client uuids using common task.
-     - name: "Get multiple client uuids."
-       vars:
-         number_of_clients: 1
-       include_role:
-         name: common
-         tasks_from: get_multiple_client_uuids
-       loop: "{{ range(0, number_of_clients) | list }}"
+     - debug:
+        msg: "{{ TotalNServersList }}"
 
-      # Start all PMDB servers.
+      #Create set of required number of app_uuids.
+     - name: "Get set of required number of app_uuids."
+       include_role:
+        name: common
+        tasks_from: create_app_uuid_set
+       vars:
+        number_of_apps: "{{ number_of_app_uuids }}"
+
+     #Get multiple client uuids using common task.
+     - name: "Get multiple client uuids."
+       include_role:
+        name: common
+        tasks_from: get_multiple_client_uuids
+       loop: "{{ range(0, number_of_clients) | list }}"  #loop for no. of required client uuids.
+
+     - debug:
+        msg: "{{ ClientUUIDS }}"
+
+     - name: "Prepare gossip node configs"
+       set_fact: ClusterInfo="{{lookup('niova_raftconfig', "controlplane", TotalNServersList, ClientUUIDS, wantlist=True)}}"
+
+     # Start all PMDB servers.
      - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
        include_role:
          name: common
@@ -38,12 +56,13 @@
          ServerUUID: "{{ NonRunningServers[item] }}"
        loop: "{{ range(0, NonRunningServers | length) | list }}"
 
-     - name: "{{ recipe_name }}: Start new proxy servers."
+      #Start proxyserver
+     - name: "{{ recipe_name }}: Start multiple proxy servers."
        include_role:
-         name: common
-         tasks_from: start_proxy_server
+          name: common
+          tasks_from: start_proxy_server
        vars:
-         ClientUUID: "{{ ClientUUIDS[item] }}"
+          ClientUUID: "{{ ClientUUIDS[item] }}"
        loop: "{{ range(0, ClientUUIDS | length) |list }}"
 
      - name: "{{ recipe_name }}: Kill one of the proxy server."
