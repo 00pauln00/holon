@@ -33,6 +33,7 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
     serverproc = RaftProcess(cluster_params['ctype'], raft_uuid,
                              peer_uuid, proc_type, app_type)
 
+    # XXX check this condition 
     if proc_type == "client" and app_type == "niovakv" or proc_type == "client" and app_type == "controlplane":
         '''
          Find out the Node name for the niovakv_server which starts pmdbclient
@@ -57,12 +58,19 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
                 recipe_conf['serf_nodes'] = {}
 
             recipe_conf['serf_nodes'][peer_uuid] = node_name
-        else: 
-            config_path = "%s/serfconfig_%s" % (base_dir , peer_uuid)
 
     if operation == "start":
 
         ctlsvc_path = "%s/configs" % base_dir
+        if cluster_params['app_type'] == "controlplane" and proc_type == "client":
+            logging.warning("app_type controlplane and proxy server getting started")
+            ctlsvc_path = "%s/cpp_configs_%s" % (base_dir, peer_uuid)
+            if not os.path.exists(ctlsvc_path):
+                logging.warning("Creating config directory: %s", ctlsvc_path)
+                os.makedirs(ctlsvc_path)
+        else:
+            ctlsvc_path = "%s/configs" % base_dir
+
         logging.warning("base dir: %s" % base_dir)
         logging.warning("ctlsvc_path: %s" % ctlsvc_path)
         logging.warning("cluster_type: %s" % cluster_params['ctype'])
@@ -158,8 +166,8 @@ def niova_client_config_create(client_uuid, recipe_conf_dict, cluster_params):
     clients. Get the count of number of servers and already started clients.
     And use the next client port for this new client.
     '''
-    new_client_port = niova_get_unused_client_port(cluster_params, client_uuid_array)
-    raftconfobj.generate_client_conf(genericcmdobj, client_uuid, "127.0.0.1", new_client_port)
+    #new_client_port = niova_get_unused_client_port(cluster_params, client_uuid_array)
+    #raftconfobj.generate_client_conf(genericcmdobj, client_uuid, "127.0.0.1", new_client_port)
 
     # Add the entry of this new client uuid into the client_uuid_array
     recipe_conf_dict['client_uuid_array'].append(client_uuid)
