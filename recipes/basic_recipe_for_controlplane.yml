@@ -56,3 +56,45 @@
        vars:
           ClientUUID: "{{ ClientUUIDS[item] }}"
        loop: "{{ range(0, ClientUUIDS | length) |list }}"
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
+       vars:
+         Key: "Key"
+         Value: "Value"
+         Operation: "write"
+         OutfileName : "nkvc_write_output"
+         nkvclires: "{{ lookup('controlPane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from niovakv_client."
+       with_items:
+          - "{{ nkvclires }}"
+       register: writeres
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to read the value."
+       vars:
+         Key: "Key"
+         Value: ""
+         Operation: "read"
+         OutfileName : "read_output"
+         nkvclires: "{{ lookup('controlPane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from niovakv_client."
+       with_items:
+          - "{{ nkvclires }}"
+       register: readres
+
+     - name: "{{ recipe_name }}: compare values after sucessful write/read operation."
+       vars:
+         wrval: "{{ writeres['results'][0]['item']['write'][0]['Request'] }}"
+         rdval: "{{ readres['results'][0]['item']['read'][0]['Response'] }}"
+       debug:
+         msg: "Verifying parameter after read operation"
+       failed_when: >
+         (rdval['Status'] != 0) or
+         (rdval['Response'] != wrval['Value'])
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
+
