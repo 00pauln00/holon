@@ -39,7 +39,7 @@
        include_role:
         name: common
         tasks_from: get_multiple_client_uuids
-       loop: "{{ range(0, number_of_clients) | list }}"  #loop for no. of required client uuids.
+       loop: "{{ range(0, number_of_clients) | list }}"
 
      - debug:
         msg: "{{ ClientUUIDS }}"
@@ -65,9 +65,60 @@
           ClientUUID: "{{ ClientUUIDS[item] }}"
        loop: "{{ range(0, ClientUUIDS | length) |list }}"
 
+     - name: "Perform write operation."
+       vars:
+         Operation: "write"
+         Key: "alpha"
+         Value: "a###"
+         Logpath: "./"
+         Outfilename: "ncpcwrite"
+       debug:
+         msg: "{{ lookup('ncpc', Operation, Key, Value, Logpath, OutfileName, wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: Get membership details for gossip nodes information."
+       vars:
+         Operation: "membership"
+         Key: ""
+         Value: ""
+         OutfileName: "nodestatus"
+       debug:
+         msg: "{{ lookup('ncpc', Operation, Key, Value, OutfileName, wantlist=True) }}"
+
      - name: "{{ recipe_name }}: Kill one of the proxy server."
        debug:
          msg:  "{{ lookup('niova_raftprocess', 'kill', ClientUUIDS[0], wantlist=True) }}"
+
+     - name: "Perform write operation."
+       vars:
+         Operation: "write"
+         Key: "beta"
+         Value: "b###"
+         Logpath: "./"
+         Outfilename: "ncpcwrite"
+       debug:
+         msg: "{{ lookup('ncpc', Operation, Key, Value, Logpath, OutfileName, wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: Get membership details for gossip nodes information."
+       vars:
+         Operation: "membership"
+         Key: ""
+         Value: ""
+         OutfileName: "nodestatus"
+       debug:
+         msg: "{{ lookup('ncpc', Operation, Key, Value, OutfileName, wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: Kill one of the pmdb server."
+       debug:
+         msg:  "{{ lookup('niova_raftprocess', 'kill', NRunningPeers[0], wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: Get membership details for gossip nodes information."
+       vars:
+         Operation: "membership"
+         Key: ""
+         Value: ""
+         OutfileName: "nodestatus"
+       debug:
+         msg: "{{ lookup('ncpc', Operation, Key, Value, OutfileName, wantlist=True) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
