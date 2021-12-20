@@ -76,34 +76,36 @@ def control_plane_Gossipnode_conf_create(cluster_params, peer_uuids , client_uui
     npeers = int(cluster_params['npeers'])
     port = int(cluster_params['srv_port'])
     nclients = int(cluster_params['nclients'])
-    port = port + 5 
+    port = port + 5
     recipe_conf = {}
     basicioobj = BasicIO()
     genericcmdobj = GenericCmds()
-
-
     gossipnodes = []
     serfData = None
     peer = None
     for peer in peer_uuids:
-        data = "127.0.0.1 %d %d %s\n" % ( port, port+1, peer)
+        data = "%s 127.0.0.1 %d %d \n" % ( peer, port, port+1)
         gossipnodes.append(data)
         port=port+2
-
-    gossip_path = base_dir + "/" + raft_uuid  + '/'+ "gossipNodes"
-    serfConfPath = base_dir + "/" + raft_uuid  + '/'+ "serfconfig"
-
+   # print(gossipnodes)
+    gossip_path = base_dir + "/" + raft_uuid + '/'+   "gossipNodes"
+    #cpp_config_path = base_dir + "/" + raft_uuid  + '/'+ "cpp_configs"
     file = open(gossip_path,"w")
     file.writelines(gossipnodes)
     file.close()
-
     for client in client_uuids:
-        serfConfPath = base_dir + "/" + raft_uuid  + '/'+ "serfconfig_%s" % client
-        serfData = "Node_%s 127.0.0.1 %d %d %d\n" % (client, port + 10, port + 11, port + 12)
-        port = port + 3 
-        serf_file = open(serfConfPath,"w")
-        serf_file.write(serfData)
+        cpp_config_dir = base_dir + "/" + raft_uuid + "/"+ "cpp_configs_" + client
+        cpp_config_path = cpp_config_dir + '/' + "proxy.config"
+        if not os.path.exists(cpp_config_dir):
+            os.mkdir(cpp_config_dir)
+
+        cppData = "Node_%s 127.0.0.1 %d %d %d\n" % (client, port + 10, port + 11, port + 12)
+        port = port + 3
+        serf_file = open(cpp_config_path,"w")
+        serf_file.write(cppData)
         serf_file.close()
+
+
 
 
 class LookupModule(LookupBase):

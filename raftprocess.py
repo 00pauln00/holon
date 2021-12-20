@@ -99,7 +99,7 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
                                     stdout = fp, stderr = fp)
         elif app_type == "pumicedb":
             process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid, '-a'],
+                                    raft_uuid, '-u', peer_uuid, '-a', '-s'],
                                     stdout = fp, stderr = fp)
         elif app_type == "niovakv":
             log_path = "%s/%s_niovakv_server.log" % (base_dir, peer_uuid)
@@ -191,11 +191,11 @@ class RaftProcess:
 
         fp = open(temp_file, "w")
 
-        if app_type== "niovakv":
+        if app_type == "niovakv":
             config_path = "%s/niovakv.config" % binary_dir
-        else: 
-            node_name  = "Node_"+self.process_uuid
-            config_path = "%s/serfconfig_%s" % (base_dir , self.process_uuid )
+        elif app_type == "controlplane":
+            node_name  = "Node_" + self.process_uuid
+            config_path = "%s/cpp_configs_%s/proxy.config" % (base_dir , self.process_uuid )
         
         process_popen = run_process(fp, self.process_raft_uuid, self.process_uuid,
                                     self.process_type, self.process_app_type, bin_path,

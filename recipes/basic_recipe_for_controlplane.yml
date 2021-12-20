@@ -56,7 +56,3 @@
        vars:
           ClientUUID: "{{ ClientUUIDS[item] }}"
        loop: "{{ range(0, ClientUUIDS | length) |list }}"
-
-
-
- 
