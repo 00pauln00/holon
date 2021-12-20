@@ -65,60 +65,92 @@
           ClientUUID: "{{ ClientUUIDS[item] }}"
        loop: "{{ range(0, ClientUUIDS | length) |list }}"
 
-     - name: "Perform write operation."
+     - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
+         Key: "Key"
+         Value: "Value"
          Operation: "write"
-         Key: "alpha"
-         Value: "a###"
-         Logpath: "./"
-         Outfilename: "ncpcwrite"
+         OutfileName : "cpc_write_output"
+         ncpcclires: "{{ lookup('controlPlane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
        debug:
-         msg: "{{ lookup('ncpc', Operation, Key, Value, Logpath, OutfileName, wantlist=True) }}"
+         msg: "Write key-value from ncpc client."
+       with_items:
+          - "{{ ncpcclires }}"
+       register: writeres
 
-     - name: "{{ recipe_name }}: Get membership details for gossip nodes information."
+     - name: "{{ recipe_name }}: Check if write is successful."
        vars:
-         Operation: "membership"
+         wrstatus: "{{ writeres['results'][0]['item']['write'][0]['Response']['Status'] }}"
+       debug:
+         msg: "Check if write is successful."
+       failed_when: >
+         (wrstatus|int != 0)
+
+     - name: "{{ recipe_name }}: Get config details for gossip nodes information."
+       vars:
+         Operation: "config"
          Key: ""
          Value: ""
          OutfileName: "nodestatus"
        debug:
-         msg: "{{ lookup('ncpc', Operation, Key, Value, OutfileName, wantlist=True) }}"
+         msg: "{{ lookup('controlPlane_client', Operation, Key, Value, OutfileName, wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
 
      - name: "{{ recipe_name }}: Kill one of the proxy server."
        debug:
          msg:  "{{ lookup('niova_raftprocess', 'kill', ClientUUIDS[0], wantlist=True) }}"
 
-     - name: "Perform write operation."
+     - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
+         Key: "Key"
+         Value: "Value"
          Operation: "write"
-         Key: "beta"
-         Value: "b###"
-         Logpath: "./"
-         Outfilename: "ncpcwrite"
+         OutfileName : "cpc_write_output"
+         ncpcclires: "{{ lookup('controlPlane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
        debug:
-         msg: "{{ lookup('ncpc', Operation, Key, Value, Logpath, OutfileName, wantlist=True) }}"
+         msg: "Write key-value from ncpc client."
+       with_items:
+          - "{{ ncpcclires }}"
+       register: writeres2
 
-     - name: "{{ recipe_name }}: Get membership details for gossip nodes information."
+     - name: "{{ recipe_name }}: Check if write is successful."
        vars:
-         Operation: "membership"
+         wrstatus: "{{ writeres2['results'][0]['item']['write'][0]['Response']['Status'] }}"
+       debug:
+         msg: "Check if write is successful."
+       failed_when: >
+         (wrstatus|int != 0)
+
+     - name: "{{ recipe_name }}: Get config details for gossip nodes information."
+       vars:
+         Operation: "config"
          Key: ""
          Value: ""
          OutfileName: "nodestatus"
        debug:
-         msg: "{{ lookup('ncpc', Operation, Key, Value, OutfileName, wantlist=True) }}"
+         msg: "{{ lookup('controlPlane_client', Operation, Key, Value, OutfileName, wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
 
      - name: "{{ recipe_name }}: Kill one of the pmdb server."
        debug:
          msg:  "{{ lookup('niova_raftprocess', 'kill', NRunningPeers[0], wantlist=True) }}"
 
-     - name: "{{ recipe_name }}: Get membership details for gossip nodes information."
+     - name: "{{ recipe_name }}: Get config details for gossip nodes information."
        vars:
-         Operation: "membership"
+         Operation: "config"
          Key: ""
          Value: ""
          OutfileName: "nodestatus"
        debug:
-         msg: "{{ lookup('ncpc', Operation, Key, Value, OutfileName, wantlist=True) }}"
+         msg: "{{ lookup('controlPlane_client', Operation, Key, Value, OutfileName, wantlist=True) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
