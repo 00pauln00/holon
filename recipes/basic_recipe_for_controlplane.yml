@@ -63,7 +63,7 @@
          Value: "Value"
          Operation: "write"
          OutfileName : "nkvc_write_output"
-         nkvclires: "{{ lookup('controlPane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+         nkvclires: "{{ lookup('controlPlane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
@@ -76,7 +76,7 @@
          Value: ""
          Operation: "read"
          OutfileName : "read_output"
-         nkvclires: "{{ lookup('controlPane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+         nkvclires: "{{ lookup('controlPlane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
