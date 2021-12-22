@@ -73,9 +73,7 @@ def niova_client_conf_create(cluster_params):
 def control_plane_Gossipnode_conf_create(cluster_params, peer_uuids , client_uuids):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
-    npeers = int(cluster_params['npeers'])
     port = int(cluster_params['srv_port'])
-    nclients = int(cluster_params['nclients'])
     port = port + 5
     recipe_conf = {}
     basicioobj = BasicIO()
@@ -87,9 +85,8 @@ def control_plane_Gossipnode_conf_create(cluster_params, peer_uuids , client_uui
         data = "%s 127.0.0.1 %d %d \n" % ( peer, port, port+1)
         gossipnodes.append(data)
         port=port+2
-   # print(gossipnodes)
+
     gossip_path = base_dir + "/" + raft_uuid + '/'+   "gossipNodes"
-    #cpp_config_path = base_dir + "/" + raft_uuid  + '/'+ "cpp_configs"
     file = open(gossip_path,"w")
     file.writelines(gossipnodes)
     file.close()
@@ -106,8 +103,6 @@ def control_plane_Gossipnode_conf_create(cluster_params, peer_uuids , client_uui
         serf_file.close()
 
 
-
-
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
         cluster_params = kwargs['variables']['ClusterParams']
@@ -122,8 +117,7 @@ class LookupModule(LookupBase):
         elif config_type == "controlplane":
             peer_uuids= terms[1]
             client_uuids = terms[2]
-            #print(peer_uuids)
-
+        
             '''
             Create gossip node config files
             '''
