@@ -75,15 +75,4 @@ class LookupModule(LookupBase):
 
         output_data = get_the_output(outfile)
 
-
-        if Operation == "write":
-            return {"write":output_data['write']}
-        elif Operation == "read":
-            return {"read":output_data['read']}
-        elif Operation == "config":
-            return {"config":output_data['config']}
-        else:
-            return output_data
-            
-
         return output_data

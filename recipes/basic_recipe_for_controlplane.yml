@@ -23,21 +23,20 @@
           name: common
           tasks_from: get_server_uuid_info
 
-     - debug:
-        msg: "{{ TotalNServersList }}"
+     - name: "{{ recipe_name }}: Get the leader and follower uuids."
+       include_role:
+         name: common
+         tasks_from: get_follower_stats
 
       #Get multiple client uuids using common task.
      - name: "Get multiple client uuids."
        include_role:
         name: common
         tasks_from: get_multiple_client_uuids
-       loop: "{{ range(0, number_of_clients) | list }}"  #loop for no. of required client uuids.
-
-     - debug:
-        msg: "{{ ClientUUIDS }}"
+       loop: "{{ range(0, number_of_clients) | list }}" 
 
      - name: "Prepare gossip node configs"
-       set_fact: ClusterInfo="{{lookup('niova_raftconfig', "controlplane", TotalNServersList, ClientUUIDS, wantlist=True)}}"
+       set_fact: gossipCreation="{{lookup('niova_raftconfig', "controlplane", TotalNServersList, ClientUUIDS, wantlist=True)}}"
 
      # Start all PMDB servers.
      - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
@@ -62,13 +61,14 @@
          Key: "Key"
          Value: "Value"
          Operation: "write"
-         OutfileName : "nkvc_write_output"
-         nkvclires: "{{ lookup('controlPlane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+         OutfileName : "write_output"
+         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
-          - "{{ nkvclires }}"
+          - "{{ ncpclires }}"
        register: writeres
+       no_log: true 
 
      - name: "{{ recipe_name }}: Starting controlplane_client to read the value."
        vars:
@@ -76,22 +76,45 @@
          Value: ""
          Operation: "read"
          OutfileName : "read_output"
-         nkvclires: "{{ lookup('controlPlane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
-          - "{{ nkvclires }}"
+          - "{{ ncpclires }}"
        register: readres
+       no_log: true
 
      - name: "{{ recipe_name }}: compare values after sucessful write/read operation."
        vars:
-         wrval: "{{ writeres['results'][0]['item']['write'][0]['Request'] }}"
          rdval: "{{ readres['results'][0]['item']['read'][0]['Response'] }}"
        debug:
          msg: "Verifying parameter after read operation"
        failed_when: >
-         (rdval['Status'] != 0) or
-         (rdval['Response'] != wrval['Value'])
+         (rdval['Status'] != 0) or 
+         (rdval['Response'] != "Value")
+
+     - name: "{{ recipe_name }}: Store the UUID of pmdb server."
+       vars:
+         peer: "{{ TotalNServersList[0] }}"
+       debug:
+         msg: "Get the new peer to start: {{ peer }}"
+       with_items:
+         - "{{ peer }}"
+       register: Peer
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to get the config values."
+       vars:
+         Key: "{{ Peer['results'][0]['item'] }}"
+         Value: ""
+         Operation: "config"
+         OutfileName : "config_output"
+         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from niovakv_client."
+       with_items:
+          - "{{ ncpclires }}"
+       register: configres
+       no_log: true
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
