@@ -65,13 +65,22 @@
           ClientUUID: "{{ ClientUUIDS[item] }}"
        loop: "{{ range(0, ClientUUIDS | length) |list }}"
 
+     - name: "{{ recipe_name }}: Store the UUID of pmdb server."
+       vars:
+         peer: "{{ TotalNServersList[0] }}"
+       debug:
+         msg: "Get the new peer to start: {{ peer }}"
+       with_items:
+         - "{{ peer }}"
+       register: Peer
+
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
          Key: "Key"
          Value: "Value"
          Operation: "write"
          OutfileName : "cpc_write_output"
-         ncpcclires: "{{ lookup('controlPlane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+         ncpcclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
        debug:
          msg: "Write key-value from ncpc client."
        with_items:
@@ -86,19 +95,42 @@
        failed_when: >
          (wrstatus|int != 0)
 
-     - name: "{{ recipe_name }}: Get config details for gossip nodes information."
+     - name: "{{ recipe_name }}: Starting controlplane_client to read the value."
        vars:
-         Operation: "config"
-         Key: ""
+         Key: "Key"
          Value: ""
-         OutfileName: "nodestatus"
+         Operation: "read"
+         OutfileName : "read_output"
+         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
        debug:
-         msg: "{{ lookup('controlPlane_client', Operation, Key, Value, OutfileName, wantlist=True) }}"
+         msg: "Reading through ncpc client."
+       with_items:
+          - "{{ ncpclires }}"
+       register: readres
+       no_log: true
 
-     - name: "{{ recipe_name }}: get the list of non-running servers."
-       include_role:
-          name: common
-          tasks_from: get_server_uuid_info
+     - name: "{{ recipe_name }}: Compare values after successful read operation."
+       vars:
+         rdval: "{{ readres['results'][0]['item']['read'][0]['Response'] }}"
+       debug:
+         msg: "Verifying parameter after read operation"
+       failed_when: >
+         (rdval['Status'] | int != 0) or
+         (rdval['Response'] != "Value")
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to get the config values."
+       vars:
+         Key: "{{ Peer['results'][0]['item'] }}"
+         Value: ""
+         Operation: "config"
+         OutfileName : "config_output"
+         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+       debug:
+         msg: "Get config from ncpc_client."
+       with_items:
+          - "{{ ncpclires }}"
+       register: configres
+       no_log: true
 
      - name: "{{ recipe_name }}: Kill one of the proxy server."
        debug:
@@ -110,7 +142,7 @@
          Value: "Value"
          Operation: "write"
          OutfileName : "cpc_write_output"
-         ncpcclires: "{{ lookup('controlPlane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+         ncpcclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
        debug:
          msg: "Write key-value from ncpc client."
        with_items:
@@ -125,32 +157,60 @@
        failed_when: >
          (wrstatus|int != 0)
 
-     - name: "{{ recipe_name }}: Get config details for gossip nodes information."
+     - name: "{{ recipe_name }}: Starting controlplane_client to read the value."
        vars:
-         Operation: "config"
-         Key: ""
+         Key: "Key"
          Value: ""
-         OutfileName: "nodestatus"
+         Operation: "read"
+         OutfileName : "read_output"
+         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
        debug:
-         msg: "{{ lookup('controlPlane_client', Operation, Key, Value, OutfileName, wantlist=True) }}"
+         msg: "Reading through ncpc client."
+       with_items:
+          - "{{ ncpclires }}"
+       register: readres
+       no_log: true
 
-     - name: "{{ recipe_name }}: get the list of non-running servers."
-       include_role:
-          name: common
-          tasks_from: get_server_uuid_info
+     - name: "{{ recipe_name }}: Compare values after sucessful read operation."
+       vars:
+         rdval: "{{ readres['results'][0]['item']['read'][0]['Response'] }}"
+       debug:
+         msg: "Verifying parameter after read operation"
+       failed_when: >
+         (rdval['Status'] | int != 0) or
+         (rdval['Response'] != "Value")
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to get the config values."
+       vars:
+         Key: "{{ Peer['results'][0]['item'] }}"
+         Value: ""
+         Operation: "config"
+         OutfileName : "config_output"
+         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+       debug:
+         msg: "Get config from ncpc_client."
+       with_items:
+          - "{{ ncpclires }}"
+       register: configres2
+       no_log: true
 
      - name: "{{ recipe_name }}: Kill one of the pmdb server."
        debug:
-         msg:  "{{ lookup('niova_raftprocess', 'kill', NRunningPeers[0], wantlist=True) }}"
+         msg:  "{{ lookup('niova_raftprocess', 'kill', Peer['results'][0]['item'], wantlist=True) }}"
 
-     - name: "{{ recipe_name }}: Get config details for gossip nodes information."
+     - name: "{{ recipe_name }}: Starting controlplane_client to get the config values."
        vars:
-         Operation: "config"
-         Key: ""
+         Key: "{{ Peer['results'][0]['item'] }}"
          Value: ""
-         OutfileName: "nodestatus"
+         Operation: "config"
+         OutfileName : "config_output"
+         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
        debug:
-         msg: "{{ lookup('controlPlane_client', Operation, Key, Value, OutfileName, wantlist=True) }}"
+         msg: "Get config from ncpc_client."
+       with_items:
+          - "{{ ncpclires }}"
+       register: configres3
+       no_log: true
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
