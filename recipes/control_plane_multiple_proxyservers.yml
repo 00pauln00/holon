@@ -212,6 +212,14 @@
        register: configres3
        no_log: true
 
+     - name: "{{ recipe_name }}: Check if config is updated after killing the pmdb server."
+       vars:
+         pmdb_server: "{{ Peer['results'][0]['item'] }}"
+       debug:
+         msg: "{{ item }}"
+       with_items: "{{ configres3['results'][0]['item'] }}"
+       failed_when: item == pmdb_server
+
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
