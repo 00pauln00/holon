@@ -116,6 +116,20 @@
        register: configres
        no_log: true
 
+     - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
+       vars:
+         Key: ""
+         Value: ""
+         Operation: "membership"
+         OutfileName : "membership_output"
+         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from niovakv_client."
+       with_items:
+          - "{{ ncpclires }}"
+       register: membershipres
+       no_log: true
+
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
