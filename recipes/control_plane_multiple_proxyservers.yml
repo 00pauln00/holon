@@ -136,6 +136,56 @@
        debug:
          msg:  "{{ lookup('niova_raftprocess', 'kill', ClientUUIDS[0], wantlist=True) }}"
 
+     - name: "{{ recipe_name }}: prepare path to read recipe JSON file."
+       shell: cat "{{base_dir}}"/"{{raft_uuid}}".json
+       register: result
+
+     - name: "{{ recipe_name }}: Convert output to JSON format."
+       set_fact:
+         getNodeDetails: "{{ result.stdout | from_json }}"
+
+     - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
+       set_fact:
+         getNodeName: "{{ getNodeDetails | json_query(jmesquery) }}"
+       vars:
+         jmesquery: 'serf_nodes."{{ ClientUUIDS[0] }}"'
+
+     - debug:
+         msg: "Killed node name is: {{ getNodeName }}"
+
+     - name: "{{ recipe_name }}: Wait until killed proxy server's status gets changed."
+       vars:
+         Operation: "membership"
+         Key: ""
+         Value: ""
+         OutfileName: "wait_for_nodeStatus"
+       debug:
+         msg: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+       no_log: true
+       loop: "{{ range(0, 10) | list }}"
+       loop_control:
+          pause: 1
+
+     - name: "{{ recipe_name }}: Get proxy server's status."
+       vars:
+         Operation: "membership"
+         Key: ""
+         Value: ""
+         OutfileName: "get_nodestatus"
+         getNodeData: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+       debug:
+         msg: "Get node name"
+       with_items:
+          - "{{ getNodeData }}"
+       register: nodeName
+
+     - name: "{{ recipe_name }}: Check if killed node status gets changed."
+       vars:
+         verifyNodeStatus: "{{ nodeName['results'][0]['item'][getNodeName]['Status'] }}"
+       debug:
+         msg: "Verify Killed proxy server's Status"
+       failed_when: verifyNodeStatus != "failed"
+
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
          Key: "Key"
@@ -198,27 +248,40 @@
        debug:
          msg:  "{{ lookup('niova_raftprocess', 'kill', Peer['results'][0]['item'], wantlist=True) }}"
 
-     - name: "{{ recipe_name }}: Starting controlplane_client to get the config values."
+     - name: "{{ recipe_name }}: Wait until killed pmdb server's status gets changed."
        vars:
-         Key: "{{ Peer['results'][0]['item'] }}"
+         Operation: "membership"
+         Key: ""
          Value: ""
-         Operation: "config"
-         OutfileName : "config_output"
-         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+         OutfileName: "wait_for_pmdbServerStatus"
        debug:
-         msg: "Get config from ncpc_client."
-       with_items:
-          - "{{ ncpclires }}"
-       register: configres3
-       no_log: true
+         msg: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+       loop: "{{ range(0, 20) | list }}"
+       loop_control:
+          pause: 1
 
-     - name: "{{ recipe_name }}: Check if config is updated after killing the pmdb server."
+     - name: "{{ recipe_name }}: Get pmdb server's status."
        vars:
-         pmdb_server: "{{ Peer['results'][0]['item'] }}"
+         Operation: "membership"
+         Key: ""
+         Value: ""
+         OutfileName: "get_nodestatus"
+         getPmdbServerData: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
        debug:
-         msg: "{{ item }}"
-       with_items: "{{ configres3['results'][0]['item'] }}"
-       failed_when: item == pmdb_server
+         msg: "Get pmdb server status"
+       with_items:
+          - "{{ getPmdbServerData }}"
+       register: pmdbServerStatus
+
+     - set_fact:
+         killedPmdbServer: "{{ Peer['results'][0]['item'] }}"
+
+     - name: "{{ recipe_name }}: Check if killed pmdb server's status gets changed."
+       vars:
+         verifyPmdbServerStatus: "{{ pmdbServerStatus['results'][0]['item'][killedPmdbServer]['Status'] }}"
+       debug:
+         msg: "Verify Killed pmdb server's Status"
+       failed_when: verifyPmdbServerStatus != "failed"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

@@ -41,7 +41,7 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
         '''
         client_uuid_array = recipe_conf['client_uuid_array']
         index = client_uuid_array.index(peer_uuid)
-       
+
         if app_type == "niovakv":
             # Read the config file.
             binary_dir = os.getenv('NIOVA_BIN_PATH')
@@ -56,6 +56,20 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
             if not "serf_nodes" in recipe_conf:
                 recipe_conf['serf_nodes'] = {}
 
+            recipe_conf['serf_nodes'][peer_uuid] = node_name
+
+        else:
+            # Read the config file.
+            config_path = "%s/cpp_configs_%s/proxy.config" % (base_dir, peer_uuid)
+            print("Control-Plane config Path:", config_path)
+            with open(config_path) as f:
+                lines = f.read().splitlines()
+
+            node_line = lines[0]
+            node_name = node_line.split()[0]
+            logging.info("Node Name for starting proxy_server is: %s", node_name)
+            if not "serf_nodes" in recipe_conf:
+                 recipe_conf['serf_nodes'] = {}
             recipe_conf['serf_nodes'][peer_uuid] = node_name
 
     if operation == "start":
@@ -199,7 +213,7 @@ Main function for raftprocess lookup.
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
         cluster_params = kwargs['variables']['ClusterParams']
-        
+
         cluster_type = cluster_params['ctype']
         proc_operation = terms[0]
         uuid = terms[1]
