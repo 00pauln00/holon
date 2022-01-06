@@ -158,7 +158,7 @@
          Operation: "membership"
          Key: ""
          Value: ""
-         OutfileName: "wait_for_nodeStatus"
+         OutfileName: "wait_for_nodeStatus_{{ item }}"
        debug:
          msg: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
        no_log: true
@@ -253,10 +253,10 @@
          Operation: "membership"
          Key: ""
          Value: ""
-         OutfileName: "wait_for_pmdbServerStatus"
+         OutfileName: "wait_for_pmdbServerStatus_{{ item }}"
        debug:
          msg: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
-       loop: "{{ range(0, 20) | list }}"
+       loop: "{{ range(0, 10) | list }}"
        loop_control:
           pause: 1
 
@@ -265,7 +265,7 @@
          Operation: "membership"
          Key: ""
          Value: ""
-         OutfileName: "get_nodestatus"
+         OutfileName: "get_pmdbServerStatus"
          getPmdbServerData: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
        debug:
          msg: "Get pmdb server status"
