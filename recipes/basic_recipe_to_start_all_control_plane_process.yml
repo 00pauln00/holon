@@ -1,0 +1,104 @@
+- import_playbook: basic_recipe_for_controlplane.yml
+
+- name: "recipe to start all controlplane process"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "basic_recipe_for_all_controlplane_process"
+    parent: basic_recipe_for_controlplane
+
+  tasks:
+  - block:
+
+      # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "controlplane")
+
+     - name: Generate new UUID
+       shell: uuidgen
+       register: new_uuid_result
+         
+     - name: "{{ recipe_name }}: Starting niova-block-ctl to get the config values."
+       vars:
+         Key: ""
+         Value: ""
+         Operation: ""
+         OutfileName : ""
+         process_type : "niova-block-ctl"
+         nisd_uuid : "{{ new_uuid_result['stdout_lines'][0] }}"
+         nisd_dev_size : "21474836480"
+         uuid_to_write : ""
+         read_operation_ratio_percentage : ""
+         num_ops : ""
+         vdev :  ""
+         request_size_in_bytes : ""
+         queue_depth : ""
+         file_size : ""
+         niovablockctl: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
+                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
+                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from niovakv_client."
+       with_items:
+          - "{{ niovablockctl }}"
+       register: niovablockctlprocess
+
+     - name: "{{ recipe_name }}: Starting nisd to get the config values."
+       vars:
+         Key: ""
+         Value: ""
+         Operation: ""
+         OutfileName : ""
+         process_type : "nisd"
+         nisd_uuid : "{{ new_uuid_result['stdout_lines'][0] }}"
+         nisd_dev_size : ""
+         uuid_to_write : ""
+         read_operation_ratio_percentage : ""
+         num_ops : ""
+         vdev :  ""
+         request_size_in_bytes : ""
+         queue_depth : ""
+         file_size : ""
+         nisd : "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
+                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
+                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from niovakv_client."
+       with_items:
+          - "{{ nisd }}"
+       register: nisdprocess
+  
+     - name: Generate new UUID
+       shell: uuidgen
+       register: new_uuid
+
+     - name: "{{ recipe_name }}: Starting niova-block-test to get the config values."
+       vars:
+         Key: ""
+         Value: ""
+         Operation: ""
+         OutfileName : ""
+         process_type : "niova-block-test"
+         nisd_uuid : ""
+         nisd_dev_size : ""
+         uuid_to_write : "{{ new_uuid_result['stdout_lines'][0] }}"
+         read_operation_ratio_percentage : "0"
+         num_ops : "1000"
+         vdev :  "{{ new_uuid['stdout_lines'][0] }}"
+         request_size_in_bytes : "16"
+         queue_depth : "100"
+         file_size : "8589934592"
+       debug:
+         msg: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
+                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
+                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true

@@ -62,7 +62,19 @@
          Value: "Value"
          Operation: "write"
          OutfileName : "write_output"
-         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+         process_type : ""
+         nisd_uuid : ""
+         nisd_dev_size : ""
+         uuid_to_write : ""
+         read_operation_ratio_percentage : ""
+         num_ops : ""
+         vdev :  ""
+         request_size_in_bytes : ""
+         queue_depth : ""
+         file_size : ""
+         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
+                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
+                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
@@ -76,7 +88,19 @@
          Value: ""
          Operation: "read"
          OutfileName : "read_output"
-         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+         process_type : ""
+         nisd_uuid : ""
+         nisd_dev_size : ""
+         uuid_to_write : ""
+         read_operation_ratio_percentage : ""
+         num_ops : ""
+         vdev :  ""
+         request_size_in_bytes : ""
+         queue_depth : ""
+         file_size : ""
+         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
+                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
+                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
@@ -108,7 +132,19 @@
          Value: ""
          Operation: "config"
          OutfileName : "config_output"
-         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+         process_type : ""
+         nisd_uuid : ""
+         nisd_dev_size : ""
+         uuid_to_write : ""
+         read_operation_ratio_percentage : ""
+         num_ops : ""
+         vdev :  ""
+         request_size_in_bytes : ""
+         queue_depth : ""
+         file_size : ""
+         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
+                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
+                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
@@ -122,7 +158,19 @@
          Value: ""
          Operation: "membership"
          OutfileName : "membership_output"
-         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+         process_type : ""
+         nisd_uuid : ""
+         nisd_dev_size : ""
+         uuid_to_write : ""
+         read_operation_ratio_percentage : ""
+         num_ops : ""
+         vdev :  ""
+         request_size_in_bytes : ""
+         queue_depth : ""
+         file_size : ""
+         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
+                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
+                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
