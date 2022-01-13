@@ -61,7 +61,6 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
         else:
             # Read the config file.
             config_path = "%s/cpp_configs_%s/proxy.config" % (base_dir, peer_uuid)
-            print("Control-Plane config Path:", config_path)
             with open(config_path) as f:
                 lines = f.read().splitlines()
 
