@@ -63,12 +63,25 @@
          Value: "India"
          Operation: "write"
          OutfileName : "nkvc_write_output"
-         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+         process_type : ""
+         nisd_uuid : ""
+         nisd_dev_size : ""
+         uuid_to_write : ""
+         read_operation_ratio_percentage : ""
+         num_ops : ""
+         vdev :  ""
+         request_size_in_bytes : ""
+         queue_depth : ""
+         file_size : ""
+         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
+                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
+                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
           - "{{ ncpclires }}"
        register: writeres
+       no_log : true
 
      - name: "{{ recipe_name }}: Starting controlplane_client to read the value."
        vars:
@@ -76,12 +89,25 @@
          Value: ""
          Operation: "read"
          OutfileName : "nkvc_read_output"
-         nkvclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+         process_type : ""
+         nisd_uuid : ""
+         nisd_dev_size : ""
+         uuid_to_write : ""
+         read_operation_ratio_percentage : ""
+         num_ops : ""
+         vdev :  ""
+         request_size_in_bytes : ""
+         queue_depth : ""
+         file_size : ""
+         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
+                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
+                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
-          - "{{ nkvclires }}"
+          - "{{ ncpclires }}"
        register: readres
+       no_log : true
 
      - name: "{{ recipe_name }}: compare values after sucessful write/read operation."
        vars:
@@ -108,13 +134,25 @@
          Value: ""
          Operation: "config"
          OutfileName : "config_output"
-         ncpclires: "{{ lookup('controlplane_client', Key, Value, Operation, OutfileName, wantlist=True) }}"
+         process_type : ""
+         nisd_uuid : ""
+         nisd_dev_size : ""
+         uuid_to_write : ""
+         read_operation_ratio_percentage : ""
+         num_ops : ""
+         vdev :  ""
+         request_size_in_bytes : ""
+         queue_depth : ""
+         file_size : ""
+         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
+                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
+                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
           - "{{ ncpclires }}"
        register: configres
-       # no_log: true  
+       no_log: true  
 
        # get list if non-running servers.
      - name: "{{ recipe_name }}: get the list of non-running servers."
@@ -146,12 +184,25 @@
          Value: ""
          Operation: "config"
          OutfileName : "config_output"
-         nkvclires: "{{ lookup('controlplane_client',Key, Value, Operation, OutfileName, wantlist=True) }}"
+         process_type : ""
+         nisd_uuid : ""
+         nisd_dev_size : ""
+         uuid_to_write : ""
+         read_operation_ratio_percentage : ""
+         num_ops : ""
+         vdev :  ""
+         request_size_in_bytes : ""
+         queue_depth : ""
+         file_size : ""
+         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
+                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
+                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
-          - "{{ nkvclires }}"
-       register: configres_after_5th_pmdbserver 
+          - "{{ ncpclires }}"
+       register: configres_after_5th_pmdbserver
+       no_log : true 
 
 
     rescue:
