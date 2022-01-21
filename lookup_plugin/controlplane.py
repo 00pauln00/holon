@@ -10,8 +10,8 @@ import subprocess
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
 
-def start_ncpc_process(cluster_params, Key, Value,
-                                       Operation, OutfileName ):
+def start_ncpc_process(cluster_params, Key, Value, Operation,
+                                     OutfileName, IP_addr, Port):
     base_dir = cluster_params['base_dir']
     app_name = cluster_params['app_type']
     raft_uuid = cluster_params['raft_uuid']
@@ -31,8 +31,13 @@ def start_ncpc_process(cluster_params, Key, Value,
     ConfigPath = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
 
     outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
-
-    process_popen = subprocess.Popen([bin_path, '-k', Key,
+    if Value == "" :
+        process_popen = subprocess.Popen([bin_path, '-k', Key, '-c', ConfigPath,
+                                             '-l', logfile, '-o', Operation, '-r', outfilePath,
+                                             '-a' , IP_addr, '-p', Port],
+                                             stdout = fp, stderr = fp)
+    else:
+        process_popen = subprocess.Popen([bin_path, '-k', Key,
                                              '-v', Value, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-r', outfilePath],
                                              stdout = fp, stderr = fp)
@@ -88,8 +93,8 @@ def start_niova_block_ctl_process(cluster_params, nisdPath, nisd_uuid):
     try:
         func_timeout(60, check_for_process_status, args=(process_pid, process_status))
     except FunctionTimedOut:
-            logging.error("Error : timeout occur to change process status to %s" % process_status)
-            rc = 1
+        logging.error("Error : timeout occur to change process status to %s" % process_status)
+        rc = 1
 
     # Sync the log file so all the logs from niova-block-ctl gets written to log file.
     os.fsync(fp)
@@ -151,22 +156,52 @@ def prepare_nisd_device_path(cluster_params, nisd_uuid):
     return nisdPath
 
 def create_nisd_device_and_uuid(cluster_params, nisd_uuid, nisd_dev_size):
-    nisdPath = prepare_nisd_device_path(cluster_params, nisd_uuid)
+    nisdpath_device = prepare_nisd_device_path(cluster_params, nisd_uuid)
 
     # truncate the device to a specified size
-    file = open(nisdPath, 'w')
-    file.truncate(nisd_dev_size)
+    file = open(nisdpath_device, 'w')
+    file.truncate(int(nisd_dev_size))
     file.close()
 
-    return nisdPath
+    return nisdpath_device
 
 def set_environment_variables(cluster_params):
 
     #set environment variables
-    ctl_interface_path = "%s/%s" % (cluster_params['base_dir'], cluster_params['raft_uuid'])
+    ctl_interface_path = "%s/%s/ctl-interface" % (cluster_params['base_dir'], cluster_params['raft_uuid'])
 
     os.environ['NIOVA_INOTIFY_BASE_PATH'] = ctl_interface_path
     os.environ['NIOVA_LOCAL_CTL_SVC_DIR'] = ctl_interface_path
+
+    return ctl_interface_path
+
+def start_niova_lookout_process(cluster_params):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    app_name = cluster_params['app_type']
+
+
+    # Prepare path for executables.
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    ctl_interface_path = set_environment_variables(cluster_params)
+
+    # Prepare path for log file.
+    log_file = "%s/%s/%s_niova-lookout_log.txt" % (base_dir, raft_uuid, app_name)
+
+    # Open the log file to pass the fp to subprocess.Popen
+    fp = open(log_file, "w")
+    gossipNodes = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
+ 
+    #start niova block test process
+    bin_path = '%s/lookout' % binary_dir
+    process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes],
+                                                     stdout = fp, stderr = fp)
+
+    # Sync the log file so all the logs from niova-block-test gets written to log file.
+    os.fsync(fp)
+
+    return process_popen
 
 def start_niova_block_test(cluster_params, nisd_uuid_to_write, read_operation_ratio_percentage,
                                 num_ops, vdev, request_size_in_bytes, queue_depth, file_size):
@@ -186,7 +221,7 @@ def start_niova_block_test(cluster_params, nisd_uuid_to_write, read_operation_ra
     #start niova block test process
     bin_path = '%s/niova-block-test' % binary_dir
     process_popen = subprocess.Popen([bin_path, '-c', nisd_uuid_to_write, '-r' , read_operation_ratio_percentage, 
-                                               '-N', num_ops, '-Q', '-v',vdev,'-Z', request_size_in_bytes,
+                                               '-N', num_ops, '-v',vdev,'-Z', request_size_in_bytes,
                                                '-q', queue_depth, '-z', file_size],
                                                      stdout = fp, stderr = fp)
 
@@ -199,20 +234,18 @@ def start_niova_block_test(cluster_params, nisd_uuid_to_write, read_operation_ra
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
-        Key = terms[0]
-        Value = terms[1]
-        Operation = terms[2] 
-        OutfileName = terms[3]
+        process_type = terms[0]
+        input_values = terms[1]
+
         cluster_params = kwargs['variables']['ClusterParams']
 
-        process_type = terms[4]
-        nisd_uuid = str(terms[5])
-
-        if process_type == "":
+        if process_type == "ncpc":
 
             # Start the ncpc_client and perform the specified operation e.g write/read/config.
-            process,outfile = start_ncpc_process(cluster_params, Key, Value,
-                                                Operation , OutfileName)
+            process,outfile = start_ncpc_process(cluster_params, input_values['Key'], input_values['Value'],
+                                                   input_values['Operation'], input_values['OutfileName'],
+                                                   input_values['IP_addr'], input_values['Port'])
+            
             output_data = get_the_output(outfile)
             return output_data
 
@@ -220,29 +253,35 @@ class LookupModule(LookupBase):
             if process_type == "niova-block-ctl":
             
                 # Start niova-block-ctl process
-                nisd_dsize = int(terms[6])
-                nisdPath = create_nisd_device_and_uuid(cluster_params, nisd_uuid, nisd_dsize)
-                niova_block_ctl_process = start_niova_block_ctl_process(cluster_params, nisdPath, nisd_uuid)
+                test_device_path = create_nisd_device_and_uuid(cluster_params, input_values['nisd_uuid'], input_values['nisd_dev_size'])
+                set_environment_variables(cluster_params)
+                niova_block_ctl_process = start_niova_block_ctl_process(cluster_params, test_device_path,
+                                                                                input_values['nisd_uuid'])
+                
                 return niova_block_ctl_process
             
             elif process_type == "nisd":
                 
+                set_environment_variables(cluster_params)
                 #start nisd process
-                nisdPath = prepare_nisd_device_path(cluster_params, nisd_uuid)
-                nisd_process = start_nisd_process(cluster_params, nisd_uuid, nisdPath)
+                nisdPath = prepare_nisd_device_path(cluster_params, input_values['nisd_uuid'])
+                nisd_process = start_nisd_process(cluster_params,  input_values['nisd_uuid'], nisdPath)
                 return nisd_process
 
             elif process_type == "niova-block-test":
             
+                set_environment_variables(cluster_params)
                 # Start niova-block-test
-                nisd_uuid_to_write = terms[7]
-                read_operation_ratio_percentage = terms[8]
-                num_ops = terms[9]
-                vdev = terms[10]
-                request_size_in_bytes = terms[11]
-                queue_depth = terms[12]
-                file_size = terms[13]
-                
-                niova_block_test_process = start_niova_block_test(cluster_params, nisd_uuid_to_write, read_operation_ratio_percentage,
-                                num_ops, vdev, request_size_in_bytes, queue_depth, file_size)
+                niova_block_test_process = start_niova_block_test(cluster_params, input_values['uuid_to_write'],
+                                                                  input_values['read_operation_ratio_percentage'], 
+                                                                  input_values['num_ops'],input_values['vdev'], 
+                                                                  input_values['request_size_in_bytes'],input_values['queue_depth'],
+                                                                  input_values['file_size'])
                 return niova_block_test_process
+
+            elif process_type == "niova-lookout"  : 
+              
+                set_environment_variables(cluster_params)
+                niova_lookout_process = start_niova_lookout_process(cluster_params)
+
+                return start_niova_lookout_process
