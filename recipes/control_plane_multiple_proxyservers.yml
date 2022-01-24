@@ -56,7 +56,7 @@
          ServerUUID: "{{ NonRunningServers[item] }}"
        loop: "{{ range(0, NonRunningServers | length) | list }}"
 
-      #Start proxyserver
+      # Start proxyserver
      - name: "{{ recipe_name }}: Start multiple proxy servers."
        include_role:
           name: common
@@ -76,28 +76,21 @@
 
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
-         Key: "Key"
-         Value: "Value"
-         Operation: "write"
-         OutfileName : "cpc_write_output"
-         process_type : ""
-         nisd_uuid : ""
-         nisd_dev_size : ""
-         uuid_to_write : ""
-         read_operation_ratio_percentage : ""
-         num_ops : ""
-         vdev :  ""
-         request_size_in_bytes : ""
-         queue_depth : ""
-         file_size : ""
-         ncpcclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
-                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
-                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+         input_param: {
+                  'Key': 'Key',
+                  'Value': 'Value',
+                  'Operation': 'write',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'cpc_write_output'
+                  }
+         ncpcclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Write key-value from ncpc client."
        with_items:
           - "{{ ncpcclires }}"
        register: writeres
+       no_log: true
 
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
@@ -109,23 +102,15 @@
 
      - name: "{{ recipe_name }}: Starting controlplane_client to read the value."
        vars:
-         Key: "Key"
-         Value: ""
-         Operation: "read"
-         OutfileName : "read_output"
-         process_type : ""
-         nisd_uuid : ""
-         nisd_dev_size : ""
-         uuid_to_write : ""
-         read_operation_ratio_percentage : ""
-         num_ops : ""
-         vdev :  ""
-         request_size_in_bytes : ""
-         queue_depth : ""
-         file_size : ""
-         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
-                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
-                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+         input_param: {
+                  'Key': 'Key',
+                  'Value': '',
+                  'Operation': 'read',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'read_output'
+                  }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Reading through ncpc client."
        with_items:
@@ -144,23 +129,15 @@
 
      - name: "{{ recipe_name }}: Starting controlplane_client to get the config values."
        vars:
-         Key: "{{ Peer['results'][0]['item'] }}"
-         Value: ""
-         Operation: "config"
-         OutfileName : "config_output"
-         process_type : ""
-         nisd_uuid : ""
-         nisd_dev_size : ""
-         uuid_to_write : ""
-         read_operation_ratio_percentage : ""
-         num_ops : ""
-         vdev :  ""
-         request_size_in_bytes : ""
-         queue_depth : ""
-         file_size : ""
-         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
-                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
-                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+         input_param: {
+                  'Key': '{{Peer["results"][0]["item"]}}',
+                  'Value': '',
+                  'Operation': 'config',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'config_output'
+                  }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Get config from ncpc_client."
        with_items:
@@ -191,24 +168,16 @@
 
      - name: "{{ recipe_name }}: Wait until killed proxy server's status gets changed."
        vars:
-         Operation: "membership"
-         Key: ""
-         Value: ""
-         OutfileName: "wait_for_nodeStatus_{{ item }}"
-         process_type : ""
-         nisd_uuid : ""
-         nisd_dev_size : ""
-         uuid_to_write : ""
-         read_operation_ratio_percentage : ""
-         num_ops : ""
-         vdev :  ""
-         request_size_in_bytes : ""
-         queue_depth : ""
-         file_size : ""
+         input_param: {
+                  'Key': '',
+                  'Value': '',
+                  'Operation': 'membership',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'wait_for_nodeStatus_{{ item }}'
+                  }    
        debug:
-         msg: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
-                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
-                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        no_log : true
        loop: "{{ range(0, 10) | list }}"
        loop_control:
@@ -216,23 +185,15 @@
 
      - name: "{{ recipe_name }}: Get proxy server's status."
        vars:
-         Operation: "membership"
-         Key: ""
-         Value: ""
-         OutfileName: "get_nodestatus"
-         process_type : ""
-         nisd_uuid : ""
-         nisd_dev_size : ""
-         uuid_to_write : ""
-         read_operation_ratio_percentage : ""
-         num_ops : ""
-         vdev :  ""
-         request_size_in_bytes : ""
-         queue_depth : ""
-         file_size : ""
-         getNodeData : "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
-                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
-                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+         input_param: {
+                  'Key': '',
+                  'Value': '',
+                  'Operation': 'membership',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'get_nodestatus'
+                  }
+         getNodeData: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Get node name"
        with_items:
@@ -249,23 +210,15 @@
 
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
-         Key: "Key"
-         Value: "Value"
-         Operation: "write"
-         OutfileName : "cpc_write_output"
-         process_type : ""
-         nisd_uuid : ""
-         nisd_dev_size : ""
-         uuid_to_write : ""
-         read_operation_ratio_percentage : ""
-         num_ops : ""
-         vdev :  ""
-         request_size_in_bytes : ""
-         queue_depth : ""
-         file_size : ""
-         ncpcclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
-                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
-                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+         input_param: {
+                  'Key': 'Key1',
+                  'Value': 'Value1',
+                  'Operation': 'write',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'cpc_write_output'
+                  }
+         ncpcclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Write key-value from ncpc client."
        with_items:
@@ -283,23 +236,15 @@
 
      - name: "{{ recipe_name }}: Starting controlplane_client to read the value."
        vars:
-         Key: "Key"
-         Value: ""
-         Operation: "read"
-         OutfileName : "read_output"
-         process_type : ""
-         nisd_uuid : ""
-         nisd_dev_size : ""
-         uuid_to_write : ""
-         read_operation_ratio_percentage : ""
-         num_ops : ""
-         vdev :  ""
-         request_size_in_bytes : ""
-         queue_depth : ""
-         file_size : ""
-         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
-                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
-                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+         input_param: {
+                  'Key': 'Key',
+                  'Value': '',
+                  'Operation': 'read',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'read_output'
+                  }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Reading through ncpc client."
        with_items:
@@ -318,23 +263,15 @@
 
      - name: "{{ recipe_name }}: Starting controlplane_client to get the config values."
        vars:
-         Key: "{{ Peer['results'][0]['item'] }}"
-         Value: ""
-         Operation: "config"
-         OutfileName : "config_output"
-         process_type : ""
-         nisd_uuid : ""
-         nisd_dev_size : ""
-         uuid_to_write : ""
-         read_operation_ratio_percentage : ""
-         num_ops : ""
-         vdev :  ""
-         request_size_in_bytes : ""
-         queue_depth : ""
-         file_size : ""
-         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
-                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
-                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+         input_param: {
+                  'Key': '{{ Peer["results"][0]["item"] }}',
+                  'Value': '',
+                  'Operation': 'config',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'config_output'
+                  }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Get config from ncpc_client."
        with_items:
@@ -348,48 +285,32 @@
 
      - name: "{{ recipe_name }}: Wait until killed pmdb server's status gets changed."
        vars:
-         Operation: "membership"
-         Key: ""
-         Value: ""
-         OutfileName: "wait_for_pmdbServerStatus_{{ item }}"
-         process_type : ""
-         nisd_uuid : ""
-         nisd_dev_size : ""
-         uuid_to_write : ""
-         read_operation_ratio_percentage : ""
-         num_ops : ""
-         vdev :  ""
-         request_size_in_bytes : ""
-         queue_depth : ""
-         file_size : ""
+         input_param: {
+                  'Key': '',
+                  'Value': '',
+                  'Operation': 'membership',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'wait_for_pmdbServerStatus_{{ item }}'
+                  }
        debug:
-         msg:  "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
-                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
-                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       no_log : true
        loop: "{{ range(0, 10) | list }}"
        loop_control:
           pause: 1
-       no_log : true
 
      - name: "{{ recipe_name }}: Get pmdb server's status."
        vars:
-         Operation: "membership"
-         Key: ""
-         Value: ""
-         OutfileName: "get_pmdbServerStatus"
-         process_type : ""
-         nisd_uuid : ""
-         nisd_dev_size : ""
-         uuid_to_write : ""
-         read_operation_ratio_percentage : ""
-         num_ops : ""
-         vdev :  ""
-         request_size_in_bytes : ""
-         queue_depth : ""
-         file_size : ""
-         getPmdbServerData: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
-                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
-                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+         input_param: {
+                  'Key': '',
+                  'Value': '',
+                  'Operation': 'membership',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'get_pmdbServerStatus'
+                  }
+         getPmdbServerData: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Get pmdb server status"
        with_items:

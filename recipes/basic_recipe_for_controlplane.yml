@@ -28,7 +28,7 @@
          name: common
          tasks_from: get_follower_stats
 
-      #Get multiple client uuids using common task.
+      # Get multiple client uuids using common task.
      - name: "Get multiple client uuids."
        include_role:
         name: common
@@ -47,7 +47,7 @@
          ServerUUID: "{{ NonRunningServers[item] }}"
        loop: "{{ range(0, NonRunningServers | length) | list }}"
 
-      #Start proxyserver
+      # Start proxyserver
      - name: "{{ recipe_name }}: Start proxy server."
        include_role:
           name: common
@@ -58,23 +58,15 @@
 
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
-         Key: "Key"
-         Value: "Value"
-         Operation: "write"
-         OutfileName : "write_output"
-         process_type : ""
-         nisd_uuid : ""
-         nisd_dev_size : ""
-         uuid_to_write : ""
-         read_operation_ratio_percentage : ""
-         num_ops : ""
-         vdev :  ""
-         request_size_in_bytes : ""
-         queue_depth : ""
-         file_size : ""
-         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
-                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
-                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+         input_param: {
+                'Key': 'Key',
+                'Value': 'Value',
+                'Operation': 'write',
+                'IP_addr': '',
+                'Port': '',
+                'OutfileName': 'write_output'
+                 }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
@@ -84,23 +76,15 @@
 
      - name: "{{ recipe_name }}: Starting controlplane_client to read the value."
        vars:
-         Key: "Key"
-         Value: ""
-         Operation: "read"
-         OutfileName : "read_output"
-         process_type : ""
-         nisd_uuid : ""
-         nisd_dev_size : ""
-         uuid_to_write : ""
-         read_operation_ratio_percentage : ""
-         num_ops : ""
-         vdev :  ""
-         request_size_in_bytes : ""
-         queue_depth : ""
-         file_size : ""
-         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
-                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
-                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+         input_param: {
+                'Key': 'Key',
+                'Value': '',
+                'Operation': 'read',
+                'IP_addr': '',
+                'Port': '',
+                'OutfileName': 'read_output'
+                }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
@@ -128,23 +112,15 @@
 
      - name: "{{ recipe_name }}: Starting controlplane_client to get the config values."
        vars:
-         Key: "{{ Peer['results'][0]['item'] }}"
-         Value: ""
-         Operation: "config"
-         OutfileName : "config_output"
-         process_type : ""
-         nisd_uuid : ""
-         nisd_dev_size : ""
-         uuid_to_write : ""
-         read_operation_ratio_percentage : ""
-         num_ops : ""
-         vdev :  ""
-         request_size_in_bytes : ""
-         queue_depth : ""
-         file_size : ""
-         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
-                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
-                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+         input_param: {
+                'Key': 'Peer["results"][0]["item"]',
+                'Value': '',
+                'Operation': 'config',
+                'IP_addr': '',
+                'Port': '',
+                'OutfileName': 'config_output'
+                 }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
@@ -154,23 +130,15 @@
 
      - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
        vars:
-         Key: ""
-         Value: ""
-         Operation: "membership"
-         OutfileName : "membership_output"
-         process_type : ""
-         nisd_uuid : ""
-         nisd_dev_size : ""
-         uuid_to_write : ""
-         read_operation_ratio_percentage : ""
-         num_ops : ""
-         vdev :  ""
-         request_size_in_bytes : ""
-         queue_depth : ""
-         file_size : ""
-         ncpclires: "{{ lookup('controlplane', Key, Value, Operation, OutfileName, process_type, nisd_uuid,
-                                     nisd_dev_size, uuid_to_write, read_operation_ratio_percentage, num_ops, vdev,
-                                     request_size_in_bytes, queue_depth, file_size, wantlist=True) }}"
+         input_param: {
+                'Key': 'Peer["results"][0]["item"]',
+                'Value': '',
+                'Operation': 'membership',
+                'IP_addr': '',
+                'Port': '',
+                'OutfileName': 'membership_output'
+                 }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
