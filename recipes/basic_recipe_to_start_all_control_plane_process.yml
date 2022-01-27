@@ -55,6 +55,9 @@
           ClientUUID: "{{ ClientUUIDS[item] }}"
        loop: "{{ range(0, ClientUUIDS | length) |list }}"
 
+     - pause:
+         seconds: 10
+
      - name: generate new uuid
        shell: uuidgen
        register: nisdUUID
@@ -85,11 +88,23 @@
        debug:
          msg: "{{ lookup('controlplane','ncpc', input_param, wantlist=True) }}"
 
+     - name: generate new lookout-uuid
+       shell: uuidgen
+       register: lookoutUUID
+
      - name: "{{ recipe_name }}: Start niova-lookout process."
        vars:
-         input_param: {}
+         input_param: {
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'aport' : '3900',
+                 'hport' : '8001',
+                 'rport' : '3901'
+                 }
        debug:
          msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
+
+     - pause:
+         seconds: 15
 
      - name: "{{ recipe_name }}: Start controlplane_client to get membership details."
        vars:

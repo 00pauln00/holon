@@ -147,7 +147,7 @@ def prepare_nisd_device_path(cluster_params, nisd_uuid):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
-    #prepare the nisd device path 
+    #prepare the nisd device path
     device_path = "%s/%s" % (cluster_params['base_dir'], cluster_params['raft_uuid'])
     nisd_file_name = "test_nisd_%s.device" % nisd_uuid
 
@@ -175,7 +175,7 @@ def set_environment_variables(cluster_params):
 
     return ctl_interface_path
 
-def start_niova_lookout_process(cluster_params):
+def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rport):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     app_name = cluster_params['app_type']
@@ -192,11 +192,11 @@ def start_niova_lookout_process(cluster_params):
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(log_file, "w")
     gossipNodes = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
- 
+
     #start niova block test process
     bin_path = '%s/lookout' % binary_dir
-    process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes],
-                                                     stdout = fp, stderr = fp)
+    process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes, '-n', lookout_uuid,
+                                            '-p', aport, '-port', hport, '-r', rport], stdout = fp, stderr = fp)
 
     # Sync the log file so all the logs from niova-block-test gets written to log file.
     os.fsync(fp)
@@ -220,7 +220,7 @@ def start_niova_block_test(cluster_params, nisd_uuid_to_write, read_operation_ra
 
     #start niova block test process
     bin_path = '%s/niova-block-test' % binary_dir
-    process_popen = subprocess.Popen([bin_path, '-c', nisd_uuid_to_write, '-r' , read_operation_ratio_percentage, 
+    process_popen = subprocess.Popen([bin_path, '-c', nisd_uuid_to_write, '-r' , read_operation_ratio_percentage,
                                                '-N', num_ops, '-v',vdev,'-Z', request_size_in_bytes,
                                                '-q', queue_depth, '-z', file_size],
                                                      stdout = fp, stderr = fp)
@@ -245,23 +245,23 @@ class LookupModule(LookupBase):
             process,outfile = start_ncpc_process(cluster_params, input_values['Key'], input_values['Value'],
                                                    input_values['Operation'], input_values['OutfileName'],
                                                    input_values['IP_addr'], input_values['Port'])
-            
+
             output_data = get_the_output(outfile)
             return output_data
 
         else:
             if process_type == "niova-block-ctl":
-            
+
                 # Start niova-block-ctl process
                 test_device_path = create_nisd_device_and_uuid(cluster_params, input_values['nisd_uuid'], input_values['nisd_dev_size'])
                 set_environment_variables(cluster_params)
                 niova_block_ctl_process = start_niova_block_ctl_process(cluster_params, test_device_path,
                                                                                 input_values['nisd_uuid'])
-                
+
                 return niova_block_ctl_process
-            
+
             elif process_type == "nisd":
-                
+
                 set_environment_variables(cluster_params)
                 #start nisd process
                 nisdPath = prepare_nisd_device_path(cluster_params, input_values['nisd_uuid'])
@@ -269,19 +269,20 @@ class LookupModule(LookupBase):
                 return nisd_process
 
             elif process_type == "niova-block-test":
-            
+
                 set_environment_variables(cluster_params)
                 # Start niova-block-test
                 niova_block_test_process = start_niova_block_test(cluster_params, input_values['uuid_to_write'],
-                                                                  input_values['read_operation_ratio_percentage'], 
-                                                                  input_values['num_ops'],input_values['vdev'], 
+                                                                  input_values['read_operation_ratio_percentage'],
+                                                                  input_values['num_ops'],input_values['vdev'],
                                                                   input_values['request_size_in_bytes'],input_values['queue_depth'],
                                                                   input_values['file_size'])
                 return niova_block_test_process
 
-            elif process_type == "niova-lookout"  : 
-              
+            elif process_type == "niova-lookout"  :
+
                 set_environment_variables(cluster_params)
-                niova_lookout_process = start_niova_lookout_process(cluster_params)
+                niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['lookout_uuid'],
+                                                                      input_values['aport'], input_values['hport'], input_values['rport'])
 
                 return start_niova_lookout_process
