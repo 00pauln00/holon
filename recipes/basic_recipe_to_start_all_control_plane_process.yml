@@ -98,7 +98,8 @@
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'aport' : '3900',
                  'hport' : '8001',
-                 'rport' : '3901'
+                 'rport' : '3901',
+                 'uport' : '1055'
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
