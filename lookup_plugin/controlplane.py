@@ -175,7 +175,7 @@ def set_environment_variables(cluster_params):
 
     return ctl_interface_path
 
-def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rport):
+def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rport, uport):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     app_name = cluster_params['app_type']
@@ -196,7 +196,7 @@ def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rpor
     #start niova block test process
     bin_path = '%s/lookout' % binary_dir
     process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes, '-n', lookout_uuid,
-                                            '-p', aport, '-port', hport, '-r', rport], stdout = fp, stderr = fp)
+                                            '-p', aport, '-port', hport, '-r', rport, '-u', uport], stdout = fp, stderr = fp)
 
     # Sync the log file so all the logs from niova-block-test gets written to log file.
     os.fsync(fp)
@@ -283,6 +283,6 @@ class LookupModule(LookupBase):
 
                 set_environment_variables(cluster_params)
                 niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['lookout_uuid'],
-                                                                      input_values['aport'], input_values['hport'], input_values['rport'])
+                                                                      input_values['aport'], input_values['hport'], input_values['rport'], input_values['uport'])
 
                 return start_niova_lookout_process
