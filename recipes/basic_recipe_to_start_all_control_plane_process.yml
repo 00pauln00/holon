@@ -44,6 +44,7 @@
          tasks_from: start_server_golang
        vars:
          ServerUUID: "{{ NonRunningServers[item] }}"
+         Process_type: "pmdb" 
        loop: "{{ range(0, NonRunningServers | length) | list }}"
 
       # Start proxyserver
@@ -99,7 +100,7 @@
                  'aport' : '3900',
                  'hport' : '8001',
                  'rport' : '3901',
-                 'uport' : '1055'
+                 'uport' : '1053'
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
@@ -119,13 +120,13 @@
                   }
        debug:
          msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-
+    
      - name: "{{ recipe_name }}: Start niova-block-ctl process."
        vars:
-         input_param: {
-                  'nisd_uuid': '{{ nisdUUID["stdout_lines"][0] }}',
-                  'nisd_dev_size': '21474836480'
-                  }
+          input_param: {
+             'nisd_uuid': '{{ nisdUUID["stdout_lines"][0] }}',
+             'nisd_dev_size': '21474836480'
+              }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-ctl', input_param, wantlist=True) }}"
 
@@ -138,6 +139,23 @@
        debug:
          msg: "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
 
+     - pause:
+         seconds: 15
+
+
+     - name: "{{ recipe_name }}: Start controlplane_client to get membership details."
+       vars:
+         input_param: {
+                  'Key': '',
+                  'Value': '',
+                  'Operation': 'membership',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'membership_output'
+                  }
+       debug:
+         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+
      - name: Generate new UUID
        shell: uuidgen
        register: blockTestUuid
@@ -146,12 +164,13 @@
        vars:
          stage: "get_system_info"
          raft_keys:
-              - "/system_info/rusage.in_block"
-              - "/system_info/rusage.out_block"
-              - "/system_info/rusage.vol_ctsw"
-              - "/system_info/rusage.invol_ctsw"
+             - "/system_info/rusage.in_block"
+             - "/system_info/rusage.out_block"
+             - "/system_info/rusage.vol_ctsw"
+             - "/system_info/rusage.invol_ctsw"
+         process_type: "nisd"
        debug:
-         msg: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID['stdout_lines'][0], raft_keys, wantlist=True) }}"
+         msg: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID['stdout_lines'][0], raft_keys, 'nisd', wantlist=True) }}"
        #no_log:  True
 
      - name: "{{ recipe_name }}: Start niova-block-test process."

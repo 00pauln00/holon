@@ -20,8 +20,13 @@ class InotifyPath:
                 @inotify_is_base_path: Is this NIOVA_INOTIFY_BASE_PATH
                 path? (True/False)
     '''
-    def __init__(self, base_dir_path, inotify_is_base_path):
-        self.inotify_path = "%s/ctl-interface" % base_dir_path
+    def __init__(self, base_dir_path, inotify_is_base_path, get_process_type="pmdb"):
+        
+        if get_process_type == "nisd":
+            self.inotify_path = "%s/niova_lookout" % base_dir_path
+        else:
+            self.inotify_path = "%s/ctl-interface" % base_dir_path
+        
         self.inotify_shared_init_path = "%s/init" % base_dir_path
         self.inotify_is_base_path = inotify_is_base_path
         # Create inotify and init directories

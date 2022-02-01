@@ -87,8 +87,8 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
         logging.warning("ctlsvc_path: %s" % ctlsvc_path)
         logging.warning("cluster_type: %s" % cluster_params['ctype'])
         logging.warning("coalesced_wr: %s" % cluster_params['coal_wr'])
-
-        inotifyobj = InotifyPath(base_dir, True)
+        get_process_type = "pmdb"
+        inotifyobj = InotifyPath(base_dir, True, get_process_type)
         inotifyobj.export_ctlsvc_path(ctlsvc_path)
         serverproc.start_process(base_dir, node_name, coalesced_wr)
 
