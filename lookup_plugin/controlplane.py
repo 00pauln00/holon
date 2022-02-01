@@ -7,6 +7,7 @@ import os
 import time
 import shutil, os
 import subprocess
+from genericcmd import *
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
 
@@ -134,8 +135,25 @@ def start_nisd_process(cluster_params, nisd_uuid, nisdPath):
     #start nisd process
     bin_path = '%s/nisd' % binary_dir
     process_popen = subprocess.Popen([bin_path, '-u', nisd_uuid, '-d', nisdPath],
-                                                 stdout = fp, stderr = fp)
+            stdout = fp, stderr = fp)
 
+    recipe_conf = load_recipe_op_config(cluster_params)
+    pid = os.getpid()
+
+    if not "raft_process" in recipe_conf:
+        recipe_conf['raft_process'] = {}
+
+    recipe_conf['raft_process'][nisd_uuid] = {}
+
+    recipe_conf['raft_process'][nisd_uuid]['process_raft_uuid'] = nisd_uuid
+    recipe_conf['raft_process'][nisd_uuid]['process_pid'] = pid
+    recipe_conf['raft_process'][nisd_uuid]['process_uuid'] = nisd_uuid
+    recipe_conf['raft_process'][nisd_uuid]['process_type'] = "nisd"
+    recipe_conf['raft_process'][nisd_uuid]['process_app_type'] = app_name
+    #recipe_conf['raft_process'][lookout_uuid]['process_status'] = pid.Status()
+
+    genericcmdobj = GenericCmds()
+    genericcmdobj.recipe_json_dump(recipe_conf)
 
     # Sync the log file so all the logs from nisd gets written to log file.
     os.fsync(fp)
@@ -165,15 +183,13 @@ def create_nisd_device_and_uuid(cluster_params, nisd_uuid, nisd_dev_size):
 
     return nisdpath_device
 
-def set_environment_variables(cluster_params):
+def set_environment_variables(niova_lookout_ctl_interface_path):
 
     #set environment variables
-    ctl_interface_path = "%s/%s/ctl-interface" % (cluster_params['base_dir'], cluster_params['raft_uuid'])
+    os.environ['NIOVA_INOTIFY_BASE_PATH'] = niova_lookout_ctl_interface_path
+    os.environ['NIOVA_LOCAL_CTL_SVC_DIR'] = niova_lookout_ctl_interface_path
 
-    os.environ['NIOVA_INOTIFY_BASE_PATH'] = ctl_interface_path
-    os.environ['NIOVA_LOCAL_CTL_SVC_DIR'] = ctl_interface_path
-
-    return ctl_interface_path
+    return niova_lookout_ctl_interface_path
 
 def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rport, uport):
     base_dir = cluster_params['base_dir']
@@ -182,9 +198,10 @@ def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rpor
 
 
     # Prepare path for executables.
-    binary_dir = os.getenv('NIOVA_BIN_PATH')
-
-    ctl_interface_path = set_environment_variables(cluster_params)
+    binary_dir = os.getenv('NIOVA_BIN_PATH') 
+    niova_lookout_ctl_interface_path = "%s/%s/niova_lookout/" % (cluster_params['base_dir'], cluster_params['raft_uuid'])
+    os.mkdir(niova_lookout_ctl_interface_path)
+    ctl_interface_path = set_environment_variables(niova_lookout_ctl_interface_path)
 
     # Prepare path for log file.
     log_file = "%s/%s/%s_niova-lookout_log.txt" % (base_dir, raft_uuid, app_name)
@@ -195,8 +212,27 @@ def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rpor
 
     #start niova block test process
     bin_path = '%s/lookout' % binary_dir
+
     process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes, '-n', lookout_uuid,
                                             '-p', aport, '-port', hport, '-r', rport, '-u', uport], stdout = fp, stderr = fp)
+
+    recipe_conf = load_recipe_op_config(cluster_params)
+    pid = os.getpid()
+
+    if not "raft_process" in recipe_conf:
+        recipe_conf['raft_process'] = {}
+
+    recipe_conf['raft_process'][lookout_uuid] = {}
+            
+    recipe_conf['raft_process'][lookout_uuid]['process_raft_uuid'] = lookout_uuid
+    recipe_conf['raft_process'][lookout_uuid]['process_pid'] = pid
+    recipe_conf['raft_process'][lookout_uuid]['process_uuid'] = lookout_uuid
+    recipe_conf['raft_process'][lookout_uuid]['process_type'] = "lookout"
+    recipe_conf['raft_process'][lookout_uuid]['process_app_type'] = app_name
+    #recipe_conf['raft_process'][lookout_uuid]['process_status'] = pid.Status()
+
+    genericcmdobj = GenericCmds()
+    genericcmdobj.recipe_json_dump(recipe_conf)
 
     # Sync the log file so all the logs from niova-block-test gets written to log file.
     os.fsync(fp)
@@ -230,6 +266,16 @@ def start_niova_block_test(cluster_params, nisd_uuid_to_write, read_operation_ra
 
     return process_popen
 
+def load_recipe_op_config(cluster_params):
+    recipe_conf = {}
+    raft_json_fpath = "%s/%s/%s.json" % (cluster_params['base_dir'],
+                                         cluster_params['raft_uuid'],
+                                         cluster_params['raft_uuid'])
+    if os.path.exists(raft_json_fpath):
+        with open(raft_json_fpath, "r+", encoding="utf-8") as json_file:
+            recipe_conf = json.load(json_file)
+
+    return recipe_conf
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
@@ -254,15 +300,16 @@ class LookupModule(LookupBase):
 
                 # Start niova-block-ctl process
                 test_device_path = create_nisd_device_and_uuid(cluster_params, input_values['nisd_uuid'], input_values['nisd_dev_size'])
-                set_environment_variables(cluster_params)
+                
                 niova_block_ctl_process = start_niova_block_ctl_process(cluster_params, test_device_path,
-                                                                                input_values['nisd_uuid'])
+                                                                               input_values['nisd_uuid'])
 
                 return niova_block_ctl_process
 
             elif process_type == "nisd":
+                niova_lookout_ctl_interface_path = "%s/%s/niova_lookout/" % (cluster_params['base_dir'], cluster_params['raft_uuid'])
+                set_environment_variables(niova_lookout_ctl_interface_path)
 
-                set_environment_variables(cluster_params)
                 #start nisd process
                 nisdPath = prepare_nisd_device_path(cluster_params, input_values['nisd_uuid'])
                 nisd_process = start_nisd_process(cluster_params,  input_values['nisd_uuid'], nisdPath)
@@ -270,7 +317,7 @@ class LookupModule(LookupBase):
 
             elif process_type == "niova-block-test":
 
-                set_environment_variables(cluster_params)
+                #set_environment_variables(cluster_params)
                 # Start niova-block-test
                 niova_block_test_process = start_niova_block_test(cluster_params, input_values['uuid_to_write'],
                                                                   input_values['read_operation_ratio_percentage'],
@@ -281,8 +328,8 @@ class LookupModule(LookupBase):
 
             elif process_type == "niova-lookout"  :
 
-                set_environment_variables(cluster_params)
+                #set_environment_variables(cluster_params)
                 niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['lookout_uuid'],
                                                                       input_values['aport'], input_values['hport'], input_values['rport'], input_values['uport'])
 
-                return start_niova_lookout_process
+                return niova_lookout_process
