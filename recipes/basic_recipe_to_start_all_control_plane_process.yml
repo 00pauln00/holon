@@ -44,7 +44,7 @@
          tasks_from: start_server_golang
        vars:
          ServerUUID: "{{ NonRunningServers[item] }}"
-         Process_type: "pmdb" 
+         Process_type: "pmdb"
        loop: "{{ range(0, NonRunningServers | length) | list }}"
 
       # Start proxyserver
@@ -120,7 +120,7 @@
                   }
        debug:
          msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-    
+
      - name: "{{ recipe_name }}: Start niova-block-ctl process."
        vars:
           input_param: {
@@ -186,4 +186,10 @@
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
-       #no_log:  True
+       no_log:  True
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
+
