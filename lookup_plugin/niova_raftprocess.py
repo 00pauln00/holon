@@ -28,7 +28,9 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
     node_name = ""
 
     if operation != "start":
+        logging.warning("operation %s", operation)
         pid = int(recipe_conf['raft_process'][peer_uuid]['process_pid'])
+        logging.warning("PID is %s", pid)
 
     serverproc = RaftProcess(cluster_params['ctype'], raft_uuid,
                              peer_uuid, proc_type, app_type)
@@ -127,7 +129,10 @@ def niova_raft_process_get_proc_type(uuid, raft_config):
     try:
         peer_idx = list(raft_config['raft_config']['peer_uuid_dict'].keys())[list(raft_config['raft_config']['peer_uuid_dict'].values()).index(uuid)]
     except:
-        proc_type = "client"
+        try:
+           proc_type = raft_config['raft_process'][uuid]['process_type']
+        except:
+           proc_type = "client"
 
     logging.warning("Type of uuid is: %s" % proc_type)
     return proc_type
@@ -226,8 +231,6 @@ class LookupModule(LookupBase):
 
         # Initialize the logger
         initialize_logger(cluster_params)
-
-        logging.warning("Peer uuid passed: %s" % uuid)
 
         # Load the recipe_operation config
         recipe_conf = load_recipe_op_config(cluster_params)
