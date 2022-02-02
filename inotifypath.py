@@ -20,13 +20,15 @@ class InotifyPath:
                 @inotify_is_base_path: Is this NIOVA_INOTIFY_BASE_PATH
                 path? (True/False)
     '''
-    def __init__(self, base_dir_path, inotify_is_base_path, get_process_type="pmdb"):
-        
+    def __init__(self, base_dir_path, inotify_is_base_path, get_process_type):
+
         if get_process_type == "nisd":
+            logging.warning("Process type is nisd")
             self.inotify_path = "%s/niova_lookout" % base_dir_path
         else:
+            logging.warning("Process type is pmdb")
             self.inotify_path = "%s/ctl-interface" % base_dir_path
-        
+
         self.inotify_shared_init_path = "%s/init" % base_dir_path
         self.inotify_is_base_path = inotify_is_base_path
         # Create inotify and init directories
@@ -78,7 +80,7 @@ class InotifyPath:
         logging.warning("exporting NIOVA_LOCAL_CTL_SVC_DIR=%s",
                         os.environ['NIOVA_LOCAL_CTL_SVC_DIR'])
 
-    
+
     '''
     method: prepare input/output path.
     purpose: Prepare the absolute path for input/output files for specific
