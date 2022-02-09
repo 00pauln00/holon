@@ -100,7 +100,8 @@
                  'aport' : '3900',
                  'hport' : '8001',
                  'rport' : '3901',
-                 'uport' : '1053'
+                 'uport' : '1053',
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
@@ -125,7 +126,8 @@
        vars:
           input_param: {
              'nisd_uuid': '{{ nisdUUID["stdout_lines"][0] }}',
-             'nisd_dev_size': '21474836480'
+             'nisd_dev_size': '21474836480',
+             'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
               }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-ctl', input_param, wantlist=True) }}"
@@ -133,7 +135,9 @@
      - name: "{{ recipe_name }}: Start nisd process."
        vars:
          input_param: {
-                  'nisd_uuid' : '{{ nisdUUID["stdout_lines"][0] }}'
+                  'nisd_uuid' : '{{ nisdUUID["stdout_lines"][0] }}',
+                   'uport' : '1053',  
+                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                   }
          nisd : "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
        debug:
@@ -141,7 +145,6 @@
 
      - pause:
          seconds: 15
-
 
      - name: "{{ recipe_name }}: Start controlplane_client to get membership details."
        vars:
@@ -169,8 +172,9 @@
              - "/system_info/rusage.vol_ctsw"
              - "/system_info/rusage.invol_ctsw"
          process_type: "nisd"
+         lookout_uuid :  '{{ lookoutUUID["stdout_lines"][0] }}'
        debug:
-         msg: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID['stdout_lines'][0], raft_keys, 'nisd', wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID['stdout_lines'][0], raft_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        #no_log:  True
 
      - name: "{{ recipe_name }}: Start niova-block-test process."
@@ -182,7 +186,8 @@
                  'vdev' :   '{{ blockTestUuid["stdout_lines"][0] }}',
                  'request_size_in_bytes' : '16',
                  'queue_depth' : '100',
-                 'file_size' : '8589934592'
+                 'file_size' : '8589934592',
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"

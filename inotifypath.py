@@ -20,11 +20,10 @@ class InotifyPath:
                 @inotify_is_base_path: Is this NIOVA_INOTIFY_BASE_PATH
                 path? (True/False)
     '''
-    def __init__(self, base_dir_path, inotify_is_base_path, get_process_type):
-
+    def __init__(self, base_dir_path, inotify_is_base_path, get_process_type, lookout_uuid):
         if get_process_type == "nisd":
             logging.warning("Process type is nisd")
-            self.inotify_path = "%s/niova_lookout" % base_dir_path
+            self.inotify_path = "%s/niova_lookout/%s" % (base_dir_path, lookout_uuid)
         else:
             logging.warning("Process type is pmdb")
             self.inotify_path = "%s/ctl-interface" % base_dir_path
@@ -87,7 +86,7 @@ class InotifyPath:
     peer_uuid and app_uuid
     '''
     def prepare_input_output_path(self, peer_uuid, base_fname, input_dir,
-                                  input_base, app_uuid):
+                             input_base, app_uuid):
         dir_name = "output"
         timestamp = int(round(time.time() * 1000))
         
