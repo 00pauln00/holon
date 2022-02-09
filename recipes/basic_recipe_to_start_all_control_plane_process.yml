@@ -101,7 +101,6 @@
                  'hport' : '8001',
                  'rport' : '3901',
                  'uport' : '1053',
-                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
