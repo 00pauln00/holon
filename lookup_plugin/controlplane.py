@@ -189,7 +189,14 @@ def create_nisd_device_and_uuid(cluster_params, nisd_uuid, nisd_dev_size):
 
     return nisdpath_device
 
-def set_environment_variables(niova_lookout_ctl_interface_path):
+def set_environment_variables(cluster_params,lookout_uuid):
+    niova_lookout_ctl_interface_path = "%s/%s/niova_lookout/%s" % (cluster_params['base_dir'],
+                                                           cluster_params['raft_uuid'], lookout_uuid)
+
+    if os.path.exists(niova_lookout_ctl_interface_path):
+        print("file already exist")
+    else:
+        os.mkdir(niova_lookout_ctl_interface_path)
 
     #set environment variables
     os.environ['NIOVA_INOTIFY_BASE_PATH'] = niova_lookout_ctl_interface_path
@@ -202,17 +209,11 @@ def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rpor
     raft_uuid = cluster_params['raft_uuid']
     app_name = cluster_params['app_type']
 
-
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
-    niova_lookout_ctl_interface_path = "%s/%s/niova_lookout/" % (cluster_params['base_dir'], cluster_params['raft_uuid'])
-    if os.path.exists(niova_lookout_ctl_interface_path):
-        print("file already exist")
-    else:
-        os.mkdir(niova_lookout_ctl_interface_path)
-    ctl_interface_path = set_environment_variables(niova_lookout_ctl_interface_path)
 
-    # Prepare path for log file.
+    ctl_interface_path = set_environment_variables(cluster_params, lookout_uuid)
+
     # Prepare path for log file.
     log_file = "%s/%s/%s_niova-lookout_%s_log.txt" % (base_dir, raft_uuid, app_name, lookout_uuid)
 
@@ -227,8 +228,8 @@ def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rpor
                                             '-p', aport, '-port', hport, '-r', rport, '-u', uport], stdout = fp, stderr = fp)
 
     logging.warning("starting niova-lookout process")
-    
-    #writing the information of nisd into raft_uuid.json 
+
+    #writing the information of nisd into raft_uuid.json
     recipe_conf = load_recipe_op_config(cluster_params)
     pid = process_popen.pid
     ps = psutil.Process(pid)
@@ -313,8 +314,12 @@ class LookupModule(LookupBase):
         else:
             if process_type == "niova-block-ctl":
 
+                lookout_uuid = input_values['lookout_uuid'] 
+                set_environment_variables(cluster_params, input_values['lookout_uuid'])
+                
                 # Start niova-block-ctl process
-                test_device_path = create_nisd_device_and_uuid(cluster_params, input_values['nisd_uuid'], input_values['nisd_dev_size'])
+                test_device_path = create_nisd_device_and_uuid(cluster_params, input_values['nisd_uuid'],
+                                                                input_values['nisd_dev_size'])
 
                 niova_block_ctl_process = start_niova_block_ctl_process(cluster_params, test_device_path,
                                                                                input_values['nisd_uuid'])
@@ -322,17 +327,20 @@ class LookupModule(LookupBase):
                 return niova_block_ctl_process
 
             elif process_type == "nisd":
-                niova_lookout_ctl_interface_path = "%s/%s/niova_lookout/" % (cluster_params['base_dir'], cluster_params['raft_uuid'])
-                set_environment_variables(niova_lookout_ctl_interface_path)
 
+                set_environment_variables(cluster_params, input_values['lookout_uuid'])
+                
                 #start nisd process
                 nisdPath = prepare_nisd_device_path(cluster_params, input_values['nisd_uuid'])
-                nisd_process = start_nisd_process(cluster_params,  input_values['nisd_uuid'], input_values['uport'], nisdPath)
-                
+                nisd_process = start_nisd_process(cluster_params,  input_values['nisd_uuid'], input_values['uport'],
+                                                           nisdPath)
+
                 return nisd_process
 
             elif process_type == "niova-block-test":
 
+                set_environment_variables(cluster_params, input_values['lookout_uuid'])
+                
                 # Start niova-block-test
                 niova_block_test_process = start_niova_block_test(cluster_params, input_values['uuid_to_write'],
                                                                   input_values['read_operation_ratio_percentage'],
@@ -342,6 +350,14 @@ class LookupModule(LookupBase):
                 return niova_block_test_process
 
             elif process_type == "niova-lookout"  :
+                
+                niova_lookout_path = "%s/%s/niova_lookout" % (cluster_params['base_dir'],
+                                                           cluster_params['raft_uuid'])
+
+                if os.path.exists(niova_lookout_path):
+                    print("file already exist")
+                else:
+                    os.mkdir(niova_lookout_path)
 
                 niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['lookout_uuid'],
                                                                       input_values['aport'], input_values['hport'],
