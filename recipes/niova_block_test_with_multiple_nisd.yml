@@ -5,7 +5,9 @@
     recipe_name: "niova_block_test_with_multiple_nisd"
     parent: None
     number_of_clients: 2
-    number_of_uuids: 2
+    number_of_uuids: 5
+    number_of_nisd_uuids: 5
+    no_of_nblock_test_uuids: 5
 
   tasks:
   - block:
@@ -59,9 +61,9 @@
      - pause:
          seconds: 10
 
-     - name: "Generate UUIDs to start nisd process."
+     - name: "Generate 5 UUIDs to start nisd process."
        shell: "/usr/bin/uuid"
-       loop: "{{ range(0, number_of_uuids) | list }}"
+       loop: "{{ range(0, number_of_nisd_uuids) | list }}"
        register: unique_nisd_uuids
 
      - name: "Create list of nisd uuids."
@@ -105,7 +107,7 @@
           pause: 2
 
      - pause:
-         seconds: 15
+         seconds: 5
 
      - name: "Generate UUIDs to start niova-lookout process."
        shell: "/usr/bin/uuid"
@@ -150,185 +152,116 @@
        debug:
          msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
 
-
-     - name: "{{ recipe_name }}: Start niova-block-ctl process."
+     - name: "{{ recipe_name }}: Start niova-block-ctl process.."
+       include_role:
+          name: common
+          tasks_from: start_niova_block_ctl
        vars:
-         input_param: {
-                  'nisd_uuid': '{{ nisd_uuids[item] }}',
-                  'nisd_dev_size': '21474836480'
-                  }
-       debug:
-         msg: "{{ lookup('controlplane', 'niova-block-ctl', input_param, wantlist=True) }}"
-       loop: "{{ range(0, nisd_uuids | length) | list }}"
-       loop_control:
-          pause: 2
+         lookoutUUIDList: "{{ lookout_uuids }}"
+         nisdUuidsList: "{{ nisd_uuids }}"
+         nisdDevFile: '21474836480'
 
-     - name: "{{ recipe_name }}: Start nisd process."
+     - name: "{{ recipe_name }}: Prepare 5 nisd uuid list."
        vars:
-         input_param: {
-                  'nisd_uuid' : '{{ nisd_uuids[item] }}',
-                  'uport' : '106{{ item }}'
-                  }
-       debug:
-         msg: "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
-       loop: "{{ range(0, nisd_uuids | length) | list }}"
-       loop_control:
-          pause: 2
-
-     - name: Generate new UUID
-       shell: uuidgen
-       register: blockTestUuid
-
-     - name: "{{ recipe_name }}: Get system info."
-       vars:
-         stage: "get_system_info"
-         raft_keys:
-              - "/system_info/rusage.in_block"
-              - "/system_info/rusage.out_block"
-              - "/system_info/rusage.vol_ctsw"
-              - "/system_info/rusage.invol_ctsw"
-       debug:
-         msg: "{{ lookup('niova_ctlrequest', 'lookup', nisd_uuids[item], raft_keys, 'nisd', wantlist=True) }}"
-       loop: "{{ range(0, nisd_uuids | length) | list }}"
-       loop_control:
-          pause: 1
-       #no_log:  True
-
-     - name: "{{ recipe_name }}: Start niova-block-test process."
-       vars:
-         input_param: {
-                 'uuid_to_write' :  '{{ nisd_uuids[item] }}',
-                 'read_operation_ratio_percentage' : '0',
-                 'num_ops' : '1000',
-                 'vdev' :   '{{ blockTestUuid["stdout_lines"][0] }}',
-                 'request_size_in_bytes' : '16',
-                 'queue_depth' : '100',
-                 'file_size' : '8589934592'
-                 }
-       debug:
-         msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
-       loop: "{{ range(0, nisd_uuids | length) | list }}"
-       loop_control:
-          pause: 1
-       #no_log:  True
-
-     - name: "{{ recipe_name }}: Kill one of the lookout-process."
-       debug:
-         msg:  "{{ lookup('niova_raftprocess', 'kill', lookout_uuids[0], wantlist=True) }}"
-
-     - pause:
-        seconds: 10
-
-     - name: "{{ recipe_name }}: Wait until killed niova-lookout process's status gets changed."
-       vars:
-         input_param: {
-                  'Key': '',
-                  'Value': '',
-                  'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
-                  'OutfileName': 'wait_for_nodeStatus_{{ item }}'
-                  }
-       debug:
-         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       no_log : true
-       loop: "{{ range(0, 10) | list }}"
-       loop_control:
-           pause: 1
-
-     - name: "{{ recipe_name }}: verify killed niova-lookout process's status gets changed."
-       vars:
-         input_param: {
-                  'Key': '',
-                  'Value': '',
-                  'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
-                  'OutfileName': 'verify_lookout_status'
-                  }
-       debug:
-         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-
-     - name: "{{ recipe_name }}: Restart same niova-lookout process."
-       vars:
-         input_param: {
-                 'lookout_uuid' :  '{{ lookout_uuids[0] }}',
-                 'aport' : '4900',
-                 'hport' : '9000',
-                 'rport' : '5900',
-                 'uport' : '1060'
-                 }
-       debug:
-         msg:
-          -  "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
-
-     - pause:
-        seconds: 5
-
-     - name: "{{ recipe_name }}: Verify niova-lookout process's status is 'alive' now."
-       vars:
-         input_param: {
-                  'Key': '',
-                  'Value': '',
-                  'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
-                  'OutfileName': 'verify_restarted_lookout_status'
-                  }
-       debug:
-         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-
-     - name: Generate new NISD UUID
-       shell: uuidgen
-       register: newNisdUuid
+         nisd_uuid_list: []
+       set_fact:
+         nisd_uuid_list: "{{ nisd_uuid_list + [nisd_uuids[item]] }}"
+       loop: "{{ range(0, nisd_uuids | length - 2) | list }}"
 
      - debug:
-         msg: "nisd-uuid: {{ newNisdUuid['stdout_lines'][0] }}"
+         msg: "{{ nisd_uuid_list }}"
 
-     - name: "{{ recipe_name }}: Start new nisd process."
+     - name: "{{ recipe_name }}: Prepare 3 uuid list."
+       set_fact:
+         get_nisd_list: "{{ nisd_uuids | difference(nisd_uuid_list) }}"
+
+     - debug:
+         msg: "{{ get_nisd_list }}"
+
+     - name: "{{ recipe_name }}: Start 5 nisd process for 1 lookout process."
        vars:
          input_param: {
-                  'nisd_uuid' : '{{ newNisdUuid["stdout_lines"][0] }}',
-                  'uport' : '1060'
+                  'nisd_uuid' : '{{ nisd_uuid_list[item] }}',
+                  'uport' : '1060',
+                  'lookout_uuid' :  '{{ lookout_uuids[0] }}'
                   }
        debug:
          msg: "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
+       loop: "{{ range(0, nisd_uuid_list | length) | list }}"
+       loop_control:
+          pause: 5
 
-     - pause:
-         seconds: 2
-
-     - name: "{{ recipe_name }}: Verify new nisd process's status is 'alive'."
+     - name: "{{ recipe_name }}: Start 3 nisd process for another lookout process."
        vars:
+         get_nisd_list: "{{ nisd_uuids | difference(nisd_uuid_list) }}"
          input_param: {
-                  'Key': '',
-                  'Value': '',
-                  'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
-                  'OutfileName': 'verify_new_nisd_status'
+                  'nisd_uuid' : '{{ get_nisd_list[item] }}',
+                  'uport' : '1061',
+                  'lookout_uuid' :  '{{ lookout_uuids[1] }}'
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         msg: "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
+       loop: "{{ range(0, get_nisd_list | length) | list }}"
+       loop_control:
+          pause: 5
 
-     - name: "{{ recipe_name }}: Kill one of the nisd process."
-       debug:
-         msg:  "{{ lookup('niova_raftprocess', 'kill', nisd_uuids[1], wantlist=True) }}"
-
-     - pause:
-        seconds: 10
-
-     - name: "{{ recipe_name }}: Verify nisd process's status is 'Dead'."
+     - name: "{{ recipe_name }}: Get system info before write operation for 1 lookout."
+       include_role:
+          name: common
+          tasks_from: get_nisd_info
        vars:
-         input_param: {
-                  'Key': '',
-                  'Value': '',
-                  'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
-                  'OutfileName': 'verify_killed_nisd_status'
-                  }
-       debug:
-         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         lookoutUUIDList: "{{ lookout_uuids[0] }}"
+         nisdUuidsList: "{{ nisd_uuid_list }}"
+
+     - name: "{{ recipe_name }}: Get system info before write operation for 2nd lookout."
+       include_role:
+          name: common
+          tasks_from: get_nisd_info
+       vars:
+         lookoutUUIDList: "{{ lookout_uuids[1] }}"
+         nisdUuidsList: "{{ get_nisd_list }}"
+
+     - name: "Generate uuid to write operation"
+       shell: "/usr/bin/uuid"
+       loop: "{{ range(0, no_of_nblock_test_uuids) | list }}"
+       register: unique_nblock_test_uuids
+
+     - name: "Create list of niova-block-test uuids."
+       set_fact:
+          nblock_test_uuids_list: "{{ nblock_test_uuids_list | default([]) + [unique_nblock_test_uuids['results'][item]['stdout']] }}"
+       loop: "{{ range(0, unique_nblock_test_uuids['results'] | length) | list }}"
+
+     - debug:
+         msg: "niova_block_test UUIDS: {{ nblock_test_uuids_list }}"
+
+     - name: "{{ recipe_name }}: Do write operation through niova-block-test."
+       include_role:
+          name: common
+          tasks_from: write_with_niova_block_test
+       vars:
+         nblock_test_uuids: "{{ nblock_test_uuids_list }}"
+         nisdUuidsList: "{{ nisd_uuids }}"
+         lookoutUUIDList: "{{ lookout_uuids }}"
+         rd_op_ratio: '0.5'
+         num_of_ops: '1000'
+         req_sz: '16'
+         queueDepth: '100'
+
+     - name: "{{ recipe_name }}: Get system info after write operation for 1 lookout."
+       include_role:
+          name: common
+          tasks_from: get_nisd_info
+       vars:
+         lookoutUUIDList: "{{ lookout_uuids[0] }}"
+         nisdUuidsList: "{{ nisd_uuid_list }}"
+
+     - name: "{{ recipe_name }}: Get system info after write operation for 2nd lookout."
+       include_role:
+          name: common
+          tasks_from: get_nisd_info
+       vars:
+         lookoutUUIDList: "{{ lookout_uuids[1] }}"
+         nisdUuidsList: "{{ get_nisd_list }}"
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

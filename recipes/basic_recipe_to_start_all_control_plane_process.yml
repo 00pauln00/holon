@@ -4,6 +4,7 @@
   vars:
     recipe_name: "basic_recipe_to_start_all_controlplane_process"
     number_of_clients: 2
+    number_of_vdev_uuids: 5
 
   tasks:
   - block:
@@ -101,6 +102,7 @@
                  'hport' : '8001',
                  'rport' : '3901',
                  'uport' : '1053',
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
@@ -135,7 +137,7 @@
        vars:
          input_param: {
                   'nisd_uuid' : '{{ nisdUUID["stdout_lines"][0] }}',
-                   'uport' : '1053',  
+                   'uport' : '1053',
                   'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                   }
          nisd : "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
@@ -176,21 +178,54 @@
         msg: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID['stdout_lines'][0], raft_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        #no_log:  True
 
+     - name: "Generate different vdev UUIDs."
+       shell: "/usr/bin/uuid"
+       loop: "{{ range(0, number_of_vdev_uuids) | list }}"
+       register: unique_vdev_uuids
+
+     - name: "Create list of lookout uuids."
+       set_fact:
+          vdev_uuids: "{{ vdev_uuids | default([]) + [unique_vdev_uuids['results'][item]['stdout']] }}"
+       loop: "{{ range(0, unique_vdev_uuids['results'] | length) | list }}"
+
+     - debug:
+         msg: "vdev uuids: {{ vdev_uuids }}"
+
      - name: "{{ recipe_name }}: Start niova-block-test process."
        vars:
          input_param: {
                  'uuid_to_write' :  '{{ nisdUUID["stdout_lines"][0] }}',
                  'read_operation_ratio_percentage' : '0',
-                 'num_ops' : '1000',
-                 'vdev' :   '{{ blockTestUuid["stdout_lines"][0] }}',
+                 'num_ops' : '10000',
+                 'vdev' :   '{{ vdev_uuids[item] }}',
                  'request_size_in_bytes' : '16',
                  'queue_depth' : '100',
-                 'file_size' : '8589934592',
+                 'file_size' : '2147483648',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
-       no_log:  True
+       loop: "{{ range(0, vdev_uuids | length) | list }}"
+       loop_control:
+          pause: 5
+       #no_log:  True
+
+     #- pause:
+     #    seconds: 5
+
+     - name: "{{ recipe_name }}: Get system info after write."
+       vars:
+         stage: "get_system_info_aftr_wr"
+         raft_keys:
+             - "/system_info/rusage.in_block"
+             - "/system_info/rusage.out_block"
+             - "/system_info/rusage.vol_ctsw"
+             - "/system_info/rusage.invol_ctsw"
+         process_type: "nisd"
+         lookout_uuid :  '{{ lookoutUUID["stdout_lines"][0] }}'
+       debug:
+         msg: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID['stdout_lines'][0], raft_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+       #no_log:  True
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

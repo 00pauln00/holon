@@ -1,0 +1,27 @@
+---
+
+     - debug:
+         msg: "niova_block_test list: {{ nblock_test_uuids }}"
+
+     - debug:
+         msg: "nisd_uuid_list: {{ nisdUuidsList }}"
+
+     - name: "{{ recipe_name }}: Start niova-block-test process."
+       vars:
+         input_param: {
+                 'uuid_to_write' :  '{{ nisdUuidsList[item] }}',
+                 'read_operation_ratio_percentage' : '{{ rd_op_ratio }}',
+                 'num_ops' : '{{ num_of_ops }}',
+                 'vdev' :   '{{ nblock_test_uuids[item] }}',
+                 'request_size_in_bytes' : '{{ req_sz }}',
+                 'queue_depth' : '{{ queueDepth }}',
+                 'file_size' : '2147483648',
+                 'lookout_uuid' : '{{ lookoutUUIDList[item] }}'
+                 }
+       debug:
+         msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
+       loop: "{{ range(0, nblock_test_uuids | length) | list }}"
+       loop_control:
+          pause: 5
+
+
