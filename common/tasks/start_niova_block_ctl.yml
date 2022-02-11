@@ -1,0 +1,14 @@
+
+     - name: "{{ recipe_name }}: Start multiple niova_block_ctl process."
+       vars:
+         input_param: {
+                  'nisd_uuid' : '{{ nisdUuidsList[item] }}',
+                  'nisd_dev_size' : '{{ nisdDevFile }}',
+                  'lookout_uuid' :  '{{ lookoutUUIDList[item] }}'
+                  }
+       debug:
+         msg: "{{ lookup('controlplane', 'niova-block-ctl', input_param, wantlist=True) }}"
+       loop: "{{ range(0, lookoutUUIDList | length) | list }}"
+       loop_control:
+          pause: 10
+

@@ -1,0 +1,16 @@
+     - name: "{{ recipe_name }}: Get system info after write operation."
+       vars:
+         stage: "get_system_info"
+         raft_keys:
+              - "/system_info/rusage.in_block"
+              - "/system_info/rusage.out_block"
+              - "/system_info/rusage.vol_ctsw"
+              - "/system_info/rusage.invol_ctsw"
+         process_type: "nisd"
+         lookout_uuid: "{{ lookoutUUIDList }}"
+       debug:
+         msg: "{{ lookup('niova_ctlrequest', 'lookup', nisdUuidsList[item], raft_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+       loop: "{{ range(0, nisdUuidsList | length) | list }}"
+       loop_control:
+          pause: 1
+
