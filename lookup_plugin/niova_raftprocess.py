@@ -78,7 +78,11 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
     elif operation == "kill":
         serverproc.kill_process(pid)
     elif operation == "kill_child":
-        serverproc.kill_child_process(pid)
+        try:
+            serverproc.kill_child_process(pid)
+        except:
+            logging.info("No child process to kill")
+
 
     json_string = json.dumps(serverproc.__dict__)
     raft_proc_dict = json.loads(json_string)
