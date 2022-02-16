@@ -38,7 +38,7 @@
        vars:
          ClientUUID: "{{ client_uuid.stdout }}"
 
-     - name: "{{ recipe_name }}: Pause for 5 seconds to build app cache."
+     - name: "{{ recipe_name }}: Pause for 5 seconds to start proxy server properly."
        pause:
         seconds: 5
 
@@ -66,8 +66,7 @@
        debug:
          msg: "Check if write is successful"
        failed_when: >
-         ( writeres['results'][0]['item']['write'][0]['Response']['Status'] != 0) or
-         ( writeres['results'][0]['item']['write'][0]['Response']['Validate'] != true)
+         ( writeres['results'][0]['item']['write'][0]['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: Starting niovakv_client to read the value."
        vars:

@@ -1,9 +1,9 @@
 - import_playbook: niovakv_leader_election.yml
-- name: "niovakv_surf_membership_check"
+- name: "niovakv_serf_membership_check"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "niovakv_surf_membership_check"
+    recipe_name: "niovakv_serf_membership_check"
     parent: "niovakv_leader_election"
 
   tasks:
@@ -64,7 +64,6 @@
        debug:
          msg: "Check if write is successful"
        failed_when: >
-             writeres['results'][0]['item']['write'][0]['Response']['Validate'] != true or
              writeres['results'][0]['item']['write'][0]['Response']['Status'] != 0
 
        # Kill the niovakv-server.
