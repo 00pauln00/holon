@@ -1,0 +1,147 @@
+- import_playbook: niova_block_test_with_multiple_nisd.yml
+- name: "niova_block_gossip_info_check"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "niova_block_gossip_info_check"
+    parent: "niova_block_test_with_multiple_nisd"
+
+  tasks:
+  - block:
+      # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "controlplane")
+
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     - name: "{{ recipe_name }}: Get the leader and follower uuids."
+       include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+     - name: "{{ recipe_name }}: Kill one of the pmdb server."
+       debug:
+        msg: "killing the pmdb server {{ lookup('niova_raftprocess', 'kill', NRunningPeers[0], wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: Wait until killed pmdb server's status gets changed."
+       vars:
+         input_param: {
+                  'Key': '',
+                  'Value': '',
+                  'Operation': 'membership',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'wait_for_pmdbServer_gossip_{{ item }}'
+                  }
+       debug:
+         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       no_log : true
+       loop: "{{ range(0, 10) | list }}"
+       loop_control:
+           pause: 1
+
+     - name: "{{ recipe_name }}: Get killed pmdb server's gossip details."
+       vars:
+         input_param: {
+                  'Key': '',
+                  'Value': '',
+                  'Operation': 'membership',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'verify_pmdb_server_status'
+                  }
+         killPmdbServer: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Get killed pmdb server's details."
+       with_items:
+          - "{{ killPmdbServer }}"
+       register: verifyKilledPmdbServer
+
+     - debug:
+         msg: "{{ verifyKilledPmdbServer }}"
+
+     - name: "{{ recipe_name }}: Verify gosssip details of killed pmdb server."
+       vars:
+         verifyStatus: "{{ verifyKilledPmdbServer['results'][0]['item'][NRunningPeers[0]] }}"
+       debug:
+         msg:
+          - "Verifying killed lookout process's status"
+       failed_when: >
+        (verifyStatus['Status'] != "failed")
+
+     - name: "{{ recipe_name }}: Kill one of the proxy server."
+       debug:
+        msg: "killing the pmdb server {{ lookup('niova_raftprocess', 'kill', ClientUUIDS[0], wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: prepare path to read recipe JSON file."
+       shell: cat "{{base_dir}}"/"{{raft_uuid}}".json
+       register: result
+
+     - name: "{{ recipe_name }}: Convert output to JSON format."
+       set_fact:
+         getNodeDetails: "{{ result.stdout | from_json }}"
+
+     - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
+       set_fact:
+         getNodeName: "{{ getNodeDetails | json_query(jmesquery) }}"
+       vars:
+         jmesquery: 'serf_nodes."{{ ClientUUIDS[0] }}"'
+
+     - debug:
+         msg: "Killed node name is: {{ getNodeName }}"
+
+     - name: "{{ recipe_name }}: Wait until node status gets changed."
+       vars:
+         input_param: {
+                  'Key': '',
+                  'Value': '',
+                  'Operation': 'membership',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'verify_proxyNode_status_{{ item }}'
+                  }
+       debug:
+         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       no_log : true
+       loop: "{{ range(0, 10) | list }}"
+       loop_control:
+          pause: 1
+
+     - name: "{{ recipe_name }}: Get proxy server's gossip details."
+       vars:
+         input_param: {
+                  'Key': '',
+                  'Value': '',
+                  'Operation': 'membership',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'verify_proxy_status'
+                  }
+         killProxyServer: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Get killed pmdb server's details."
+       with_items:
+          - "{{ killProxyServer }}"
+       register: verifyKilledProxyServer
+
+     - debug:
+         msg: "{{ verifyKilledProxyServer }}"
+
+     - name: "{{ recipe_name }}: Verify gosssip details of killed proxy server."
+       vars:
+         verifyStatus: "{{ verifyKilledProxyServer['results'][0]['item'][getNodeName] }}"
+       debug:
+         msg:
+          - "Verifying killed proxy server's status"
+       failed_when: >
+         (verifyStatus['Status'] != "failed")
+
+

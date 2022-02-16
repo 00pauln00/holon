@@ -15,7 +15,7 @@
                  'vdev' :   '{{ nblock_test_uuids[item] }}',
                  'request_size_in_bytes' : '{{ req_sz }}',
                  'queue_depth' : '{{ queueDepth }}',
-                 'file_size' : '2147483648',
+                 'file_size' : '{{ fileSize }}',
                  'lookout_uuid' : '{{ lookoutUUIDList[item] }}'
                  }
        debug:
