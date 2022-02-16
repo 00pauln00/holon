@@ -16,7 +16,7 @@ def start_subprocess(cluster_params, Operation, Key, Value, OutfileName,
 
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
-    bin_path = '%s/niovakv_client' % binary_dir
+    bin_path = '%s/nkvc' % binary_dir
 
     # Prepare path for log file.
     log_file = "%s/%s/%s_log.txt" % (base_dir, raft_uuid, app_name)
