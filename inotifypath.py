@@ -1,4 +1,4 @@
-import os, logging
+import os, logging, time
 import subprocess
 from genericcmd import GenericCmds
 from enum import Enum
@@ -82,19 +82,21 @@ class InotifyPath:
     def prepare_input_output_path(self, peer_uuid, base_fname, input_dir,
                                   input_base, app_uuid):
         dir_name = "output"
+        timestamp = int(round(time.time() * 1000))
+        
         if input_dir:
             dir_name = "input"
             if input_base == inotify_input_base.SHARED_INIT:
                 # The init file should get created inside shared init directory
-                fpath = "%s/%s.%s" % (self.inotify_shared_init_path, base_fname, app_uuid)
+                fpath = "%s/%s.%s" % (self.inotify_shared_init_path, base_fname, timestamp)
             elif input_base == inotify_input_base.PRIVATE_INIT:
-                fpath = "%s/%s/init/%s.%s" % (self.inotify_path, peer_uuid, base_fname, app_uuid)
+                fpath = "%s/%s/init/%s.%s" % (self.inotify_path, peer_uuid, base_fname, timestamp)
             else: # input_base = REGULAR
                 fpath = "%s/%s/%s/%s.%s" % (self.inotify_path, peer_uuid, dir_name, base_fname,
-                                            app_uuid)
+                                            timestamp)
             logging.info("Input File path:%s", fpath)
         else:
             fpath = "%s/%s/%s/%s.%s" % (self.inotify_path, peer_uuid, dir_name, base_fname,
-                                    app_uuid)
+                                    timestamp)
             logging.info("Output File Path:%s", fpath)
         return fpath;
