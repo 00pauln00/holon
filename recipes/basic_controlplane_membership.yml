@@ -1,14 +1,15 @@
-- name: "basic_recipe_for_controlplane"
+- name: "basic_controlplane_membership.yml"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "basic_recipe_for_controlplane"
+    recipe_name: "basic_controlplane_membership"
     parent: None
-    number_of_clients: 3
+    number_of_clients: 2
 
   tasks:
   - block:
-      # check for the app_type
+     
+    # check for the app_type
      - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
        vars:
          app_type: "{{ app_type }}"
@@ -17,7 +18,6 @@
        failed_when:
          (app_type != "controlplane")
 
-       # start pmdb servers.
      - name: "{{ recipe_name }}: get the list of non-running servers."
        include_role:
           name: common
@@ -28,7 +28,7 @@
          name: common
          tasks_from: get_follower_stats
 
-      # Get multiple client uuids using common task.
+     # Get multiple client uuids using common task.
      - name: "Get multiple client uuids."
        include_role:
         name: common
@@ -38,23 +38,45 @@
      - name: "Prepare gossip node configs"
        set_fact: gossipCreation="{{lookup('niova_raftconfig', "controlplane", TotalNServersList, ClientUUIDS, wantlist=True)}}"
 
-     # Start all PMDB servers.
-     - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
+     # Start 4 PMDB servers.
+     - name: "{{ recipe_name }}: Start 4 pmdb servers in the cluster."
        include_role:
          name: common
          tasks_from: start_server_golang
        vars:
          ServerUUID: "{{ NonRunningServers[item] }}"
-       loop: "{{ range(0, NonRunningServers | length) | list }}"
+       loop: "{{ range(0, NonRunningServers | length - 1) | list }}"
 
-      # Start proxyserver
-     - name: "{{ recipe_name }}: Start proxy server."
+     # Start proxy servers
+     - name: "{{ recipe_name }}: Start proxy servers."
        include_role:
           name: common
           tasks_from: start_proxy_server
        vars:
           ClientUUID: "{{ ClientUUIDS[item] }}"
        loop: "{{ range(0, ClientUUIDS | length) |list }}"
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
+       vars:
+         input_param: {
+                'Key': '',
+                'Value': '',
+                'Operation': 'membership',
+                'IP_addr': '',
+                'Port': '',
+                'OutfileName': 'membership_output'
+                 }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "get membership details of running servers."
+       with_items:
+          - "{{ ncpclires }}"
+       register: membership
+       no_log: true
+
+     - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
+       pause:
+        seconds: 5
 
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
@@ -68,7 +90,7 @@
                  }
          ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "Write key-value from niovakv_client."
+         msg: "Write key-value from ncpc."
        with_items:
           - "{{ ncpclires }}"
        register: writeres
@@ -86,7 +108,7 @@
                 }
          ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "Write key-value from niovakv_client."
+         msg: "read key-value from ncpc."
        with_items:
           - "{{ ncpclires }}"
        register: readres
@@ -131,7 +153,7 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
        vars:
          input_param: {
-                'Key': 'Peer["results"][0]["item"]',
+                'Key': '',
                 'Value': '',
                 'Operation': 'membership',
                 'IP_addr': '',
@@ -140,11 +162,54 @@
                  }
          ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "Write key-value from niovakv_client."
+         msg: "get membership details of running servers."
        with_items:
           - "{{ ncpclires }}"
        register: membershipres
        no_log: true
+
+     - name: "{{ recipe_name }}: Verify gosssip details of 4 pmdb server."
+       vars:
+         verifyStatus: "{{ membershipres['results'][0]['item'][NRunningPeers[item]] }}"
+       debug:
+         msg: "Verifying status of the pmdbs servers."
+       failed_when: >
+          (verifyStatus['Status'] == "failed")
+       loop: "{{ range(0, NRunningPeers | length) |list }}"
+
+     - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
+       set_fact:
+          nodeList: "{{ nodeList | default([]) + [ 'Node_' ~ item ] }}"
+       loop: "{{ ClientUUIDS }}"
+
+     - debug:
+         msg: "Node name list: {{ nodeList }}"
+
+     - name: "{{ recipe_name }}: Get proxy server's status."
+       vars:
+         input_param: {
+                  'Key': '',
+                  'Value': '',
+                  'Operation': 'membership',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'get_nodestatus'
+                  }
+         getNodeData: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Get node name"
+       with_items:
+          - "{{ getNodeData }}"
+       register: nodeName
+       no_log : true
+
+     - name: "{{ recipe_name }}: Check if proxy node status is alive/running."
+       vars:
+         verifyNodeStatus: "{{ nodeName['results'][0]['item'][nodeList[item]]['Status'] }}"
+       debug:
+         msg: "Verify Killed proxy server's Status"
+       failed_when: verifyNodeStatus == "failed"
+       loop: "{{ range(0, nodeList | length) |list }}" 
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
