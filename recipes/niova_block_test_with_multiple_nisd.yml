@@ -1,9 +1,10 @@
+- import_playbook: basic_controlplane_membership.yml
 - name: "niova_block_test_with_multiple_nisd"
   hosts: localhost
   connection: local
   vars:
     recipe_name: "niova_block_test_with_multiple_nisd"
-    parent: None
+    parent: "basic_controlplane_membership"
     number_of_clients: 2
     number_of_uuids: 5
     number_of_nisd_uuids: 5
@@ -19,47 +20,6 @@
          msg: "app_type is: {{ app_type }}"
        failed_when:
          (app_type != "controlplane")
-
-     - name: "{{ recipe_name }}: get the list of non-running servers."
-       include_role:
-          name: common
-          tasks_from: get_server_uuid_info
-
-     - name: "{{ recipe_name }}: Get the leader and follower uuids."
-       include_role:
-         name: common
-         tasks_from: get_follower_stats
-
-      #Get multiple client uuids using common task.
-     - name: "Get multiple client uuids."
-       include_role:
-        name: common
-        tasks_from: get_multiple_client_uuids
-       loop: "{{ range(0, number_of_clients) | list }}"
-
-     - name: "Prepare gossip node configs"
-       set_fact: gossipCreation="{{lookup('niova_raftconfig', "controlplane", TotalNServersList, ClientUUIDS, wantlist=True)}}"
-
-     # Start all PMDB servers.
-     - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
-       include_role:
-         name: common
-         tasks_from: start_server_golang
-       vars:
-         ServerUUID: "{{ NonRunningServers[item] }}"
-       loop: "{{ range(0, NonRunningServers | length) | list }}"
-
-      #Start proxyserver
-     - name: "{{ recipe_name }}: Start proxy server."
-       include_role:
-          name: common
-          tasks_from: start_proxy_server
-       vars:
-          ClientUUID: "{{ ClientUUIDS[item] }}"
-       loop: "{{ range(0, ClientUUIDS | length) |list }}"
-
-     - pause:
-         seconds: 10
 
      - name: "Generate 5 UUIDs to start nisd process."
        shell: "/usr/bin/uuid"
@@ -86,6 +46,7 @@
                   }
        debug:
          msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       no_log: True
        loop: "{{ range(0, nisd_uuids | length) | list }}"
        loop_control:
           pause: 2
@@ -102,6 +63,7 @@
                   }
        debug:
          msg: "{{ lookup('controlplane','ncpc', input_param, wantlist=True) }}"
+       no_log: True
        loop: "{{ range(0, nisd_uuids | length) | list }}"
        loop_control:
           pause: 2
@@ -132,12 +94,11 @@
                  'uport' : '106{{ item }}'
                  }
        debug:
-         msg:
-          -  "{{ input_param }}"
-          -  "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
+         msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
+       no_log: True
        loop: "{{ range(0, lookout_uuids | length) | list }}"
        loop_control:
-          pause: 10
+          pause: 3
 
      - name: "{{ recipe_name }}: Start controlplane_client to get membership details."
        vars:
@@ -147,10 +108,45 @@
                   'Operation': 'membership',
                   'IP_addr': '',
                   'Port': '',
-                  'OutfileName': 'membership_output'
+                  'OutfileName': 'lookout_membership_output_{{ item }}'
                   }
        debug:
          msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       no_log: True
+       loop: "{{ range(0, 10) | list }}"
+       loop_control:
+          pause: 1
+
+     - name: "{{ recipe_name }}: Get niova-lookout gossip details."
+       vars:
+         input_param: {
+                  'Key': '',
+                  'Value': '',
+                  'Operation': 'membership',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'verify_lookout_status'
+                  }
+         getLookout: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Get killed lookout details."
+       no_log: True
+       with_items:
+          - "{{ getLookout }}"
+       register: verifyLookoutStatus
+
+     - debug:
+         msg: "{{ verifyLookoutStatus }}"
+
+     - name: "{{ recipe_name }}: Verify gosssip details of lookout process."
+       vars:
+         verifyStatus: "{{ verifyLookoutStatus['results'][0]['item'][lookout_uuids[item]] }}"
+       debug:
+         msg:
+          - "Verifying lookout process's status"
+       failed_when: >
+        (verifyStatus['Status'] != "alive")
+       loop: "{{ range(0, lookout_uuids | length) | list }}"
 
      - name: "{{ recipe_name }}: Start niova-block-ctl process.."
        include_role:
@@ -168,25 +164,20 @@
          nisd_uuid_list: "{{ nisd_uuid_list + [nisd_uuids[item]] }}"
        loop: "{{ range(0, nisd_uuids | length - 2) | list }}"
 
-     - debug:
-         msg: "{{ nisd_uuid_list }}"
-
      - name: "{{ recipe_name }}: Prepare 3 uuid list."
        set_fact:
          get_nisd_list: "{{ nisd_uuids | difference(nisd_uuid_list) }}"
-
-     - debug:
-         msg: "{{ get_nisd_list }}"
 
      - name: "{{ recipe_name }}: Start 5 nisd process for 1 lookout process."
        vars:
          input_param: {
                   'nisd_uuid' : '{{ nisd_uuid_list[item] }}',
-                  'uport' : '1060',
+                  #'uport' : '1060',
                   'lookout_uuid' :  '{{ lookout_uuids[0] }}'
                   }
        debug:
          msg: "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
+       no_log: True
        loop: "{{ range(0, nisd_uuid_list | length) | list }}"
        loop_control:
           pause: 5
@@ -196,14 +187,48 @@
          get_nisd_list: "{{ nisd_uuids | difference(nisd_uuid_list) }}"
          input_param: {
                   'nisd_uuid' : '{{ get_nisd_list[item] }}',
-                  'uport' : '1061',
+                  #'uport' : '1061',
                   'lookout_uuid' :  '{{ lookout_uuids[1] }}'
                   }
        debug:
          msg: "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
+       no_log: True
        loop: "{{ range(0, get_nisd_list | length) | list }}"
        loop_control:
           pause: 5
+
+     - name: "{{ recipe_name }}: Start controlplane_client to get membership details."
+       vars:
+         input_param: {
+                  'Key': '',
+                  'Value': '',
+                  'Operation': 'membership',
+                  'IP_addr': '',
+                  'Port': '',
+                  'OutfileName': 'nisd_membership_output_{{ item }}'
+                  }
+       debug:
+         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       no_log: True
+       loop: "{{ range(0, 10) | list }}"
+       loop_control:
+          pause: 1
+
+     - name: "{{ recipe_name }}: Verify nisd's gossip details."
+       include_role:
+          name: common
+          tasks_from: verify_nisd_gossip_details
+       vars:
+         lookoutUUIDList: "{{ lookout_uuids[0] }}"
+         nisdUuidsList: "{{ nisd_uuid_list }}"
+
+     - name: "{{ recipe_name }}: Verify nisd's gossip details."
+       include_role:
+          name: common
+          tasks_from: verify_nisd_gossip_details
+       vars:
+         lookoutUUIDList: "{{ lookout_uuids[1] }}"
+         nisdUuidsList: "{{ get_nisd_list }}"
 
      - name: "{{ recipe_name }}: Get system info before write operation for 1 lookout."
        include_role:
