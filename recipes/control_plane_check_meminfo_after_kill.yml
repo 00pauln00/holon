@@ -67,24 +67,24 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
          input_param: {
-                  'Key': 'Country',
-                  'Value': 'India',
-                  'Operation': 'write',
-                  'IP_addr': '',
-                  'Port': '',
-                  'OutfileName': 'write_outputControlplane_recipe'
-                  }
-         ncpcclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+                'Key': 'Country',
+                'Value': 'India',
+                'Operation': 'write',
+                'IP_addr': '',
+                'Port': '',
+                'OutfileName': 'write_output_controlplane'
+                 }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "Write key-value from ncpc client."
+         msg: "Write key-value from ncpc."
        with_items:
-          - "{{ ncpcclires }}"
-       register: writeresControlplane_recipe
-         #       no_log: true
+          - "{{ ncpclires }}"
+       register: writeres
+       no_log: true
 
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
-         wrstatus: "{{ writeresControlplane_recipe['results'][0]['item']['write'][0]['Response']['Status'] }}"
+         wrstatus: "{{ writeres['results'][0]['item']['write'][0]['Response']['Status'] }}"
        debug:
          msg: "Check if write is successful."
        failed_when: >
@@ -123,7 +123,7 @@
                   }
        debug:
          msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-           #       no_log : true
+       no_log : true
        loop: "{{ range(0, 10) | list }}"
        loop_control:
           pause: 1
@@ -168,7 +168,7 @@
        with_items:
           - "{{ ncpclires }}"
        register: readresControlplane_recipe
-         #no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: Compare values after sucessful read operation."
        vars:
@@ -177,8 +177,7 @@
          msg: "Verifying parameter after read operation"
        failed_when: >
          (rdval['Status'] | int != 0) or
-         (rdval['Response'] != "India" ) 
-
+         (rdval['Response'] != "India") 
     
      - name: "{{ recipe_name }}: Kill one of the pmdb server."
        debug:
