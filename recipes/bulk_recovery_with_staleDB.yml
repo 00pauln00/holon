@@ -5,7 +5,7 @@
   vars:
      recipe_name: "bulk_recovery_with_staleDB"
      parent: "bulk_recovery_with_emptyDB"
-     num_writes: 7000
+     num_writes: 3000
      number_of_app_uuids: 2
      raft_root_entry_keys:
               - "/raft_root_entry/0/leader-uuid"
@@ -101,7 +101,7 @@
       debug:
         msg: "Waiting for client to finish writing"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
-      retries: 1000
+      retries: 500
       delay: 1
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all peers after write operation."
@@ -231,15 +231,3 @@
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
           terminate_recipe: true
-
-
-
-
-
-
-
-
-
-
-
-
