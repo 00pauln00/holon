@@ -298,17 +298,36 @@ class LookupModule(LookupBase):
         #Get lookup parameter values
         process_type = terms[0]
         input_values = terms[1]
+        Key = ""
+        Value = ""
+        IP_addr = ""
+        Port = ""
 
         cluster_params = kwargs['variables']['ClusterParams']
 
         if process_type == "ncpc":
-
-            # Start the ncpc_client and perform the specified operation e.g write/read/config.
-            process,outfile = start_ncpc_process(cluster_params, input_values['Key'], input_values['Value'],
+            
+            if input_values['Operation'] == "write":
+                # Start the ncpc_client and perform the specified operation e.g write/read/config.
+                process,outfile = start_ncpc_process(cluster_params, input_values['Key'], input_values['Value'],
                                                    input_values['Operation'], input_values['OutfileName'],
                                                    input_values['IP_addr'], input_values['Port'])
 
-            output_data = get_the_output(outfile)
+                output_data = get_the_output(outfile)
+            elif input_values['Operation'] == "read":
+                # Start the ncpc_client and perform the specified operation e.g write/read/config.
+                process,outfile = start_ncpc_process(cluster_params, input_values['Key'], Value,
+                                                   input_values['Operation'], input_values['OutfileName'],
+                                                   IP_addr, Port)
+                output_data = get_the_output(outfile)
+            else:
+                # Start the ncpc_client and perform the specified operation e.g write/read/config.
+                process,outfile = start_ncpc_process(cluster_params, Key, Value,
+                                                   input_values['Operation'], input_values['OutfileName'],
+                                                   IP_addr, Port)
+                output_data = get_the_output(outfile)
+
+
             return output_data
 
         else:
@@ -362,5 +381,4 @@ class LookupModule(LookupBase):
                 niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['lookout_uuid'],
                                                                       input_values['aport'], input_values['hport'],
                                                                       input_values['rport'], input_values['uport'])
-
                 return niova_lookout_process

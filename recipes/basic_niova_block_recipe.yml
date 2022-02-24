@@ -39,10 +39,7 @@
        vars:
          input_param: {
                   'Key': '{{ nisdUUID["stdout_lines"][0] }}',
-                  'Value': '',
                   'Operation': 'read',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'read_output'
                   }
        debug:
@@ -68,11 +65,7 @@
      - name: "{{ recipe_name }}: Start controlplane_client to get membership details."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
                   'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'membership_output'
                   }
        debug:
@@ -102,11 +95,7 @@
      - name: "{{ recipe_name }}: Start controlplane_client to get membership details."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
                   'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'membership_output'
                   }
          membership: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -133,20 +122,6 @@
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
-       #no_log:  True
-
-     - name: "{{ recipe_name }}: Get system info after write."
-       vars:
-         stage: "get_system_info_aftr_wr"
-         raft_keys:
-             - "/system_info/rusage.in_block"
-             - "/system_info/rusage.out_block"
-             - "/system_info/rusage.vol_ctsw"
-             - "/system_info/rusage.invol_ctsw"
-         process_type: "nisd"
-         lookout_uuid :  '{{ lookoutUUID["stdout_lines"][0] }}'
-       debug:
-         msg: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID['stdout_lines'][0], raft_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        #no_log:  True
 
     rescue:

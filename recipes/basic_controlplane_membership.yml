@@ -59,11 +59,7 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
        vars:
          input_param: {
-                'Key': '',
-                'Value': '',
                 'Operation': 'membership',
-                'IP_addr': '',
-                'Port': '',
                 'OutfileName': 'membership_output'
                  }
          ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -100,10 +96,7 @@
        vars:
          input_param: {
                 'Key': 'Key',
-                'Value': '',
                 'Operation': 'read',
-                'IP_addr': '',
-                'Port': '',
                 'OutfileName': 'read_output'
                 }
          ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -135,11 +128,7 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to get the config values."
        vars:
          input_param: {
-                'Key': 'Peer["results"][0]["item"]',
-                'Value': '',
                 'Operation': 'config',
-                'IP_addr': '',
-                'Port': '',
                 'OutfileName': 'config_output'
                  }
          ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -153,11 +142,7 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
        vars:
          input_param: {
-                'Key': '',
-                'Value': '',
                 'Operation': 'membership',
-                'IP_addr': '',
-                'Port': '',
                 'OutfileName': 'membership_output'
                  }
          ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -188,11 +173,7 @@
      - name: "{{ recipe_name }}: Get proxy server's status."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
                   'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'get_nodestatus'
                   }
          getNodeData: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
