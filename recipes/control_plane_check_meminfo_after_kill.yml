@@ -49,11 +49,7 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to get the config values after starting 5th pmdb server."
        vars:
          input_param: {
-                  'Key': '{{  Peer5["results"][0]["item"] }}',
-                  'Value': '',
                   'Operation': 'config',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'config_output_5th_pmdb'
                   }
          ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -114,11 +110,7 @@
      - name: "{{ recipe_name }}: Wait until killed proxy server's status gets changed."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
                   'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'wait_for_nodeStatus_{{ item }}'
                   }
        debug:
@@ -131,11 +123,7 @@
      - name: "{{ recipe_name }}: Get proxy server's status."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
                   'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'get_proxyServerStatus'
                   }
          getProxyServerData: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -144,6 +132,7 @@
        with_items:
           - "{{ getProxyServerData }}"
        register: proxyServerStatus
+       no_log: true
      
      - name: "{{ recipe_name }}: Check if killed node status gets changed."
        vars:
@@ -156,10 +145,7 @@
        vars:
          input_param: {
                   'Key': 'Country',
-                  'Value': '',
                   'Operation': 'read',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'read_outputControlplane_recipe'
                   }
          ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -186,11 +172,7 @@
      - name: "{{ recipe_name }}: Wait until killed pmdb server's status gets changed."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
                   'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'wait_for_pmdbServerStatus_{{ item }}'
                   }
        debug:
@@ -203,11 +185,7 @@
      - name: "{{ recipe_name }}: Get pmdb server's status."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
                   'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'get_pmdbServerStatus'
                   }
          getPmdbServerData: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
