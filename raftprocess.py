@@ -158,7 +158,7 @@ class RaftProcess:
         '''
         '''
         try:
-            func_timeout(60,check_if_pid_killed, argss=(pid))
+            func_timeout(60,check_if_pid_killed, args=(pid))
         except FunctionTimedOut:
             logging.error("Error : timeout occured while killing process %d" % pid)
 
