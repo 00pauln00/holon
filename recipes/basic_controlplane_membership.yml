@@ -92,9 +92,6 @@
        register: writeres
        no_log: true 
 
-     - debug: 
-         msg: "{{writeres}}"
-
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
          wrstatus: "{{ writeres['results'][0]['item']['write'][0]['Response']['Status'] }}"
@@ -126,15 +123,6 @@
        failed_when: >
          (rdval['Status'] != 0) or 
          (rdval['Response'] != "Value")
-
-     - name: "{{ recipe_name }}: Store the UUID of pmdb server."
-       vars:
-         peer: "{{ TotalNServersList[0] }}"
-       debug:
-         msg: "Get the new peer to start: {{ peer }}"
-       with_items:
-         - "{{ peer }}"
-       register: Peer
 
      - name: "{{ recipe_name }}: Starting controlplane_client to get the config values."
        vars:
