@@ -22,6 +22,17 @@ def check_for_process_status(pid, process_status):
             itr = 0
         itr += 1
 
+def check_if_pid_killed(self,pid):
+    '''
+    Check if PID exists or not in a loop
+    '''
+    if psutil.pid_exists(pid):
+        logging.info(" Waiting for process (%d) to be killed" % pid)
+        time_global.sleep(0.010)
+        self.check_if_pid_killed(self,pid)
+    else:
+        return
+
 def get_executable_path(process_type, app_type, backend_type, binary_dir):
 
     bin_path = ""
@@ -143,6 +154,14 @@ class RaftProcess:
         #if rc == 1:
         #    exit()
 
+    def Wait_for_process_kill(self, pid):
+        '''
+        '''
+        try:
+            func_timeout(60,check_if_pid_killed, argss=(pid))
+        except FunctionTimedOut:
+            logging.error("Error : timeout occured while killing process %d" % pid)
+
     def start_process(self, base_dir, node_name, coalesced_wr):
 
         logging.warning("Starting uuid: %s, cluster_type %s" % (self.process_uuid, self.process_backend_type))
@@ -262,7 +281,8 @@ class RaftProcess:
         except subprocess.SubprocessError as e:
             logging.error("Failed to send kill signal with error: %s" % os.stderror(e.errno))
             return -1
-
+        if psutil.pid_exists(pid):
+            self.Wait_for_process_kill(pid)
         self.process_status = "killed"
         return 0
 
