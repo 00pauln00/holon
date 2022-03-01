@@ -160,16 +160,16 @@
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     #Apply fault injection on peer4 for limiting bandwidth_limit.
-    - name: "{{ recipe_name }}: Set fault injection {{ fault_injection_name }} on peer4."
-      vars:
-        stage: "fault_injection"
-        cmd: "enabled@true"
-        copy_to: "init"
-        wait_for_ofile: False
-        fault_injection_name: "raft_limit_rsync_bw"
-        where: "/fault_injection_points/name@{{ fault_injection_name }}"
-      set_fact:
-         fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', newlyStartedPeer4['results'][0]['item'], cmd, where, wantlist=True) }}"
+    #- name: "{{ recipe_name }}: Set fault injection {{ fault_injection_name }} on peer4."
+    #  vars:
+    #    stage: "fault_injection"
+    #    cmd: "enabled@true"
+    #    copy_to: "init"
+    #    wait_for_ofile: False
+    #    fault_injection_name: "raft_limit_rsync_bw"
+    #    where: "/fault_injection_points/name@{{ fault_injection_name }}"
+    #  set_fact:
+    #     fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', newlyStartedPeer4['results'][0]['item'], cmd, where, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start new peer with empty DB."
       include_role:
@@ -183,45 +183,45 @@
         name: common
         tasks_from: get_server_uuid_info
 
-    - name: "{{ recipe_name }}: Kill the child processes of peer4"
-      debug:
-        msg: "Get peer4 child process {{ lookup('niova_raftprocess', 'kill_child', newlyStartedPeer4['results'][0]['item'], wantlist=True) }}"
-      loop: "{{ range(0, 200) }}"
+    #- name: "{{ recipe_name }}: Kill the child processes of peer4"
+    #  debug:
+    #    msg: "Get peer4 child process {{ lookup('niova_raftprocess', 'kill_child', newlyStartedPeer4['results'][0]['item'], wantlist=True) }}"
+    #  loop: "{{ range(0, 200) }}"
 
      #Remove fault injection on peer4.
-    - name: "{{ recipe_name }}: Remove fault injection {{ fault_injection_name }} on peer4."
-      vars:
-        stage: "remove_fault_injection_peer4"
-        cmd: "enabled@false"
-        where: "/fault_injection_points/name@raft_limit_rsync_bw"
-        remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', newlyStartedPeer4['results'][0]['item'], cmd, where, wantlist=True) }}"
-      debug:
-        msg: "{{ remove_fault_inject }}"
-      no_log: True
+    #- name: "{{ recipe_name }}: Remove fault injection {{ fault_injection_name }} on peer4."
+    #  vars:
+    #    stage: "remove_fault_injection_peer4"
+    #    cmd: "enabled@false"
+    #    where: "/fault_injection_points/name@raft_limit_rsync_bw"
+    #    remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', newlyStartedPeer4['results'][0]['item'], cmd, where, wantlist=True) }}"
+    #  debug:
+    #    msg: "{{ remove_fault_inject }}"
+    #  no_log: True
 
-    - name: "{{ recipe_name }}: Get list of fault-injections."
-      vars:
-        stage: "fault_injection_check"
-        raft_keys:
-          - "/fault_injection_points"
-      set_fact:
-        fault_injection_points: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_keys, wantlist=True) }}"
+    #- name: "{{ recipe_name }}: Get list of fault-injections."
+    #  vars:
+    #    stage: "fault_injection_check"
+    #    raft_keys:
+    #      - "/fault_injection_points"
+    #  set_fact:
+    #    fault_injection_points: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_keys, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: Get fault_injection_point_enabled for peer4."
-      vars:
-         fault_injection_name: "raft_limit_rsync_bw"
-      set_fact:
-         fault_injection_point_enabled: "{{ fault_injection_points['//fault_injection_points'][index]['enabled'] }}"
-      when: (fault_injection_points['//fault_injection_points'][index]['name'] == fault_injection_name)
-      loop: "{{  range(0, fault_injection_points['//fault_injection_points'] |length) | list }}"
-      loop_control:
-          loop_var: index
+    #- name: "{{ recipe_name }}: Get fault_injection_point_enabled for peer4."
+    #  vars:
+    #     fault_injection_name: "raft_limit_rsync_bw"
+    #  set_fact:
+    #     fault_injection_point_enabled: "{{ fault_injection_points['//fault_injection_points'][index]['enabled'] }}"
+    #  when: (fault_injection_points['//fault_injection_points'][index]['name'] == fault_injection_name)
+    #  loop: "{{  range(0, fault_injection_points['//fault_injection_points'] |length) | list }}"
+    #  loop_control:
+    #      loop_var: index
 
-    - name: "{{ recipe_name }}: Verify fault injection is removed from peer4."
-      debug:
-        msg: "{{ fault_injection_point_enabled }}"
-      no_log: True
-      failed_when: fault_injection_point_enabled != False
+    #- name: "{{ recipe_name }}: Verify fault injection is removed from peer4."
+    #  debug:
+    #    msg: "{{ fault_injection_point_enabled }}"
+    #  no_log: True
+    #  failed_when: fault_injection_point_enabled != False
 
     - name: "{{ recipe_name }}: Apply fault injection on peer4."
       include_role:
