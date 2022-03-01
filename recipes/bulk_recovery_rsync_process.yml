@@ -83,7 +83,7 @@
 
     - debug:
         msg: "{{ newlyStartedPeer4['results'][0]['item'] }}"
-     
+
     - name: "{{ recipe_name }}: Get Commit index value from NRunningPeers servers."
       vars:
         stage: "get_root_entry_values"
@@ -262,7 +262,7 @@
         msg: "Verify max-scan-entries and log-reap-factor are set properly on peer 4."
       failed_when: >
            (getPeer4Val["/raft_net_info/max-scan-entries"] != 1000) or
-           (getPeer4Val["/raft_net_info/log-reap-factor"] != 2)          
+           (getPeer4Val["/raft_net_info/log-reap-factor"] != 2)
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on newly started peer."
       vars:
@@ -299,7 +299,7 @@
     - name: "{{ recipe_name }}: Get Commit index value from NRunningPeers servers."
       vars:
         stage: "get_root_entry_values_after_starting-peer4"
-        peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_root_entry_keys, wantlist=true) }}" 
+        peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_root_entry_keys, wantlist=true) }}"
       debug:
         msg: "{{ peer_values }} "
       with_items:
@@ -355,6 +355,10 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
 
+    - name: "{{ recipe_name }}: Kill the peer4."
+      debug:
+       msg: "{{lookup('niova_raftprocess', 'kill', newlyStartedPeer4['results'][0]['item'], wantlist=True)}}"
+      no_log: True
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

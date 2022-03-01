@@ -500,6 +500,11 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
 
+    - name: "{{ recipe_name }}: Kill the peer4."
+      debug:
+       msg: "{{lookup('niova_raftprocess', 'kill', newlyStartedPeer4['results'][0]['item'], wantlist=True)}}"
+      no_log: True
+
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
