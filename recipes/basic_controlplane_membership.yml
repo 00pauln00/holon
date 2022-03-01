@@ -92,6 +92,17 @@
        register: writeres
        no_log: true 
 
+     - debug: 
+         msg: "{{writeres}}"
+
+     - name: "{{ recipe_name }}: Check if write is successful."
+       vars:
+         wrstatus: "{{ writeres['results'][0]['item']['write'][0]['Response']['Status'] }}"
+       debug:
+         msg: "Check if write is successful."
+       failed_when: >
+         (wrstatus|int != 0)
+
      - name: "{{ recipe_name }}: Starting controlplane_client to read the value."
        vars:
          input_param: {
