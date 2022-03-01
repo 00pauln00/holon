@@ -306,6 +306,7 @@ class RaftProcess:
                 pass
             else:
                 os.kill(child.pid, signal.SIGTERM)
-
+        if psutil.pid_exists(pid):
+            self.Wait_for_process_kill(pid)
         self.process_status = "killed"
         return 0
