@@ -156,9 +156,10 @@ class RaftProcess:
 
     def Wait_for_process_kill(self, pid):
         '''
+        Wrapper to wait for the function to be killed.
         '''
         try:
-            func_timeout(60,check_if_pid_killed, args=(pid))
+            func_timeout(60, check_if_pid_killed, args=[pid])
         except FunctionTimedOut:
             logging.error("Error : timeout occured while killing process %d" % pid)
 
