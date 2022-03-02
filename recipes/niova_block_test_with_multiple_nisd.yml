@@ -55,10 +55,7 @@
        vars:
          input_param: {
                   'Key': '{{ nisd_uuids[item] }}',
-                  'Value': '',
                   'Operation': 'read',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'read_output_{{ item }}'
                   }
        debug:
@@ -103,11 +100,7 @@
      - name: "{{ recipe_name }}: Start controlplane_client to get membership details."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
                   'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'lookout_membership_output_{{ item }}'
                   }
        debug:
@@ -120,11 +113,7 @@
      - name: "{{ recipe_name }}: Get niova-lookout gossip details."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
                   'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'verify_lookout_status'
                   }
          getLookout: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -172,7 +161,6 @@
        vars:
          input_param: {
                   'nisd_uuid' : '{{ nisd_uuid_list[item] }}',
-                  #'uport' : '1060',
                   'lookout_uuid' :  '{{ lookout_uuids[0] }}'
                   }
        debug:
@@ -187,7 +175,6 @@
          get_nisd_list: "{{ nisd_uuids | difference(nisd_uuid_list) }}"
          input_param: {
                   'nisd_uuid' : '{{ get_nisd_list[item] }}',
-                  #'uport' : '1061',
                   'lookout_uuid' :  '{{ lookout_uuids[1] }}'
                   }
        debug:
@@ -200,11 +187,7 @@
      - name: "{{ recipe_name }}: Start controlplane_client to get membership details."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
                   'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'nisd_membership_output_{{ item }}'
                   }
        debug:

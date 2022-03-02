@@ -37,11 +37,7 @@
      - name: "{{ recipe_name }}: Wait until killed niova-lookout process's status gets changed."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
                   'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'wait_for_lookoutStatus_{{ item }}'
                   }
        debug:
@@ -54,11 +50,7 @@
      - name: "{{ recipe_name }}: Get killed niova-lookout gossip details."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
                   'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'verify_lookout_status'
                   }
          killLookout: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -99,11 +91,7 @@
      - name: "{{ recipe_name }}: Verify niova-lookout process's status is 'alive' now."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
                   'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'verify_restarted_lookout_status'
                   }
          restartLookoutStatus: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -160,11 +148,7 @@
      - name: "{{ recipe_name }}: Get new nisd process's status is 'alive'."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
                   'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'verify_new_nisd_status'
                   }
          newlyStartedNisd: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -196,11 +180,7 @@
      - name: "{{ recipe_name }}: Verify nisd process's status is 'Dead'."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
                   'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
                   'OutfileName': 'verify_killed_nisd_status'
                   }
          killNisd: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
