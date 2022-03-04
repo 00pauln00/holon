@@ -248,7 +248,7 @@
          nisdUuidsList: "{{ nisd_uuids }}"
          lookoutUUIDList: "{{ lookout_uuids }}"
          rd_op_ratio: '0'
-         num_of_ops: '1000'
+         num_of_ops: '10000'
          req_sz: '16'
          queueDepth: '100'
          fileSize: '8589934592'

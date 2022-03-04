@@ -57,9 +57,6 @@
           - "{{ killLookout }}"
        register: verifyKilledLookout
 
-     - debug:
-         msg: "{{ verifyKilledLookout }}"
-
      - name: "{{ recipe_name }}: Verify gosssip details of killed lookout process."
        vars:
          verifyStatus: "{{ verifyKilledLookout['results'][0]['item'][lookout_uuids[0]] }}"
@@ -217,9 +214,6 @@
        with_items:
           - "{{ killNisd }}"
        register: verifyKilledNisd
-
-     - debug:
-         msg: "{{ verifyKilledNisd }}"
 
      - name: "{{ recipe_name }}: Verify gosssip details of killed nisd process."
        vars:
