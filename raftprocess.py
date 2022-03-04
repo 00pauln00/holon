@@ -300,6 +300,7 @@ class RaftProcess:
                 pass
             else:
                 os.kill(child.pid, signal.SIGTERM)
-        self.Wait_process_status("killed",pid)
-        self.process_status = "killed"
+        self.Wait_process_status("killed",child.pid)
+        #Since we are just killing the child process, set parent process as running 
+        self.process_status = "runnning"
         return 0
