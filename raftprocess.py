@@ -286,5 +286,6 @@ class RaftProcess:
             else:
                 os.kill(child.pid, signal.SIGTERM)
 
-        self.process_status = "killed"
+        #Since we are just killing the child process, set parent process as running
+        self.process_status = "running"
         return 0
