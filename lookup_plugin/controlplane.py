@@ -120,8 +120,7 @@ def check_for_process_status(pid, process_status):
             itr = 0
         itr += 1
 
-
-def start_nisd_process(cluster_params, nisd_uuid, uport, nisdPath):
+def start_nisd_process(cluster_params, nisd_uuid, nisdPath):
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
@@ -137,7 +136,7 @@ def start_nisd_process(cluster_params, nisd_uuid, uport, nisdPath):
 
     #start nisd process
     bin_path = '%s/nisd' % binary_dir
-    process_popen = subprocess.Popen([bin_path, '-u', nisd_uuid, '-p', uport, '-d', nisdPath],
+    process_popen = subprocess.Popen([bin_path, '-u', nisd_uuid, '-d', nisdPath],
             stdout = fp, stderr = fp)
     logging.warning("starting nisd process")
     
@@ -351,8 +350,7 @@ class LookupModule(LookupBase):
                 
                 #start nisd process
                 nisdPath = prepare_nisd_device_path(cluster_params, input_values['nisd_uuid'])
-                nisd_process = start_nisd_process(cluster_params,  input_values['nisd_uuid'], input_values['uport'],
-                                                           nisdPath)
+                nisd_process = start_nisd_process(cluster_params,  input_values['nisd_uuid'], nisdPath)
 
                 return nisd_process
 
