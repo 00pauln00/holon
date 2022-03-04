@@ -1,10 +1,9 @@
 - import_playbook: basic_controlplane_membership.yml
-
-- name: "Recipe to start all controlplane process"
+- name: "basic_niova_block_recipe"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "basic_recipe_to_start_all_controlplane_process"
+    recipe_name: "basic_niova_block_recipe"
     parent: basic_controlplane_membership.yml
 
   tasks:
@@ -85,24 +84,49 @@
        vars:
          input_param: {
                   'nisd_uuid' : '{{ nisdUUID["stdout_lines"][0] }}',
-                   'uport' : '1053',
+                  #'uport' : '1053',
                   'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                   }
          nisd : "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
        debug:
          msg: "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
 
-     - name: "{{ recipe_name }}: Start controlplane_client to get membership details."
+     - name: "{{ recipe_name }}: Start controlplane_client to get nisd's membership details."
        vars:
          input_param: {
-                  'Operation': 'membership',
-                  'OutfileName': 'membership_output'
+                  'Operation': 'NISDGossip',
+                  'OutfileName': 'nisd_gossip_info_{{ item }}'
                   }
-         membership: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "get membership details"
-       with_items: "{{membership}}"
-       register: membership_details
+         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       no_log: True
+       loop: "{{ range(0, 10) | list }}"
+       loop_control:
+          pause: 1
+
+     - name: "{{ recipe_name }}: Get nisd's membership details."
+       vars:
+         input_param: {
+                  'Operation': 'NISDGossip',
+                  'OutfileName': 'verify_nisd_gossip_info'
+                  }
+         nisd_membership: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "get nisd's gossip info"
+       with_items:
+          - "{{ nisd_membership }}"
+       register: verify_nisd_status
+
+     - debug:
+         msg: "{{ verify_nisd_status }}"
+
+     - name: "{{ recipe_name }}: Verify nisd's status."
+       vars:
+         verifyStatus: "{{ verify_nisd_status['results'][0]['item'][nisdUUID['stdout_lines'][0]] }}"
+       debug:
+         msg: "Verifying status of the nisd."
+       failed_when: >
+          (verifyStatus['Status'] != "Alive")
 
      - name: Generate new UUID
        shell: uuidgen
@@ -113,7 +137,7 @@
          input_param: {
                  'uuid_to_write' :  '{{ nisdUUID["stdout_lines"][0] }}',
                  'read_operation_ratio_percentage' : '0',
-                 'num_ops' : '10000',
+                 'num_ops' : '1000',
                  'vdev' :   '{{ blockTestUuid["stdout_lines"][0] }}',
                  'request_size_in_bytes' : '16',
                  'queue_depth' : '100',
