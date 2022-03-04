@@ -1,0 +1,32 @@
+---
+
+    - name: "{{ recipe_name}}: Get the client parameters after successful read."
+      vars:
+        stage: "verifyRead"
+        read_keys:
+            - "/pumice_db_test_client/pmdb-test-apps/{{ app_itr }}/app-seqno"
+            - "/pumice_db_test_client/pmdb-test-apps/{{ app_itr }}/pmdb-seqno"
+            - "/pumice_db_test_client/pmdb-test-apps/{{ app_itr }}/status"
+            - "/pumice_db_test_client/pmdb-test-apps/{{ app_itr }}/app-validated-seqno"
+        client_vals: "{{ lookup('niova_ctlrequest', 'lookup', ClientUUID, read_keys, wantlist=True) }}"
+      debug:
+        msg: "get the values after client write operation: {{ client_vals }}"
+      no_log: true
+      with_items:
+        - "{{ client_vals }}"
+      register: client_vals_after_rd
+
+    - name: "{{ recipe_name}}: Verify the client parameters after successful read."
+      vars:
+        status_index: '/{{ idx }}/status'
+        pmdb_seqno_index: '/{{ idx }}/pmdb-seqno'
+        app_seqno_index: '/{{ idx }}/app-seqno'
+        app_validated_seq: '/{{ idx }}/app-validated-seqno'
+      debug:
+        msg: "Verify parameters after successful read operation"
+      failed_when: >
+            (client_vals_after_rd['results'][0]['item'][status_index] != "Success") or
+            (client_vals_after_rd['results'][0]['item'][pmdb_seqno_index] != (nwrites | int) - 1) or
+            (client_vals_after_rd['results'][0]['item'][app_seqno_index] != (nwrites| int)) or
+            (client_vals_after_rd['results'][0]['item'][app_validated_seq] != (nwrites| int))
+

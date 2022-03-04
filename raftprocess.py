@@ -290,3 +290,27 @@ class RaftProcess:
 
         self.process_status = "killed"
         return 0
+
+    '''
+        Method: kill_child_process
+        Purpose: kill the child process by sending sigterm
+        Parameters: 
+    '''
+   
+    def kill_child_process(self, pid):
+        self.process_pid = pid
+        try:
+            parent = psutil.Process(pid)
+        except psutil.NoSuchProcess:
+            return
+            
+        children = parent.children(recursive=True)
+        for child in children:
+            if child is None:
+                pass
+            else:
+                os.kill(child.pid, signal.SIGTERM)
+
+        #Since we are just killing the child process, set parent process as running
+        self.process_status = "running"
+        return 0
