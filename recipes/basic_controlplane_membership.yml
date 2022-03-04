@@ -8,7 +8,7 @@
 
   tasks:
   - block:
-     
+
     # check for the app_type
      - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
        vars:
@@ -33,7 +33,7 @@
        include_role:
         name: common
         tasks_from: get_multiple_client_uuids
-       loop: "{{ range(0, number_of_clients) | list }}" 
+       loop: "{{ range(0, number_of_clients) | list }}"
 
      - name: "Prepare gossip node configs"
        set_fact: gossipCreation="{{lookup('niova_raftconfig', "controlplane", TotalNServersList, ClientUUIDS, wantlist=True)}}"
@@ -77,8 +77,8 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
          input_param: {
-                'Key': 'Key',
-                'Value': 'Value',
+                'Key': 'Country',
+                'Value': 'India',
                 'Operation': 'write',
                 'IP_addr': '',
                 'Port': '',
@@ -90,7 +90,7 @@
        with_items:
           - "{{ ncpclires }}"
        register: writeres
-       no_log: true 
+       no_log: true
 
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
@@ -103,7 +103,7 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to read the value."
        vars:
          input_param: {
-                'Key': 'Key',
+                'Key': 'Country',
                 'Operation': 'read',
                 'OutfileName': 'read_output'
                 }
@@ -121,8 +121,8 @@
        debug:
          msg: "Verifying parameter after read operation"
        failed_when: >
-         (rdval['Status'] != 0) or 
-         (rdval['Response'] != "Value")
+         (rdval['Status'] != 0) or
+         (rdval['Response'] != "India")
 
      - name: "{{ recipe_name }}: Starting controlplane_client to get the config values."
        vars:
@@ -189,7 +189,7 @@
        debug:
          msg: "Verify Killed proxy server's Status"
        failed_when: verifyNodeStatus == "failed"
-       loop: "{{ range(0, nodeList | length) |list }}" 
+       loop: "{{ range(0, nodeList | length) |list }}"
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

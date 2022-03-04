@@ -124,9 +124,6 @@
           - "{{ getLookout }}"
        register: verifyLookoutStatus
 
-     - debug:
-         msg: "{{ verifyLookoutStatus }}"
-
      - name: "{{ recipe_name }}: Verify gosssip details of lookout process."
        vars:
          verifyStatus: "{{ verifyLookoutStatus['results'][0]['item'][lookout_uuids[item]] }}"
@@ -187,7 +184,7 @@
      - name: "{{ recipe_name }}: Start controlplane_client to get membership details."
        vars:
          input_param: {
-                  'Operation': 'membership',
+                  'Operation': 'NISDGossip',
                   'OutfileName': 'nisd_membership_output_{{ item }}'
                   }
        debug:
@@ -251,12 +248,12 @@
          nisdUuidsList: "{{ nisd_uuids }}"
          lookoutUUIDList: "{{ lookout_uuids }}"
          rd_op_ratio: '0'
-         num_of_ops: '10000'
+         num_of_ops: '1000'
          req_sz: '16'
          queueDepth: '100'
          fileSize: '8589934592'
 
-     - name: "{{ recipe_name }}: Get system info after write operation for 1 lookout."
+     - name: "{{ recipe_name }}: Get system info after write operation for 1st lookout."
        include_role:
           name: common
           tasks_from: get_nisd_info

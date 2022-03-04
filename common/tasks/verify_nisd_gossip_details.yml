@@ -1,33 +1,17 @@
 ---
 
-     - name: "{{ recipe_name }}: Get nisd's gossip details."
+     - name: "{{ recipe_name }}: Verify nisd's gossip details."
        vars:
          input_param: {
-                  'Key': '',
-                  'Value': '',
-                  'Operation': 'membership',
-                  'IP_addr': '',
-                  'Port': '',
-                  'OutfileName': 'verify_nisd_status'
+                  'Operation': 'NISDGossip',
+                  'OutfileName': 'verify_nisd_status_{{ nisdUuidsList[item] }}'
                   }
        set_fact:
          newlyStartedNisd: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        failed_when: >
-         (newlyStartedNisd[lookoutUUIDList]['Tags'][nisdUuidsList[item]] != "Alive")
+         (newlyStartedNisd[nisdUuidsList[item]]['Status'] != "Alive")
        loop: "{{ range(0, nisdUuidsList | length) | list }}"
        loop_control:
-          pause: 1
-
-     - debug:
-         msg: "{{ newlyStartedNisd }}"
-
-     #- name: "{{ recipe_name }}: Verify gosssip details of newly started nisd process."
-     #  vars:
-     #    verifyNisdStatus: "{{ newlyStartedNisd[lookoutUUIDList[item]]['Tags'][nisdUuidsList[item]] }}"
-     #  failed_when: >
-     #    (verifyNisdStatus != "Alive")
-     #  loop: "{{ range(0, nisdUuidsList | length) | list }}"
-     #  loop_control:
-     #     pause: 1
+          pause: 3
 
 
