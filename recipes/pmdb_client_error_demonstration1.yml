@@ -149,6 +149,17 @@
         msg: "{{ valid_write_seq }}"
       no_log: True
 
+    - name: "{{ recipe_name }}: Wait until valid pmdb-seqno gets updated."
+      vars:
+        stage: "wait_for_pmdb_seqno"
+        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+      debug:
+        msg: "Waiting for the valid pmdb-seqno"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == 0
+      loop: "{{ range(0, 30) | list }}"
+      loop_control:
+         pause: 1
+
     - name: "{{ recipe_name }}: Verify the parameters for successful write operation."
       vars:
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
