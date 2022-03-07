@@ -9,18 +9,32 @@ def check_for_process_status(pid, process_status):
     '''
     To check process status
     '''
-    ps = psutil.Process(pid)
-    itr = 0
-    while(1):
-        if ps.status() == process_status:
-            break
+    if process_status == "killed":
+        check_if_pid_killed(pid)
+    else:
+        ps = psutil.Process(pid)
+        itr = 0
+        while(1):
+            if ps.status() == process_status:
+                break
 
+            time_global.sleep(0.025)
+            #After every 50 iterations, print process status.
+            if itr == 50:
+                logging.warning("process status %s (expected %s)"% (ps.status(), process_status))
+                itr = 0
+            itr += 1
+
+def check_if_pid_killed(pid):
+    '''
+    Check if PID exists or not in a loop
+    '''
+    if psutil.pid_exists(pid):
+        logging.warning("Waiting for process (%d) to be killed" % pid)
         time_global.sleep(0.025)
-        #After every 50 iterations, print process status.
-        if itr == 50:
-            logging.warning("process status %s (expected %s)"% (ps.status(), process_status))
-            itr = 0
-        itr += 1
+        check_if_pid_killed(pid)
+    else:
+        return
 
 def get_executable_path(process_type, app_type, backend_type, binary_dir):
 
@@ -287,7 +301,7 @@ class RaftProcess:
         except subprocess.SubprocessError as e:
             logging.error("Failed to send kill signal with error: %s" % os.stderror(e.errno))
             return -1
-
+        self.Wait_for_process_status("killed", pid)
         self.process_status = "killed"
         return 0
 
@@ -310,7 +324,7 @@ class RaftProcess:
                 pass
             else:
                 os.kill(child.pid, signal.SIGTERM)
-
+        self.Wait_for_process_status("killed", child.pid)
         #Since we are just killing the child process, set parent process as running
         self.process_status = "running"
         return 0
