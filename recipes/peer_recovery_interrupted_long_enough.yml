@@ -140,7 +140,7 @@
        - "{{ peer_values }}"
       register: stage1_values
 
-    - name: "{{ recipe_name }}: Verify leader-uuid, term and commit-idx on all peers"
+    - name: "{{ recipe_name }}: Verify commit-idx gets updated on all peers"
       vars:
          getAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys, wantlist=True) }}"
          stage: "Get_commit_idx"
