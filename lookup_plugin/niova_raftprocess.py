@@ -80,7 +80,10 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
                  recipe_conf['serf_nodes'] = {}
             recipe_conf['serf_nodes'][peer_uuid] = node_name
 
-    if operation == "start" and not is_process_running(peer_uuid, recipe_conf):
+    if operation == "start":
+        if(is_process_running(peer_uuid, recipe_conf)):
+            logging.error("Process with UUID (%d) is already running" % peer_uuid)
+            return 
 
         ctlsvc_path = "%s/configs" % base_dir
         if cluster_params['app_type'] == "controlplane" and proc_type == "client":
