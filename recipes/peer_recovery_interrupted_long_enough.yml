@@ -37,6 +37,46 @@
          name: common
          tasks_from: get_server_uuid_info
 
+    - name: "{{ recipe_name }}: Apply fault injection on all peers i.e. 1, 2 and 3."
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ NRunningPeers[item] }}"
+        fault_injection_name: "raft_force_set_max_scan_entries"
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Set max-scan-entries on all peers."
+      vars:
+        stage: "setMaxScanEntriesOnAll"
+        cmd: "max-scan-entries@1000"
+        where: "/raft_net_info/max-scan-entries"
+        key: "/raft_net_info/max-scan-entries"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Set log-reap-factor on all peers."
+      vars:
+        stage: "setLRPOnAll"
+        cmd: "log-reap-factor@2"
+        where: "/raft_net_info/log-reap-factor"
+        key: "/raft_net_info/log-reap-factor"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Verify max-scan-entries and log-reap-factor on all peers."
+      vars:
+         stage: "verifyMSEandLRPOnAll"
+         getVal: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys, wantlist=True) }}"
+      debug:
+        msg: "Verify max-scan-entries and log-reap-factor are set properly on all peers."
+      failed_when: >
+           (getVal["/raft_net_info/max-scan-entries"] != 1000) or
+           (getVal["/raft_net_info/log-reap-factor"] != 2)
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
     - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
       include_role:
         name: common
@@ -260,7 +300,7 @@
         next_lowest_idx: "{{ stage2_values['results'][item]['item']['/0/lowest-idx'] }}"
       debug:
         msg: "Check if lowest index is increasing."
-      failed_when: next_lowest_idx <= prev_lowest_idx
+      failed_when: prev_lowest_idx == next_lowest_idx
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     #recipe-cleanup.
