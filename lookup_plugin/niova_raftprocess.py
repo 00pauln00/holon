@@ -9,6 +9,13 @@ from raftconfig import *
 from inotifypath import *
 from raftprocess import RaftProcess
 
+def is_process_running(peer_uuid, recipe_conf):
+    if "raft_proccess" in recipe_conf:
+        if peer_uuid in recipe_conf['raft_process']:
+            if "process_status" in raft_conf['raft_process'][peer_uuid]:
+                if raft_conf['raft_process'][peer_uuid]['process_status'] == "running":
+                    return True 
+    return False
 '''
 niova_raft_process_ops: This function perform operations like start, stop,pause
 on the server/client.
@@ -73,7 +80,7 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
                  recipe_conf['serf_nodes'] = {}
             recipe_conf['serf_nodes'][peer_uuid] = node_name
 
-    if operation == "start":
+    if operation == "start" and not is_process_running(peer_uuid, recipe_conf):
 
         ctlsvc_path = "%s/configs" % base_dir
         if cluster_params['app_type'] == "controlplane" and proc_type == "client":
