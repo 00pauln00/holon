@@ -55,7 +55,10 @@ class LookupModule(LookupBase):
             bin_path = '%s/foodpalaceappclient' % binary_dir
 
         ctlsvc_path = "%s/configs" % base_dir
-        inotifyobj = InotifyPath(base_dir, True)
+
+        get_process_type = ''
+        lookout_uuid = ''
+        inotifyobj = InotifyPath(base_dir, True, get_process_type, lookout_uuid)
         inotifyobj.export_ctlsvc_path(ctlsvc_path)
 
         #start client process and pass the cmd.
