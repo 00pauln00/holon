@@ -82,9 +82,9 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
 
     return bin_path
 
-def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, config_path, node_name, coalesced_wr):
+def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, config_path, node_name, coalesced_wr, sync):
     process_popen = {}
-    
+
     # binary_dir = os.getenv('NIOVA_BIN_PATH')
     gossipNodes = "%s/gossipNodes" % base_dir
 
@@ -94,6 +94,14 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
                                     raft_uuid, '-u', peer_uuid, '-a', '-c'],
                                     stdout = fp, stderr = fp)
         elif app_type == "pumicedb" and coalesced_wr == "0":
+            process_popen = subprocess.Popen([bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid],
+                                    stdout = fp, stderr = fp)
+        elif app_type == "pumicedb" and sync == "1":
+            process_popen = subprocess.Popen([bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid],
+                                    stdout = fp, stderr = fp)
+        elif app_type == "pumicedb" and sync == "0":
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid, '-a'],
                                     stdout = fp, stderr = fp)
@@ -111,9 +119,13 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid, '-l', base_dir],
                                     stdout = fp, stderr = fp)
-        elif app_type == "pumicedb":
-            process_popen = subprocess.Popen([bin_path, '-r',
+        elif app_type == "pumicedb" and sync == "1":
+           process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid],
+                                    stdout = fp, stderr = fp)
+        elif app_type == "pumicedb" and sync == "0":
+           process_popen = subprocess.Popen([bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid, '-a'],
                                     stdout = fp, stderr = fp)
         elif app_type == "niovakv":
             log_path = "%s/%s_niovakv_server.log" % (base_dir, peer_uuid)
@@ -177,7 +189,7 @@ class RaftProcess:
         #if rc == 1:
         #    exit()
 
-    def start_process(self, base_dir, node_name, coalesced_wr):
+    def start_process(self, base_dir, node_name, coalesced_wr, sync):
 
         logging.warning("Starting uuid: %s, cluster_type %s" % (self.process_uuid, self.process_backend_type))
 
@@ -210,11 +222,11 @@ class RaftProcess:
         elif app_type == "controlplane":
             node_name  = "Node_" + self.process_uuid
             config_path = "%s/cpp_configs_%s/proxy.config" % (base_dir , self.process_uuid )
-        else: 
+        else:
             config_path = ""
         process_popen = run_process(fp, self.process_raft_uuid, self.process_uuid,
                                     self.process_type, self.process_app_type, bin_path,
-                                    base_dir, config_path, node_name, coalesced_wr)
+                                    base_dir, config_path, node_name, coalesced_wr, sync)
         #Make sure all the ouput gets flushed to the file before closing it
         os.fsync(fp)
 
@@ -308,16 +320,16 @@ class RaftProcess:
     '''
         Method: kill_child_process
         Purpose: kill the child process by sending sigterm
-        Parameters: 
+        Parameters:
     '''
-   
+
     def kill_child_process(self, pid):
         self.process_pid = pid
         try:
             parent = psutil.Process(pid)
         except psutil.NoSuchProcess:
             return
-            
+
         children = parent.children(recursive=True)
         for child in children:
             if child is None:

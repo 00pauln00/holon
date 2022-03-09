@@ -25,6 +25,7 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
     base_dir =  recipe_conf['raft_config']['base_dir_path']
     app_type = cluster_params['app_type']
     coalesced_wr = cluster_params['coal_wr']
+    sync = cluster_params['sync_mode']
     node_name = ""
 
     if operation != "start":
@@ -89,11 +90,13 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
         logging.warning("ctlsvc_path: %s" % ctlsvc_path)
         logging.warning("cluster_type: %s" % cluster_params['ctype'])
         logging.warning("coalesced_wr: %s" % cluster_params['coal_wr'])
+        logging.warning("sync: %s" % cluster_params['sync_mode'])
+
         get_process_type = "pmdb"
         lookout_uuid = ""
         inotifyobj = InotifyPath(base_dir, True, get_process_type, lookout_uuid)
         inotifyobj.export_ctlsvc_path(ctlsvc_path)
-        serverproc.start_process(base_dir, node_name, coalesced_wr)
+        serverproc.start_process(base_dir, node_name, coalesced_wr, sync)
 
     elif operation == "pause":
         serverproc.pause_process(pid)
