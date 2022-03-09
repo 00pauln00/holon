@@ -178,10 +178,48 @@
       vars:
         ServerUUID: "{{ newlyStartedPeer4['results'][0]['item'] }}"
 
-    - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
+    - name: "{{ recipe_name }}: Get the updated list of running peers"
       include_role:
         name: common
         tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Apply fault injection on all newly started peer."
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ newlyStartedPeer4['results'][0]['item'] }}"
+        fault_injection_name: "raft_force_set_max_scan_entries"
+
+    - name: "{{ recipe_name }}: Set max-scan-entries on all peers."
+      vars:
+        stage: "setMaxScanEntriesOnAll"
+        cmd: "max-scan-entries@1000"
+        where: "/raft_net_info/max-scan-entries"
+        key: "/raft_net_info/max-scan-entries"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', newlyStartedPeer4['results'][0]['item'], cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Set log-reap-factor on all peers."
+      vars:
+        stage: "setLRPOnAll"
+        cmd: "log-reap-factor@2"
+        where: "/raft_net_info/log-reap-factor"
+        key: "/raft_net_info/log-reap-factor"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', newlyStartedPeer4['results'][0]['item'], cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Verify max-scan-entries and log-reap-factor on all peers."
+      vars:
+         stage: "verifyMSEandLRPOnAll"
+         getVal: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys, wantlist=True) }}"
+      debug:
+        msg: "Verify max-scan-entries and log-reap-factor are set properly on all peers."
+      failed_when: >
+           (getVal["/raft_net_info/max-scan-entries"] != 1000) or
+           (getVal["/raft_net_info/log-reap-factor"] != 2)
 
     - name: "{{ recipe_name }}: Kill the child processes of peer4"
       debug:
