@@ -28,6 +28,7 @@
       client_port: "{{ client_port | default(13000) }}"
       disable_post_run: "{{ disable_post_run | default(false) | bool }}"
       coalesced_wr: "{{ coalesced_wr | default(0) | string }}"
+      sync: "{{ sync | default(0) | string }}"
       num_clients: "{{ num_clients | default(10) }}"
       ClientIndex: 0
       app_type: "{{ app_name | default('pumicedb') }}"
@@ -36,12 +37,13 @@
       ((client_port | int) >= 65536) or
       ((backend_type != "raft") and (backend_type != "pumicedb"))
 
-    
-  - name: "print the go application running"
+
+  - name: "Print the special feature parameters."
     debug:
       msg:
-       - "The app running is {{app_type}}"
+       - "The app running is: {{ app_type }}"
        - "Coalesced feature: {{ coalesced_wr }}"
+       - "sync feature: {{ sync }}"
 
 
   - name: "Check if ports are already in use"
@@ -72,6 +74,7 @@
            srv_port: "{{ srv_port }}"
            app_type: "{{ app_type }}"
            coal_wr: "{{ coalesced_wr }}"
+           sync_mode: "{{ sync }}"
 
   - name: "Prepare server configs"
     set_fact: ClusterInfo="{{lookup('niova_raftconfig', "server", wantlist=True)}}"
