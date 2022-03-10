@@ -270,7 +270,7 @@ class LookupModule(LookupBase):
                                                 proc_type, recipe_conf,
                                                 cluster_params)
         except Exception as error:
-            sys.stderr.write(error)
+            sys.stderr.write(str(error))
 
         if sleep_after_op == True:
             logging.info("sleep after the operation")
