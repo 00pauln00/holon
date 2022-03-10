@@ -93,17 +93,9 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid, '-a', '-c'],
                                     stdout = fp, stderr = fp)
-        elif app_type == "pumicedb" and coalesced_wr == "0":
-            process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid],
-                                    stdout = fp, stderr = fp)
         elif app_type == "pumicedb" and sync == "1":
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid],
-                                    stdout = fp, stderr = fp)
-        elif app_type == "pumicedb" and sync == "0":
-            process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid, '-a'],
                                     stdout = fp, stderr = fp)
         elif app_type == "controlplane":
             log_path = "%s/%s_pmdbServer.log" % (base_dir, peer_uuid)
@@ -112,7 +104,7 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
                                     stdout = fp, stderr = fp)
         else:
             process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid],
+                                    raft_uuid, '-u', peer_uuid, '-a'],
                                     stdout = fp, stderr = fp)
     else:
         if app_type == "foodpalace" or app_type == "covid":
@@ -138,6 +130,10 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid, '-pa', gossipNodes,
                                     '-c', config_path, '-n', node_name, '-l', log_path],
+                                    stdout = fp, stderr = fp)
+        else:
+            process_popen = subprocess.Popen([bin_path, '-r',
+                                    raft_uuid, '-u', peer_uuid, '-a'],
                                     stdout = fp, stderr = fp)
 
     return process_popen
