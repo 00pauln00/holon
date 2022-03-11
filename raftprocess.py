@@ -88,32 +88,42 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
     # binary_dir = os.getenv('NIOVA_BIN_PATH')
     gossipNodes = "%s/gossipNodes" % base_dir
 
-    if ptype =="server":
-        if app_type == "pumicedb" and coalesced_wr == "1":
-            process_popen = subprocess.Popen([bin_path, '-r',
+    if ptype == "server":
+        if app_type == "pumicedb":
+            if coalesced_wr == "1":
+                 process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid, '-a', '-c'],
                                     stdout = fp, stderr = fp)
-        elif app_type == "pumicedb" and sync == "1":
-            process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid],
-                                    stdout = fp, stderr = fp)
+            elif sync == "1":
+                process_popen = subprocess.Popen([bin_path, '-r',
+                                          raft_uuid, '-u', peer_uuid],
+                                          stdout = fp, stderr = fp)
+            else:
+                 process_popen = subprocess.Popen([bin_path, '-r',
+                                          raft_uuid, '-u', peer_uuid, '-a'],
+                                          stdout = fp, stderr = fp)
         elif app_type == "controlplane":
             log_path = "%s/%s_pmdbServer.log" % (base_dir, peer_uuid)
             process_popen = subprocess.Popen([bin_path , '-g',  gossipNodes , '-r',
                                     raft_uuid, '-u', peer_uuid, '-l' , log_path],
                                     stdout = fp, stderr = fp)
-        else:
-            process_popen = subprocess.Popen([bin_path, '-r',
+    else:
+        if app_type == "pumicedb":
+            if coalesced_wr == 1:
+                process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid, '-a'],
                                     stdout = fp, stderr = fp)
-    else:
-        if app_type == "foodpalace" or app_type == "covid":
+            elif sync == "1":
+                  process_popen = subprocess.Popen([bin_path, '-r',
+                                         raft_uuid, '-u', peer_uuid],
+                                         stdout = fp, stderr = fp)
+            else:
+                  process_popen = subprocess.Popen([bin_path, '-r',
+                                                      raft_uuid, '-u', peer_uuid, '-a'],
+                                                      stdout = fp, stderr = fp)
+        elif app_type == "foodpalace" or app_type == "covid":
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid, '-l', base_dir],
-                                    stdout = fp, stderr = fp)
-        elif app_type == "pumicedb" and sync == "1":
-           process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid],
                                     stdout = fp, stderr = fp)
         elif app_type == "niovakv":
             log_path = "%s/%s_niovakv_server.log" % (base_dir, peer_uuid)
@@ -127,12 +137,9 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
                                     raft_uuid, '-u', peer_uuid, '-pa', gossipNodes,
                                     '-c', config_path, '-n', node_name, '-l', log_path],
                                     stdout = fp, stderr = fp)
-        else:
-            process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid, '-a'],
-                                    stdout = fp, stderr = fp)
-
     return process_popen
+
+
 
 class RaftProcess:
 
