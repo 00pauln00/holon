@@ -48,7 +48,8 @@ def niova_ctlreq_cmd_send(recipe_conf, ctlreq_dict, peer_uuid, get_process_type,
     '''
     
     filecounter = recipe_conf['raft_config']['file_counter']
-    fname = "%s.%s-%s" % (filecounter, recipe_name, stage)
+    timestamp = str(round(time.time() * 1000))
+    fname = "%s.%s.%s-%s" % (filecounter,timestamp, recipe_name, stage)
     filecounter = filecounter + 1
     recipe_conf['raft_config']['file_counter'] = filecounter
     
