@@ -42,8 +42,8 @@
     debug:
       msg:
        - "The app running is: {{ app_type }}"
-       - "Coalesced feature: {{ coalesced_wr }}"
-       - "sync feature: {{ sync }}"
+       - "Coalesced enabled: {{ coalesced_wr }}"
+       - "Sync enabled: {{ sync }}"
 
 
   - name: "Check if ports are already in use"
