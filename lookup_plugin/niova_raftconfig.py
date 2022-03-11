@@ -14,6 +14,7 @@ def niova_server_conf_create(cluster_params):
     npeers = int(cluster_params['npeers'])
     port = int(cluster_params['srv_port'])
     client_port = int(cluster_params['client_port'])
+    file_counter = int(cluster_params['file_counter'])
 
     # Log file would be created inside the base directory only
     log_path = "%s/%s/%s.log" % (base_dir, raft_uuid, raft_uuid)
@@ -29,7 +30,7 @@ def niova_server_conf_create(cluster_params):
     logging.basicConfig(filename=log_path, filemode='w', level=logging.DEBUG, format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s')
 
     raftconfobj.generate_raft_conf(genericcmdobj, npeers, "127.0.0.1",
-                                       port, client_port)
+                                       port, client_port, file_counter)
 
     json_string = json.dumps(raftconfobj.__dict__)
     raft_conf_dict = json.loads(json_string)
