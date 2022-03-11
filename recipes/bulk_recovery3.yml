@@ -5,7 +5,7 @@
   vars:
      recipe_name: "bulk_recovery3"
      parent: "basic_leader_election2"
-     num_writes: 7000
+     num_writes: 10000
      raft_root_entry_keys:
               - "/raft_root_entry/0/leader-uuid"
               - "/raft_root_entry/0/peer-uuid"
