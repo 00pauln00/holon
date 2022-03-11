@@ -139,8 +139,6 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
                                     stdout = fp, stderr = fp)
     return process_popen
 
-
-
 class RaftProcess:
 
     process_type = ''
