@@ -11,10 +11,10 @@ from inotifypath import *
 from raftprocess import RaftProcess
 
 def is_process_running(peer_uuid, recipe_conf):
-    if "raft_proccess" in recipe_conf:
+    if "raft_process" in recipe_conf:
         if peer_uuid in recipe_conf['raft_process']:
-            if "process_status" in raft_conf['raft_process'][peer_uuid]:
-                if raft_conf['raft_process'][peer_uuid]['process_status'] == "running":
+            if "process_status" in recipe_conf['raft_process'][peer_uuid]:
+                if recipe_conf['raft_process'][peer_uuid]['process_status'] == "running":
                     return True 
     return False
 '''
@@ -83,7 +83,7 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
 
     if operation == "start":
         if(is_process_running(peer_uuid, recipe_conf)):
-            err = "Process with UUID (%d) is already running" % peer_uuid
+            err = "Process with UUID (%s) is already running" % peer_uuid
             logging.error(err)
             raise Exception(err)
             
