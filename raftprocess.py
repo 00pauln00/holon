@@ -107,6 +107,11 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
             process_popen = subprocess.Popen([bin_path , '-g',  gossipNodes , '-r',
                                     raft_uuid, '-u', peer_uuid, '-l' , log_path],
                                     stdout = fp, stderr = fp)
+        elif app_type == "covid" or app_type == "foodpalace" or app_type == "niovakv":
+            process_popen = subprocess.Popen([bin_path, '-r',
+                                          raft_uuid, '-u', peer_uuid],
+                                          stdout = fp, stderr = fp)
+
     else:
         if app_type == "pumicedb":
             if coalesced_wr == 1:
@@ -187,7 +192,6 @@ class RaftProcess:
         #    exit()
 
     def start_process(self, base_dir, node_name, coalesced_wr, sync):
-
         logging.warning("Starting uuid: %s, cluster_type %s" % (self.process_uuid, self.process_backend_type))
 
         binary_dir = os.getenv('NIOVA_BIN_PATH')
