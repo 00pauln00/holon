@@ -46,8 +46,13 @@ def niova_ctlreq_cmd_send(recipe_conf, ctlreq_dict, peer_uuid, get_process_type,
     stage name:
     for example: recipe_name-stage_name.unique_app_uuid
     '''
-    fname = "%s-%s" % (recipe_name, stage)
-
+    
+    filecounter = recipe_conf['raft_config']['file_counter']
+    timestamp = str(round(time.time() * 1000))
+    fname = "%04d.%s.%s-%s" % (filecounter,timestamp, recipe_name, stage)
+    filecounter = filecounter + 1
+    recipe_conf['raft_config']['file_counter'] = filecounter
+    
     # Prepare the ctlreq object
     if wait_for_ofile == False:
         get_process_type = ""
@@ -150,10 +155,8 @@ def niova_raft_lookup_ctlreq(recipe_conf, ctlreq_cmd_dict, peer_uuid, getProcess
 Load the recipe json file and get the file contents as dictionary.
 '''
 def niova_get_recipe_json_data(cluster_params):
-
 	# Prepare the path for the recipe json file
     raft_json_fpath = "%s/%s/%s.json" % (cluster_params['base_dir'], cluster_params['raft_uuid'], cluster_params['raft_uuid'])
-
 	# Load the recipe json file.
     recipe_conf = {}
     if os.path.exists(raft_json_fpath):

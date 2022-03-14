@@ -49,7 +49,7 @@ class RaftConfig:
                     for all servers.
                 
     '''
-    def generate_raft_conf(self, genericcmdobj, nservers, ip_address, port, client_port):
+    def generate_raft_conf(self, genericcmdobj, nservers, ip_address, port, client_port, file_counter):
 
         basicioobj = BasicIO()
         genericcmdobj = GenericCmds()
@@ -120,6 +120,8 @@ class RaftConfig:
             self.peer_uuid_dict[i] = peer_uuid
 
         basicioobj.close_file(raft_fd)
+        
+        self.file_counter = 0
 
         json_string = json.dumps(self.__dict__)
         logging.info(json_string)
