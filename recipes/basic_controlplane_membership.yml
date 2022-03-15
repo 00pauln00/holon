@@ -84,17 +84,17 @@
                 'Port': '',
                 'OutfileName': 'write_output'
                  }
-         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Write key-value from ncpc."
        with_items:
-          - "{{ ncpclires }}"
+          - "{{ ncpcliwr }}"
        register: writeres
        no_log: true
 
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
-         wrstatus: "{{ writeres['results'][0]['item']['write'][0]['Response']['Status'] }}"
+         wrstatus: "{{ writeres['results'][0]['item']['write']['write'][0]['Response']['Status'] }}"
        debug:
          msg: "Check if write is successful."
        failed_when: >
@@ -107,17 +107,17 @@
                 'Operation': 'read',
                 'OutfileName': 'read_output'
                 }
-         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "read key-value from ncpc."
        with_items:
-          - "{{ ncpclires }}"
+          - "{{ ncpclird }}"
        register: readres
        no_log: true
 
      - name: "{{ recipe_name }}: compare values after sucessful write/read operation."
        vars:
-         rdval: "{{ readres['results'][0]['item']['read'][0]['Response'] }}"
+         rdval: "{{ readres['results'][0]['item']['read']['read'][0]['Response'] }}"
        debug:
          msg: "Verifying parameter after read operation"
        failed_when: >
@@ -130,36 +130,36 @@
                 'Operation': 'config',
                 'OutfileName': 'config_output'
                  }
-         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "Write key-value from niovakv_client."
-       with_items:
-          - "{{ ncpclires }}"
-       register: configres
+         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        no_log: true
 
      - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
        vars:
          input_param: {
                 'Operation': 'membership',
-                'OutfileName': 'membership_output'
+                'OutfileName': 'pmdbServer_membership'
                  }
-         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         pmdbGossip: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "get membership details of running servers."
        with_items:
-          - "{{ ncpclires }}"
-       register: membershipres
+          - "{{ pmdbGossip }}"
+       register: pmdbMembership
        no_log: true
+
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
 
      - name: "{{ recipe_name }}: Verify gosssip details of 4 pmdb server."
        vars:
-         verifyStatus: "{{ membershipres['results'][0]['item'][NRunningPeers[item]] }}"
+         verifyStatus: "{{ pmdbMembership['results'][0]['item']['membership'][NRunningPeers[item]]['Status'] }}"
        debug:
          msg: "Verifying status of the pmdbs servers."
-       failed_when: >
-          (verifyStatus['Status'] == "failed")
-       loop: "{{ range(0, NRunningPeers | length) |list }}"
+       failed_when: verifyStatus != "alive"
+       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
      - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
        set_fact:
@@ -183,13 +183,13 @@
        register: nodeName
        no_log : true
 
-     - name: "{{ recipe_name }}: Check if proxy node status is alive/running."
+     - name: "{{ recipe_name }}: Check if proxy node status is 'alive'."
        vars:
-         verifyNodeStatus: "{{ nodeName['results'][0]['item'][nodeList[item]]['Status'] }}"
+         verifyNodeStatus: "{{ nodeName['results'][0]['item']['membership'][nodeList[item]]['Status'] }}"
        debug:
-         msg: "Verify Killed proxy server's Status"
-       failed_when: verifyNodeStatus == "failed"
-       loop: "{{ range(0, nodeList | length) |list }}"
+         msg: "Verify proxy server's Status"
+       failed_when: verifyNodeStatus != "alive"
+       loop: "{{ range(0, nodeList | length) | list }}"
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

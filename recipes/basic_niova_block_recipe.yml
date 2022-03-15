@@ -33,6 +33,7 @@
                   }
        debug:
          msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       no_log: True
 
      - name: "{{ recipe_name }}: Starting controlplane_client to read the config data"
        vars:
@@ -43,6 +44,7 @@
                   }
        debug:
          msg: "{{ lookup('controlplane','ncpc', input_param, wantlist=True) }}"
+       no_log: True
 
      - name: generate new lookout-uuid
        shell: uuidgen
@@ -61,14 +63,42 @@
        debug:
          msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
 
-     - name: "{{ recipe_name }}: Start controlplane_client to get membership details."
+     - pause:
+         seconds: 2
+
+     - name: "{{ recipe_name }}: Wait until lookout's status gets changed."
+       vars:
+         getLookoutUUID: "{{ lookoutUUID['stdout_lines'][0] }}"
+         input_param: {
+                  'Operation': 'membership',
+                  'OutfileName': 'lookoutMembership'
+                  }
+       debug:
+         msg: "Verifying lookout's Status"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getLookoutUUID) | map(attribute='Status') | list | first == "alive"
+       retries: 10
+       delay: 1
+
+     - name: "{{ recipe_name }}: Get lookout's membership details."
        vars:
          input_param: {
                   'Operation': 'membership',
-                  'OutfileName': 'membership_output'
+                  'OutfileName': 'verify_lookout_info'
                   }
+         lookout_membership: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         msg: "get lookout's gossip info"
+       with_items:
+          - "{{ lookout_membership }}"
+       register: verify_lookout_status
+
+     - name: "{{ recipe_name }}: Verify lookout's status."
+       vars:
+         getLookoutUUID: "{{ lookoutUUID['stdout_lines'][0] }}"
+         verifyStatus: "{{ verify_lookout_status['results'][0]['item']['membership'][getLookoutUUID]['Status'] }}"
+       debug:
+         msg: "Verifying status of the lookout."
+       failed_when: verifyStatus != "alive"
 
      - name: "{{ recipe_name }}: Start niova-block-ctl process."
        vars:
@@ -86,22 +116,24 @@
                   'nisd_uuid' : '{{ nisdUUID["stdout_lines"][0] }}',
                   'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                   }
-         nisd : "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
        debug:
          msg: "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
 
-     - name: "{{ recipe_name }}: Start controlplane_client to get nisd's membership details."
+     - pause:
+         seconds: 2
+
+     - name: "{{ recipe_name }}: Wait until Nisd's status gets updated."
        vars:
+         getNisd: "{{ nisdUUID['stdout_lines'][0] }}"
          input_param: {
                   'Operation': 'NISDGossip',
-                  'OutfileName': 'nisd_gossip_info_{{ item }}'
+                  'OutfileName': 'wait_for_nisdGossip'
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       no_log: True
-       loop: "{{ range(0, 10) | list }}"
-       loop_control:
-          pause: 1
+         msg: "Verifying NISD's Status"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
+       retries: 10
+       delay: 1
 
      - name: "{{ recipe_name }}: Get nisd's membership details."
        vars:
@@ -116,16 +148,13 @@
           - "{{ nisd_membership }}"
        register: verify_nisd_status
 
-     - debug:
-         msg: "{{ verify_nisd_status }}"
-
      - name: "{{ recipe_name }}: Verify nisd's status."
        vars:
-         verifyStatus: "{{ verify_nisd_status['results'][0]['item'][nisdUUID['stdout_lines'][0]] }}"
+         getNisd: "{{ nisdUUID['stdout_lines'][0] }}"
+         verifyStatus: "{{ verify_nisd_status['results'][0]['item']['NISDGossip'][getNisd]['Status'] }}"
        debug:
          msg: "Verifying status of the nisd."
-       failed_when: >
-          (verifyStatus['Status'] != "Alive")
+       failed_when: verifyStatus != "Alive"
 
      - name: Generate new UUID
        shell: uuidgen
@@ -145,7 +174,7 @@
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
-       #no_log:  True
+       no_log:  True
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

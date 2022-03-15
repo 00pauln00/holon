@@ -10,5 +10,5 @@
          msg: "{{ lookup('controlplane', 'niova-block-ctl', input_param, wantlist=True) }}"
        loop: "{{ range(0, lookoutUUIDList | length) | list }}"
        loop_control:
-          pause: 10
+          pause: 3
 
