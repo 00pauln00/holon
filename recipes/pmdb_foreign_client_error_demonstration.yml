@@ -34,6 +34,8 @@
              client_port: "{{ client_port }}"
              srv_port: "{{ srv_port }}"
              coal_wr: "{{ 0 }}"
+             sync_mode: "{{ 0 }}"
+             file_counter: 0
 
     - name: "{{ recipe_name }}: Prepare config for new cluster using same ports as already running cluster."
       set_fact:
@@ -64,6 +66,8 @@
              nclients: 1
              app_type: "pumicedb"
              coal_wr: "{{ 0 }}"
+             sync_mode: "{{ 0 }}"
+             file_counter: 0
 
     - name: "{{ recipe_name }}: Prepare config for the foreign client."
       set_fact:
