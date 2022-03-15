@@ -5,7 +5,7 @@
   vars:
      recipe_name: "bulk_recovery_with_emptyDB"
      parent: "basic_leader_election2"
-     num_writes: 7000
+     num_writes: 3000
      number_of_app_uuids: 2
      raft_root_entry_keys:
               - "/raft_root_entry/0/leader-uuid"

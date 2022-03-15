@@ -5,7 +5,7 @@
   vars:
      recipe_name: "bulk_recovery3"
      parent: "basic_leader_election2"
-     num_writes: 10000
+     num_writes: 7000
      raft_root_entry_keys:
               - "/raft_root_entry/0/leader-uuid"
               - "/raft_root_entry/0/peer-uuid"
@@ -283,7 +283,7 @@
     #Perform write operations.
     - name: "{{ recipe_name}}: Again Perform 2nd set of 10000 writes."
       vars:
-        nwrites: 10000
+        nwrites: 7000
         stage: "againWrite10000"
         cmd: "input@{{ app_uuid1.stdout }}:0:0:0:0.write:0.{{ nwrites }}"
         where: "/pumice_db_test_client/input"
@@ -293,7 +293,7 @@
 
     - name: "{{ recipe_name}}: Wait until 2nd set of 10000 write completes from client"
       vars:
-        nwrites: 10000
+        nwrites: 7000
         stage: "waitToCompWr"
       debug:
         msg: "Waiting for client to finish writing"
@@ -303,7 +303,7 @@
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all 3 peers except peer4.."
       vars:
-         nwrites: 10000
+         nwrites: 7000
          origCI: "{{ after1stWr['results'][0]['item']['/0/commit-idx'] }}"
          exceptPeer4: "{{ NRunningPeers | difference(newlyStartedPeer4['results'][0]['item']) }}"
          stage: "getCIfrmfrmAllexceptPeer4"
@@ -383,7 +383,7 @@
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on peer4 after enabling send/recv."
       vars:
-         nwrites: 10000
+         nwrites: 7000
          origCI: "{{ after1stWr['results'][0]['item']['/0/commit-idx'] }}"
          stage: "getCIfrmPeer4"
       debug:
@@ -504,5 +504,3 @@
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
           terminate_recipe: true
-
-
