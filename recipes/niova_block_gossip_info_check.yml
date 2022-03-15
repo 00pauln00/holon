@@ -121,7 +121,7 @@
        vars:
          input_param: {
                   'nisd_uuid' : '{{ newNisdUuid["stdout_lines"][0] }}',
-                  'uport' : '1060',
+                  #'uport' : '1060',
                   'lookout_uuid' :  '{{ lookout_uuids[0] }}'
                   }
        debug:
@@ -191,7 +191,7 @@
        vars:
           input_param: {
                   'nisd_uuid' : '{{ nisd_uuids[0] }}',
-                  'uport' : '1060',
+                  #'uport' : '1060',
                   'lookout_uuid' :  '{{ lookout_uuids[0] }}'
                   }
        debug:
