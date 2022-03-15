@@ -32,7 +32,7 @@ def start_ncpc_process(cluster_params, Key, Value, Operation,
     ConfigPath = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
 
     outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
-    
+
     if Value == "" :
         process_popen = subprocess.Popen([bin_path, '-k', Key, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-r', outfilePath,
@@ -88,7 +88,7 @@ def start_niova_block_ctl_process(cluster_params, nisdPath, nisd_uuid):
 
     process_popen = subprocess.Popen([bin_path, '-d', nisdPath, '-i', nisd_uuid],
                                    stdout = fp, stderr = fp)
-    
+
     logging.warning("niova-block-ctl process is started to format the device")
     process_pid = process_popen.pid
     process_status = ''
@@ -139,8 +139,8 @@ def start_nisd_process(cluster_params, nisd_uuid, nisdPath):
     process_popen = subprocess.Popen([bin_path, '-u', nisd_uuid, '-d', nisdPath],
             stdout = fp, stderr = fp)
     logging.warning("starting nisd process")
-    
-    # writing the information of lookout and nisd into raft_uuid.json file 
+
+    # writing the information of lookout and nisd into raft_uuid.json file
     recipe_conf = load_recipe_op_config(cluster_params)
     pid = process_popen.pid
     ps = psutil.Process(pid)
@@ -274,7 +274,7 @@ def start_niova_block_test(cluster_params, nisd_uuid_to_write, read_operation_ra
                                                '-N', num_ops, '-v',vdev,'-Z', request_size_in_bytes,
                                                '-q', queue_depth, '-z', file_size],
                                                      stdout = fp, stderr = fp)
-    
+
     logging.warning("starting niova-block-test to write to nisd device")
     # Sync the log file so all the logs from niova-block-test gets written to log file.
     os.fsync(fp)
@@ -305,7 +305,7 @@ class LookupModule(LookupBase):
         cluster_params = kwargs['variables']['ClusterParams']
 
         if process_type == "ncpc":
-            
+
             if input_values['Operation'] == "write":
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, input_values['Key'], input_values['Value'],
@@ -313,28 +313,48 @@ class LookupModule(LookupBase):
                                                    input_values['IP_addr'], input_values['Port'])
 
                 output_data = get_the_output(outfile)
+                return {"write":output_data}
+
             elif input_values['Operation'] == "read":
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, input_values['Key'], Value,
                                                    input_values['Operation'], input_values['OutfileName'],
                                                    IP_addr, Port)
                 output_data = get_the_output(outfile)
-            else:
+                return {"read":output_data}
+
+            elif input_values['Operation'] == "membership":
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, Key, Value,
                                                    input_values['Operation'], input_values['OutfileName'],
                                                    IP_addr, Port)
                 output_data = get_the_output(outfile)
+                return {"membership":output_data}
 
+            elif input_values['Operation'] == "NISDGossip":
+                # Start the ncpc_client and perform the specified operation e.g write/read/config.
+                process,outfile = start_ncpc_process(cluster_params, Key, Value,
+                                                   input_values['Operation'], input_values['OutfileName'],
+                                                   IP_addr, Port)
+                output_data = get_the_output(outfile)
+                return {"NISDGossip":output_data}
+
+            elif input_values['Operation'] == "config":
+                # Start the ncpc_client and perform the specified operation e.g write/read/config.
+                process,outfile = start_ncpc_process(cluster_params, Key, Value,
+                                                   input_values['Operation'], input_values['OutfileName'],
+                                                   IP_addr, Port)
+                output_data = get_the_output(outfile)
+                return {"config":output_data}
 
             return output_data
 
         else:
             if process_type == "niova-block-ctl":
 
-                lookout_uuid = input_values['lookout_uuid'] 
+                lookout_uuid = input_values['lookout_uuid']
                 set_environment_variables(cluster_params, input_values['lookout_uuid'])
-                
+
                 # Start niova-block-ctl process
                 test_device_path = create_nisd_device_and_uuid(cluster_params, input_values['nisd_uuid'],
                                                                 input_values['nisd_dev_size'])
@@ -347,7 +367,7 @@ class LookupModule(LookupBase):
             elif process_type == "nisd":
 
                 set_environment_variables(cluster_params, input_values['lookout_uuid'])
-                
+
                 #start nisd process
                 nisdPath = prepare_nisd_device_path(cluster_params, input_values['nisd_uuid'])
                 nisd_process = start_nisd_process(cluster_params,  input_values['nisd_uuid'], nisdPath)
@@ -357,7 +377,7 @@ class LookupModule(LookupBase):
             elif process_type == "niova-block-test":
 
                 set_environment_variables(cluster_params, input_values['lookout_uuid'])
-                
+
                 # Start niova-block-test
                 niova_block_test_process = start_niova_block_test(cluster_params, input_values['uuid_to_write'],
                                                                   input_values['read_operation_ratio_percentage'],
@@ -367,7 +387,7 @@ class LookupModule(LookupBase):
                 return niova_block_test_process
 
             elif process_type == "niova-lookout"  :
-                
+
                 niova_lookout_path = "%s/%s/niova_lookout" % (cluster_params['base_dir'],
                                                            cluster_params['raft_uuid'])
 

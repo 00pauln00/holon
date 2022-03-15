@@ -8,10 +8,8 @@
                   }
        set_fact:
          newlyStartedNisd: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       failed_when: >
-         (newlyStartedNisd[nisdUuidsList[item]]['Status'] != "Alive")
+       failed_when: newlyStartedNisd['NISDGossip'][nisdUuidsList[item]]['Status'] != "Alive"
        loop: "{{ range(0, nisdUuidsList | length) | list }}"
        loop_control:
-          pause: 3
-
+          pause: 1
 

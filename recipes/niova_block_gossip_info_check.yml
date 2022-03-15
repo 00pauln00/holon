@@ -33,38 +33,27 @@
 
      - name: "{{ recipe_name }}: Wait until killed niova-lookout process's status gets changed."
        vars:
+         getLookoutUUID: "{{ lookout_uuids[0] }}"
          input_param: {
                   'Operation': 'membership',
-                  'OutfileName': 'wait_for_lookoutStatus_{{ item }}'
+                  'OutfileName': 'wait_for_killedlookout'
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       no_log : true
-       loop: "{{ range(0, 10) | list }}"
-       loop_control:
-           pause: 1
+         msg: "Verifying lookout's Status"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getLookoutUUID) | map(attribute='Status') | list | first == "failed"
+       retries: 10
+       delay: 1
 
-     - name: "{{ recipe_name }}: Get killed niova-lookout gossip details."
+     - name: "{{ recipe_name }}: Verify killed niova-lookout gossip details."
        vars:
          input_param: {
                   'Operation': 'membership',
-                  'OutfileName': 'verify_killed_lookout_{{ lookout_uuids[0] }}'
+                  'OutfileName': 'verify_killed_lookout'
                   }
-         killLookout: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         killedLookout: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "Get killed lookout details."
-       with_items:
-          - "{{ killLookout }}"
-       register: verifyKilledLookout
-
-     - name: "{{ recipe_name }}: Verify gosssip details of killed lookout process."
-       vars:
-         verifyStatus: "{{ verifyKilledLookout['results'][0]['item'][lookout_uuids[0]] }}"
-       debug:
-         msg:
-          - "Verifying killed lookout process's status"
-       failed_when: >
-        (verifyStatus['Status'] != "failed")
+         msg: "Verify killed lookout details."
+       failed_when: killedLookout['membership'][lookout_uuids[0]]['Status'] != "failed"
 
      - name: "{{ recipe_name }}: Restart same niova-lookout process."
        vars:
@@ -80,40 +69,32 @@
           -  "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
        no_log: True
 
+     - pause:
+         seconds: 2
+
      - name: "{{ recipe_name }}: Wait until restarted niova-lookout process's status gets changed."
        vars:
+         getLookoutUUID: "{{ lookout_uuids[0] }}"
          input_param: {
                   'Operation': 'membership',
-                  'OutfileName': 'wait_for_restarted_lookoutStatus_{{ item }}'
+                  'OutfileName': 'wait_for_restarted_lookout'
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       no_log : true
-       loop: "{{ range(0, 10) | list }}"
-       loop_control:
-           pause: 1
+         msg: "Verifying lookout's Status"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getLookoutUUID) | map(attribute='Status') | list | first == "alive"
+       retries: 10
+       delay: 1
 
      - name: "{{ recipe_name }}: Verify niova-lookout process's status is 'alive' now."
        vars:
          input_param: {
                   'Operation': 'membership',
-                  'OutfileName': 'verify_restarted_lookout_{{ lookout_uuids[0] }}'
+                  'OutfileName': 'verify_restarted_lookout'
                   }
-         restartLookoutStatus: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         restartedLookoutStatus: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "Get restarted lookout process's gossip details"
-       with_items:
-          - "{{ restartLookoutStatus }}"
-       register: verifyRestartLookout
-
-     - name: "{{ recipe_name }}: Verify gosssip details of lookout process which is restarted."
-       vars:
-         verifyStatus: "{{ verifyRestartLookout['results'][0]['item'][lookout_uuids[0]] }}"
-       debug:
-         msg:
-          - "Verifying lookout process's status"
-       failed_when: >
-        (verifyStatus['Status'] != "alive")
+         msg: "Verify restarted lookout process's gossip details"
+       failed_when: restartedLookoutStatus['membership'][lookout_uuids[0]]['Status'] != "alive"
 
      - name: Generate new NISD UUID
        shell: uuidgen
@@ -133,11 +114,14 @@
          msg: "{{ lookup('controlplane', 'niova-block-ctl', input_param, wantlist=True) }}"
        no_log: True
 
+     - pause:
+         seconds: 1
+
      - name: "{{ recipe_name }}: Start new nisd process."
        vars:
          input_param: {
                   'nisd_uuid' : '{{ newNisdUuid["stdout_lines"][0] }}',
-                  #'uport' : '1060',
+                  'uport' : '1060',
                   'lookout_uuid' :  '{{ lookout_uuids[0] }}'
                   }
        debug:
@@ -145,41 +129,31 @@
        no_log: True
 
      - pause:
-         seconds: 5
+         seconds: 2
 
-     - name: "{{ recipe_name }}: Wait until nisd's status gets changed."
+     - name: "{{ recipe_name }}: Wait until Nisd's status gets updated."
        vars:
+         getNisd: "{{ newNisdUuid['stdout_lines'][0] }}"
          input_param: {
                   'Operation': 'NISDGossip',
-                  'OutfileName': 'wait_for_new_nisdStatus_{{ item }}'
+                  'OutfileName': 'wait_for_new_nisdStatus'
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       no_log : true
-       loop: "{{ range(0, 10) | list }}"
-       loop_control:
-           pause: 1
+         msg: "Verifying NISD's Status"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
+       retries: 10
+       delay: 1
 
-     - name: "{{ recipe_name }}: Get new nisd process's gossip info."
+     - name: "{{ recipe_name }}: Verify new nisd process's gossip info."
        vars:
          input_param: {
                   'Operation': 'NISDGossip',
                   'OutfileName': 'verify_nisd_{{ newNisdUuid["stdout_lines"][0] }}'
                   }
-         nisd_membership: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         new_nisd_membership: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "get nisd's gossip info"
-       with_items:
-          - "{{ nisd_membership }}"
-       register: verify_new_nisd_status
-
-     - name: "{{ recipe_name }}: Verify gosssip details of newly started nisd process.."
-       vars:
-         verifyStatus: "{{ verify_new_nisd_status['results'][0]['item'][newNisdUuid['stdout_lines'][0]] }}"
-       debug:
-         msg: "Verifying status of the nisd."
-       failed_when: >
-          (verifyStatus['Status'] != "Alive")
+         msg: "verify new nisd's gossip info"
+       failed_when: new_nisd_membership['NISDGossip'][newNisdUuid['stdout_lines'][0]]['Status'] != "Alive"
 
      - name: "{{ recipe_name }}: Kill one of the nisd process."
        debug:
@@ -191,16 +165,16 @@
 
      - name: "{{ recipe_name }}: Wait until killed nisd's status gets changed."
        vars:
+         getNisd: "{{ nisd_uuids[0] }}"
          input_param: {
                   'Operation': 'NISDGossip',
-                  'OutfileName': 'wait_for_killed_nisdStatus_{{ item }}'
+                  'OutfileName': 'wait_for_killed_nisdStatus'
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       no_log : true
-       loop: "{{ range(0, 10) | list }}"
-       loop_control:
-           pause: 1
+         msg: "Verifying NISD's Status"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Dead"
+       retries: 10
+       delay: 1
 
      - name: "{{ recipe_name }}: Verify nisd process's status is 'Dead'."
        vars:
@@ -208,47 +182,36 @@
                   'Operation': 'NISDGossip',
                   'OutfileName': 'killed_nisd_status_{{ nisd_uuids[0] }}'
                   }
-         killNisd: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         verifyKilledNisdStatus: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "Get killed nisd process's gossip details"
-       with_items:
-          - "{{ killNisd }}"
-       register: verifyKilledNisd
-
-     - name: "{{ recipe_name }}: Verify gosssip details of killed nisd process."
-       vars:
-         verifyStatus: "{{ verifyKilledNisd['results'][0]['item'][nisd_uuids[0]] }}"
-       debug:
-         msg:
-          - "Verifying killed nisd process's status"
-       failed_when: >
-        (verifyStatus['Status'] != "Dead")
+         msg: "Verify killed nisd process's gossip details"
+       failed_when: verifyKilledNisdStatus['NISDGossip'][nisd_uuids[0]]['Status'] != "Dead"
 
      - name: "{{ recipe_name }}: Restart same nisd process."
        vars:
           input_param: {
                   'nisd_uuid' : '{{ nisd_uuids[0] }}',
-                  #'uport' : '1060',
+                  'uport' : '1060',
                   'lookout_uuid' :  '{{ lookout_uuids[0] }}'
                   }
        debug:
          msg: "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
 
      - pause:
-         seconds: 5
+         seconds: 2
 
      - name: "{{ recipe_name }}: Wait until restarted nisd's status gets changed."
        vars:
+         getNisd: "{{ nisd_uuids[0] }}"
          input_param: {
                   'Operation': 'NISDGossip',
-                  'OutfileName': 'wait_for_restarted_nisdStatus_{{ item }}'
+                  'OutfileName': 'restarted_nisdGossip'
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       no_log : true
-       loop: "{{ range(0, 120) | list }}"
-       loop_control:
-           pause: 1
+         msg: "Verifying NISD's Status"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
+       retries: 10
+       delay: 1
 
      - name: "{{ recipe_name }}: Verify nisd process's status is 'alive' now."
        vars:
@@ -258,19 +221,8 @@
                   }
          restartNisdStatus: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "Get restarted nisd process's gossip details"
-       with_items:
-          - "{{ restartNisdStatus }}"
-       register: verifyRestartNisd
-
-     - name: "{{ recipe_name }}: Verify gosssip details of nisd process which is restarted."
-       vars:
-         verifyStatus: "{{ verifyRestartNisd['results'][0]['item'][nisd_uuids[0]] }}"
-       debug:
-         msg:
-          - "Verifying restarted nisd process's status"
-       failed_when: >
-        (verifyStatus['Status'] != "Alive")
+         msg: "Verify restarted nisd process's gossip details"
+       failed_when: restartNisdStatus['NISDGossip'][nisd_uuids[0]]['Status'] != "Alive"
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
