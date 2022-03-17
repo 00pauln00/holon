@@ -1,7 +1,8 @@
 ---
 
     - name: "Start the peer"
-      debug:
-       msg:
-        - "{{lookup('niova_raftprocess', 'start', ServerUUID, wantlist=True)}}"
-       
+      command:
+        cmd: "{{lookup('niova_raftprocess', 'start', ServerUUID, wantlist=True)}}"
+      register: ret
+      failed_when: ret.rc == 2
+

@@ -1,6 +1,7 @@
 from ansible.plugins.lookup import LookupBase
 import json
 import os, time
+import sys
 
 import subprocess
 from genericcmd import *
@@ -9,6 +10,13 @@ from raftconfig import *
 from inotifypath import *
 from raftprocess import RaftProcess
 
+def is_process_running(peer_uuid, recipe_conf):
+    if "raft_process" in recipe_conf:
+        if peer_uuid in recipe_conf['raft_process']:
+            if "process_status" in recipe_conf['raft_process'][peer_uuid]:
+                if recipe_conf['raft_process'][peer_uuid]['process_status'] == "running":
+                    return True 
+    return False
 '''
 niova_raft_process_ops: This function perform operations like start, stop,pause
 on the server/client.
@@ -75,7 +83,11 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
             recipe_conf['serf_nodes'][peer_uuid] = node_name
 
     if operation == "start":
-
+        if(is_process_running(peer_uuid, recipe_conf)):
+            err = "Process with UUID (%s) is already running" % peer_uuid
+            logging.error(err)
+            raise Exception(err)
+            
         ctlsvc_path = "%s/configs" % base_dir
         if cluster_params['app_type'] == "controlplane" and proc_type == "client":
             logging.warning("app_type controlplane and proxy server getting started")
@@ -256,9 +268,13 @@ class LookupModule(LookupBase):
             niova_client_config_create(uuid, recipe_conf, cluster_params)
 
         # Perform the operation on the peer.
-        niova_obj_dict = niova_raft_process_ops(uuid, proc_operation,
+        try:
+            niova_obj_dict = niova_raft_process_ops(uuid, proc_operation,
                                                 proc_type, recipe_conf,
                                                 cluster_params)
+        except Exception as error:
+            sys.stderr.write(str(error))
+
         if sleep_after_op == True:
             logging.info("sleep after the operation")
             sleep_info = sinfo
