@@ -166,20 +166,12 @@ def start_nisd_process(cluster_params, nisd_uuid, nisdPath):
     return process_popen
 
 
-def prepare_nisd_device_path(cluster_params, nisd_uuid):
-    base_dir = cluster_params['base_dir']
-    raft_uuid = cluster_params['raft_uuid']
-
-    #prepare the nisd device path
-    device_path = "%s/%s" % (cluster_params['base_dir'], cluster_params['raft_uuid'])
-    nisd_file_name = "test_nisd_%s.device" % nisd_uuid
-
-    nisdPath = os.path.join(device_path, nisd_file_name)
-
+def prepare_nisd_device_path(nisd_uuid):
+    nisdPath = "/mnt/test_nisd_%s.device" % nisd_uuid
     return nisdPath
 
-def create_nisd_device_and_uuid(cluster_params, nisd_uuid, nisd_dev_size):
-    nisdpath_device = prepare_nisd_device_path(cluster_params, nisd_uuid)
+def create_nisd_device_and_uuid(nisd_uuid, nisd_dev_size):
+    nisdpath_device = prepare_nisd_device_path(nisd_uuid)
 
     # truncate the device to a specified size
     file = open(nisdpath_device, 'w')
@@ -356,9 +348,8 @@ class LookupModule(LookupBase):
                 set_environment_variables(cluster_params, input_values['lookout_uuid'])
 
                 # Start niova-block-ctl process
-                test_device_path = create_nisd_device_and_uuid(cluster_params, input_values['nisd_uuid'],
+                test_device_path = create_nisd_device_and_uuid(input_values['nisd_uuid'],
                                                                 input_values['nisd_dev_size'])
-
                 niova_block_ctl_process = start_niova_block_ctl_process(cluster_params, test_device_path,
                                                                                input_values['nisd_uuid'])
 
@@ -369,7 +360,7 @@ class LookupModule(LookupBase):
                 set_environment_variables(cluster_params, input_values['lookout_uuid'])
 
                 #start nisd process
-                nisdPath = prepare_nisd_device_path(cluster_params, input_values['nisd_uuid'])
+                nisdPath = prepare_nisd_device_path(input_values['nisd_uuid'])
                 nisd_process = start_nisd_process(cluster_params,  input_values['nisd_uuid'], nisdPath)
 
                 return nisd_process
