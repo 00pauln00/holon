@@ -167,7 +167,8 @@ def start_nisd_process(cluster_params, nisd_uuid, nisdPath):
 
 
 def prepare_nisd_device_path(nisd_uuid):
-    nisdPath = "/mnt/test_nisd_%s.device" % nisd_uuid
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    nisdPath = "%s/test_nisd_%s.device" % (binary_dir, nisd_uuid)
     return nisdPath
 
 def create_nisd_device_and_uuid(nisd_uuid, nisd_dev_size):
