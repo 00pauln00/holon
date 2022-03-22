@@ -105,36 +105,6 @@
       failed_when: cuuid_return.rc == 0
     - debug: var=cuuid_return.rc
 
-    - name: "Run with raft-client by passing client uuid which is not known to the configuration."
-      command:
-        argv:
-          - "{{ raft_client_path }}"
-          - -r
-          - "{{ pmdb_standalone_raft_uuid }}"
-          - -u
-          - "{{ client_uuid.stdout }}"
-      register: raftclient_output
-      failed_when: raftclient_output.rc != 2
-      environment:
-         NIOVA_LOCAL_CTL_SVC_DIR: "{{ ClusterParams['base_dir'] }}/{{ ClusterParams['raft_uuid'] }}/configs"
-
-    - debug: var=raftclient_output.rc
-  
-    - name: "Run with pmdb-client by passing client uuid which is not known to the configuration."
-      command:
-        argv:
-          - "{{ pmdb_client_path }}"
-          - -r
-          - "{{ pmdb_standalone_raft_uuid }}"
-          - -u
-          - "{{ client_uuid.stdout }}"
-      register: pmdbclient_output
-      failed_when: pmdbclient_output.rc != -6
-      environment:
-         NIOVA_LOCAL_CTL_SVC_DIR: "{{ ClusterParams['base_dir'] }}/{{ ClusterParams['raft_uuid'] }}/configs"
-
-    - debug: var=pmdbclient_output.rc
-
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
