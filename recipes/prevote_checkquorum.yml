@@ -222,21 +222,15 @@
     #Check that term has been incremented only after leader election.
     - name: "{{ recipe_name }}: Verify raft values after leader election"
       vars:
-        term: "{{ prevote_get_all_after['results'][item]['item'] }}"
-        term_prev: "{{ stage0_raftvals['results'][item]['item'] }}"
-        commit_idx: "{{ prevote_get_all_after['results'][item]['item'] }}"
-        last_applied: "{{ prevote_get_all_after['results'][item]['item'] }}"
-        sync_entry_idx: "{{  prevote_get_all_after['results'][item]['item'] }}"
-        commit_idx_prev: "{{ stage0_raftvals['results'][item]['item'] }}"
-        last_applied_prev: "{{ stage0_raftvals['results'][item]['item'] }}"
-        sync_entry_idx_prev: "{{  stage0_raftvals['results'][item]['item'] }}"
+        orig_val: "{{ stage0_raftvals['results'][0]['item'] }}"
+        curr_val: "{{ prevote_get_all_after['results'][item]['item'] }}"
       debug:
-        msg: "Verifying raft values after leader election"
+        msg: "Verify all values after new leader election"
       failed_when: >
-            (term['/0/term'] <= term_prev['/0/term']) or
-            (commit_idx['/0/commit-idx'] <= (commit_idx_prev['/0/commit-idx'])) or
-            (last_applied['/0/last-applied'] <= (last_applied_prev['/0/last-applied'])) or
-            (sync_entry_idx['/0/sync-entry-idx'] <= (sync_entry_idx_prev['/0/sync-entry-idx']))
+            (curr_val['/0/term'] <= orig_val['/0/term']) or
+            (curr_val['/0/commit-idx'] <= orig_val['/0/commit-idx']) or
+            (curr_val['/0/last-applied'] <= orig_val['/0/last-applied']) or
+            (curr_val['/0/sync-entry-idx'] <= orig_val['/0/sync-entry-idx'])
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     #Recipe cleanup
