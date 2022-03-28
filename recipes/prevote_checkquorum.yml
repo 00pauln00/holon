@@ -131,7 +131,7 @@
         stage: "disable_peers_mode"
         cmd: "net_recv_enabled@false"
         where: "/ctl_svc_nodes/uuid@{{ prevchk_peers_to_disable[item] }}"
-        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
+        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', prevote_leader_before, cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ disable_mode }}"
       loop: "{{ range(0, prevchk_peers_to_disable | length) | list }}"
@@ -143,7 +143,7 @@
         raft_keys:
              - "/ctl_svc_nodes"
       set_fact:
-         ctl_svc_nodes:  "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+         ctl_svc_nodes:  "{{ lookup('niova_ctlrequest', 'lookup', prevote_leader_before, raft_keys, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Gather net_rcv_enabled values for peers to be disabled."
       vars:
@@ -183,17 +183,21 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
       no_log: true
 
+    - name: "{{ recipe_name }}: Get the cluster information again after stopping the peer."
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
     - name: "{{ recipe_name }}: Wait until leader election happens"
       vars:
+         nrunningPeers: "{{ NRunningPeers | difference(prevote_leader_before) }}"
          stage: "wait_leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != prevote_leader_before
+      until: lookup('niova_ctlrequest', 'lookup', nrunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != prevote_leader_before
       retries: 10
       delay: 1
-      loop: "{{ range(0, NRunningPeers | length) | list }}"
-      loop_control:
-        pause: 2
+      loop: "{{ range(0, nrunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Get the leader and follower uuids."
       include_role:
@@ -208,15 +212,11 @@
         msg: "Check if new leader is elected"
       failed_when: prevote_leader_before == prevote_leader_after
 
-    - name: "{{ recipe_name }}: Get the cluster information again after stopping the peer."
-      include_role:
-         name: common
-         tasks_from: get_server_uuid_info
-
     - name: "{{ recipe_name }}: Get the raft values after leader election"
       vars:
+         nrunningPeers: "{{ NRunningPeers | difference(prevote_leader_before) }}"
          stage: "prevote_get_all_after"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', nrunningPeers, raft_keys, wantlist=True) }}"
       debug:
         msg: "Get the raft values for running peers"
       no_log: true
@@ -227,6 +227,7 @@
     #Check that term has been incremented only after leader election.
     - name: "{{ recipe_name }}: Verify raft values after leader election"
       vars:
+        nrunningPeers: "{{ NRunningPeers | difference(prevote_leader_before) }}"
         orig_val: "{{ stage0_raftvals['results'][0]['item'] }}"
         curr_val: "{{ prevote_get_all_after['results'][item]['item'] }}"
       debug:
@@ -236,7 +237,7 @@
             (curr_val['/0/commit-idx'] <= orig_val['/0/commit-idx']) or
             (curr_val['/0/last-applied'] <= orig_val['/0/last-applied']) or
             (curr_val['/0/sync-entry-idx'] <= orig_val['/0/sync-entry-idx'])
-      loop: "{{ range(0, NRunningPeers | length) | list }}"
+      loop: "{{ range(0, nrunningPeers | length) | list }}"
 
     #Recipe cleanup
     #Enabling Msg(Recv) net_recv_enabled from leader to disabled peers."
@@ -245,7 +246,7 @@
         stage: "enable_recv"
         cmd: "net_recv_enabled@true"
         where: "/ctl_svc_nodes/uuid@{{ prevchk_peers_to_disable[item] }}"
-        enable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
+        enable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', prevote_leader_before, cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ enable_mode }}"
       loop: "{{ range(0, prevchk_peers_to_disable | length) | list }}"
@@ -257,7 +258,7 @@
         raft_keys:
              - "/ctl_svc_nodes"
       set_fact:
-         ctl_svc_nodes_en: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+         ctl_svc_nodes_en: "{{ lookup('niova_ctlrequest', 'lookup', prevote_leader_before, raft_keys, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Gather net_rcv_enabled values for peers to be enabled."
       vars:
