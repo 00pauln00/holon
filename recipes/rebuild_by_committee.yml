@@ -133,10 +133,13 @@
       with_items:
           - "{{ commit_idx_vals }}"
       register: commit_idx_unpaused
-      no_log: true
+      #no_log: true
       loop: "{{ range(0, 10) | list }}"
       loop_control:
         pause: 1
+
+    - debug:
+        msg: "{{ commit_idx_unpaused }}"
 
     - name: "{{ recipe_name }}: Verifying if commit-idx of unpaused followers is greater than 101."
       vars:
@@ -158,8 +161,8 @@
       debug:
         msg: "Comparing commit-idx of unpaused followers."
       failed_when: >
-            (commit_idx0 != commit_idx0_next) or
-            (commit_idx1 != commit_idx1_next)
+            (commit_idx0 > commit_idx0_next) or
+            (commit_idx1 > commit_idx1_next)
       loop: "{{ range(0, 9) | list }}"
 
     - name: "{{ recipe_name }}: Verify if num_remaining is 0."
@@ -209,9 +212,9 @@
         commit_idx_has_unique_val: "{{ get_commit_idx | map(attribute='/0/commit-idx') | list | unique | length == 1 }}"
       debug:
         msg: "Waiting until all running peers show same commit idx"
-      loop: "{{ range(0, 30) | list }}"
-      loop_control:
-         pause: 1
+      until: commit_idx_has_unique_val == true
+      retries: 30
+      delay: 1
 
     - name: "{{ recipe_name }}: Get commit-idx values of all peers before reboot."
       vars:
@@ -227,11 +230,11 @@
     - name: "{{ recipe_name }}: Compare commit-idx values of all peers."
       vars:
         commit_idx: "{{ commit_idx_all['results'][item]['item']['/0/commit-idx'] }}"
-        commit_idx_next: "{{ commit_idx_all['results'][item +1]['item']['/0/commit-idx'] }}"
+        commit_idx_next: "{{ commit_idx_all['results'][item + 1]['item']['/0/commit-idx'] }}"
       debug:
         msg: "Compare commit-idx values of all peers."
       failed_when: commit_idx != commit_idx_next
-      loop: "{{ range(0, NRunningPeers | length-1) | list }}"
+      loop: "{{ range(0, NRunningPeers | length - 1) | list }}"
 
     - name: "{{ recipe_name }}: Wait until all running peers show same last-applied-cumulative-crc."
       include_role:

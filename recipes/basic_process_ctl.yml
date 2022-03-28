@@ -25,7 +25,7 @@
       loop: "{{ range(0, iterations)| list }}"
       loop_control:
         pause: 5
-    
+
     - name: "{{ recipe_name }}: Get the timestamp for peer0 in a loop with gap of 2secs"
       vars:
         stage: "stage1"

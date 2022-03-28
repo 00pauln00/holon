@@ -77,9 +77,8 @@
       debug:
         msg: "Waiting for client to finish writing"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | int == (num_writes | int - 1)
-      loop: "{{ range(0, 10) | list }}"
-      loop_control:
-         pause: 1
+      retries: 10
+      until: 1
 
     - name: "{{ recipe_name}}: Get the client parameters after successful write."
       vars:
@@ -158,9 +157,8 @@
       debug:
         msg: "Waiting for client to finish writing"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | int == (num_writes | int - 1)
-      loop: "{{ range(0, 10) | list }}"
-      loop_control:
-         pause: 1
+      retries: 10
+      delay: 1
 
     - name: "{{ recipe_name }}: Wait until client reports status as connection timed out."
       vars:
@@ -169,9 +167,8 @@
       debug:
         msg: "Waiting for client to finish writing"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == "Connection timed out"
-      loop: "{{ range(0, 10) | list }}"
-      loop_control:
-         pause: 1
+      retries: 10
+      delay: 1
 
     - name: "{{ recipe_name}}: Get the server information from all followers."
       vars:
@@ -258,9 +255,8 @@
       debug:
         msg: "Waiting for client to finish writing"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | int == (num_writes | int - 1)
-      loop: "{{ range(0, 10) | list }}"
-      loop_control:
-         pause: 1
+      retries: 10
+      delay: 1
 
     - name: "{{ recipe_name}}: Get the client parameters after successful write."
       vars:

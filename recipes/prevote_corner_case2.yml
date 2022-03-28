@@ -148,13 +148,11 @@
       - name: "{{ recipe_name}}: Wait until write completes from client."
         vars:
           stage: "wait_for_write_op"
-          raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
         debug:
           msg: "Waiting for client to finish writing"
-        until: ((lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list) != (num_writes - 1))
-        loop: "{{ range(0, 10) | list }}"
-        loop_control:
-          pause: 1
+        until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list == (num_writes - 1)
+        retries: 10
+        delay: 1
 
       # Check raft values of already runing peers except peer4
       - name: "{{ recipe_name }}: Get Commit index value from all servers after single write."
@@ -208,11 +206,9 @@
         debug:
           msg: "Waiting for leader election"
         until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
-        retries: 4
+        retries: 10
         delay: 1
         loop: "{{ range(0, NRunningPeers | length) | list }}"
-        loop_control:
-          pause: 2
 
       - set_fact: LeaderUUID_after="{{ LeaderUUID['/0/leader-uuid'] }}"
 

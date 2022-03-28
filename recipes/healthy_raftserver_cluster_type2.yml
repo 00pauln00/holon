@@ -18,7 +18,7 @@
       include_role:
         name: common
         tasks_from: get_server_uuid_info
-  
+
     - name: "{{ recipe_name }}: Get leader_uuid and term value from all running peers before restart"
       vars:
          stage: "pre_restart"
@@ -47,12 +47,12 @@
       with_items:
         - "{{ stime_prev }}"
       register: start_time_prerestart
-    
+
     - name: "{{ recipe_name }}: Get follower-stats from leader peer before restart."
       include_role:
            name: common
            tasks_from: get_follower_stats
-  
+
     - name: "Assign follower-stats before reboot."
       vars:
         follower_stats: "{{ GetFollowerStatsInfo }}"
@@ -102,9 +102,9 @@
       debug:
         msg: "Waiting for leader election"
       until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | string != "null"
+      retries: 10
+      delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
-      loop_control:
-        pause: 2
 
     - name: "{{ recipe_name }}: Get start_time of peers after restart"
       vars:
