@@ -16,7 +16,7 @@
          NetRecvList: "{{ NetRecvList + [nre] }}"
       loop: "{{ GetCtlSvcNodes['//ctl_svc_nodes'] }}"
       when: uuid == DisablePeerList
-      #no_log: True
+      no_log: True
 
     - name: "{{ recipe_name }}: Check if peers are disabled."
       debug:
