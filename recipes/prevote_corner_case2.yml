@@ -144,14 +144,14 @@
           write_ops: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
         no_log: True
 
-      # Wait until write completes from client
-      - name: "{{ recipe_name}}: Wait until write completes from client."
+      - name: "{{ recipe_name}}: Wait until all write completes from client"
         vars:
-          stage: "wait_for_write_op"
+          stage: "wait_for_client_write_comp"
+          cli_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
         debug:
           msg: "Waiting for client to finish writing"
-        until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list == (num_writes - 1)
-        retries: 10
+        until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cli_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
+        retries: 20
         delay: 1
 
       # Check raft values of already runing peers except peer4
