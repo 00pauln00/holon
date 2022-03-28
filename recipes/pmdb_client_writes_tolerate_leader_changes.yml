@@ -169,7 +169,7 @@
         part2_stage: "{{ part2_value['results'][0]['item'] }}"
       debug:
         msg:
-          - "Verifying partition2 leader: {{ part2_stage }} is same as original leader: {{ LeaderUUID['/0/leader-uuid'] }}"
+          - "Verifying smaller cluster's values"
       no_log: True
       failed_when: >
         (part2_stage['/0/leader-uuid'] != "null" ) or
