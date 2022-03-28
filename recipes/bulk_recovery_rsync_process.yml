@@ -271,6 +271,18 @@
       retries: 100
       delay: 1
 
+    - name: "{{ recipe_name }}: Wait untill checkpoint-idx and lowest-idx gets incremented on newly started peer."
+      vars:
+         stage: "getRootValuesFrmPeer4"
+         raft_values: 
+           - "/raft_root_entry/0/lowest-idx"
+           - "/raft_root_entry/0/checkpoint-idx"
+      debug:
+        msg: "Verify Checkpoint-Idx get incrementing on peer 4."
+      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_values, wantlist=True) | dict2items | map(attribute='value') | list | first != (-1)
+      retries: 100
+      delay: 1
+
     - name: "{{ recipe_name }}: Verify checkpoint-idx and lowest-idx gets changed on newly started peer after write operation."
       vars:
          stage: "verifyCPOnPeer4"
