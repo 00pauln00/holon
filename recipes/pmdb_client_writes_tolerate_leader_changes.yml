@@ -111,11 +111,20 @@
         stage: "disable_smaller_cluster"
         cmd: "net_recv_enabled@false"
         where: "/ctl_svc_nodes/uuid@{{ bigger_cluster[item] }}"
-        disable_smaller_cluster: "{{ lookup('niova_ctlrequest', 'apply_cmd', smaller_cluster, cmd, where, wantlist=True) }}"
       debug:
-        msg: "{{ disable_smaller_cluster }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', smaller_cluster, cmd, where, wantlist=True) }}"
       loop: "{{ range(0, bigger_cluster | length) | list }}"
       no_log: True
+
+    #The smaller cluster(old) leader should become a candidate.
+    - name: "{{ recipe_name }}: Wait until smaller cluster's leader becomes 'candidate'."
+      vars:
+        stage: "verify_smallerCluster_State"
+      debug:
+        msg: "Verifying smaller cluster's leader goes into 'candidate' state."
+      until: lookup('niova_ctlrequest', 'lookup', smaller_cluster, '/raft_root_entry/0/state', wantlist=True) | dict2items | map(attribute='value') | list | first == "candidate-prevote"
+      retries: 20
+      delay: 1
 
     #Disabling Msg(Recv) from smaller_cluster to bigger_cluster.
     - name: "{{ recipe_name }}: Disable Msg(Recv) from smaller_cluster to bigger_cluster."
@@ -123,9 +132,9 @@
         stage: "disable_on_bigger_cluster"
         cmd: "net_recv_enabled@false"
         where: "/ctl_svc_nodes/uuid@{{ smaller_cluster }}"
-        disable_bigger_cluster: "{{ lookup('niova_ctlrequest', 'apply_cmd', bigger_cluster, cmd, where, wantlist=True) }}"
       debug:
-        msg: "{{ disable_bigger_cluster }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', bigger_cluster[item], cmd, where, wantlist=True) }}"
+      loop: "{{ range(0, bigger_cluster | length) | list }}"
       no_log: True
 
     - name: "{{ recipe_name }}: Wait until the new leader gets  elected."
@@ -140,11 +149,13 @@
           loop_var: itr
 
     #Get the leader-uuid from samller cluster.
-    - name: "{{ recipe_name }}: Get the leader from smaller cluster."
+    - name: "{{ recipe_name }}: Get the state from smaller cluster."
       vars:
          stage: "small_cluster_leader"
-         leader_key: "/raft_root_entry/0/leader-uuid"
-         verify_smaller_cluster: "{{ lookup('niova_ctlrequest', 'lookup', smaller_cluster, leader_key, wantlist=True) }}"
+         small_cluster_key:
+             - "/raft_root_entry/0/leader-uuid"
+             - "/raft_root_entry/0/state"
+         verify_smaller_cluster: "{{ lookup('niova_ctlrequest', 'lookup', smaller_cluster, small_cluster_key, wantlist=True) }}"
       debug:
         msg: "Getting orignal values {{ verify_smaller_cluster }}"
       no_log: True
@@ -153,14 +164,16 @@
       register: part2_value
 
     #Check the leader on small cluster.
-    - name: "{{ recipe_name }}: Verify the smaller cluster's leader is same as original leader."
+    - name: "{{ recipe_name }}: Verify the smaller cluster's values."
       vars:
         part2_stage: "{{ part2_value['results'][0]['item'] }}"
       debug:
         msg:
-          - "Verifying new leader election on partition2."
+          - "Verifying partition2 leader: {{ part2_stage }} is same as original leader: {{ LeaderUUID['/0/leader-uuid'] }}"
       no_log: True
-      failed_when: part2_stage['/0/leader-uuid'] != LeaderUUID['/0/leader-uuid']
+      failed_when: >
+        (part2_stage['/0/leader-uuid'] != "null" ) or
+        (part2_stage['/0/state'] != "candidate-prevote" )
 
     #On smaller Cluster, check for leader's client-requests report ‘deny-may-be-depose’
     - name: "{{ recipe_name }}: Wait until the leader notices 'deny-leader-not-established'."
@@ -168,8 +181,7 @@
          name: common
          tasks_from: check_cli_rqst_of_small_cluster_leader
       vars:
-         part2_leader: "{{ part2_value['results'][0]['item'] }}"
-         SmallClusterLeader: "{{ part2_leader['/0/leader-uuid'] }}"
+         SmallClusterLeader: "{{ smaller_cluster}}"
 
     #Enable msg recv on peers from two partitions(i.e.Remove partition)
     - name: "{{ recipe_name }}: Enable Msg(Recv) from bigger_cluster to smaller_cluster."

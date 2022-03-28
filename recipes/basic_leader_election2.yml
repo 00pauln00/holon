@@ -31,11 +31,9 @@
       debug:
         msg: "Waiting for leader election"
       until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
-      retries: 4
+      retries: 10
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
-      loop_control:
-        pause: 2
 
     - name: "{{ recipe_name }}: Gather the stats for all running peers"
       vars:

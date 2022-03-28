@@ -123,9 +123,9 @@
       debug:
         msg: "Waiting till inactive followers show same leader uuid"
       until: leader_uuid == leader_uuid_before
+      retries: 10
+      delay: 1
       loop: "{{ range(0, inactive_followers | length) | list }}"
-      loop_control:
-          pause: 1
 
     - name: "{{ recipe_name }}: Get the list of peer UUIDs after resuming followers."
       include_role:
