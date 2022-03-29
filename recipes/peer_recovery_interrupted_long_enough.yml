@@ -251,9 +251,8 @@
         commit_idx_has_unique_val: "{{ get_commit_idx | map(attribute='/0/commit-idx') | list | unique | length == 1 }}"
       debug:
         msg: "Waiting until all running peers show same commit idx"
-      loop: "{{ range(0, 10) | list }}"
-      loop_control:
-         pause: 1
+      retries: 10
+      delay: 1
 
     - name: "{{ recipe_name }}: Get commit-idx values of all peers."
       vars:

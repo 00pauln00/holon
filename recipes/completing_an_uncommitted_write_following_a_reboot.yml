@@ -176,9 +176,8 @@
       debug:
         msg: "Waiting for client to finish writing"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != 0
-      loop: "{{ range(0, 3) | list }}"
-      loop_control:
-        pause: 1
+      retries: 10
+      delay: 1
 
     #Verify that write operation failed with timeout error.
     - name: "{{ recipe_name }}: Get values for pmdb-request-history."
@@ -386,9 +385,9 @@
       debug:
         msg: "Waiting for all followers to have a last-applied-idx which is equal to the leader's."
       until: (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[item], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first) == (lookup('niova_ctlrequest', 'lookup', leader_uuid_after['results'][0]['item']['/0/leader-uuid'], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first)
+      retries: 10
+      delay: 1
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
-      loop_control:
-         pause: 2
 
     #7a - Verifications
     - name: "{{ recipe_name }}: Get the values for comparing commit-idx, last-applied and sync-entry-idx for all servers."
