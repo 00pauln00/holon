@@ -94,8 +94,9 @@
       until: lookup('niova_ctlrequest', 'lookup', follower_uuids[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
       retries: 10
       delay: 1
-
-    #Get new leader_uuid and term value after step 5.
+      loop: "{{ range(0, follower_uuids | length) | list }}"
+    
+        #Get new leader_uuid and term value after step 5.
     - name: "{{ recipe_name }}: Get new leader_uuid and term value."
       vars:
         stage: "get_lea_vals"
