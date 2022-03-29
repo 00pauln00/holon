@@ -245,7 +245,7 @@
         term_next: "{{ alive_peers_value['results'][item + 1]['item']['/0/term'] }}"
       debug:
         msg: "Verifying all peers value."
-      no_log: True
+          #no_log: True
       failed_when: >
         (term != term_next) or
         (last_applied_cum_crc != last_applied_cum_crc_next) or
