@@ -9,6 +9,6 @@
         msg:
           - "Waiting for writes completion"
       until: pmdb_test_apps_pmdb_seqno != (exp_list[index | int] | int - 1)
-      retries: 10
+      retries: 100
       delay: 1
 
