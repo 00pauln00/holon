@@ -42,7 +42,7 @@
       vars:
         num_writes: "{{ 1000 | random(start=100) }}"
       set_fact:
-         randomWr: "{{ randomWr | default([]) + [num_writes] }}"
+         random_num_writes_list: "{{ random_num_writes_list | default([]) + [num_writes] }}"
       loop: "{{ range(0, number_of_app_uuids) | list }}"
 
     #Perform write operations for multiple clients. (passing one client at a time.)
@@ -53,7 +53,6 @@
       vars:
         pmdb_apps: "{{ pmdb_app_uuids }}"
         ClientUUID: "{{ ClientUUIDS[idx] }}"
-        random_num_writes_list: "{{ randomWr }}"
       loop: "{{ range(0, ClientUUIDS | length) |list }}"
       loop_control:
           loop_var: idx
