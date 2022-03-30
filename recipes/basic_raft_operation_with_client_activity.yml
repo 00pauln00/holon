@@ -150,9 +150,8 @@
       debug:
         msg: "Waiting for client to finish writing"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
-      loop: "{{ range(0, 20) | list }}"
-      loop_control:
-        pause: 1
+      retries: 20
+      delay: 1
 
     - name: "{{ recipe_name}}: Get the client parameters after successful write."
       vars:
@@ -271,4 +270,4 @@
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
-           terminate_recipe: true
+          terminate_recipe: true
