@@ -110,12 +110,12 @@
         fault_injection_name: "raft_server_bypass_sm_apply"
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    - name: "{{ recipe_name }}: Kill the Original Leader."
+    - name: "{{ recipe_name }}: Kill the 1st Leader."
       debug:
        msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
       no_log: True
 
-    - name: "{{ recipe_name }}: Wait until new leader election happens."
+    - name: "{{ recipe_name }}: Wait until 2nd leader election happens."
       vars:
         stage: "wait_leader_election"
         orig_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
@@ -200,13 +200,13 @@
          name: common
          tasks_from: get_follower_stats
 
-    - name: "{{ recipe_name }}: Kill the First Leader."
+    - name: "{{ recipe_name }}: Kill the 2nd Leader."
       debug:
        msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
       no_log: True
 
     #This is temporary. This is workaround though.
-    - name: "{{ recipe_name }}: Wait until Second leader election happens"
+    - name: "{{ recipe_name }}: Wait until 3rd leader election happens"
       vars:
          stage: "wait_leader_election"
          previous_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
@@ -217,16 +217,21 @@
       delay: 1
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
+    - name: "{{ recipe_name }}: Get the list of all running peer UUIDs"
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
     - name: "{{ recipe_name}}: Verify that last-applied increases its value after removal of fault injection."
       vars:
         stage: "last_verification"
       set_fact:
-       last_verification_aftr_rm_fault_inject: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, server_keys, wantlist=True) }}"
+       last_verification_aftr_rm_fault_inject: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, server_keys, wantlist=True) }}"
       failed_when: >
         (last_verification_aftr_rm_fault_inject[item]['/0/commit-idx'] <= verify_aftr_first_elect[item]['/0/commit-idx']) or
         (last_verification_aftr_rm_fault_inject[item]['/0/last-applied'] <= verify_aftr_first_elect[item]['/0/last-applied']) or
         (last_verification_aftr_rm_fault_inject[item]['/0/last-applied'] != last_verification_aftr_rm_fault_inject[item]['/0/commit-idx'])
-      loop: "{{ range(0, FollowerUUIDs | length)| list }}"
+      loop: "{{ range(0, NRunningPeers | length)| list }}"
 
     - name: "{{ recipe_name }}: Set the 'default-request-timeout-sec' to its default value (i.e.60)"
       vars:
@@ -237,6 +242,13 @@
       debug:
         msg: "{{ default_timeout }}"
       no_log: True
+
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
 
     - name: "{{ recipe_name }}: After setting timeout perform the write {{ num_writes }} times."
       vars:
@@ -251,10 +263,9 @@
     - name: "{{ recipe_name }}: Wait until all write completes from client."
       vars:
         stage: "aftr_rm_fault_inject_client_write_completes"
-        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | int == (num_writes | int - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
       retries: 10
       delay: 1
 
