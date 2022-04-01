@@ -125,7 +125,7 @@
         msg: "Waiting for client to finish writing"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (pri_num_writes - 1)
       retries: 500
-      delay: 10
+      delay: 1
 
     #Verify client parameters after successful write operations.
     - name: "{{ recipe_name }}: Verify client parameters."
@@ -219,7 +219,7 @@
         msg: "Waiting for client to finish writing"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (pri_num_writes - 1)
       retries: 500
-      delay: 10
+      delay: 1
 
     - name: "{{ recipe_name }}: Get the values for raft-root-entry."
       vars:
