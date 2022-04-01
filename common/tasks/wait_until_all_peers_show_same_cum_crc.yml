@@ -11,6 +11,5 @@
       debug:
         msg: "Waiting until all running peers show same last-applied-cumulative-crc"
       until: last_app_cumulative_crc_has_unique_val == true
-      loop: "{{ range(0, 10) | list }}"
-      loop_control:
-          pause: 0.5
+      retries: 10
+      delay: 1
