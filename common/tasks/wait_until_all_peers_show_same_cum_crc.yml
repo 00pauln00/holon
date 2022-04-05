@@ -12,4 +12,5 @@
         msg: "Waiting until all running peers show same last-applied-cumulative-crc"
       until: last_app_cumulative_crc_has_unique_val == true
       retries: 10
-      delay: 1
+      delay: 0.5
+

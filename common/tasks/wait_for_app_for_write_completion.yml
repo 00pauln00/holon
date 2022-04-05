@@ -2,9 +2,9 @@
     - name: "Wait until writes get completed."
       vars:
         stage: "wait_for_client_write_comp"
-        raft_keys:
+        seq_key:
             - "/pumice_db_test_client/pmdb-test-apps/{{ index }}/pmdb-seqno"
-        pmdb_test_apps_pmdb_seqno: "{{ lookup('niova_ctlrequest', 'lookup', Client_UUID, raft_keys, wantlist=True) | dict2items | map(attribute='value') | list }}"
+        pmdb_test_apps_pmdb_seqno: "{{ lookup('niova_ctlrequest', 'lookup', Client_UUID, seq_key, wantlist=True) | dict2items | map(attribute='value') | list }}"
       debug:
         msg:
           - "Waiting for writes completion"
@@ -12,3 +12,4 @@
       loop: "{{ range(0, 10) | list }}"
       loop_control:
         pause: 1
+

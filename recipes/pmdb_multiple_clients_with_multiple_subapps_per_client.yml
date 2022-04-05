@@ -45,7 +45,6 @@
          random_num_writes_list: "{{ random_num_writes_list | default([]) + [num_writes] }}"
       loop: "{{ range(0, number_of_app_uuids) | list }}"
 
-
     #Perform write operations for multiple clients. (passing one client at a time.)
     - name: "Perform write operations for multiple clients."
       include_role:

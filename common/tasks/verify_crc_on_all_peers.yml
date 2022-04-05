@@ -1,29 +1,25 @@
-  - name: "{{ recipe_name }}: Wait until last-applied-cumulative-crc and sync-entry-crc values are same on all peers."
-    vars:
-      stage: "get_crc_val"
-      crc_key:
-        - "/raft_root_entry/0/last-applied-cumulative-crc"
-        - "/raft_root_entry/0/sync-entry-crc"
-    debug:
-      msg: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, crc_key, wantlist=True) }}"
-    retries: 10
-    delay: 1
+    - name: "{{ recipe_name }}: Get last-applied-cumulative-crc and verify it same on all peers."
+      vars:
+        stage: "get_cum_crc"
+        get_cum_crc: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/last-applied-cumulative-crc', wantlist=True) }}"
+        last_app_cumulative_crc_has_unique_val: "{{ get_cum_crc | map(attribute='/0/last-applied-cumulative-crc') | list | unique | length == 1 }}"
+      debug:
+        msg: "Waiting until all running peers show same last-applied-cumulative-crc"
+      until: last_app_cumulative_crc_has_unique_val == true
+      retries: 60
+      delay: 1
 
-  - set_fact:
-       crc_on_all_peers: []
+    - name: "{{ recipe_name }}: Get sync-entry-crc and verify it same on all peers."
+      vars:
+        stage: "get_sync_crc"
+        get_sync_crc: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/sync-entry-crc', wantlist=True) }}"
+        sync_crc_has_unique_val: "{{ get_sync_crc | map(attribute='/0/sync-entry-crc') | list | unique | length == 1 }}"
+      debug:
+        msg: "Waiting until all running peers show same sync-entry-crc"
+      until: sync_crc_has_unique_val == true
+      retries: 60
+      delay: 1
 
-  - name: "{{ recipe_name }}: Get last-applied-cumulative-crc and sync-entry-crc."
-    vars:
-      stage: "verify_crc"
-      raft_key:
-          - "/raft_root_entry/0/last-applied-cumulative-crc"
-          - "/raft_root_entry/0/sync-entry-crc"
-    set_fact:
-      crc_on_all_peers: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_key, wantlist=True) }}"
-    failed_when: >
-         (crc_on_all_peers[itr]['/0/last-applied-cumulative-crc'] != crc_on_all_peers[itr + 1]['/0/last-applied-cumulative-crc']) or
-         (crc_on_all_peers[itr]['/0/sync-entry-crc'] != crc_on_all_peers[itr + 1]['/0/sync-entry-crc'])
-    loop: "{{ range(0, NRunningPeers | length - 1)| list }}"
-    loop_control:
-        loop_var: itr
+
+
 
