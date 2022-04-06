@@ -5,8 +5,8 @@
   vars:
      recipe_name: "bulk_recovery_with_killing_leader"
      parent: "bulk_recovery_with_emptyDB"
-     num_writes: 3000
-     number_of_app_uuids: 2
+     num_writes: 1200
+     number_of_app_uuids: 5
      raft_root_entry_keys:
               - "/raft_root_entry/0/leader-uuid"
               - "/raft_root_entry/0/term"
@@ -72,10 +72,6 @@
 
     - debug:
         msg: "Client UUID: {{ client_uuid }}"
-
-    - name: "{{ recipe_name }}: Generate App UUID"
-      shell: "/usr/bin/uuid"
-      register: app_uuid
 
     - name: "{{ recipe_name }}: Start client process"
       include_role:

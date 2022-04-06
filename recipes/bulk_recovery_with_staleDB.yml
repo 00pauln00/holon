@@ -5,8 +5,8 @@
   vars:
      recipe_name: "bulk_recovery_with_staleDB"
      parent: "bulk_recovery_with_emptyDB"
-     num_writes: 3000
-     number_of_app_uuids: 2
+     num_writes: 600
+     number_of_app_uuids: 10
      raft_root_entry_keys:
               - "/raft_root_entry/0/leader-uuid"
               - "/raft_root_entry/0/term"
@@ -83,7 +83,7 @@
         name: common
         tasks_from: create_app_uuid_set
       vars:
-        number_of_apps: 2
+        number_of_apps: "{{number_of_app_uuids}}"
 
     #Perform write operations.
     - name: "Perform write operations for multiple clients."
