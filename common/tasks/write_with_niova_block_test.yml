@@ -9,14 +9,15 @@
      - name: "{{ recipe_name }}: Start niova-block-test process."
        vars:
          input_param: {
-                 'uuid_to_write' :  '{{ nisdUuidsList[item] }}',
+                 'uuid_to_write' : 'unix:{{ nisdUuidsList[item] }}',
+                 'vdev' : '{{ nblock_test_uuids[item] }}',
                  'read_operation_ratio_percentage' : '{{ rd_op_ratio }}',
-                 'num_ops' : '{{ num_of_ops }}',
-                 'vdev' :   '{{ nblock_test_uuids[item] }}',
+                 'random_seed' : '{{ random_seed_pt}}',
+                 'client_uuid' : '{{ blockTestClientUUID[item] }}',
                  'request_size_in_bytes' : '{{ req_sz }}',
                  'queue_depth' : '{{ queueDepth }}',
-                 'file_size' : '{{ fileSize }}',
-                 'lookout_uuid' : '{{ lookoutUUIDList[item] }}'
+                 'num_ops' : '{{ num_of_ops }}',
+                 'lookout_uuid' :  '{{ lookoutUUIDList[item] }}'
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"

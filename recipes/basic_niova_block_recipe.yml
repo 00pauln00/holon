@@ -156,20 +156,25 @@
          msg: "Verifying status of the nisd."
        failed_when: verifyStatus != "Alive"
 
-     - name: Generate new UUID
-       shell: uuidgen
-       register: blockTestUuid
+     - name: Generate new vdev-uuid
+       shell: "/usr/bin/uuid"
+       register: vdevUUID
+
+     - name: Generate new client-uuid for niova-block-test
+       shell: "/usr/bin/uuid"
+       register: blockTestClientUUID
 
      - name: "{{ recipe_name }}: Start niova-block-test process."
        vars:
          input_param: {
-                 'uuid_to_write' :  '{{ nisdUUID["stdout_lines"][0] }}',
+                 'uuid_to_write' : 'unix:{{ nisdUUID["stdout_lines"][0] }}',
+                 'vdev' : '{{ vdevUUID.stdout }}',
                  'read_operation_ratio_percentage' : '0',
-                 'num_ops' : '1000',
-                 'vdev' :   '{{ blockTestUuid["stdout_lines"][0] }}',
+                 'random_seed' : '123',
+                 'client_uuid' : '{{ blockTestClientUUID.stdout }}',
                  'request_size_in_bytes' : '16',
-                 'queue_depth' : '100',
-                 'file_size' : '8589934592',
+                 'queue_depth' : '1',
+                 'num_ops' : '1000',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                  }
        debug:

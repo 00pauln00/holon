@@ -9,6 +9,7 @@
     number_of_uuids: 5
     number_of_nisd_uuids: 5
     no_of_nblock_test_uuids: 5
+    no_of_nblock_client_uuids: 5
 
   tasks:
   - block:
@@ -191,7 +192,7 @@
        debug:
          msg: "Verifying NISD's Status"
        until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
-       retries: 10
+       retries: 20
        delay: 1
        loop: "{{ range(0, nisd_uuids | length) | list }}"
 
@@ -240,6 +241,19 @@
      - debug:
          msg: "niova_block_test UUIDS: {{ nblock_test_uuids_list }}"
 
+     - name: "Generate client-uuids for niova-block-test"
+       shell: "/usr/bin/uuid"
+       loop: "{{ range(0, no_of_nblock_client_uuids) | list }}"
+       register: unique_nblock_client_uuids
+
+     - name: "Create list of niova-block-test client-uuids."
+       set_fact:
+          nblock_client_uuids_list: "{{ nblock_client_uuids_list | default([]) + [unique_nblock_client_uuids['results'][item]['stdout']] }}"
+       loop: "{{ range(0, unique_nblock_client_uuids['results'] | length) | list }}"
+
+     - debug:
+         msg: "niova_block_test Client UUIDS: {{ nblock_client_uuids_list }}"
+
      - name: "{{ recipe_name }}: Do write operation through niova-block-test."
        include_role:
           name: common
@@ -252,7 +266,8 @@
          num_of_ops: '10000'
          req_sz: '16'
          queueDepth: '100'
-         fileSize: '8589934592'
+         random_seed_pt: '123'
+         blockTestClientUUID: "{{ nblock_client_uuids_list }}"
 
      - name: "{{ recipe_name }}: Get system info after write operation for 1st lookout."
        include_role:
