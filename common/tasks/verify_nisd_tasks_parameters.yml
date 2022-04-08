@@ -1,0 +1,32 @@
+
+    - name: "{{ recipe_name }}: Get nisd 'tasks' list"
+      vars:
+        stage: "verify_nisd_tasks_val"
+        tasks_keys:
+             - "/tasks"
+        process_type: "nisd"
+        lookout_uuid: "{{ LookoutUUID }}"
+      set_fact:
+        GetTasksList: "{{ lookup('niova_ctlrequest', 'lookup', NisdUUID, tasks_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Gather 'tasks' items in the list."
+      vars:
+        running: "{{ item['running'] }}"
+        wait_co_buf: "{{ item['wait-co-buf'] }}"
+        wait_bulk_buf: "{{ item['wait-bulk-buf'] }}"
+        wait_io: "{{ item['wait-io'] }}"
+        wait_other: "{{ item['wait-other'] }}"
+        TasksList: []
+      set_fact:
+         TasksList: "{{ TasksList + [running] + [wait_co_buf] + [wait_bulk_buf] + [wait_io] + [wait_other] }}"
+      loop: "{{ GetTasksList['//tasks'] }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Ensure 'tasks' items are Idle"
+      debug:
+        msg: "Ensure 'tasks' items are Idle."
+      failed_when: item != "0"
+      loop: "{{ TasksList }}"
+
+

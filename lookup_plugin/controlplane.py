@@ -86,7 +86,7 @@ def start_niova_block_ctl_process(cluster_params, nisdPath, nisd_uuid):
     #format and run the niova-block-ctl
     bin_path = '%s/niova-block-ctl' % binary_dir
 
-    process_popen = subprocess.Popen([bin_path, '-d', nisdPath, '-i', nisd_uuid],
+    process_popen = subprocess.Popen([bin_path, '-d', nisdPath, '-i', '-u', nisd_uuid],
                                    stdout = fp, stderr = fp)
 
     logging.warning("niova-block-ctl process is started to format the device")
@@ -151,6 +151,7 @@ def start_nisd_process(cluster_params, nisd_uuid, nisdPath):
     recipe_conf['raft_process'][nisd_uuid] = {}
 
     recipe_conf['raft_process'][nisd_uuid]['process_raft_uuid'] = nisd_uuid
+    recipe_conf['raft_process'][nisd_uuid]['img_file_name'] = nisdPath
     recipe_conf['raft_process'][nisd_uuid]['process_pid'] = pid
     recipe_conf['raft_process'][nisd_uuid]['process_uuid'] = nisd_uuid
     recipe_conf['raft_process'][nisd_uuid]['process_type'] = "nisd"
@@ -246,8 +247,8 @@ def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rpor
 
     return process_popen
 
-def start_niova_block_test(cluster_params, nisd_uuid_to_write, read_operation_ratio_percentage,
-                                num_ops, vdev, request_size_in_bytes, queue_depth, file_size):
+def start_niova_block_test(cluster_params, nisd_uuid_to_write, vdev, read_operation_ratio_percentage,
+                                random_seed, client_uuid, request_size_in_bytes, queue_depth, num_ops):
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
@@ -263,9 +264,9 @@ def start_niova_block_test(cluster_params, nisd_uuid_to_write, read_operation_ra
 
     #start niova block test process
     bin_path = '%s/niova-block-test' % binary_dir
-    process_popen = subprocess.Popen([bin_path, '-c', nisd_uuid_to_write, '-r' , read_operation_ratio_percentage,
-                                               '-N', num_ops, '-v',vdev,'-Z', request_size_in_bytes,
-                                               '-q', queue_depth, '-z', file_size],
+    process_popen = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v',vdev, '-r', read_operation_ratio_percentage,
+                                               '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
+                                               '-q', queue_depth, '-N', num_ops, '-I'],
                                                      stdout = fp, stderr = fp)
 
     logging.warning("starting niova-block-test to write to nisd device")
@@ -371,11 +372,10 @@ class LookupModule(LookupBase):
                 set_environment_variables(cluster_params, input_values['lookout_uuid'])
 
                 # Start niova-block-test
-                niova_block_test_process = start_niova_block_test(cluster_params, input_values['uuid_to_write'],
-                                                                  input_values['read_operation_ratio_percentage'],
-                                                                  input_values['num_ops'],input_values['vdev'],
-                                                                  input_values['request_size_in_bytes'],input_values['queue_depth'],
-                                                                  input_values['file_size'])
+                niova_block_test_process = start_niova_block_test(cluster_params, input_values['uuid_to_write'], input_values['vdev'],
+                                                                  input_values['read_operation_ratio_percentage'], input_values['random_seed'],
+                                                                  input_values['client_uuid'], input_values['request_size_in_bytes'],
+                                                                  input_values['queue_depth'], input_values['num_ops'])
                 return niova_block_test_process
 
             elif process_type == "niova-lookout"  :
