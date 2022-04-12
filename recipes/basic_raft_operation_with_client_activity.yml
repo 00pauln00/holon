@@ -270,4 +270,4 @@
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
-           terminate_recipe: true
+          terminate_recipe: true

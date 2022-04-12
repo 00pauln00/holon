@@ -5,8 +5,8 @@
   vars:
      recipe_name: "bulk_recovery_rsync_implementation"
      parent: "basic_leader_election2"
-     num_writes: 3000
-     number_of_app_uuids: 2
+     num_writes: 1200
+     number_of_app_uuids: 5
      raft_root_entry_keys:
               - "/raft_root_entry/0/leader-uuid"
               - "/raft_root_entry/0/term"
@@ -102,10 +102,6 @@
 
     - debug:
         msg: "Client UUID: {{ client_uuid }}"
-
-    - name: "{{ recipe_name }}: Generate App UUID"
-      shell: "/usr/bin/uuid"
-      register: app_uuid
 
     - name: "{{ recipe_name }}: Start client process"
       include_role:
@@ -273,13 +269,13 @@
 
     - name: "{{ recipe_name }}: Wait untill checkpoint-idx and lowest-idx gets incremented on newly started peer."
       vars:
-         stage: "getRootValuesFrmPeer4"
-         raft_values: 
+        stage: "getRootValuesFrmPeer4"
+        raft_values: 
            - "/raft_root_entry/0/lowest-idx"
            - "/raft_root_entry/0/checkpoint-idx"
       debug:
         msg: "Verify Checkpoint-Idx get incrementing on peer 4."
-      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_values, wantlist=True) | dict2items | map(attribute='value') | list | first != (-1)
+      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_values, wantlist=True) | dict2items | map(attribute='value') | list != (-1)
       retries: 100
       delay: 1
 

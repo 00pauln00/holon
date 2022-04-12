@@ -122,9 +122,9 @@
       set_fact:
         self_depose_resume_peer: "{{ lookup('niova_raftprocess', 'resume', FollowerUUIDs[item], wantlist=True) }}"
         self_depose_leader_info: "{{ self_depose_leader_info + [lookup('niova_ctlrequest', 'lookup', self_depose_leader_uuid, raft_keys, wantlist=True)] }}"
+      retries: 20
+      delay: 1
       loop: "{{ range(0, nfollower_pause.stdout | int) | list }}"
-      loop_control:
-         pause: 3
 
     - name: "{{ recipe_name }}: Check if Case 1 occured ie any of the follower became leader"
       set_fact:

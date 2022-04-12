@@ -1,5 +1,3 @@
-
-
     - name: "{{ recipe_name }}: Get last-applied-cumulative-crc and verify it same on all peers."
       vars:
         stage: "get_cum_crc"

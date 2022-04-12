@@ -58,7 +58,7 @@
                 key_prefix: "Paro",
                 seed_random_generator: 1,
                 size_of_value: 20,
-                no_of_operations: 10000,
+                no_of_operations: 1000,
                 precent_put_get: 1,
                 no_of_concurrent_req: 20,
                 wait_for_outfile: false,
@@ -127,9 +127,8 @@
        debug:
          msg: "Verifying node status: {{ NodeName['results'][0]['item'] }}"
        until: lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) | dict2items | map(attribute='value') | map(attribute=NodeName['results'][0]['item']) | map(attribute='Status') | list | first == "alive"
-       loop: "{{ range(0, 10) | list }}"
-       loop_control:
-          pause: 1
+       retries: 10
+       delay: 1
 
      - name: "{{ recipe_name }}: Check for outfile."
        vars:
@@ -172,7 +171,7 @@
                 key_prefix: "Paro",
                 seed_random_generator: 1,
                 size_of_value: 20,
-                no_of_operations: 10000,
+                no_of_operations: 1000,
                 precent_put_get: 0,
                 no_of_concurrent_req: 20,
                 wait_for_outfile: false,
@@ -229,7 +228,7 @@
                 key_prefix: "Paro",
                 seed_random_generator: 1,
                 size_of_value: 20,
-                no_of_operations: 10000,
+                no_of_operations: 1000,
                 precent_put_get: 1,
                 no_of_concurrent_req: 20,
                 wait_for_outfile: false,
@@ -269,7 +268,7 @@
                 key_prefix: "Paro",
                 seed_random_generator: 1,
                 size_of_value: 20,
-                no_of_operations: 10000,
+                no_of_operations: 1000,
                 precent_put_get: 0,
                 no_of_concurrent_req: 20,
                 wait_for_outfile: false,
@@ -310,7 +309,7 @@
                 key_prefix: "Paro",
                 seed_random_generator: 1,
                 size_of_value: 20,
-                no_of_operations: 10000,
+                no_of_operations: 1000,
                 precent_put_get: 1,
                 no_of_concurrent_req: 20,
                 wait_for_outfile: false,
@@ -350,7 +349,7 @@
                 key_prefix: "Paro",
                 seed_random_generator: 1,
                 size_of_value: 20,
-                no_of_operations: 10000,
+                no_of_operations: 1000,
                 precent_put_get: 0,
                 no_of_concurrent_req: 20,
                 wait_for_outfile: false,

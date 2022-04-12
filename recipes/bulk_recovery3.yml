@@ -5,7 +5,8 @@
   vars:
      recipe_name: "bulk_recovery3"
      parent: "basic_leader_election2"
-     num_writes: 7000
+     num_writes: 1400
+     number_of_app_uuids: 5
      raft_root_entry_keys:
               - "/raft_root_entry/0/leader-uuid"
               - "/raft_root_entry/0/peer-uuid"
@@ -101,10 +102,6 @@
     - debug:
         msg: "Client UUID: {{ client_uuid }}"
 
-    - name: "{{ recipe_name }}: Generate App UUID"
-      shell: "/usr/bin/uuid"
-      register: app_uuid
-
     - name: "{{ recipe_name }}: Start client process"
       include_role:
         name: common
@@ -119,15 +116,23 @@
       vars:
         ClientUUID: "{{ client_uuid.stdout }}"
 
-    #Perform write operations.
-    - name: "{{ recipe_name}}: Write at seqno 0 and perform the write {{ num_writes }} times."
+      #Create set of required number of app_uuids.
+    - name: "Get set of required number of app_uuids."
+      include_role:
+        name: common
+        tasks_from: create_app_uuid_set
       vars:
-        stage: "write"
-        cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
-        where: "/pumice_db_test_client/input"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
-      no_log: true
+        number_of_apps: "{{number_of_app_uuids}}"
+
+    #Perform write operations.
+    - name: "Perform write operations."
+      include_role:
+         name: common
+         tasks_from: perform_writes
+      vars:
+        pmdb_apps: "{{ pmdb_app_uuids  }}"
+        ClientUUID: "{{ client_uuid.stdout }}"
+        constant_number_of_writes: "{{ num_writes }}"
 
     - name: "{{ recipe_name}}: Wait until all write completes from client"
       vars:
@@ -144,7 +149,7 @@
          stage: "getValsFrmAll"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes | int) + (origCI | int)
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((num_writes | int)* (number_of_app_uuids | int) + (origCI | int))
       retries: 60
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -166,7 +171,7 @@
          getValAftr10000Wr: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_root_entry_keys, wantlist=True) }}"
       debug:
         msg: "Get commit-idx from all peers: {{ getValAftr10000Wr }}"
-      no_log: true
+          #      no_log: true
       with_items:
         - "{{ getValAftr10000Wr }}"
       register: after1stWr
@@ -265,39 +270,41 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
       no_log: true
 
-    - name: "{{ recipe_name }}: Generate App UUID"
-      shell: "/usr/bin/uuid"
-      register: app_uuid1
-
     - name: "{{ recipe_name }}: Get values from peer4 after 1st write set."
       vars:
          stage: "aftr1stWrPeer4"
          get1stWrPeer4: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys, wantlist=True) }}"
       debug:
         msg: "Get values from peer4: {{ get1stWrPeer4 }}"
-      no_log: true
+          #  no_log: true
       with_items:
         - "{{ get1stWrPeer4 }}"
       register: after1stWrForPeer4
 
-    #Perform write operations.
-    - name: "{{ recipe_name}}: Again Perform 2nd set of 10000 writes."
+      #Create set of required number of app_uuids.
+    - name: "Get set of required number of app_uuids."
+      include_role:
+        name: common
+        tasks_from: create_app_uuid_set
       vars:
-        nwrites: 7000
-        stage: "againWrite10000"
-        cmd: "input@{{ app_uuid1.stdout }}:0:0:0:0.write:0.{{ nwrites }}"
-        where: "/pumice_db_test_client/input"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
-      no_log: true
+        number_of_apps: "{{number_of_app_uuids}}"
 
-    - name: "{{ recipe_name}}: Wait until 2nd set of 10000 write completes from client"
+    #Perform write operations.
+    - name: "Perform write operations."
+      include_role:
+         name: common
+         tasks_from: perform_writes
       vars:
-        nwrites: 7000
+        pmdb_apps: "{{ pmdb_app_uuids  }}"
+        ClientUUID: "{{ client_uuid.stdout }}"
+        constant_number_of_writes: "{{ num_writes }}"
+
+    - name: "{{ recipe_name}}: Wait until 2nd set of 7000 write completes from client"
+      vars:
         stage: "waitToCompWr"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (nwrites - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
       retries: 500
       delay: 1
 
@@ -309,7 +316,7 @@
          stage: "getCIfrmfrmAllexceptPeer4"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers except peer4."
-      until: lookup('niova_ctlrequest', 'lookup', exceptPeer4[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == (nwrites | int) + (origCI | int)
+      until: lookup('niova_ctlrequest', 'lookup', exceptPeer4[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((num_writes | int) * (number_of_app_uuids) + (origCI | int))
       retries: 60
       delay: 1
       loop: "{{ range(0, exceptPeer4 | length) | list }}"
@@ -383,12 +390,11 @@
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on peer4 after enabling send/recv."
       vars:
-         nwrites: 7000
          origCI: "{{ after1stWr['results'][0]['item']['/0/commit-idx'] }}"
          stage: "getCIfrmPeer4"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == (nwrites | int) + (origCI | int)
+      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((num_writes | int)* (number_of_app_uuids) + (origCI | int))
       retries: 60
       delay: 1
 
@@ -437,39 +443,6 @@
       retries: 10
       delay: 2
       loop: "{{ range(0, NRunningPeers | length) | list }}"
-
-    - set_fact: appUUIDList="{{ [] + [app_uuid.stdout] + [app_uuid1.stdout] }}"
-
-    - name: "{{ recipe_name }}: perform and verify client read."
-      vars:
-        stage: "read_client"
-        cmd: "input@{{ appUUIDList[item] }}:0:0:0:0.read"
-        where: "/pumice_db_test_client/input"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
-      loop: "{{ range(0, appUUIDList | length) | list }}"
-      no_log: true
-
-    - name: "{{ recipe_name}}: Wait to change app-validated-seqno."
-      vars:
-        stage: "wait_for_validated_seqno"
-      debug:
-        msg: "Waiting to change app-validated-seqno"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/app-validated-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes)
-      retries: 60
-      delay: 1
-
-    - name: "{{ recipe_name }}: Verify read operation."
-      include_role:
-        name: common
-        tasks_from: verify_read_with_diff_appUUID
-      vars:
-        ClientUUID: "{{ client_uuid.stdout }}"
-        idx: "{{ app_itr }}"
-        nwrites: "{{ num_writes }}"
-      loop: "{{ range(0, appUUIDList | length) | list }}"
-      loop_control:
-          loop_var: app_itr
 
     - name: "{{ recipe_name }}: Apply cmd to remove fault injection from all peers."
       vars:
