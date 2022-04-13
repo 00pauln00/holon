@@ -295,6 +295,7 @@
          nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Get nisd root entry values"
+       no_log: True
        with_items:
         - "{{ nisdRootEntryVal }}"
        register: aftrRestartNisd
@@ -305,13 +306,11 @@
          verifyNisd: "{{ aftrRestartNisd['results'][0]['item'] }}"
        debug:
          msg: "verify nisd root entry values"
+       no_log: True
        failed_when: >
          (verifyNisd['/0/uuid'] != nisdUUID.stdout) or
          (verifyNisd['/0/status'] != "running") or
          (verifyNisd['/0/instance-uuid'] == prev_instance_uuid['/0/instance-uuid'])
-
-     - debug:
-         msg: "{{ aftrRestartNisd }}"
 
      - name: Generate new vdev-uuid
        shell: "/usr/bin/uuid"
@@ -345,6 +344,7 @@
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
        debug:
          msg: "Waiting for nisd to get updated"
+       no_log: True
        until: lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, "/nisd_root_entry/0/status", 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "running"
        retries: 10
        delay: 1
