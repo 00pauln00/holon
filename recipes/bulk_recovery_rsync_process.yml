@@ -272,7 +272,7 @@
         stage: "getRootValuesFrmPeer4"
       debug:
         msg: "Verify Checkpoint-Idx get incrementing on peer 4."
-      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/checkpoint-idx', wantlist=True) | dict2items | map(attribute='value') | list != (-1)
+      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/checkpoint-idx', wantlist=True) | dict2items | map(attribute='value') | list | first != (-1)
       retries: 100
       delay: 1
 
