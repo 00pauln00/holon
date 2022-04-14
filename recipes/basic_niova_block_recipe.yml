@@ -114,6 +114,7 @@
        vars:
          input_param: {
                   'nisd_uuid' : '{{ nisdUUID["stdout_lines"][0] }}',
+                  'uport' : '1053',
                   'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                   }
        debug:
