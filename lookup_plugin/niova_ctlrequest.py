@@ -46,13 +46,13 @@ def niova_ctlreq_cmd_send(recipe_conf, ctlreq_dict, peer_uuid, get_process_type,
     stage name:
     for example: recipe_name-stage_name.unique_app_uuid
     '''
-    
+
     filecounter = recipe_conf['raft_config']['file_counter']
     timestamp = str(round(time.time() * 1000))
     fname = "%04d.%s.%s-%s" % (filecounter,timestamp, recipe_name, stage)
     filecounter = filecounter + 1
     recipe_conf['raft_config']['file_counter'] = filecounter
-    
+
     # Prepare the ctlreq object
     if wait_for_ofile == False:
         get_process_type = ""
@@ -87,7 +87,7 @@ the values in the dictionary format for recipes to read it.
 '''
 def niova_raft_lookup_values(ctlreq_dict, raft_key_list):
 
-    raft_values_dict = {} 
+    raft_values_dict = {}
     out_fpath = ctlreq_dict['output_fpath']
 
     # Read the output file and lookup for the raft key value
@@ -197,7 +197,7 @@ def niova_ctlrequest_get_cmdline_input_dict(global_args, local_args):
         ctlreq_cmd_dict['peer_uuid_list'] = [local_args[1]]
     else:
         ctlreq_cmd_dict['peer_uuid_list'] = local_args[1]
-        
+
 
 	# Now get the parameters specific to the operation.
     if ctlreq_cmd_dict['operation'] == "apply_cmd":
@@ -210,7 +210,7 @@ def niova_ctlrequest_get_cmdline_input_dict(global_args, local_args):
 
     elif ctlreq_cmd_dict['operation'] == "lookup":
         ctlreq_cmd_dict['lookup_key'] = local_args[2]
-        ctlreq_cmd_dict['cmd'] = None 
+        ctlreq_cmd_dict['cmd'] = None
         ctlreq_cmd_dict['where'] = None
         '''
         If this lookup is gonna run for number of iterations.
@@ -230,7 +230,7 @@ class LookupModule(LookupBase):
         Get the variables from ansible global cache and cmdline arguments
         for this lookup plugin.
         '''
-        if (len(terms) == 5):
+        if (len(terms) >= 5):
             getProcess_type = "nisd"
         else:
             getProcess_type = "pmdb"
@@ -257,14 +257,17 @@ class LookupModule(LookupBase):
             Operation is to simply apply the ctlrequest cmd to the peer.
             '''
             if ctlreq_cmd_dict['operation'] == "apply_cmd":
-                lookout_uuid = ""
+                if getProcess_type == "nisd":
+                    lookout_uuid = terms[5]
+                else:
+                    lookout_uuid = ""
                 logging.warning("Apply cmd: %s on peer-uuid_list: %s" % (ctlreq_cmd_dict['cmd'], ctlreq_cmd_dict['peer_uuid_list']))
                 result = niova_ctlreq_cmd_send(recipe_conf, ctlreq_cmd_dict, peer_uuid, getProcess_type, lookout_uuid)
 
             elif ctlreq_cmd_dict['operation'] == "lookup":
                 if getProcess_type == "nisd":
                     lookout_uuid = terms[4]
-                else: 
+                else:
                      lookout_uuid = ""
                 '''
                     Operation to send the ctlrequest cmd first and then read the values for
@@ -305,7 +308,7 @@ class LookupModule(LookupBase):
                 if iter_cnt == 1:
                     result =  result[0]
                     logging.warning("Only one element in the array: %s" % result)
-                     
+
             result_array.append(result)
 
         if len(result_array)  == 1:
