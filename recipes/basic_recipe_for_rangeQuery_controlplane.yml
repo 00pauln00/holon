@@ -79,7 +79,7 @@
          input_param: {
                 'Operation': 'write',
                 'OutfileName': 'Rangewrite_output',
-                'NoofWrites': '5' 
+                'NoofWrites': '5'
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -95,7 +95,8 @@
                  'Key': '*', 
                  'Operation': 'read',
                  'OutfileName': 'RangeRead_output',
-                 'NoofWrites': '5'
+                 'NoofWrites': '5', 
+                 'seqNo': ''  
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -129,7 +130,8 @@
                 'Key': '{{ firstKey["results"][0]["item"] }}',
                 'Operation': 'read',
                 'OutfileName': 'singleRangeRead_output',
-                'NoofWrites': '5'
+                'NoofWrites': '5',
+                'seqNo': ''
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -153,7 +155,8 @@
                 'Key': 'v*', 
                 'Operation': 'read',
                 'OutfileName': 'RangeRead_output',
-                'NoofWrites': '5'
+                'NoofWrites': '5',
+                'seqNo': ''
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
