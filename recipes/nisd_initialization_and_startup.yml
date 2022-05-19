@@ -91,7 +91,7 @@
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
-       #no_log: True
+       no_log: True
 
      - pause:
          seconds: 5
@@ -131,7 +131,7 @@
                   }
        debug:
          msg: "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
-       #no_log: True
+       no_log: True
 
      - pause:
          seconds: 2
