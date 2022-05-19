@@ -23,11 +23,6 @@
           name: common
           tasks_from: get_server_uuid_info
 
-     - name: "{{ recipe_name }}: Get the leader and follower uuids."
-       include_role:
-         name: common
-         tasks_from: get_follower_stats
-
      # Get multiple client uuids using common task.
      - name: "Get multiple client uuids."
        include_role:
@@ -60,6 +55,11 @@
        pause:
          seconds: 5
 
+     - name: "{{ recipe_name }}: Get the leader and follower uuids."
+       include_role:
+         name: common
+         tasks_from: get_follower_stats
+                
      - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
        vars:
          input_param: {
