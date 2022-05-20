@@ -1,0 +1,34 @@
+
+     - name: "{{ recipe_name }}: Perform some Writes to the NISD."
+       vars:
+         input_param: {
+                 'uuid_to_write' : 'unix:{{ NisdUUID }}',
+                 'vdev' : '{{ VdevUUID }}',
+                 'read_operation_ratio_percentage' : '0',
+                 'random_seed' : '1010101',
+                 'client_uuid' : '{{ ClientUUID }}',
+                 'request_size_in_bytes' : '1',
+                 'queue_depth' : '{{ item | string }}',
+                 'num_ops' : '1000',
+                 'lookout_uuid' :  '{{ LookoutUUID }}'
+                 }
+       debug:
+         msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
+       no_log: True
+
+     #TODO add failed_when check to verify vblks
+     - name: "{{ recipe_name }}: Verifying the VBLKs after Each Iteration."
+       vars:
+         stage: "verify_vblks"
+         nisd_keys:
+              - "/nisd_root_entry/0/vblks-written"
+         process_type: "nisd"
+         lookout_uuid: "{{ LookoutUUID }}"
+         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+       debug:
+         msg: "Verify nisd values after writes: {{ getNiovaBlockTest }}"
+       no_log: True
+       #failed_when: >
+       #  (getNiovaBlockTest['/0/vblks-written'] != )
+
+
