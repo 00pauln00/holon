@@ -122,7 +122,6 @@
               }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-ctl', input_param, wantlist=True) }}"
-       no_log: True
 
      - name: "{{ recipe_name }}: Start nisd process."
        vars:
@@ -320,6 +319,11 @@
        shell: "/usr/bin/uuid"
        register: blockTestClientUUID
 
+     - debug:
+         msg:
+          - "{{ vdevUUID.stdout }}"
+          - "{{ blockTestClientUUID.stdout }}"
+
      - name: "{{ recipe_name }}: Perform some Writes to the NISD."
        vars:
          input_param: {
@@ -333,9 +337,16 @@
                  'num_ops' : '50',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                  }
+         wr_op: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
-         msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
-       no_log:  True
+         msg: "Write's return code"
+       with_items:
+        - "{{ wr_op }}"
+       register: perform_wr
+
+     - debug:
+         msg: "Verify write operation"
+       failed_when: (perform_wr['results'][0]['item'] != "0")
 
      - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
        vars:
@@ -498,9 +509,16 @@
                  'num_ops' : '50',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                  }
+         rd_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
-         msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
-       no_log: True
+         msg: "get read's return code"
+       with_items:
+        - "{{ rd_success }}"
+       register: verify_rd
+
+     - debug:
+         msg: "Verify read pass successfully."
+       failed_when: (verify_rd['results'][0]['item'] != "0")
 
      - name: "Verify 'tasks' items are idle."
        include_role:
