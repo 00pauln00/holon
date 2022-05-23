@@ -1,0 +1,137 @@
+- import_playbook: nisd_initialization_and_startup.yml
+- name: "nisd_multiple_writes_into_single_metablock"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "nisd_multiple_writes_into_single_metablock"
+    parent: "nisd_initialization_and_startup"
+    num_of_remaining: 16
+    no_of_ops: 16
+
+  tasks:
+  - block:
+      # Check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "controlplane")
+
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     - debug:
+         msg:
+          - "{{ lookoutUUID['stdout_lines'][0] }}"
+          - "{{ nisdUUID.stdout }}"
+
+     - name: "{{ recipe_name }}: Apply fault injection on NISD and verify."
+       include_role:
+         name: common
+         tasks_from: apply_fi_on_nisd
+       vars:
+         numRemaining: "{{ num_of_remaining }}"
+         NisdUUID: "{{ nisdUUID.stdout }}"
+         LookoutUUID: "{{ lookoutUUID['stdout_lines'][0] }}"
+         fault_injection_name: "metablock_multi_fill"
+
+     - name: "{{ recipe_name }}: Apply fault injection on NISD and verify."
+       include_role:
+         name: common
+         tasks_from: enable_fi_on_nisd
+       vars:
+         NisdUUID: "{{ nisdUUID.stdout }}"
+         LookoutUUID: "{{ lookoutUUID['stdout_lines'][0] }}"
+         fault_injection_name: "metablock_multi_fill"
+
+     - name: Generate new vdev-uuid
+       shell: "/usr/bin/uuid"
+       register: metablockVdev
+
+     - name: Generate new client-uuid for niova-block-test
+       shell: "/usr/bin/uuid"
+       register: metablockClient
+
+     - name: "{{ recipe_name }}: Perform some Writes to the NISD."
+       vars:
+         input_param: {
+                 'uuid_to_write' : 'unix:{{ nisdUUID.stdout }}',
+                 'vdev' : '{{ metablockVdev.stdout }}',
+                 'read_operation_ratio_percentage' : '0',
+                 'random_seed' : '456',
+                 'client_uuid' : '{{ metablockClient.stdout }}',
+                 'request_size_in_bytes' : '1',
+                 'queue_depth' : '16',
+                 'num_ops' : '{{ no_of_ops | string }}',
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 }
+         wr_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
+       debug:
+         msg: "get write's return code"
+       no_log:  True
+       with_items:
+        - "{{ wr_success }}"
+       register: get_wr
+
+     - debug:
+         msg: "Verify write is success"
+       failed_when: (get_wr['results'][0]['item'] != "0")
+
+     - name: "{{ recipe_name }}: Verify nisd_chunk info."
+       vars:
+         stage: "get_nisd_chunk"
+         old_num_block_used: "{{ aftrRestartNisd['results'][0]['item']['/0/num-pblks-used'] }}"
+         nisd_keys:
+              - "/nisd_chunks/0/vblks-written"
+              - "/nisd_chunks/0/metablock-seqno"
+              - "/nisd_chunks/0/num-data-pblks"
+              - "/nisd_chunks/0/num-reserved-meta-pblks"
+         lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
+         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+       debug:
+         msg: "Verify nisd values after writes: {{ getNiovaBlockTest }}"
+       no_log: True
+       failed_when: >
+         ((getNiovaBlockTest['/0/vblks-written'] | int) != (no_of_ops | int)) or
+         (getNiovaBlockTest['/0/metablock-seqno'] != 0) or
+         (getNiovaBlockTest['/0/num-data-pblks'] != 1) or
+         (getNiovaBlockTest['/0/num-reserved-meta-pblks'] != 1)
+
+     - name: "{{ recipe_name }}: Get fault_injection_points array."
+       vars:
+        stage: "get_fi"
+        fi_key:
+           - "/fault_injection_points"
+        lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
+        get_fi: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, fi_key, 'nisd', lookout_uuid, wantlist=True) }}"
+       debug:
+        msg: "Getting fault_injection_points array."
+       with_items:
+          - "{{ get_fi }}"
+       register: fi_verification
+
+     - name: "{{ recipe_name }}: Get fault injection values."
+       vars:
+        fi_value: "{{ fi_verification['results'][0]['item'] }}"
+       set_fact:
+         verifyFI: "{{ fi_value['//fault_injection_points'][item] }}"
+       when: (fi_value['//fault_injection_points'][item]['name'] == "metablock_multi_fill")
+       loop: "{{  range(0, fi_value['//fault_injection_points'] | length) | list }}"
+
+     - name: "{{ recipe_name }}: Verify fault-injection."
+       debug:
+        msg: "{{verifyFI }}"
+       no_log: True
+       failed_when: >
+        (verifyFI['injection_count'] != (num_of_remaining |int)) or
+        (verifyFI['num_remaining'] != 0) or
+        (verifyFI['cond_exec_count'] != (num_of_remaining |int))
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
