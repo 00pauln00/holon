@@ -80,7 +80,9 @@
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '1000',
-                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : True,
+                 'sequential_writes' : False
                  }
          wr_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -202,7 +204,9 @@
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '1000',
-                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : True,
+                 'sequential_writes' : False
                  }
          rd_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -246,7 +250,9 @@
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '{{ item | string }}',
                  'num_ops' : '1000',
-                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : True,
+                 'sequential_writes' : False
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
@@ -294,7 +300,9 @@
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '{{ item | string }}',
                  'num_ops' : '1000',
-                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : True,
+                 'sequential_writes' : False
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"

@@ -84,7 +84,9 @@
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '512',
-                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : True,
+                 'sequential_writes' : False
                  }
          wr_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -192,7 +194,9 @@
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '512',
-                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : True,
+                 'sequential_writes' : False
                  }
          rd_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -224,7 +228,9 @@
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '512',
-                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : True,
+                 'sequential_writes' : False
                  }
          wr_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -250,7 +256,9 @@
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '512',
-                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : True,
+                 'sequential_writes' : False
                  }
          rd_failure: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -275,7 +283,9 @@
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '512',
-                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : True,
+                 'sequential_writes' : False
                  }
          rd_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -352,7 +362,9 @@
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '512',
-                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : True,
+                 'sequential_writes' : False
                  }
          rd_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:

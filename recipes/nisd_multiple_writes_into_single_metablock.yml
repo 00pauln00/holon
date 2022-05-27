@@ -67,7 +67,9 @@
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '16',
                  'num_ops' : '{{ no_of_ops | string }}',
-                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : True,
+                 'sequential_writes' : False
                  }
          wr_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:

@@ -37,25 +37,26 @@
 
      - name: Generate new vdev-uuid
        shell: "/usr/bin/uuid"
-       register: metablockVdev
+       register: staleVdev
 
      - name: Generate new client-uuid for niova-block-test
        shell: "/usr/bin/uuid"
-       register: metablockClient
+       register: staleClient
 
      #1 - Perform Writes to a new Chunk/Fill Entire Reserved Pblk
      - name: "{{ recipe_name }}: Perform some Writes to the NISD."
        vars:
          input_param: {
                  'uuid_to_write' : 'unix:{{ nisdUUID.stdout }}',
-                 'vdev' : '{{ metablockVdev.stdout }}',
+                 'vdev' : '{{ staleVdev.stdout }}',
                  'read_operation_ratio_percentage' : '0',
                  'random_seed' : Null,
-                 'client_uuid' : '{{ metablockClient.stdout }}',
+                 'client_uuid' : '{{ staleClient.stdout }}',
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '{{ no_of_ops | string }}',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : False,
                  'sequential_writes' : True
                  }
          wr_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
@@ -90,14 +91,15 @@
        vars:
          input_param: {
                  'uuid_to_write' : 'unix:{{ nisdUUID.stdout }}',
-                 'vdev' : '{{ metablockVdev.stdout }}',
+                 'vdev' : '{{ staleVdev.stdout }}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : Null,
-                 'client_uuid' : '{{ metablockClient.stdout }}',
+                 'client_uuid' : '{{ staleClient.stdout }}',
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '{{ no_of_ops | string }}',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : False,
                  'sequential_writes' : True
                  }
          rd_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
@@ -133,7 +135,7 @@
        vars:
          stage: "chunkPause"
          cmd: "chunk-merge-status@pause"
-         where: "/nisd_chunks/vdev-uuid@{{ metablockVdev.stdout }}"
+         where: "/nisd_chunks/vdev-uuid@{{ staleVdev.stdout }}"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
        debug:
          msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', nisdUUID.stdout, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
@@ -156,14 +158,15 @@
        vars:
          input_param: {
                  'uuid_to_write' : 'unix:{{ nisdUUID.stdout }}',
-                 'vdev' : '{{ metablockVdev.stdout }}',
+                 'vdev' : '{{ staleVdev.stdout }}',
                  'read_operation_ratio_percentage' : '0',
                  'random_seed' : Null,
-                 'client_uuid' : '{{ metablockClient.stdout }}',
+                 'client_uuid' : '{{ staleClient.stdout }}',
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '1',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : False,
                  'sequential_writes' : True
                  }
          wr_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
@@ -182,14 +185,15 @@
        vars:
          input_param: {
                  'uuid_to_write' : 'unix:{{ nisdUUID.stdout }}',
-                 'vdev' : '{{ metablockVdev.stdout}}',
+                 'vdev' : '{{ staleVdev.stdout}}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : Null,
-                 'client_uuid' : '{{ metablockClient.stdout }}',
+                 'client_uuid' : '{{ staleClient.stdout }}',
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '1',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : False,
                  'sequential_writes' : True
                  }
          rd_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
@@ -228,7 +232,7 @@
        vars:
          stage: "chunkResume"
          cmd: "chunk-merge-status@resume"
-         where: "/nisd_chunks/vdev-uuid@{{ metablockVdev.stdout }}"
+         where: "/nisd_chunks/vdev-uuid@{{ staleVdev.stdout }}"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
        debug:
          msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', nisdUUID.stdout, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
@@ -256,7 +260,7 @@
        vars:
          stage: "chunkForce"
          cmd: "chunk-merge-status@merge"
-         where: "/nisd_chunks/vdev-uuid@{{ metablockVdev.stdout }}"
+         where: "/nisd_chunks/vdev-uuid@{{ staleVdev.stdout }}"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
        debug:
          msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', nisdUUID.stdout, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
@@ -279,7 +283,6 @@
          (aftrForceCompct['/0/read-op-seqno'] != (no_of_ops | int)) or
          (aftrForceCompct['/0/num-cme'] != (no_of_ops | int)) or
          (aftrForceCompct['/0/ref-cnt'] != ((no_of_ops | int) + 1))
-
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

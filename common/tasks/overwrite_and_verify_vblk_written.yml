@@ -10,7 +10,9 @@
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '{{ item | string }}',
                  'num_ops' : '1000',
-                 'lookout_uuid' :  '{{ LookoutUUID }}'
+                 'lookout_uuid' :  '{{ LookoutUUID }}',
+                 'integrity_check' : True,
+                 'sequential_writes' : False
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"

@@ -113,6 +113,11 @@
        shell: "/usr/bin/uuid"
        register: nisdUUID
 
+     - debug:
+         msg:
+          - "Lookout UUID: {{ lookoutUUID['stdout_lines'][0] }}"
+          - "Nisd UUID: {{ nisdUUID.stdout }}"
+
      - name: "{{ recipe_name }}: Start niova-block-ctl process."
        vars:
           input_param: {
@@ -122,11 +127,13 @@
               }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-ctl', input_param, wantlist=True) }}"
+       no_log: True
 
      - name: "{{ recipe_name }}: Start nisd process."
        vars:
          input_param: {
                   'nisd_uuid' : '{{ nisdUUID.stdout }}',
+                  'uport' : '1053',
                   'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                   }
        debug:
@@ -253,6 +260,7 @@
        vars:
           input_param: {
                   'nisd_uuid' : '{{ nisdUUID.stdout }}',
+                  'uport' : '1053',
                   'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                   }
        debug:
@@ -272,7 +280,7 @@
        debug:
          msg: "Verifying NISD's Status"
        until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
-       retries: 10
+       retries: 20
        delay: 1
 
      - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
@@ -319,11 +327,6 @@
        shell: "/usr/bin/uuid"
        register: blockTestClientUUID
 
-     - debug:
-         msg:
-          - "{{ vdevUUID.stdout }}"
-          - "{{ blockTestClientUUID.stdout }}"
-
      - name: "{{ recipe_name }}: Perform some Writes to the NISD."
        vars:
          input_param: {
@@ -335,18 +338,21 @@
                  'request_size_in_bytes' : '32',
                  'queue_depth' : '1',
                  'num_ops' : '50',
-                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : True,
+                 'sequential_writes' : False
                  }
-         wr_op: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
+         wr_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
-         msg: "Write's return code"
+         msg: "get write's return code"
+       no_log:  True
        with_items:
-        - "{{ wr_op }}"
-       register: perform_wr
+        - "{{ wr_success }}"
+       register: get_wr
 
      - debug:
-         msg: "Verify write operation"
-       failed_when: (perform_wr['results'][0]['item'] != "0")
+         msg: "Verify write is success"
+       failed_when: (get_wr['results'][0]['item'] != "0")
 
      - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
        vars:
@@ -424,6 +430,7 @@
        vars:
           input_param: {
                   'nisd_uuid' : '{{ nisdUUID.stdout }}',
+                  'uport' : '1053',
                   'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                   }
        debug:
@@ -443,7 +450,7 @@
        debug:
          msg: "Verifying NISD's Status"
        until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
-       retries: 10
+       retries: 20
        delay: 1
 
      - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
@@ -507,18 +514,20 @@
                  'request_size_in_bytes' : '32',
                  'queue_depth' : '1',
                  'num_ops' : '50',
-                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
+                 'integrity_check' : True,
+                 'sequential_writes' : False
                  }
          rd_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
          msg: "get read's return code"
        with_items:
         - "{{ rd_success }}"
-       register: verify_rd
+       register: get_rd
 
      - debug:
-         msg: "Verify read pass successfully."
-       failed_when: (verify_rd['results'][0]['item'] != "0")
+         msg: "Verify read must pass"
+       failed_when: (get_rd['results'][0]['item'] != "0")
 
      - name: "Verify 'tasks' items are idle."
        include_role:
