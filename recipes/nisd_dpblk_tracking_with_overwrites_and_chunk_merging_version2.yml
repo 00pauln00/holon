@@ -229,6 +229,7 @@
         VdevUUID: "{{ vdev.stdout }}"
         ClientUUID: "{{ client_uuid.stdout }}"
         LookoutUUID: "{{ lookoutUUID['stdout_lines'][0] }}"
+        RequestVblk: 1
        with_items:
          - 2
          - 7
@@ -237,6 +238,7 @@
          - 63
          - 128
          - 255
+
 
      #7b - Read the Vblks Using varying Queue Depths
      - name: "{{ recipe_name }}: Perform Read to the NISD."

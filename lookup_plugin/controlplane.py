@@ -250,7 +250,7 @@ def start_niova_block_test(cluster_params, nisd_uuid_to_write, vdev, read_operat
     raft_uuid = cluster_params['raft_uuid']
 
     # Prepare path for log file.
-    log_file = "%s/%s/%s_niova-block-test_%s_log.txt" % (base_dir, raft_uuid, app_name, nisd_uuid_to_write)
+    log_file = "%s/%s/%s_niova-block-test_%s_log.txt" % (base_dir, raft_uuid, app_name, nisd_uuid_to_write[5:])
 
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(log_file, "w")
@@ -261,16 +261,16 @@ def start_niova_block_test(cluster_params, nisd_uuid_to_write, vdev, read_operat
     logging.info("Do write/read operation on nisd by starting niova-block-test")
 
     if sequential_writes == True:
-        ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v',vdev, '-r', read_operation_ratio_percentage,
+        ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
                                    '-u', client_uuid, '-Z', request_size_in_bytes,
                                    '-q', queue_depth, '-N', num_ops, '-I', '-Q'), stdout=fp, stderr=fp)
     elif integrity_check == True:
-        ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v',vdev, '-r', read_operation_ratio_percentage,
+        ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
                                    '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
                                    '-q', queue_depth, '-N', num_ops, '-I'), stdout=fp, stderr=fp)
 
     else:
-        ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v',vdev, '-r', read_operation_ratio_percentage,
+        ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
                                    '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
                                    '-q', queue_depth, '-N', num_ops), stdout=fp, stderr=fp)
 

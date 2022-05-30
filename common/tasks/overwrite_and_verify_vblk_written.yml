@@ -7,7 +7,7 @@
                  'read_operation_ratio_percentage' : '0',
                  'random_seed' : '1010101',
                  'client_uuid' : '{{ ClientUUID }}',
-                 'request_size_in_bytes' : '1',
+                 'request_size_in_bytes' : '{{ RequestVblk | string }}',
                  'queue_depth' : '{{ item | string }}',
                  'num_ops' : '1000',
                  'lookout_uuid' :  '{{ LookoutUUID }}',
@@ -18,19 +18,23 @@
          msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        no_log: True
 
-     #TODO add failed_when check to verify vblks
+     - name: "{{ recipe_name }}: Get vblks-written."
+       vars:
+         stage: "verify_vblks_written"
+         lookout_uuid: "{{ LookoutUUID }}"
+         vblks_key:
+           - "/nisd_root_entry/0/vblks-written"
+       set_fact:
+          getVblkAftrItr: "{{ lookup('niova_ctlrequest', 'lookup', NisdUUID, vblks_key, 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') }}"
+
      - name: "{{ recipe_name }}: Verifying the VBLKs after Each Iteration."
        vars:
          stage: "verify_vblks"
-         nisd_keys:
+         nisd_key:
               - "/nisd_root_entry/0/vblks-written"
-         process_type: "nisd"
          lookout_uuid: "{{ LookoutUUID }}"
-         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         getVblkWritten: "{{ lookup('niova_ctlrequest', 'lookup', NisdUUID, nisd_key, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
-         msg: "Verify nisd values after writes: {{ getNiovaBlockTest }}"
+         msg: "Verify nisd values after writes: {{ getVblkWritten }}, {{ getVblkAftrItr[0] }}"
        no_log: True
-       #failed_when: >
-       #  (getNiovaBlockTest['/0/vblks-written'] != )
-
-
+       failed_when: getVblkWritten['/0/vblks-written'] != getVblkAftrItr[0]
