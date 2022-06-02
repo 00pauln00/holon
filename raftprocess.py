@@ -54,9 +54,9 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
 
     elif app_type == "niovakv":
         if process_type == "server":
-            bin_path = '%s/pmdbServer' % binary_dir
+            bin_path = '%s/NKV_pmdbServer' % binary_dir
         else:
-            bin_path = '%s/proxy' % binary_dir
+            bin_path = '%s/NKV_proxy' % binary_dir
 
     elif app_type == "controlplane":
         if process_type == "server":
@@ -107,7 +107,13 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
             process_popen = subprocess.Popen([bin_path , '-g',  gossipNodes , '-r',
                                     raft_uuid, '-u', peer_uuid, '-l' , log_path],
                                     stdout = fp, stderr = fp)
-        elif app_type == "covid" or app_type == "foodpalace" or app_type == "niovakv":
+        elif app_type == "niovakv":
+            log_path = "%s/%s_niovakv_pmdbServer.log" % (base_dir, peer_uuid)
+            process_popen = subprocess.Popen([bin_path, '-r',
+                                          raft_uuid, '-u', peer_uuid, '-l' ,log_path],
+                                          stdout = fp, stderr = fp)
+
+        elif app_type == "covid" or app_type == "foodpalace":
             process_popen = subprocess.Popen([bin_path, '-r',
                                           raft_uuid, '-u', peer_uuid],
                                           stdout = fp, stderr = fp)
@@ -215,7 +221,6 @@ class RaftProcess:
         If its application then we want the logs in the file
         '''
         temp_file = "%s/%s_log_Pmdb_%s_%s.txt" % (base_dir, app_type, self.process_type, self.process_uuid)
-
         fp = open(temp_file, "w")
 
         if app_type == "niovakv":
