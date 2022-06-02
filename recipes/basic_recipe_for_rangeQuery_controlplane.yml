@@ -5,7 +5,6 @@
     recipe_name: "basic_recipe_for_rangeQuery"
     parent: None
     number_of_clients: 2 
-    arraylist: []
 
   tasks:
   - block:
@@ -177,13 +176,6 @@
        register: vPrefix
        no_log: true
      
-     - name: "{{ recipe_name }}: Store the regex output of write dictionary into a list."
-       vars:
-         each_item: "{{ vPrefix['results'][item]['item'] }}"
-       set_fact:  
-          arraylist: "{{ arraylist + [each_item] }}"
-       loop: "{{ range(0, vPrefix['results'] | length) | list }}"
- 
      - name: "{{ recipe_name }}: Compare read output with the prefix passed."
        vars: 
              readprefix: "{{ readres['results'][0]['item']['Response']['Response'][item] }}"
@@ -228,6 +220,42 @@
          msg: "Compare Read output with the prefix passed"
        failed_when: writeprefix != readprefix
        with_items: "{{ readWithPrefix_vUUID['results'][0]['item']['Response']['Response']  | dict2items |  map(attribute='key')| list }}"
+
+     - name: "{{ recipe_name }}: Get the output as per prefix in write dictionary."
+       vars:
+         dotprefix: "{{ writeres5keys['results'][0]['item']  | dict2items | selectattr(  'key' , 'match',  vUUIDPrefix['results'][0]['item'] + '.[c0]' ) | map(attribute='key') | list }}"
+       debug:
+         msg: "Get the vprefix from dict "
+       with_items:
+         - "{{ dotprefix }}"
+       register: dotPrefix
+       no_log: true
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with prefix passed till <v.UUID.chunkno>."
+       vars:
+         input_param: {
+                'Key': '{{dotPrefix["results"][0]["item"]}}*',
+                'Operation': 'read',
+                'OutfileName': 'RangeRead_vUUIDprefix_output',
+                'NoofWrites': '5',
+                'seqNo': ''
+                 }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from ncpc."
+       with_items:
+          - "{{ ncpclird }}"
+       register: readWithPrefix_vUUID_chunkno
+       no_log: true
+
+     - name: "{{ recipe_name }}: Compare read output with the v.UUID.<chunkno>prefix passed."
+       vars:
+             readprefix: "{{ readWithPrefix_vUUID_chunkno['results'][0]['item']['Response']['Response'][item] }}"
+             writeprefix: "{{ writeres5keys['results'][0]['item'][item]['Value'] }}"
+       debug:
+         msg: "Compare Read output with the prefix passed"
+       failed_when: writeprefix != readprefix
+       with_items: "{{ dotPrefix['results'][0]['item'] }}"
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
