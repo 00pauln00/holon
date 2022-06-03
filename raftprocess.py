@@ -54,9 +54,9 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
 
     elif app_type == "niovakv":
         if process_type == "server":
-            bin_path = '%s/NKV_pmdbServer' % binary_dir
+            bin_path = '%s/pmdbServer' % binary_dir
         else:
-            bin_path = '%s/NKV_proxy' % binary_dir
+            bin_path = '%s/proxy' % binary_dir
 
     elif app_type == "controlplane":
         if process_type == "server":
