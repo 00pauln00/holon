@@ -68,7 +68,7 @@
        with_items:
           - "{{ ncpclires }}"
        register: membership
-       no_log: true
+         #       no_log: true
 
      - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
        pause:
@@ -82,7 +82,8 @@
                 'Operation': 'write',
                 'IP_addr': '',
                 'Port': '',
-                'OutfileName': 'write_output'
+                'OutfileName': 'write_output', 
+                'NoofWrites': '',
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -90,11 +91,13 @@
        with_items:
           - "{{ ncpcliwr }}"
        register: writeres
-       no_log: true
+         #no_log: true
+     - debug: 
+          msg: "{{writeres['results'][0]['item']['Response']['Status']}}"
 
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
-         wrstatus: "{{ writeres['results'][0]['item']['write']['write'][0]['Response']['Status'] }}"
+         wrstatus: "{{ writeres['results'][0]['item']['Response']['Status'] }}"
        debug:
          msg: "Check if write is successful."
        failed_when: >
@@ -105,7 +108,9 @@
          input_param: {
                 'Key': 'Country',
                 'Operation': 'read',
-                'OutfileName': 'read_output'
+                'OutfileName': 'read_output',
+                'NoofWrites': '', 
+                'seqNo': ''
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -113,11 +118,11 @@
        with_items:
           - "{{ ncpclird }}"
        register: readres
-       no_log: true
+         #       no_log: true
 
      - name: "{{ recipe_name }}: compare values after sucessful write/read operation."
        vars:
-         rdval: "{{ readres['results'][0]['item']['read']['read'][0]['Response'] }}"
+         rdval: "{{ readres['results'][0]['item']['Response'] }}"
        debug:
          msg: "Verifying parameter after read operation"
        failed_when: >

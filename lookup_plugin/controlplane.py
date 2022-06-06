@@ -34,16 +34,30 @@ def start_ncpc_process(cluster_params, Key, Value, Operation,
     outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
 
     if Operation == "read":
-        if seqNo != "":
+        if seqNo != "" and NoofWrites != "":
             process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
                                              '-k', Key, '-n', NoofWrites, '-S', seqNo], stdout = fp, stderr = fp)
-        else: 
+        elif NoofWrites != "":
+            print("in elif read")
             process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
                                              '-k', Key, '-n', NoofWrites], stdout = fp, stderr = fp)
+        else:
+            print("in else read")
+            process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
+                                             '-l', logfile, '-o', Operation, '-j', outfilePath,
+                                             '-k', Key], stdout = fp, stderr = fp)
+
     elif Operation == "write":
-        process_popen = subprocess.Popen([bin_path, '-k', Key, '-c', ConfigPath,
+        if NoofWrites == "":
+            print("in if loop", "NoofWrites", NoofWrites)
+            process_popen = subprocess.Popen([bin_path, '-k', Key, '-v', Value,'-c', ConfigPath,
+                                             '-l', logfile, '-o', Operation, '-j', outfilePath,
+                                             '-a' , IP_addr, '-p', Port],
+                                             stdout = fp, stderr = fp)
+        else:             
+            process_popen = subprocess.Popen([bin_path, '-k', Key, '-v', Value,'-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
                                              '-a' , IP_addr, '-p', Port, '-n', NoofWrites],
                                              stdout = fp, stderr = fp)
@@ -316,7 +330,7 @@ class LookupModule(LookupBase):
                                                    input_values['IP_addr'], input_values['Port'], NoofWrites, seqNo)
 
                 output_data = get_the_output(outfile)
-                return {"write":output_data}
+                return output_data
 
             elif input_values['Operation'] == "write" and input_values['NoofWrites'] != "":
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
@@ -332,7 +346,7 @@ class LookupModule(LookupBase):
                                                    input_values['Operation'], input_values['OutfileName'],
                                                    IP_addr, Port, NoofWrites, seqNo)
                 output_data = get_the_output(outfile)
-                return {"read":output_data}
+                return output_data
 
             elif input_values['Operation'] == "read" and input_values['NoofWrites'] != "":
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
