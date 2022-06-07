@@ -260,11 +260,12 @@ def start_niova_block_test(cluster_params, nisd_uuid_to_write, vdev, read_operat
 
     logging.info("Do write/read operation on nisd by starting niova-block-test")
 
-    if sequential_writes == True:
+    if sequential_writes == True and integrity_check == False:
         ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
                                    '-u', client_uuid, '-Z', request_size_in_bytes,
                                    '-q', queue_depth, '-N', num_ops, '-I', '-Q'), stdout=fp, stderr=fp)
-    elif integrity_check == True:
+
+    elif integrity_check == True and sequential_writes == False:
         ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
                                    '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
                                    '-q', queue_depth, '-N', num_ops, '-I'), stdout=fp, stderr=fp)
