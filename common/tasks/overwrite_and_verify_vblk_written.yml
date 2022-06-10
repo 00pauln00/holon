@@ -12,7 +12,8 @@
                  'num_ops' : '1000',
                  'lookout_uuid' :  '{{ LookoutUUID }}',
                  'integrity_check' : True,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"

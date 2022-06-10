@@ -125,7 +125,8 @@
                  'num_ops' : '{{ no_of_ops | string }}',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'integrity_check' : False,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
          rd_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:

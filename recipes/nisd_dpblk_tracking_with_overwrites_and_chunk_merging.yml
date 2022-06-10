@@ -86,7 +86,8 @@
                  'num_ops' : '512',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'integrity_check' : True,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
          wr_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -104,7 +105,6 @@
      - name: "{{ recipe_name}}: Wait until 'chunk-merge-status' : 'idle'"
        vars:
          stage: "wait_for_nisd_chunk"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
        debug:
          msg: "Waiting for nisd to get updated"
@@ -115,7 +115,6 @@
      - name: "{{ recipe_name }}: Capture the value of “chunk-merge-cnt”."
        vars:
          stage: "chunk_merge_cnt"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          getChunkCnt: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_chunk_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
@@ -139,7 +138,6 @@
        vars:
          orig_merge_cnt: "{{ origChunkCnt['results'][0]['item']['/0/chunk-merge-cnt'] }}"
          stage: "wait_for_chunk_cnt"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
        debug:
          msg: "Waiting for nisd to get updated"
@@ -151,7 +149,6 @@
      - name: "{{ recipe_name }}: Verify nisd chunk values."
        vars:
          stage: "verify_nisd_chunk"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_chunk_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
@@ -172,7 +169,6 @@
          stage: "verify_nisd_root_keys"
          old_num_block_used: "{{ initialValues['results'][0]['item']['/0/num-pblks-used'] }}"
          old_num_reserved_block_used: "{{ initialValues['results'][0]['item']['/0/num-reserved-pblks-used'] }}"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
@@ -196,7 +192,8 @@
                  'num_ops' : '512',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'integrity_check' : True,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
          rd_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -230,7 +227,8 @@
                  'num_ops' : '512',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'integrity_check' : True,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
          wr_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -258,7 +256,8 @@
                  'num_ops' : '512',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'integrity_check' : True,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
          rd_failure: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -285,7 +284,8 @@
                  'num_ops' : '512',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'integrity_check' : True,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
          rd_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -301,7 +301,6 @@
      - name: "{{ recipe_name }}: Capture the value of “chunk-merge-cnt”."
        vars:
          stage: "get_merge_cnt"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          getChunkCnt: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_chunk_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
@@ -326,7 +325,6 @@
        vars:
          orig_merge_cnt: "{{ bfrMergeChunkCnt['results'][0]['item']['/0/chunk-merge-cnt'] }}"
          stage: "wait_for_chunk_cnt"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
        debug:
          msg: "Waiting for nisd to get updated"
@@ -340,7 +338,6 @@
          stage: "verify_pblkCnt"
          old_num_block_used: "{{ initialValues['results'][0]['item']['/0/num-pblks-used'] }}"
          old_num_reserved_block_used: "{{ initialValues['results'][0]['item']['/0/num-reserved-pblks-used'] }}"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
@@ -364,7 +361,8 @@
                  'num_ops' : '512',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'integrity_check' : True,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
          rd_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:

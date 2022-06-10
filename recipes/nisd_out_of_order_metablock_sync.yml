@@ -19,11 +19,6 @@
        failed_when:
          (app_type != "controlplane")
 
-     - name: "{{ recipe_name }}: get the list of non-running servers."
-       include_role:
-          name: common
-          tasks_from: get_server_uuid_info
-
      - debug:
          msg:
           - "{{ lookoutUUID['stdout_lines'][0] }}"
@@ -69,7 +64,8 @@
                  'num_ops' : '{{ no_of_ops | string }}',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'integrity_check' : True,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
          wr_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -91,7 +87,6 @@
               - "/nisd_chunks/0/vblks-written"
               - "/nisd_chunks/0/metablock-seqno"
               - "/nisd_chunks/0/ooo-mb-sync-cnt"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:

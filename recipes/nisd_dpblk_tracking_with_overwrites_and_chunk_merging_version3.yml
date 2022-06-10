@@ -81,7 +81,8 @@
                  'num_ops' : '1000',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'integrity_check' : True,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
          wr_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -213,7 +214,8 @@
                  'num_ops' : '1000',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'integrity_check' : True,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
          rd_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -261,7 +263,8 @@
                  'num_ops' : '1000',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'integrity_check' : True,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
@@ -310,7 +313,8 @@
                  'num_ops' : '1000',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'integrity_check' : True,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"

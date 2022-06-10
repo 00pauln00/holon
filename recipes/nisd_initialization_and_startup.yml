@@ -42,11 +42,6 @@
        failed_when:
          (app_type != "controlplane")
 
-     - name: "{{ recipe_name }}: get the list of non-running servers."
-       include_role:
-          name: common
-          tasks_from: get_server_uuid_info
-
      # Get multiple client uuids using common task.
      - name: "Get multiple client uuids."
        include_role:
@@ -170,7 +165,6 @@
      - name: "{{ recipe_name }}: Get nisd_root_entry info."
        vars:
          stage: "get_nisd_root_entry"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
@@ -213,7 +207,6 @@
               - "/niorq_mgr_root_entry/0/status"
               - "/niorq_mgr_root_entry/0/dev-bytes-read"
               - "/niorq_mgr_root_entry/0/dev-rd-size"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          niorq_mgr_entry: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
@@ -286,7 +279,6 @@
      - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
        vars:
          stage: "wait_for_nisd_root_entry"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
        debug:
          msg: "Waiting for nisd to get updated"
@@ -297,7 +289,6 @@
      - name: "{{ recipe_name }}: Get nisd_root_entry info."
        vars:
          stage: "afterRestart_nisd_root_entry"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
@@ -340,7 +331,8 @@
                  'num_ops' : '50',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'integrity_check' : True,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
          wr_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -357,7 +349,6 @@
      - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
        vars:
          stage: "wait_for_nisd_root_entry"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
        debug:
          msg: "Waiting for nisd to get updated"
@@ -378,7 +369,6 @@
               - "/nisd_chunks/0/num-data-pblks"
               - "/nisd_chunks/0/num-meta-pblks"
               - "/nisd_chunks/0/num-reserved-meta-pblks"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
@@ -396,7 +386,6 @@
      - name: "{{ recipe_name }}: Store the metablock-seqno."
        vars:
          stage: "get_metablock_seqno"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          getMetablockSeqNo: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, '/nisd_chunks/0/metablock-seqno', 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
@@ -456,7 +445,6 @@
      - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
        vars:
          stage: "wait_for_nisd_root_entry"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
        debug:
          msg: "Waiting for nisd to get updated"
@@ -468,7 +456,6 @@
        vars:
          stage: "aftrRestart_nisd_info"
          old_num_block_used: "{{ aftrRestartNisd['results'][0]['item']['/0/num-pblks-used'] }}"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          aftrRestart: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
@@ -485,7 +472,6 @@
        vars:
          stage: "aftrRestart_nisd_chunks"
          old_metablock: "{{ oldMetablockSeqNo['results'][0]['item']['/0/metablock-seqno'] }}"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          aftrRestart: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_chunk_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
@@ -516,7 +502,8 @@
                  'num_ops' : '50',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'integrity_check' : True,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
          rd_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -543,7 +530,6 @@
          nisd_keys:
               - "/nisd_root_entry/0/vblks-read"
               - "/nisd_root_entry/0/vblks-hole-read"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          aftrRead: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
@@ -556,7 +542,6 @@
      - name: "{{ recipe_name }}: Verify nisd_chunk checks."
        vars:
          stage: "aftrRead_nisd_chunk"
-         process_type: "nisd"
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          aftrRead: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_chunk_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
@@ -571,12 +556,3 @@
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
-
-
-
-
-
-
-
-
-

@@ -19,11 +19,6 @@
        failed_when:
          (app_type != "controlplane")
 
-     - name: "{{ recipe_name }}: get the list of non-running servers."
-       include_role:
-          name: common
-          tasks_from: get_server_uuid_info
-
      - debug:
          msg:
           - "{{ lookoutUUID['stdout_lines'][0] }}"
@@ -69,7 +64,8 @@
                  'num_ops' : '{{ no_of_ops | string }}',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
                  'integrity_check' : True,
-                 'sequential_writes' : False
+                 'sequential_writes' : False,
+                 'blocking_process' : False
                  }
          wr_success: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
