@@ -202,7 +202,7 @@
          stage: "wait_leader_viableFalse"
       debug:
         msg: "Waiting for leader viable=false and leader-alive-cnt=0"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/raft_client_root_entry/0/leader-viable', wantlist=True) | dict2items | map(attribute='value') | list | first != "null"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/raft_client_root_entry/0/leader-viable', wantlist=True) | dict2items | map(attribute='value') | list | first != "false"
       retries: 30
       delay: 1
 
