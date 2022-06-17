@@ -241,8 +241,7 @@ def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rpor
     return process_popen
 
 def start_niova_block_test(cluster_params, nisd_uuid_to_write, vdev, read_operation_ratio_percentage,
-                                random_seed, client_uuid, request_size_in_bytes, queue_depth, num_ops,
-                                integrity_check, sequential_writes, blocking_process):
+                                random_seed, client_uuid, request_size_in_bytes, queue_depth, num_ops):
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
@@ -261,25 +260,9 @@ def start_niova_block_test(cluster_params, nisd_uuid_to_write, vdev, read_operat
 
     logging.info("Do write/read operation on nisd by starting niova-block-test")
 
-    if sequential_writes == True and integrity_check == False and blocking_process == False:
-        ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-                                   '-u', client_uuid, '-Z', request_size_in_bytes,
-                                   '-q', queue_depth, '-N', num_ops, '-I', '-Q'), stdout=fp, stderr=fp)
-
-    elif integrity_check == True and sequential_writes == False and blocking_process == False:
-        ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
+    ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v',vdev, '-r', read_operation_ratio_percentage,
                                    '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
                                    '-q', queue_depth, '-N', num_ops, '-I'), stdout=fp, stderr=fp)
-
-    elif blocking_process == True and sequential_writes == False and integrity_check == False:
-        ps = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-                                   '-u', client_uuid, '-Z', request_size_in_bytes,
-                                   '-q', queue_depth, '-N', num_ops, '-I', '-Q'], stdout=fp, stderr=fp)
-
-    else:
-        ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-                                   '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
-                                   '-q', queue_depth, '-N', num_ops), stdout=fp, stderr=fp)
 
     logging.info("return code: ", ps.returncode)
     # Sync the log file so all the logs from niova-block-test gets written to log file.
@@ -387,8 +370,7 @@ class LookupModule(LookupBase):
                 niova_block_test_process = start_niova_block_test(cluster_params, input_values['uuid_to_write'], input_values['vdev'],
                                                                   input_values['read_operation_ratio_percentage'], input_values['random_seed'],
                                                                   input_values['client_uuid'], input_values['request_size_in_bytes'],
-                                                                  input_values['queue_depth'], input_values['num_ops'], input_values['integrity_check'],
-                                                                  input_values['sequential_writes'], input_values['blocking_process'])
+                                                                  input_values['queue_depth'], input_values['num_ops'])
                 return niova_block_test_process
 
             elif process_type == "niova-lookout"  :
