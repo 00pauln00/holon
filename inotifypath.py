@@ -21,9 +21,15 @@ class InotifyPath:
                 path? (True/False)
     '''
     def __init__(self, base_dir_path, inotify_is_base_path, get_process_type, lookout_uuid):
-        if get_process_type == "nisd":
+        if get_process_type == "nisd" and lookout_uuid != "":
             logging.warning("Process type is nisd")
             self.inotify_path = "%s/niova_lookout/%s" % (base_dir_path, lookout_uuid)
+        elif get_process_type == "nisd" and lookout_uuid == "":
+            self.inotify_path = "%s/nisd-interface" % base_dir_path
+            if os.path.exists(self.inotify_path):
+                logging.info("file already exist")
+            else:
+                os.mkdir(self.inotify_path)
         else:
             logging.warning("Process type is pmdb")
             self.inotify_path = "%s/ctl-interface" % base_dir_path
@@ -88,7 +94,7 @@ class InotifyPath:
     def prepare_input_output_path(self, peer_uuid, base_fname, input_dir,
                              input_base, app_uuid):
         dir_name = "output"
-        
+
         if input_dir:
             dir_name = "input"
             if input_base == inotify_input_base.SHARED_INIT:

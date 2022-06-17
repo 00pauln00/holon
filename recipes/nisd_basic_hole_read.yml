@@ -1,0 +1,143 @@
+- import_playbook: nisd_initialization_and_startup.yml
+- name: "nisd_basic_hole_read"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "nisd_basic_hole_read"
+    parent: "nisd_initialization_and_startup"
+    no_of_ops: 100
+    nisd_root_keys:
+              - "/nisd_root_entry/0/uuid"
+              - "/nisd_root_entry/0/vblks-read"
+              - "/nisd_root_entry/0/vblks-hole-read"
+              - "/nisd_root_entry/0/status"
+
+  tasks:
+  - block:
+     - debug:
+         msg:
+          - "Nisd UUID: {{ nisdUUID.stdout }}"
+
+     - name: "{{ recipe_name }}: Kill the nisd process."
+       debug:
+         msg:  "{{ lookup('niova_raftprocess', 'kill', nisdUUID.stdout, wantlist=True) }}"
+       no_log: True
+
+     - pause:
+        seconds: 2
+
+     - name: "{{ recipe_name }}: Restart same nisd process."
+       vars:
+          input_param: {
+                  'nisd_uuid' : '{{ nisdUUID.stdout }}',
+                  'uport' : '1053',
+                  }
+       debug:
+         msg: "{{ lookup('nisd_standalone', 'nisd', input_param, wantlist=True) }}"
+       no_log: True
+
+     - pause:
+         seconds: 2
+
+     - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
+       vars:
+         stage: "wait_for_nisd_root_entry"
+         process_type: "nisd"
+         lookout_uuid: ""
+       debug:
+         msg: "Waiting for nisd to get updated"
+       until: lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, "/nisd_root_entry/0/status", 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "running"
+       retries: 10
+       delay: 1
+
+     - name: "{{ recipe_name }}: Verify Initial Conditions."
+       vars:
+         stage: "afterRestart_nisd_root_entry"
+         lookout_uuid: ""
+         nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+       debug:
+         msg: "verify nisd root entry values: {{ nisdRootEntryVal }}"
+       no_log: True
+       failed_when: >
+         (nisdRootEntryVal['/0/uuid'] != nisdUUID.stdout) or
+         (nisdRootEntryVal['/0/status'] != "running") or
+         (nisdRootEntryVal['/0/vblks-hole-read'] != 0)
+
+     - name: Generate new vdev-uuid
+       shell: "/usr/bin/uuid"
+       register: newVedv
+
+     - debug:
+         msg: "New vdev-uuid: {{ newVedv }}"
+
+     - name: Generate new client-uuid for niova-block-test
+       shell: "/usr/bin/uuid"
+       register: newClient
+
+     #2 - Read the VBLKS which were written in Step #1.
+     - name: "{{ recipe_name }}:  Perform some Reads to the NISD to a new UUID."
+       vars:
+         input_param: {
+                 'uuid_to_write' : 'unix:{{ nisdUUID.stdout }}',
+                 'vdev' : '{{ newVedv.stdout }}',
+                 'read_operation_ratio_percentage' : '100',
+                 'random_seed' : '123',
+                 'client_uuid' : '{{ newClient.stdout }}',
+                 'request_size_in_bytes' : '32',
+                 'queue_depth' : '1',
+                 'num_ops' : '{{ no_of_ops | string }}',
+                 'integrity_check' : False,
+                 'sequential_writes' : False,
+                 'blocking_process' : False
+                 }
+         rd_success: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+       debug:
+         msg: "get read's return code"
+       with_items:
+        - "{{ rd_success }}"
+       register: get_rd
+
+     - debug:
+         msg: "Verify read must pass"
+       failed_when: (get_rd['results'][0]['item'] != "0")
+
+     #2a - Verify Hole Reads
+     - name: "{{ recipe_name }}: Verify Hole Reads."
+       vars:
+         stage: "afterRead_nisd_root_entry"
+         lookout_uuid: ""
+         nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+       debug:
+         msg: "verify nisd root entry values: {{ nisdRootEntryVal }}"
+       no_log: True
+       failed_when: >
+         (nisdRootEntryVal['/0/vblks-read'] != 0) or
+         (nisdRootEntryVal['/0/vblks-hole-read'] != 3200)
+
+     #2b - Ensure $NEW_VDEV_UUID is NOT Contained in nisd_chunks
+     - name: "{{ recipe_name }}: Verify that hole reads did not create a vdev-chunk object."
+       vars:
+         stage: "afterRead_nisd_chunk"
+         nisd_keys:
+              - "/nisd_chunks/*/vdev-uuid"
+         lookout_uuid: ""
+         nisdChunk: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+       debug:
+         msg: "verify nisd root entry values: {{ nisdChunk }}"
+       no_log: True
+       failed_when: >
+         (nisdChunk['/*/vdev-uuid'] == newVedv.stdout)
+
+     #2c - Ensure “tasks” items are Idle
+     - name: "{{ recipe_name }}: Ensure “tasks” items are Idle"
+       include_role:
+         name: common
+         tasks_from: verify_nisd_tasks_parameters
+       vars:
+         NisdUUID: "{{ nisdUUID.stdout }}"
+         LookoutUUID: ""
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
