@@ -205,7 +205,7 @@
          getNisd: "{{ nisd_uuids[0] }}"
          input_param: {
                   'Operation': 'NISDGossip',
-                  'OutfileName': 'restarted_nisdGossip'
+                  'OutfileName': 'restarted_nisdGossip_{{ nisd_uuids[0] }}'
                   }
        debug:
          msg: "Verifying NISD's Status"
