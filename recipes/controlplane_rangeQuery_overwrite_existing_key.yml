@@ -56,14 +56,16 @@
        register: seqNo
        no_log: true
 
-     - name: "{{ recipe_name }}: Starting controlplane_client to do overWrite existing key."
+     - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
          input_param: {
-                'key': '{{ firstKey["results"][0]["item"] }}',
-                'value': 'overwrittenValue' ,
+                'Key': '{{ firstKey["results"][0]["item"] }}',
+                'Value': 'OverWrittenValue',
                 'Operation': 'write',
+                'IP_addr': '',
+                'Port': '',
                 'OutfileName': 'overWriteRangewrite_output',
-                'NoofWrites': '5'
+                'NoofWrites': '',
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:

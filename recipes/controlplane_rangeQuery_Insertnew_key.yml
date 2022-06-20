@@ -61,14 +61,16 @@
        register: newseqNo
        no_log: true
 
-     - name: "{{ recipe_name }}: Starting controlplane_client to do new key."
+     - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
          input_param: {
-                'Key': 'InsertNewKey',
-                'Value': 'ValueForNewKey',
+                'Key': 'Country',
+                'Value': 'India',
                 'Operation': 'write',
-                'OutfileName': 'Write_toInsert_new_key',
-                'NoofWrites': '5'
+                'IP_addr': '',
+                'Port': '',
+                'OutfileName': 'write_output',
+                'NoofWrites': '',
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -100,7 +102,7 @@
          read_earlier: "{{readres_existingKey['results'][0]['item']['Response']['Response'][item.key]}}"
          read_later: "{{readres_AfterInsertingNewKey['results'][0]['item']['Response']['Response'][item.key]}}"  
        debug:
-         msg: "validate iterator with specific seq no should not include newly written value"
+         msg: "validate iterator with specific seq no should not include newly written value  read_earlier {{read_earlier}} and XXXXXXXXXXXXread_later {{read_later}}"
        failed_when: read_earlier != read_later
        with_dict: "{{ writeres5keys['results'][0]['item']}}"
 
