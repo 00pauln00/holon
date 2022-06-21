@@ -145,7 +145,7 @@
        debug:
          msg: "Verifying NISD's Status"
        until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
-       retries: 10
+       retries: 60
        delay: 1
 
      - name: "{{ recipe_name }}: Verify new nisd process's gossip info."
@@ -177,7 +177,7 @@
        debug:
          msg: "Verifying NISD's Status"
        until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Dead"
-       retries: 10
+       retries: 60
        delay: 1
 
      - name: "{{ recipe_name }}: Verify nisd process's status is 'Dead'."
@@ -214,7 +214,7 @@
        debug:
          msg: "Verifying NISD's Status"
        until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
-       retries: 10
+       retries: 60
        delay: 1
 
      - name: "{{ recipe_name }}: Verify nisd process's status is 'alive' now."
