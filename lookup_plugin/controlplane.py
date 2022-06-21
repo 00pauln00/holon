@@ -12,7 +12,7 @@ from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
 
 def start_ncpc_process(cluster_params, Key, Value, Operation,
-                                     OutfileName, IP_addr, Port, NoofWrites, seqNo):
+                                     OutfileName, IP_addr, Port, NoofWrites):
     base_dir = cluster_params['base_dir']
     app_name = cluster_params['app_type']
     raft_uuid = cluster_params['raft_uuid']
@@ -34,34 +34,32 @@ def start_ncpc_process(cluster_params, Key, Value, Operation,
     outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
 
     if Operation == "read":
-        if seqNo != "" and NoofWrites != "":
-            process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
-                                             '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-k', Key, '-n', NoofWrites, '-S', seqNo], stdout = fp, stderr = fp)
-        elif NoofWrites != "":
-            print("in elif read")
+        if NoofWrites != "":
+            # If its rangeRead
             process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
                                              '-k', Key, '-n', NoofWrites], stdout = fp, stderr = fp)
         else:
-            print("in else read")
+            # For single read 
             process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
                                              '-k', Key], stdout = fp, stderr = fp)
 
     elif Operation == "write":
         if NoofWrites == "":
-            print("in if loop", "NoofWrites", NoofWrites)
+            # If its single write
             process_popen = subprocess.Popen([bin_path, '-k', Key, '-v', Value,'-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
                                              '-a' , IP_addr, '-p', Port],
                                              stdout = fp, stderr = fp)
-        else:             
+        else: 
+            # For rangeWrite
             process_popen = subprocess.Popen([bin_path, '-k', Key, '-v', Value,'-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
                                              '-a' , IP_addr, '-p', Port, '-n', NoofWrites],
                                              stdout = fp, stderr = fp)
     else:
+        # other operation
         process_popen = subprocess.Popen([bin_path, '-k', Key,
                                              '-v', Value, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath],
@@ -318,65 +316,64 @@ class LookupModule(LookupBase):
         IP_addr = ""
         Port = ""
         NoofWrites = ""
-        seqNo = ""
 
         cluster_params = kwargs['variables']['ClusterParams']
 
         if process_type == "ncpc":
             if input_values['Operation'] == "write" and input_values['NoofWrites'] == "":
-                # Start the ncpc_client and perform the specified operation e.g write/read/config.
+                # Start the ncpc_client and perform single write.
                 process,outfile = start_ncpc_process(cluster_params, input_values['Key'], input_values['Value'],
                                                    input_values['Operation'], input_values['OutfileName'],
-                                                   input_values['IP_addr'], input_values['Port'], NoofWrites, seqNo)
+                                                   input_values['IP_addr'], input_values['Port'], NoofWrites)
 
                 output_data = get_the_output(outfile)
                 return output_data
 
             elif input_values['Operation'] == "write" and input_values['NoofWrites'] != "":
-                # Start the ncpc_client and perform the specified operation e.g write/read/config.
+                # Start the ncpc_client and perform range-write.
                 process,outfile = start_ncpc_process(cluster_params, Key, Value,
                                                    input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, input_values['NoofWrites'], seqNo)
+                                                   IP_addr, Port, input_values['NoofWrites'])
                 output_data = get_the_output(outfile)
                 return output_data
 
             elif input_values['Operation'] == "read" and input_values['NoofWrites'] == "":
-                # Start the ncpc_client and perform the specified operation e.g write/read/config.
+                # Start the ncpc_client and perform single read.
                 process,outfile = start_ncpc_process(cluster_params, input_values['Key'], Value,
                                                    input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NoofWrites, seqNo)
+                                                   IP_addr, Port, NoofWrites)
                 output_data = get_the_output(outfile)
                 return output_data
 
             elif input_values['Operation'] == "read" and input_values['NoofWrites'] != "":
-                # Start the ncpc_client and perform the specified operation e.g write/read/config.
+                # Start the ncpc_client and perform range-read.
                 process,outfile = start_ncpc_process(cluster_params, input_values['Key'], Value,
                                                    input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, input_values['NoofWrites'], input_values['seqNo'])
+                                                   IP_addr, Port, input_values['NoofWrites'])
                 output_data = get_the_output(outfile)
                 return output_data
 
             elif input_values['Operation'] == "membership":
-                # Start the ncpc_client and perform the specified operation e.g write/read/config.
+                # Start the ncpc_client and perform membership operation.
                 process,outfile = start_ncpc_process(cluster_params, Key, Value,
                                                    input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NoofWrites, seqNo)
+                                                   IP_addr, Port, NoofWrites)
                 output_data = get_the_output(outfile)
                 return {"membership":output_data}
 
             elif input_values['Operation'] == "NISDGossip":
-                # Start the ncpc_client and perform the specified operation e.g write/read/config.
+                # Start the ncpc_client and perform the specified operation.
                 process,outfile = start_ncpc_process(cluster_params, Key, Value,
                                                    input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NoofWrites, seqNo)
+                                                   IP_addr, Port, NoofWrites)
                 output_data = get_the_output(outfile)
                 return {"NISDGossip":output_data}
 
             elif input_values['Operation'] == "config":
-                # Start the ncpc_client and perform the specified operation e.g write/read/config.
+                # Start the ncpc_client and perform the specified operation.
                 process,outfile = start_ncpc_process(cluster_params, Key, Value,
                                                    input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NoofWrites, seqNo)
+                                                   IP_addr, Port, NoofWrites)
                 output_data = get_the_output(outfile)
                 return {"config":output_data}
 

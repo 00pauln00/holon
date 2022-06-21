@@ -40,8 +40,7 @@
                 'Key': '*',
                 'Operation': 'read',
                 'OutfileName': 'RangeRead_LeaderChange',
-                'NoofWrites': '25',
-                'seqNo': ''
+                'NoofWrites': '25'
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:

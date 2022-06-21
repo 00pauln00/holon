@@ -73,10 +73,7 @@
        with_items:
           - "{{ ncpcWrRes }}"
        register: writeres
-         # no_log: true
-
-     - debug: 
-          msg: "{{writeres}}"
+       no_log: true
 
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
@@ -139,8 +136,7 @@
                   'Key': 'Paro',
                   'Operation': 'read',
                   'OutfileName': 'read_outputControlplane_recipe',
-                  'NoofWrites': '',
-                  'seqNo': ''
+                  'NoofWrites': ''
                   }
          ncpRdRes: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -148,7 +144,7 @@
        with_items:
           - "{{ ncpRdRes }}"
        register: readres
-         #       no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: compare values after sucessful write/read operation."
        vars:

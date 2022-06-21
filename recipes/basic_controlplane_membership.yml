@@ -68,7 +68,7 @@
        with_items:
           - "{{ ncpclires }}"
        register: membership
-         #       no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
        pause:
@@ -91,9 +91,7 @@
        with_items:
           - "{{ ncpcliwr }}"
        register: writeres
-         #no_log: true
-     - debug: 
-          msg: "{{writeres['results'][0]['item']['Response']['Status']}}"
+       no_log: true
 
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
@@ -109,8 +107,7 @@
                 'Key': 'Country',
                 'Operation': 'read',
                 'OutfileName': 'read_output',
-                'NoofWrites': '', 
-                'seqNo': ''
+                'NoofWrites': ''
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -118,7 +115,7 @@
        with_items:
           - "{{ ncpclird }}"
        register: readres
-         #       no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: compare values after sucessful write/read operation."
        vars:

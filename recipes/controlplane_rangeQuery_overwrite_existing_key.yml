@@ -1,0 +1,96 @@
+- import_playbook: basic_recipe_for_rangeQuery_controlplane.yml
+
+- name: "controlplane_rangeQuery_overwrite_existing_key.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "RangeQuery_overwrite_existing_key"
+    parent: "basic_recipe_for_rangeQuery"
+
+  tasks:
+  - block:
+
+    # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "controlplane")
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeWrite with n as 25."
+       vars:
+         input_param: {
+                'Operation': 'write',
+                'OutfileName': 'Rangewrite_output',
+                'NoofWrites': '25'
+                 }
+         ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from ncpc."
+       with_items:
+          - "{{ ncpcliwr }}"
+       register: writeres25keys
+         #       no_log: true
+
+     - name: "{{ recipe_name }}: Store the key which needs to be started for single key read task."
+       vars:
+         firstkey: "{{ writeres5keys['results'][0]['item'] | dict2items |  map(attribute='key')| list | first }}"
+       debug:
+         msg: "Get the first key from the dictionary."
+       with_items:
+         - "{{ firstkey }}"
+       register: firstKey
+       no_log: true
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with existing keys."
+       vars:
+         input_param: {
+                 'Key': '*',
+                 'Operation': 'read',
+                 'OutfileName': 'RangeRead_output',
+                 'NoofWrites': '25'
+                }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Read key-value from ncpc."
+       with_items:
+         - "{{ ncpclird }}"
+       register: readres25keys
+         # no_log: true
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
+       vars:
+         input_param: {
+                'Key': '{{ firstKey["results"][0]["item"] }}',
+                'Value': 'OverWrittenValue',
+                'Operation': 'write',
+                'IP_addr': '',
+                'Port': '',
+                'OutfileName': 'overWriteRangewrite_output',
+                'NoofWrites': '',
+                 }
+         ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from ncpc."
+       with_items:
+          - "{{ ncpcliwr }}"
+       register: writeres_overwrite
+       no_log: true
+
+     - debug: 
+         msg: "{{writeres_overwrite['results'][0]['item']}}"
+
+     - name: "{{ recipe_name }}: Validate that we should not see the new value written with existing key."
+       vars:
+          read_earlier: "{{ readres25keys['results'][0]['item']['Response']['Response'][firstKey['results'][0]['item']] }}"
+          write_res: "{{writeres_overwrite['results'][0]['item']['Response']['Response']}}"  
+       debug:
+         msg: "compare earlier read and read after new write"
+       failed_when: read_earlier == write_res
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true 
