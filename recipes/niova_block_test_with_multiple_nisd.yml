@@ -153,28 +153,6 @@
        set_fact:
          get_nisd_list: "{{ nisd_uuids | difference(nisd_uuid_list) }}"
 
-     - name: "Enable debug on 3 nisd"
-       vars:
-         stage: "enable_debug"
-         cmd: "master_log_level@debug"
-         where: "/log_subsystem/master_log_level@warn"
-         lookout_uuid: "{{ lookout_uuids[0] }}"
-         debug_on: "{{ lookup('niova_ctlrequest', 'apply_cmd', nisd_uuid_list[item], cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
-       debug:
-         msg: "{{ debug_on }}"
-       loop: "{{ range(0, nisd_uuid_list | length) | list }}"
-
-     - name: "Enable debug on 2 nisd"
-       vars:
-         stage: "enable_debug"
-         cmd: "master_log_level@debug"
-         where: "/log_subsystem/master_log_level@warn"
-         lookout_uuid: "{{ lookout_uuids[1] }}"
-         debug_on: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd_list[item], cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
-       debug:
-         msg: "{{ debug_on }}"
-       loop: "{{ range(0, get_nisd_list | length) | list }}"
-
      - name: "{{ recipe_name }}: Start 3 nisd process for 1 lookout process."
        vars:
          input_param: {
