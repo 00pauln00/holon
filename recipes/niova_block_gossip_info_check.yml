@@ -40,7 +40,7 @@
          getLookoutUUID: "{{ lookout_uuids[0] }}"
          input_param: {
                   'Operation': 'membership',
-                  'OutfileName': 'wait_for_killedlookout'
+                  'OutfileName': 'wait_for_killedlookout_{{ lookout_uuids[0] }}'
                   }
        debug:
          msg: "Verifying lookout's Status"
@@ -52,7 +52,7 @@
        vars:
          input_param: {
                   'Operation': 'membership',
-                  'OutfileName': 'verify_killed_lookout'
+                  'OutfileName': 'verify_killed_lookout_{{ lookout_uuids[0] }}'
                   }
          killedLookout: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -81,7 +81,7 @@
          getLookoutUUID: "{{ lookout_uuids[0] }}"
          input_param: {
                   'Operation': 'membership',
-                  'OutfileName': 'wait_for_restarted_lookout'
+                  'OutfileName': 'wait_for_restarted_lookout_{{ lookout_uuids[0] }}'
                   }
        debug:
          msg: "Verifying lookout's Status"
@@ -93,7 +93,7 @@
        vars:
          input_param: {
                   'Operation': 'membership',
-                  'OutfileName': 'verify_restarted_lookout'
+                  'OutfileName': 'verify_restarted_lookout_{{ lookout_uuids[0] }}'
                   }
          restartedLookoutStatus: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -140,7 +140,7 @@
          getNisd: "{{ newNisdUuid['stdout_lines'][0] }}"
          input_param: {
                   'Operation': 'NISDGossip',
-                  'OutfileName': 'wait_for_new_nisdStatus'
+                  'OutfileName': 'wait_for_new_nisdStatus_{{ getNisd }}'
                   }
        debug:
          msg: "Verifying NISD's Status"
@@ -172,7 +172,7 @@
          getNisd: "{{ nisd_uuids[0] }}"
          input_param: {
                   'Operation': 'NISDGossip',
-                  'OutfileName': 'wait_for_killed_nisdStatus'
+                  'OutfileName': 'wait_for_killed_nisdStatus_{{ nisd_uuids[0] }}'
                   }
        debug:
          msg: "Verifying NISD's Status"
@@ -232,6 +232,3 @@
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
-
-
-
