@@ -102,15 +102,7 @@
        with_items:
          - "{{ ncpclird }}"
        register: readres5keys
-         # no_log: true
-
-     - name: "{{ recipe_name }}: Compare write and read output with all the keys passed."
-       vars:
-          readall: "{{readres5keys['results'][0]['item']['Response']['Response'][item.key]}}"
-       debug:
-          msg: "compare read and write with all the keys passed {{item.value['Value']}} and XXXXxx readall {{readall}}"
-       failed_when: item.value['Value'] != readall
-       with_dict: "{{ writeres5keys['results'][0]['item'] }}"
+       no_log: true
 
      - name: "{{ recipe_name }}: Store the key which needs to be started for single key read task."
        vars:
@@ -224,7 +216,7 @@
        with_items:
          - "{{ dotprefix }}"
        register: dotPrefix
-         #      no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with prefix passed till <v.UUID.chunkno>."
        vars:
@@ -265,7 +257,7 @@
        with_items:
           - "{{ ncpclird }}"
        register: readWithInvalidPrefix
-         #no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: Check it should not return keys and value with invalid prefix passed."
        vars:

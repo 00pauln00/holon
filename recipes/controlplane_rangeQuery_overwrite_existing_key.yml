@@ -32,7 +32,7 @@
        with_items:
           - "{{ ncpcliwr }}"
        register: writeres25keys
-         #       no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: Store the key which needs to be started for single key read task."
        vars:
@@ -58,7 +58,7 @@
        with_items:
          - "{{ ncpclird }}"
        register: readres25keys
-         # no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
@@ -78,9 +78,6 @@
           - "{{ ncpcliwr }}"
        register: writeres_overwrite
        no_log: true
-
-     - debug: 
-         msg: "{{writeres_overwrite['results'][0]['item']}}"
 
      - name: "{{ recipe_name }}: Validate that we should not see the new value written with existing key."
        vars:

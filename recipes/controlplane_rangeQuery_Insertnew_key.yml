@@ -23,8 +23,8 @@
        vars:
          input_param: {
                 'Operation': 'write',
-                'OutfileName': 'Rangewrite_output',
-                'NoofWrites': '5'
+                'OutfileName': 'Rangewrite_Insert_output',
+                'NoofWrites': '25'
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -39,9 +39,8 @@
          input_param: {
                 'Key': '*',
                 'Operation': 'read',
-                'OutfileName': 'RangeRead_ExistingKey',
-                'NoofWrites': '5',
-                'seqNo': ''
+                'OutfileName': 'RangeRead_Insert_output',
+                'NoofWrites': '25'
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -49,16 +48,6 @@
        with_items:
           - "{{ ncpclird }}"
        register: readres_existingKey
-       no_log: true
-
-     - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
-       vars:
-          seq_no: "{{ readres_existingKey['results'][0]['item']['Response']['Sequence_number']}}"
-       debug:
-         msg: "Get the seq no"
-       with_items:
-           - "{{ seq_no }}"
-       register: newseqNo
        no_log: true
 
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
@@ -80,29 +69,22 @@
        register: InsertNewKey
        no_log: true
 
-     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead after writing new key."
-       vars:
-         input_param: {
-                'Key': '*',
-                'Operation': 'read',
-                'OutfileName': 'RangeRead_After_InsertingNewKey',
-                'NoofWrites': '5',
-                'seqNo': "{{newseqNo['results'][0]['item']}}"
-                 }
-         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       # check if read is successful
+     - name: "{{ recipe_name }}: Check if read is successful"
        debug:
-         msg: "Write key-value from ncpc."
-       with_items:
-          - "{{ ncpclird }}"
-       register: readres_AfterInsertingNewKey
-       no_log: true
+         msg: "Check if read is successful"
+       failed_when: readres_existingKey['results'][0]['item']['Response']['Status'] != 0
 
-     - name: "{{ recipe_name }}: Validate that we should not see the new key and value written with same sequence number."
+     - name: "{{ recipe_name }}: Validate that we should not see the new key and value written with the earlier read result."
        vars:
-         read_earlier: "{{readres_existingKey['results'][0]['item']['Response']['Response'][item.key]}}"
-         read_later: "{{readres_AfterInsertingNewKey['results'][0]['item']['Response']['Response'][item.key]}}"  
+         read_earlier: "{{ readres_existingKey['results'][0]['item']['Response']['Response'] }}"
+         newKey: "{{ InsertNewKey['results'][0]['item']['Request']['Key'] }}"   
        debug:
-         msg: "validate iterator with specific seq no should not include newly written value  read_earlier {{read_earlier}} and XXXXXXXXXXXXread_later {{read_later}}"
-       failed_when: read_earlier != read_later
-       with_dict: "{{ writeres5keys['results'][0]['item']}}"
+         msg: "Validate that we should not see the newKey and value written in earlier read result"
+       failed_when: read_earlier == newKey
+       with_items: "{{ readres_existingKey['results'][0]['item']['Response']['Response']  | dict2items |  map(attribute='key')| list }}"
 
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
