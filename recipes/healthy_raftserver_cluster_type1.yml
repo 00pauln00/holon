@@ -81,7 +81,7 @@
 
     - name: "{{ recipe_name }}: Difference between last-ack of two followers should not be more than 2secs"
       vars:
-        time_diff: "{{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"
+        time_diff: "{{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).total_seconds() }}"
       debug:
         msg: "Time difference should not be more than 2 sec"
       failed_when: (time_diff|int >= 2)
