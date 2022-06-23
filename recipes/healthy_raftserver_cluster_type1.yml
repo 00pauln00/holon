@@ -79,7 +79,10 @@
         type1_last_ack_arr: "{{ type1_last_ack_arr}} + ['{{GetFollowerStatsInfo['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y')}}']"
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
-    - debug:
+    - name: "{{ recipe_name }}: Print variable"
+      vars:
+        time_diff: "{{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"
+      debug:
         msg:
          - "{{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"
          - "{{ time_diff | int  }}"
