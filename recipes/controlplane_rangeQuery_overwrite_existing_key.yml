@@ -1,12 +1,12 @@
-- import_playbook: basic_recipe_for_rangeQuery_controlplane.yml
+- import_playbook: control_plane_check_meminfo_after_kill.yml
 
 - name: "controlplane_rangeQuery_overwrite_existing_key.yml"
   hosts: localhost
   connection: local
   vars:
     recipe_name: "RangeQuery_overwrite_existing_key"
-    parent: "basic_recipe_for_rangeQuery"
-
+    parent: "Basic_controlplane_recipe"
+    
   tasks:
   - block:
 
@@ -19,30 +19,38 @@
        failed_when:
          (app_type != "controlplane")
 
-     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeWrite with n as 25."
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     - name: "{{ recipe_name }}: Get the leader and follower uuids."
+       include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeWrite with n as 5."
        vars:
          input_param: {
                 'Operation': 'write',
                 'OutfileName': 'Rangewrite_output',
-                'NoofWrites': '25'
+                'NoofWrites': '5'
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Write key-value from ncpc."
        with_items:
           - "{{ ncpcliwr }}"
-       register: writeres25keys
+       register: writeres5keys
        no_log: true
 
-     - name: "{{ recipe_name }}: Store the key which needs to be started for single key read task."
+     - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
+       include_role:
+         name: common
+         tasks_from: set_fault_injection_and_verify
        vars:
-         firstkey: "{{ writeres5keys['results'][0]['item'] | dict2items |  map(attribute='key')| list | first }}"
-       debug:
-         msg: "Get the first key from the dictionary."
-       with_items:
-         - "{{ firstkey }}"
-       register: firstKey
-       no_log: true
+         ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+         fault_injection_name: "pmdb_range_read_keep_snapshot"
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with existing keys."
        vars:
@@ -50,25 +58,46 @@
                  'Key': '*',
                  'Operation': 'read',
                  'OutfileName': 'RangeRead_output',
-                 'NoofWrites': '25'
+                 'NoofWrites': '5',
+                 'seqNo': ''
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Read key-value from ncpc."
        with_items:
          - "{{ ncpclird }}"
-       register: readres25keys
+       register: readres5keys
+       no_log: true
+
+     - name: "{{ recipe_name }}: Store the key which needs to be started for single key read task."
+       vars:
+         firstkey: "{{ writeres5keys['results'][0]['item'] | dict2items |  map(attribute='key')| list | last }}"
+       debug:
+         msg: "Get the first key from the dictionary. {{firstkey}}"
+       with_items:
+         - "{{ firstkey }}"
+       register: firstKey
+       no_log: true
+
+     - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
+       vars:
+          seq_no: "{{ readres5keys['results'][0]['item']['Response']['Sequence_number']}}"  
+       debug:
+         msg: "Get the seq no {{seq_no}}"
+       with_items:
+           - "{{ seq_no }}"
+       register: seqNo
        no_log: true
 
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
          input_param: {
                 'Key': '{{ firstKey["results"][0]["item"] }}',
-                'Value': 'OverWrittenValue',
+                'Value': 'overwrittenValue',
                 'Operation': 'write',
                 'IP_addr': '',
                 'Port': '',
-                'OutfileName': 'overWriteRangewrite_output',
+                'OutfileName': 'overWriteRangewrite_output', 
                 'NoofWrites': '',
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -79,13 +108,39 @@
        register: writeres_overwrite
        no_log: true
 
-     - name: "{{ recipe_name }}: Validate that we should not see the new value written with existing key."
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed."
        vars:
-          read_earlier: "{{ readres25keys['results'][0]['item']['Response']['Response'][firstKey['results'][0]['item']] }}"
-          write_res: "{{writeres_overwrite['results'][0]['item']['Response']['Response']}}"  
+         input_param: {
+                'Key': '{{firstKey["results"][0]["item"]}}*',
+                'Operation': 'read',
+                'OutfileName': 'overWrite_RangeRead_output',
+                'NoofWrites': '5',
+                'seqNo': '{{ seqNo["results"][0]["item"] }}'  
+                 }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "compare earlier read and read after new write"
+         msg: "Write key-value from ncpc."
+       with_items:
+          - "{{ ncpclird }}"
+       register: overWrite_rangereadres
+       no_log: true
+
+     - name: "{{ recipe_name }}: Validate that we should not see the new value written with existing key."         
+       vars:
+          read_earlier: "{{ overWrite_rangereadres['results'][0]['item']['Response']['Response'][firstKey['results'][0]['item']]}}"
+          write_res: "{{ writeres_overwrite['results'][0]['item']['Response']['Response']}}"     
+       debug:
+         msg: "compare earlier read and read after new write with same sequence no"
        failed_when: read_earlier == write_res
+
+     - name: "{{ recipe_name }}: Apply cmd to remove fault injection from all peers."
+       vars:
+         stage: "recipe_cleanup"
+         cmd: "enabled@false"
+         where: "/fault_injection_points/name@pmdb_range_read_keep_snapshot"
+       debug:
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
+       no_log: true
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

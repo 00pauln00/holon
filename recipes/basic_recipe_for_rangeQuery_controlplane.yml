@@ -1,13 +1,15 @@
+- import_playbook: control_plane_check_meminfo_after_kill.yml 
+
 - name: "basic_recipe_for_rangeQuery_controlplane.yml"
   hosts: localhost
   connection: local
   vars:
     recipe_name: "basic_recipe_for_rangeQuery"
-    parent: None
-    number_of_clients: 2 
+    parent: "Basic_control_plane_recipe"
 
   tasks:
   - block:
+
     # check for the app_type
      - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
        vars:
@@ -16,43 +18,6 @@
          msg: "app_type is: {{ app_type }}"
        failed_when:
          (app_type != "controlplane")
-
-     - name: "{{ recipe_name }}: get the list of non-running servers."
-       include_role:
-          name: common
-          tasks_from: get_server_uuid_info
-
-     # Get multiple client uuids using common task.
-     - name: "Get multiple client uuids."
-       include_role:
-        name: common
-        tasks_from: get_multiple_client_uuids
-       loop: "{{ range(0, number_of_clients) | list }}"
-
-     - name: "Prepare gossip node configs"
-       set_fact: gossipCreation="{{lookup('niova_raftconfig', "controlplane", TotalNServersList, ClientUUIDS, wantlist=True)}}"
-
-     # Start 4 PMDB servers.
-     - name: "{{ recipe_name }}: Start 4 pmdb servers in the cluster."
-       include_role:
-         name: common
-         tasks_from: start_server_golang
-       vars:
-         ServerUUID: "{{ NonRunningServers[item] }}"
-       loop: "{{ range(0, NonRunningServers | length - 1) | list }}"
-
-     # Start proxy servers
-     - name: "{{ recipe_name }}: Start proxy servers."
-       include_role:
-          name: common
-          tasks_from: start_proxy_server
-       vars:
-          ClientUUID: "{{ ClientUUIDS[item] }}"
-       loop: "{{ range(0, ClientUUIDS | length) |list }}"
-
-     - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
-       pause:
-         seconds: 5
 
      - name: "{{ recipe_name }}: Get the leader and follower uuids."
        include_role:
@@ -63,7 +28,7 @@
        vars:
          input_param: {
                 'Operation': 'membership',
-                'OutfileName': 'membership_output'
+                'OutfileName': 'Rangequery_membership_output'
                  }
          ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -77,7 +42,7 @@
        vars:
          input_param: {
                 'Operation': 'write',
-                'OutfileName': 'Rangewrite_output',
+                'OutfileName': 'RangeQuerywrite_output',
                 'NoofWrites': '5'
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -86,15 +51,16 @@
        with_items:
           - "{{ ncpcliwr }}"
        register: writeres5keys
-         # no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with n as 5."
        vars:
          input_param: {
                  'Key': '*', 
                  'Operation': 'read',
-                 'OutfileName': 'RangeRead_output',
-                 'NoofWrites': '5' 
+                 'OutfileName': 'RangeQueryRead_output',
+                 'NoofWrites': '5', 
+                 'seqNo': ''  
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -103,6 +69,14 @@
          - "{{ ncpclird }}"
        register: readres5keys
        no_log: true
+
+     - name: "{{ recipe_name }}: Compare write and read output with all the keys passed."
+       vars:
+         readall: "{{readres5keys['results'][0]['item']['Response']['Response']}}"
+       debug:
+         msg: "compare read and write with all the keys passed"
+       failed_when: item.value['Value'] != readall[item.key]
+       with_dict: "{{ writeres5keys['results'][0]['item'] }}"
 
      - name: "{{ recipe_name }}: Store the key which needs to be started for single key read task."
        vars:
@@ -117,10 +91,11 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead single key."
        vars:
          input_param: {
-                'Key': '{{ firstKey["results"][0]["item"] }}',
+                'Key': '{{firstKey["results"][0]["item"]}}',
                 'Operation': 'read',
-                'OutfileName': 'singleRangeRead_output',
-                'NoofWrites': '5'
+                'OutfileName': 'RangeQuery_singleRead_output',
+                'NoofWrites': '5',
+                'seqNo': ''
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -128,7 +103,7 @@
        with_items:
           - "{{ ncpclird }}"
        register: singlereadres
-       no_log: true
+         #     no_log: true
 
      - name: "{{ recipe_name }}: Compare read output and write output for single key."
        vars:
@@ -143,8 +118,9 @@
          input_param: {
                 'Key': 'v*', 
                 'Operation': 'read',
-                'OutfileName': 'RangeRead_output',
-                'NoofWrites': '5'
+                'OutfileName': 'RangeQuery_Prefix_Read_output',
+                'NoofWrites': '5',
+                'seqNo': ''
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -188,8 +164,9 @@
          input_param: {
                 'Key': '{{vUUIDPrefix["results"][0]["item"]}}*',
                 'Operation': 'read',
-                'OutfileName': 'RangeRead_vUUIDprefix_output',
-                'NoofWrites': '5'
+                'OutfileName': 'RangeQuery_Read_vUUIDprefix_output',
+                'NoofWrites': '5',
+                'seqNo': ''
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -208,48 +185,14 @@
        failed_when: writeprefix != readprefix
        with_items: "{{ readWithPrefix_vUUID['results'][0]['item']['Response']['Response']  | dict2items |  map(attribute='key')| list }}"
 
-     - name: "{{ recipe_name }}: Get the output as per prefix in write dictionary."
-       vars:
-         dotprefix: "{{ writeres5keys['results'][0]['item']  | dict2items | selectattr( 'key' , 'match', vUUIDPrefix['results'][0]['item']) | map(attribute='key') | list }}"
-       debug:
-         msg: "Get the vprefix from dict "
-       with_items:
-         - "{{ dotprefix }}"
-       register: dotPrefix
-       no_log: true
-
-     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with prefix passed till <v.UUID.chunkno>."
-       vars:
-         input_param: {
-                'Key': '{{dotPrefix["results"][0]["item"]}}*',
-                'Operation': 'read',
-                'OutfileName': 'RangeRead_vUUIDprefix_output',
-                'NoofWrites': '5'
-                 }
-         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       debug:
-         msg: "Write key-value from ncpc."
-       with_items:
-          - "{{ ncpclird }}"
-       register: readWithPrefix_vUUID_chunkno
-       no_log: true
-
-     - name: "{{ recipe_name }}: Compare read output with the v.UUID.<chunkno>prefix passed."
-       vars:
-             readprefix: "{{ readWithPrefix_vUUID_chunkno['results'][0]['item']['Response']['Response'][item] }}"
-             writeprefix: "{{ writeres5keys['results'][0]['item'][item]['Value'] }}"
-       debug:
-         msg: "Compare Read output with the prefix passed"
-       failed_when: writeprefix != readprefix
-       with_items: "{{ dotPrefix['results'][0]['item'] }}"
-
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with Invalid prefix passed."
        vars:
          input_param: {
                 'Key': 'Paroscale*',
                 'Operation': 'read',
                 'OutfileName': 'RangeRead_InvalidPrefix_output',
-                'NoofWrites': '5'
+                'NoofWrites': '5',
+                'seqNo': ''
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:

@@ -1,11 +1,11 @@
-- import_playbook: basic_recipe_for_rangeQuery_controlplane.yml
+- import_playbook: basic_controlplane_membership.yml
 
-- name: "controlplane_rangeQuery_overwrite_existing_key.yml"
+- name: "controlplane_rangeQuery_leader_change.yml"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "RangeQuery_overwrite_existing_key"
-    parent: "basic_recipe_for_rangeQuery"
+    recipe_name: "controlplane_rangeQuery_leader_change"
+    parent: "basic_recipe_for_controlPlane"
 
   tasks:
   - block:
@@ -24,7 +24,7 @@
          input_param: {
                 'Operation': 'write',
                 'OutfileName': 'Rangewrite_LeaderChange',
-                'NoofWrites': '25'
+                'NoofWrites': '25', 
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -40,7 +40,8 @@
                 'Key': '*',
                 'Operation': 'read',
                 'OutfileName': 'RangeRead_LeaderChange',
-                'NoofWrites': '25'
+                'NoofWrites': '25',
+                'seqNo': ''
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:

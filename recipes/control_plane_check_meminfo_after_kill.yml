@@ -136,7 +136,8 @@
                   'Key': 'Paro',
                   'Operation': 'read',
                   'OutfileName': 'read_outputControlplane_recipe',
-                  'NoofWrites': ''
+                  'NoofWrites': '',
+                  'seqNo': ''
                   }
          ncpRdRes: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
