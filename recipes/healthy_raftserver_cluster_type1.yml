@@ -81,12 +81,12 @@
 
     - name: "{{ recipe_name }}: Print variable"
       vars:
-        time_diff: "{{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"
+        time_diff: "{{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).seconds }}"
       debug:
         msg:
          - "{{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)) }}"
-         - "{{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).total_seconds() }}"
-         - "{{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"
+         - "{{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).seconds }}"
+         - "{{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).seconds | int }}"
          - "{{ time_diff | int  }}"
       loop: "{{ range(0, FollowerUUIDs | length - 2) | list }}"
 
