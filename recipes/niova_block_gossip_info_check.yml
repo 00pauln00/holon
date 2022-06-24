@@ -204,6 +204,16 @@
      - pause:
          seconds: 2
 
+     - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
+       vars:
+         stage: "wait_for_nisd_root_entry"
+         lookout_uuid: "{{ lookout_uuids[0] }}"
+       debug:
+         msg: "Waiting for nisd to get updated"
+       until: lookup('niova_ctlrequest', 'lookup', nisd_uuids[0], '/nisd_root_entry/0/status', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "running"
+       retries: 30
+       delay: 1
+
      - name: "{{ recipe_name }}: Wait until restarted nisd's status gets changed."
        vars:
          getNisd: "{{ nisd_uuids[0] }}"
