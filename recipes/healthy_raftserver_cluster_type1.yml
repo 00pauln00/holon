@@ -82,9 +82,9 @@
     - debug:
         msg: "type1_last_ack_arr: {{ type1_last_ack_arr }}"
 
-    - debug:
-        msg: "Get time diference: {{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)) }}"
-      loop: "{{ range(0, FollowerUUIDs | length - 2) | list }}"
+#    - debug:
+#        msg: "Get time diference: {{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)) }}"
+#      loop: "{{ range(0, FollowerUUIDs | length - 2) | list }}"
 
     - debug:
         msg: "Get time difference in seconds: {{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).seconds }}"
