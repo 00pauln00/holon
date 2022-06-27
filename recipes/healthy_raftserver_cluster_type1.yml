@@ -5,7 +5,7 @@
   vars:
      recipe_name: "healthy_raftserver_cluster_type1"
      parent: "basic_leader_election2"
-     type1_last_ack_arr: []
+     #type1_last_ack_arr: []
   tasks:
   - block:
     - name: "Check if parent recipe failed"
@@ -75,6 +75,8 @@
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
     - name: "{{ recipe_name }}: Get last-ack for all followers to make sure they are almost same"
+      vars:
+        type1_last_ack_arr: []
       set_fact:
         type1_last_ack_arr: "{{ type1_last_ack_arr}} + ['{{GetFollowerStatsInfo['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y')}}']"
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
