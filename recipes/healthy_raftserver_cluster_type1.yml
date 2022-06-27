@@ -88,11 +88,13 @@
          - "{{ (FollowerUUIDs | length - 2) }}"
 
     - debug:
-        msg: "Get time diference: {{ type1_last_ack_arr[item] }}"
+        msg:
+         - "Get time diference: {{ type1_last_ack_arr[item] }}"
+         - "{{ FollowerUUIDs[item] }}"
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
     - debug:
-        msg: "Get time diference: {{ (type1_last_ack_arr[item] | to_datetime) }}"
+        msg: "Get to_datetime: {{ (type1_last_ack_arr[item] | to_datetime) }}"
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
     - debug:
