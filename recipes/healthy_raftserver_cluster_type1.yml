@@ -83,20 +83,25 @@
         msg: "type1_last_ack_arr: {{ type1_last_ack_arr }}"
 
     - debug:
+        msg:
+         - "{{ (FollowerUUIDs | length) }}"
+         - "{{ (FollowerUUIDs | length - 2) }}"
+
+    - debug:
         msg: "Get time diference: {{ type1_last_ack_arr[item] }}"
-      loop: "{{ range(0, FollowerUUIDs | length - 2) | list }}"
+      loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
     - debug:
         msg: "Get time diference: {{ (type1_last_ack_arr[item] | to_datetime) }}"
-      loop: "{{ range(0, FollowerUUIDs | length - 2) | list }}"
+      loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
     - debug:
         msg: "Get time difference in seconds: {{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).seconds }}"
-      loop: "{{ range(0, FollowerUUIDs | length - 2) | list }}"
+      loop: "{{ range(0, FollowerUUIDs | length - 1) | list }}"
 
     - debug:
         msg: "Convert time diff to int: {{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).seconds | int }}"
-      loop: "{{ range(0, FollowerUUIDs | length - 2) | list }}"
+      loop: "{{ range(0, FollowerUUIDs | length - 1) | list }}"
 
     - name: "{{ recipe_name }}: Difference between last-ack of two followers should not be more than 2secs"
       vars:
@@ -105,7 +110,7 @@
         msg:
          - "Time difference should not be more than 2 sec"
       failed_when: (time_diff | int) >= 2
-      loop: "{{ range(0, FollowerUUIDs | length - 2) | list }}"
+      loop: "{{ range(0, FollowerUUIDs | length - 1) | list }}"
 
     - name: "{{ recipe_name }}: Get the values for newly started peers"
       vars:
