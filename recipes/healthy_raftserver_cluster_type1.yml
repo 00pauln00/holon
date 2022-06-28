@@ -5,7 +5,6 @@
   vars:
      recipe_name: "healthy_raftserver_cluster_type1"
      parent: "basic_leader_election2"
-     type1_last_ack_arr: []
   tasks:
   - block:
     - name: "Check if parent recipe failed"
@@ -75,17 +74,20 @@
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
     - name: "{{ recipe_name }}: Get last-ack for all followers to make sure they are almost same"
+      vars:
+        last_ack: "{{ GetFollowerStatsInfo['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y') }}"
       set_fact:
-        type1_last_ack_arr: "{{ type1_last_ack_arr}} + ['{{GetFollowerStatsInfo['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y')}}']"
+        type1_last_ack_arr: "{{ type1_last_ack_arr|default([]) + [last_ack] }}"
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
     - name: "{{ recipe_name }}: Difference between last-ack of two followers should not be more than 2secs"
       vars:
         time_diff: "{{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"
       debug:
-        msg: "Time difference should not be more than 2 sec"
-      failed_when: (time_diff | int)  >= 2
-      loop: "{{ range(0, FollowerUUIDs | length - 2) | list }}"
+        msg:
+         - "Time difference should not be more than 2 sec"
+      failed_when: (time_diff | int) >= 2
+      loop: "{{ range(0, FollowerUUIDs | length - 1) | list }}"
 
     - name: "{{ recipe_name }}: Get the values for newly started peers"
       vars:
