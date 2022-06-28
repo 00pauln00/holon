@@ -193,7 +193,7 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed after removing fault injection."
        vars:
          input_param: {
-                'Key': '{{writeres_Insert["results"][0]["item"]["Request"]["Key"]}}*',
+                'Key': '*',
                 'Operation': 'read',
                 'OutfileName': 'InsertWrite_RangeRead_afterRemovingFaultInjection_output',
                 'NoofWrites': '5',
