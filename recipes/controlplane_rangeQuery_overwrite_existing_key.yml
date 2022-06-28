@@ -52,6 +52,14 @@
          ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
          fault_injection_name: "pmdb_range_read_keep_snapshot"
 
+     - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
+       include_role:
+         name: common
+         tasks_from: set_fault_injection_and_verify
+       vars:
+         ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+         fault_injection_name: "pmdb_range_read_keep_old_snapshot"
+
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with existing keys."
        vars:
          input_param: {
@@ -69,30 +77,30 @@
        register: readres5keys
        no_log: true
 
-     - name: "{{ recipe_name }}: Store the key which needs to be started for single key read task."
+     - name: "{{ recipe_name }}: Store the key which needs to be overwritten for single key write task."
        vars:
-         firstkey: "{{ writeres5keys['results'][0]['item'] | dict2items |  map(attribute='key')| list | last }}"
+        key: "{{ writeres5keys['results'][0]['item'] | dict2items |  map(attribute='key')| list | last }}"
        debug:
-         msg: "Get the first key from the dictionary. {{firstkey}}"
+         msg: "Get the key from the dictionary.-"
        with_items:
-         - "{{ firstkey }}"
-       register: firstKey
+         - "{{ key }}"
+       register: Key
        no_log: true
 
      - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
        vars:
           seq_no: "{{ readres5keys['results'][0]['item']['Response']['Sequence_number']}}"  
        debug:
-         msg: "Get the seq no {{seq_no}}"
+         msg: "Get the seq no"
        with_items:
            - "{{ seq_no }}"
        register: seqNo
        no_log: true
-
+         
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
          input_param: {
-                'Key': '{{ firstKey["results"][0]["item"] }}',
+                'Key': '{{ Key["results"][0]["item"] }}',
                 'Value': 'overwrittenValue',
                 'Operation': 'write',
                 'IP_addr': '',
@@ -111,7 +119,7 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed."
        vars:
          input_param: {
-                'Key': '{{firstKey["results"][0]["item"]}}*',
+                'Key': '{{Key["results"][0]["item"]}}*',
                 'Operation': 'read',
                 'OutfileName': 'overWrite_RangeRead_output',
                 'NoofWrites': '5',
@@ -119,7 +127,7 @@
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "Write key-value from ncpc."
+         msg: "rangeRead key-value from ncpc."
        with_items:
           - "{{ ncpclird }}"
        register: overWrite_rangereadres
@@ -127,20 +135,127 @@
 
      - name: "{{ recipe_name }}: Validate that we should not see the new value written with existing key."         
        vars:
-          read_earlier: "{{ overWrite_rangereadres['results'][0]['item']['Response']['Response'][firstKey['results'][0]['item']]}}"
+          read_earlier: "{{ overWrite_rangereadres['results'][0]['item']['Response']['Response'][Key['results'][0]['item']]}}"
           write_res: "{{ writeres_overwrite['results'][0]['item']['Response']['Response']}}"     
        debug:
          msg: "compare earlier read and read after new write with same sequence no"
        failed_when: read_earlier == write_res
-
-     - name: "{{ recipe_name }}: Apply cmd to remove fault injection from all peers."
+   
+     - name: "{{ recipe_name }}: Remove fault injection {{ fault_injection_name }} on leader."
        vars:
-         stage: "recipe_cleanup"
+         stage: "remove_fault_injection_leader"
+         cmd: "enabled@false"
+         where: "/fault_injection_points/name@pmdb_range_read_keep_old_snapshot"
+         remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
+       debug:
+         msg: "{{ remove_fault_inject }}"
+       no_log: True
+
+     - name: "{{ recipe_name }}: Get list of fault-injections."
+       vars:
+         stage: "fault_injection_check"
+         raft_keys:
+           - "/fault_injection_points"
+       set_fact:
+         fault_injection_points: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: Get fault_injection_point_enabled for leader."
+       vars:
+          fault_injection_name: "pmdb_range_read_keep_old_snapshot"
+       set_fact:
+          fault_injection_point_enabled: "{{ fault_injection_points['//fault_injection_points'][index]['enabled'] }}"
+       when: (fault_injection_points['//fault_injection_points'][index]['name'] == fault_injection_name)
+       loop: "{{  range(0, fault_injection_points['//fault_injection_points'] |length) | list }}"
+       loop_control:
+          loop_var: index
+
+     - name: "{{ recipe_name }}: Verify fault injection is removed from leader."
+       debug:
+         msg: "{{ fault_injection_point_enabled }}"
+       no_log: True
+       failed_when: fault_injection_point_enabled != False
+
+     - name: "{{ recipe_name }}: Remove fault injection {{ fault_injection_name }} on leader."
+       vars:
+         stage: "remove_fault_injection_leader"
          cmd: "enabled@false"
          where: "/fault_injection_points/name@pmdb_range_read_keep_snapshot"
+         remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
        debug:
-         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
+         msg: "{{ remove_fault_inject }}"
+       no_log: True
+
+     - name: "{{ recipe_name }}: Get list of fault-injections."
+       vars:
+         stage: "fault_injection_check"
+         raft_keys:
+           - "/fault_injection_points"
+       set_fact:
+         fault_injection_points: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: Get fault_injection_point_enabled for leader."
+       vars:
+          fault_injection_name: "pmdb_range_read_keep_snapshot"
+       set_fact:
+          fault_injection_point_enabled: "{{ fault_injection_points['//fault_injection_points'][index]['enabled'] }}"
+       when: (fault_injection_points['//fault_injection_points'][index]['name'] == fault_injection_name)
+       loop: "{{  range(0, fault_injection_points['//fault_injection_points'] |length) | list }}"
+       loop_control:
+          loop_var: index
+
+     - name: "{{ recipe_name }}: Verify fault injection is removed from leader."
+       debug:
+         msg: "{{ fault_injection_point_enabled }}"
+       no_log: True
+       failed_when: fault_injection_point_enabled != False
+         
+
+     - name: "{{ recipe_name }}: Pause for 60 seconds so that snapshot gets deleted successfully."
+       pause:
+        seconds: 60
+         
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed after removing fault injection."
+       vars:
+         input_param: {
+                'Key': '{{Key["results"][0]["item"]}}*',
+                'Operation': 'read',
+                'OutfileName': 'overWrite_RangeRead_afterRemovingFaultInjection_output',
+                'NoofWrites': '5',
+                'seqNo': '{{seqNo["results"][0]["item"] }}'
+                 }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "read the result after removing fault injection with same seq no"
+       with_items:
+          - "{{ ncpclird }}"
+       register: overWrite_rangereadres_afterRemoving_FaultInjection
        no_log: true
+
+     - name: "{{ recipe_name }}: Get the sequence no from the read result after removing fault injection."
+       vars:
+          seq_no: "{{ overWrite_rangereadres_afterRemoving_FaultInjection['results'][0]['item']['Response']['Sequence_number']}}"
+       debug:
+         msg: "Get the seq no {{seq_no}}"
+       with_items:
+           - "{{ seq_no }}"
+       register: seqNo_latest
+       no_log: true
+
+     - name: "{{ recipe_name }}: Validate that we should see updated seq no."
+       vars:
+          seqNo_earlier: "{{seqNo['results'][0]['item']}}"
+          seqNo_new: "{{seqNo_latest['results'][0]['item']}}"
+       debug:
+         msg: "compare earlier seqno with old seq no."
+       failed_when: seqNo_earlier == seqNo_new
+
+     - name: "{{ recipe_name }}: Validate that we should see the updated value for the key after removing the fault injection."
+       vars:
+          Value_earlier: "{{ overWrite_rangereadres['results'][0]['item']['Response']['Response'][Key['results'][0]['item']] }}"
+          Value_new: "{{ overWrite_rangereadres_afterRemoving_FaultInjection ['results'][0]['item']['Response']['Response'][Key['results'][0]['item']]}}"
+       debug:
+         msg: "compare earlier seqno with old seq no."
+       failed_when: Value_earlier == Value_new
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

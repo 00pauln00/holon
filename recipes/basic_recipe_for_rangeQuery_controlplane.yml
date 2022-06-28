@@ -1,11 +1,11 @@
-- import_playbook: control_plane_check_meminfo_after_kill.yml 
+- import_playbook: basic_controlplane_membership.yml 
 
 - name: "basic_recipe_for_rangeQuery_controlplane.yml"
   hosts: localhost
   connection: local
   vars:
     recipe_name: "basic_recipe_for_rangeQuery"
-    parent: "Basic_control_plane_recipe"
+    parent: "basic_controlplane_membership"
 
   tasks:
   - block:
@@ -28,7 +28,7 @@
        vars:
          input_param: {
                 'Operation': 'membership',
-                'OutfileName': 'Rangequery_membership_output'
+                'OutfileName': 'membership_output'
                  }
          ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -42,7 +42,7 @@
        vars:
          input_param: {
                 'Operation': 'write',
-                'OutfileName': 'RangeQuerywrite_output',
+                'OutfileName': 'Rangewrite_output',
                 'NoofWrites': '5'
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -58,7 +58,7 @@
          input_param: {
                  'Key': '*', 
                  'Operation': 'read',
-                 'OutfileName': 'RangeQueryRead_output',
+                 'OutfileName': 'RangeRead_output',
                  'NoofWrites': '5', 
                  'seqNo': ''  
                 }
@@ -74,7 +74,7 @@
        vars:
          readall: "{{readres5keys['results'][0]['item']['Response']['Response']}}"
        debug:
-         msg: "compare read and write with all the keys passed"
+         msg: "compare read and write output with all the keys passed"
        failed_when: item.value['Value'] != readall[item.key]
        with_dict: "{{ writeres5keys['results'][0]['item'] }}"
 
@@ -91,26 +91,26 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead single key."
        vars:
          input_param: {
-                'Key': '{{firstKey["results"][0]["item"]}}',
+                'Key': '{{ firstKey["results"][0]["item"] }}',
                 'Operation': 'read',
-                'OutfileName': 'RangeQuery_singleRead_output',
+                'OutfileName': 'singleRangeRead_output',
                 'NoofWrites': '5',
                 'seqNo': ''
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "Write key-value from ncpc."
+         msg: "Read single key-value from ncpc."
        with_items:
           - "{{ ncpclird }}"
        register: singlereadres
-         #     no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: Compare read output and write output for single key."
        vars:
           readsingle: "{{ singlereadres['results'][0]['item']['Response']['Response'] }}"
           writesingle: "{{ writeres5keys['results'][0]['item'][firstKey['results'][0]['item']]['Value'] }}"
        debug:
-         msg: "compare read and write"
+         msg: "compare read and write for single task"
        failed_when: readsingle != writesingle
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with prefix passed."
@@ -118,13 +118,13 @@
          input_param: {
                 'Key': 'v*', 
                 'Operation': 'read',
-                'OutfileName': 'RangeQuery_Prefix_Read_output',
+                'OutfileName': 'RangeRead_output_prefix',
                 'NoofWrites': '5',
                 'seqNo': ''
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "Write key-value from ncpc."
+         msg: "Read key-value from ncpc with prefix passed."
        with_items:
           - "{{ ncpclird }}"
        register: readres
@@ -164,13 +164,13 @@
          input_param: {
                 'Key': '{{vUUIDPrefix["results"][0]["item"]}}*',
                 'Operation': 'read',
-                'OutfileName': 'RangeQuery_Read_vUUIDprefix_output',
+                'OutfileName': 'RangeRead_vUUIDprefix_output',
                 'NoofWrites': '5',
                 'seqNo': ''
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "Write key-value from ncpc."
+         msg: "Read key-value from ncpc till v.uuid."
        with_items:
           - "{{ ncpclird }}"
        register: readWithPrefix_vUUID
@@ -196,7 +196,7 @@
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "Write key-value from ncpc."
+         msg: "Read key-value from ncpc with invalid prefix passed."
        with_items:
           - "{{ ncpclird }}"
        register: readWithInvalidPrefix
