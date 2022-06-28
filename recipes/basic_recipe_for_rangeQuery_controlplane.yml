@@ -206,8 +206,8 @@
        vars:
              readprefix: "{{ readWithInvalidPrefix['results'][0]['item']['Response']['Response'] }}"
        debug:
-         msg: "Check if response is nill with invalid prefix passed"
-       failed_when: readprefix != {}
+         msg: "Check if response is Key not found with invalid prefix passed"
+       failed_when: readprefix != "Key not found"
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
