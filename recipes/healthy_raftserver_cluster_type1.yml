@@ -80,32 +80,6 @@
         type1_last_ack_arr: "{{ type1_last_ack_arr|default([]) + [last_ack] }}"
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
-    - debug:
-        msg: "type1_last_ack_arr: {{ type1_last_ack_arr }}"
-
-    - debug:
-        msg:
-         - "{{ (FollowerUUIDs | length) }}"
-         - "{{ (FollowerUUIDs | length - 2) }}"
-
-    - debug:
-        msg:
-         - "Geteach item from type1_last_ack_arr: {{ type1_last_ack_arr[item] }}"
-         - "{{ FollowerUUIDs[item] }}"
-      loop: "{{ range(0, FollowerUUIDs | length) | list }}"
-
-    - debug:
-        msg: "Get to_datetime: {{ (type1_last_ack_arr[item] | to_datetime) }}"
-      loop: "{{ range(0, FollowerUUIDs | length) | list }}"
-
-    - debug:
-        msg: "Get time difference in seconds: {{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).seconds }}"
-      loop: "{{ range(0, FollowerUUIDs | length - 1) | list }}"
-
-    - debug:
-        msg: "Convert time diff to int: {{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).seconds | int }}"
-      loop: "{{ range(0, FollowerUUIDs | length - 1) | list }}"
-
     - name: "{{ recipe_name }}: Difference between last-ack of two followers should not be more than 2secs"
       vars:
         time_diff: "{{ ((type1_last_ack_arr[item] | to_datetime) - (type1_last_ack_arr[item + 1] | to_datetime)).total_seconds() | int }}"

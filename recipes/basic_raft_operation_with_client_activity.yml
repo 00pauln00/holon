@@ -213,9 +213,9 @@
 
     - name: "{{ recipe_name}}: Get the last-ack for all the followers"
       vars:
-        bca_last_ack_arr: []
+        last_ack: "{{ follower_stats['results'][0]['item']['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y') }}"
       set_fact:
-        bca_last_ack_arr: "{{ bca_last_ack_arr }} + ['{{ follower_stats['results'][0]['item']['/0/follower-stats'][item]['last-ack'] | to_datetime('%a %b %d %H:%M:%S %Z %Y') }}']"
+        bca_last_ack_arr: "{{ bca_last_ack_arr|default([]) + [last_ack] }}"
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
     - name: "{{ recipe_name}}: Difference between last-ack of two followers should not be more than 2secs"
@@ -225,7 +225,7 @@
         msg: "Time difference between last-ack of two followers should not be > 2sec"
       no_log: true
       failed_when: (time_diff | int)  >= 2
-      loop: "{{ range(0, FollowerUUIDs | length - 2) | list }}"
+      loop: "{{ range(0, FollowerUUIDs | length - 1) | list }}"
 
     - name: "{{ recipe_name}}: Get the server information for all running servers."
       vars:

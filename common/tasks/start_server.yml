@@ -16,5 +16,5 @@
       vars:
         stage: "start_server"
       until: (lookup('niova_ctlrequest', 'lookup', ServerUUID, '/raft_root_entry', wantlist=True)| dict2items | map(attribute='value') | list | first != "null") and (lookup('niova_ctlrequest', 'lookup', ServerUUID, '/raft_root_entry/0/state', wantlist=True)| dict2items | map(attribute='value') | list | first != "booting")
-      retries: 30
+      retries: 60
       delay: 1
