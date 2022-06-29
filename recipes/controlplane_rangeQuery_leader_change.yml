@@ -10,6 +10,10 @@
   tasks:
   - block:
 
+     - name: "Check if parent recipe failed"
+       debug: msg="Check if parent recipe {{ parent }} failed"
+       failed_when: terminate_recipe == true
+
     # check for the app_type
      - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
        vars:
@@ -79,7 +83,7 @@
 
      - name: "{{ recipe_name }}: Compare write and read output with all the keys passed."
        vars:
-         readall: "{{readres5keys['results'][0]['item']['Response']['Response']}}"
+         readall: "{{ readres5keys['results'][0]['item']['Response']['Response'] }}"
        debug:
          msg: "compare read and write with all the keys passed"
        failed_when: item.value['Value'] != readall[item.key]
@@ -87,9 +91,9 @@
 
      - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
        vars:
-          seq_no: "{{ readres5keys['results'][0]['item']['Response']['Sequence_number']}}"
+          seq_no: "{{ readres5keys['results'][0]['item']['Response']['Sequence_number'] }}"
        debug:
-         msg: "Get the seq no {{seq_no}}"
+         msg: "Get the seq no"
        with_items:
            - "{{ seq_no }}"
        register: seqNo
@@ -133,7 +137,7 @@
 
      - name: "{{ recipe_name }}: Kill the Leader."
        debug:
-        msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
+        msg: "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True) }}"
        no_log: True
 
      - name: "{{ recipe_name }}: Wait until leader election happens."
@@ -155,7 +159,7 @@
                 'Operation': 'read',
                 'OutfileName': 'seqno_RangeRead_output',
                 'NoofWrites': '5',
-                'seqNo': '{{seqNo["results"][0]["item"] }}'
+                'seqNo': '{{ seqNo["results"][0]["item"] }}'
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -166,17 +170,17 @@
 
      - name: "{{ recipe_name }}: Get the sequence no from the read result after removing fault injection."
        vars:
-          seq_no: "{{ seqno_rangereadres['results'][0]['item']['Response']['Sequence_number']}}"
+          seq_no: "{{ seqno_rangereadres['results'][0]['item']['Response']['Sequence_number'] }}"
        debug:
-         msg: "Get the seq no {{seq_no}}"
+         msg: "Get the seq no"
        with_items:
            - "{{ seq_no }}"
        register: seqNo_latest
 
      - name: "{{ recipe_name }}: Validate that we should see updated seq no."
        vars:
-          seqNo_earlier: "{{seqNo['results'][0]['item']}}"
-          seqNo_new: "{{seqNo_latest['results'][0]['item']}}"
+          seqNo_earlier: "{{ seqNo['results'][0]['item'] }}"
+          seqNo_new: "{{ seqNo_latest['results'][0]['item'] }}"
        debug:
          msg: "compare earlier seqno with old seq no."
        failed_when: seqNo_earlier == seqNo_new
