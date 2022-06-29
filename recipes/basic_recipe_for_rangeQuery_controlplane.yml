@@ -1,0 +1,215 @@
+- import_playbook: basic_controlplane_membership.yml 
+
+- name: "basic_recipe_for_rangeQuery_controlplane.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "basic_recipe_for_rangeQuery"
+    parent: "basic_controlplane_membership"
+
+  tasks:
+  - block:
+
+    # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "controlplane")
+
+     - name: "{{ recipe_name }}: Get the leader and follower uuids."
+       include_role:
+         name: common
+         tasks_from: get_follower_stats
+                
+     - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
+       vars:
+         input_param: {
+                'Operation': 'membership',
+                'OutfileName': 'membership_output'
+                 }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "get membership details of running servers."
+       with_items:
+          - "{{ ncpclires }}"
+       register: membership
+       no_log: true
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeWrite with n as 5."
+       vars:
+         input_param: {
+                'Operation': 'write',
+                'OutfileName': 'Rangewrite_output',
+                'NoofWrites': '5'
+                 }
+         ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from ncpc."
+       with_items:
+          - "{{ ncpcliwr }}"
+       register: writeres5keys
+       no_log: true
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with n as 5."
+       vars:
+         input_param: {
+                 'Key': '*', 
+                 'Operation': 'read',
+                 'OutfileName': 'RangeRead_output',
+                 'NoofWrites': '5', 
+                 'seqNo': ''  
+                }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Read key-value from ncpc."
+       with_items:
+         - "{{ ncpclird }}"
+       register: readres5keys
+       no_log: true
+
+     - name: "{{ recipe_name }}: Compare write and read output with all the keys passed."
+       vars:
+         readall: "{{readres5keys['results'][0]['item']['Response']['Response']}}"
+       debug:
+         msg: "compare read and write output with all the keys passed"
+       failed_when: item.value['Value'] != readall[item.key]
+       with_dict: "{{ writeres5keys['results'][0]['item'] }}"
+
+     - name: "{{ recipe_name }}: Store the key which needs to be started for single key read task."
+       vars:
+         firstkey: "{{ writeres5keys['results'][0]['item'] | dict2items |  map(attribute='key')| list | first }}"
+       debug:
+         msg: "Get the first key from the dictionary."
+       with_items:
+         - "{{ firstkey }}"
+       register: firstKey
+       no_log: true
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead single key."
+       vars:
+         input_param: {
+                'Key': '{{ firstKey["results"][0]["item"] }}',
+                'Operation': 'read',
+                'OutfileName': 'singleRangeRead_output',
+                'NoofWrites': '5',
+                'seqNo': ''
+                 }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Read single key-value from ncpc."
+       with_items:
+          - "{{ ncpclird }}"
+       register: singlereadres
+       no_log: true
+
+     - name: "{{ recipe_name }}: Compare read output and write output for single key."
+       vars:
+          readsingle: "{{ singlereadres['results'][0]['item']['Response']['Response'] }}"
+          writesingle: "{{ writeres5keys['results'][0]['item'][firstKey['results'][0]['item']]['Value'] }}"
+       debug:
+         msg: "compare read and write for single task"
+       failed_when: readsingle != writesingle
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with prefix passed."
+       vars:
+         input_param: {
+                'Key': 'v*', 
+                'Operation': 'read',
+                'OutfileName': 'RangeRead_output_prefix',
+                'NoofWrites': '5',
+                'seqNo': ''
+                 }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Read key-value from ncpc with prefix passed."
+       with_items:
+          - "{{ ncpclird }}"
+       register: readres
+       no_log: true
+
+     - name: "{{ recipe_name }}: Get the output as per prefix in write dictionary."
+       vars:
+         vprefix: "{{ writeres5keys['results'][0]['item']| dict2items | selectattr('key', 'match', '^v.+$') | map(attribute='key')| list }}"
+       debug:
+         msg: "Get the vprefix from dict "
+       with_items:
+         - "{{ vprefix }}"
+       register: vPrefix
+       no_log: true
+     
+     - name: "{{ recipe_name }}: Compare read output with the prefix passed."
+       vars: 
+             readprefix: "{{ readres['results'][0]['item']['Response']['Response'][item] }}"
+             writeprefix: "{{ writeres5keys['results'][0]['item'][item]['Value'] }}"
+       debug:
+         msg: "Compare Read output with the prefix passed"
+       failed_when: writeprefix != readprefix
+       with_items: "{{ readres['results'][0]['item']['Response']['Response']  | dict2items |  map(attribute='key')| list }}"
+
+     - name: "{{ recipe_name }}: Get the prefix till v.uuid. and store it in an variable."
+       vars:
+         vUUIDprefix: "{{ vPrefix['results'][0]['item'] }}"
+       debug:
+         msg: "Get the vUUIDprefix from dict "
+       with_items:
+         - "{{ vUUIDprefix }}"
+       register: vUUIDPrefix
+       no_log: true
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with prefix passed till <v.UUID>."
+       vars:
+         input_param: {
+                'Key': '{{vUUIDPrefix["results"][0]["item"]}}*',
+                'Operation': 'read',
+                'OutfileName': 'RangeRead_vUUIDprefix_output',
+                'NoofWrites': '5',
+                'seqNo': ''
+                 }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Read key-value from ncpc till v.uuid."
+       with_items:
+          - "{{ ncpclird }}"
+       register: readWithPrefix_vUUID
+       no_log: true
+
+     - name: "{{ recipe_name }}: Compare read output with the v.UUID.prefix passed."
+       vars:  
+             readprefix: "{{ readWithPrefix_vUUID['results'][0]['item']['Response']['Response'][item] }}"
+             writeprefix: "{{ writeres5keys['results'][0]['item'][item]['Value'] }}"
+       debug:
+         msg: "Compare Read output with the prefix passed"
+       failed_when: writeprefix != readprefix
+       with_items: "{{ readWithPrefix_vUUID['results'][0]['item']['Response']['Response']  | dict2items |  map(attribute='key')| list }}"
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with Invalid prefix passed."
+       vars:
+         input_param: {
+                'Key': 'Paroscale*',
+                'Operation': 'read',
+                'OutfileName': 'RangeRead_InvalidPrefix_output',
+                'NoofWrites': '5',
+                'seqNo': ''
+                 }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Read key-value from ncpc with invalid prefix passed."
+       with_items:
+          - "{{ ncpclird }}"
+       register: readWithInvalidPrefix
+       no_log: true
+
+     - name: "{{ recipe_name }}: Check it should not return keys and value with invalid prefix passed."
+       vars:
+             readprefix: "{{ readWithInvalidPrefix['results'][0]['item']['Response']['Response'] }}"
+       debug:
+         msg: "Check if response is Key not found with invalid prefix passed"
+       failed_when: readprefix != "Key not found"
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
