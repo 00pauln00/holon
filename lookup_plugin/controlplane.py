@@ -1,5 +1,5 @@
 from ansible.plugins.lookup import LookupBase
-import fcntl, psutil
+import fcntl, psutil, uuid
 import sys
 import json
 import termios
@@ -31,7 +31,7 @@ def start_ncpc_process(cluster_params, Key, Value, Operation,
     # Prepare config file path for ncpc
     ConfigPath = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
 
-    outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
+    outfilePath = "%s/%s/%s_%s" % (base_dir, raft_uuid, OutfileName, uuid.uuid1())
 
     if Operation == "read":
         if seqNo != "" and NumWrites != "":

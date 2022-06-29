@@ -4,7 +4,7 @@
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "Controlplane_recipe"
+    recipe_name: "Controlplane_killAll_Proxy_recipe"
     parent: basic_controlplane_membership
 
   tasks:
@@ -43,7 +43,7 @@
        vars:
          input_param: {
                 'Operation': 'write',
-                'OutfileName': 'Rangewrite_output',
+                'OutfileName': 'KillallProxy_output',
                 'NoofWrites': '5'
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
@@ -100,7 +100,7 @@
          input_param: {
                  'Key': '*',
                  'Operation': 'read',
-                 'OutfileName': 'RangeRead_outputi_after_starting_proxy',
+                 'OutfileName': 'RangeRead_output_after_starting_proxy',
                  'NoofWrites': '5',
                  'seqNo': ''
                 }
@@ -124,5 +124,3 @@
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
-
-
