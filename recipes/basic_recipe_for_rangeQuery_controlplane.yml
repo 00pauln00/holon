@@ -60,7 +60,8 @@
                  'Operation': 'read',
                  'OutfileName': 'RangeRead_output',
                  'NoofWrites': '5', 
-                 'seqNo': ''  
+                 'seqNo': '',
+                 'relaxed_consistency': 'false' 
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -95,7 +96,8 @@
                 'Operation': 'read',
                 'OutfileName': 'singleRangeRead_output',
                 'NoofWrites': '5',
-                'seqNo': ''
+                'seqNo': '',
+                'relaxed_consistency': 'false'
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -120,7 +122,8 @@
                 'Operation': 'read',
                 'OutfileName': 'RangeRead_output_prefix',
                 'NoofWrites': '5',
-                'seqNo': ''
+                'seqNo': '',
+                'relaxed_consistency': 'false'
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -166,7 +169,8 @@
                 'Operation': 'read',
                 'OutfileName': 'RangeRead_vUUIDprefix_output',
                 'NoofWrites': '5',
-                'seqNo': ''
+                'seqNo': '',
+                'relaxed_consistency': 'false'
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -192,7 +196,8 @@
                 'Operation': 'read',
                 'OutfileName': 'RangeRead_InvalidPrefix_output',
                 'NoofWrites': '5',
-                'seqNo': ''
+                'seqNo': '',
+                'relaxed_consistency': 'false'
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:

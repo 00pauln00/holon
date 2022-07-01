@@ -63,7 +63,7 @@
        with_items:
           - "{{ ncpclires }}"
        register: membership
-         #       no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
        pause:
@@ -104,7 +104,7 @@
                 'OutfileName': 'read_output',
                 'NoofWrites': '', 
                 'seqNo': '',
-                'relaxed_consistency': False
+                'relaxed_consistency': 'false'
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
