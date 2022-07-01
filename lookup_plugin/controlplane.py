@@ -12,7 +12,7 @@ from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
 
 def start_ncpc_process(cluster_params, Key, Value, Operation,
-                                     OutfileName, IP_addr, Port, NumWrites, seqNo):
+                                     OutfileName, IP_addr, Port, NumWrites, seqNo, relaxed_consistency):
     base_dir = cluster_params['base_dir']
     app_name = cluster_params['app_type']
     raft_uuid = cluster_params['raft_uuid']
@@ -35,7 +35,12 @@ def start_ncpc_process(cluster_params, Key, Value, Operation,
 
     if Operation == "read":
         if seqNo != "" and NumWrites != "":
-            process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
+            if relaxed_consistency == "true":
+                process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
+                                             '-l', logfile, '-o', Operation, '-j', outfilePath,
+                                             '-k', Key, '-n', NumWrites, '-S', seqNo, '-r', relaxed_consistency], stdout = fp, stderr = fp)
+            else: 
+                 process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
                                              '-k', Key, '-n', NumWrites, '-S', seqNo], stdout = fp, stderr = fp)
         elif NumWrites != "":
@@ -311,6 +316,7 @@ class LookupModule(LookupBase):
         Port = ""
         NumWrites = ""
         seqNo = ""
+        relaxed_consistency = ""
 
         cluster_params = kwargs['variables']['ClusterParams']
 
@@ -319,7 +325,7 @@ class LookupModule(LookupBase):
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, input_values['Key'], input_values['Value'],
                                                    input_values['Operation'], input_values['OutfileName'],
-                                                   input_values['IP_addr'], input_values['Port'], NumWrites, seqNo)
+                                                   input_values['IP_addr'], input_values['Port'], NumWrites, seqNo, relaxed_consistency)
 
                 output_data = get_the_output(outfile)
                 return output_data
@@ -328,7 +334,7 @@ class LookupModule(LookupBase):
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, Key, Value,
                                                    input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, input_values['NoofWrites'], seqNo)
+                                                   IP_addr, Port, input_values['NoofWrites'], seqNo, relaxed_consistency)
                 output_data = get_the_output(outfile)
                 return output_data
 
@@ -336,15 +342,16 @@ class LookupModule(LookupBase):
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, input_values['Key'], Value,
                                                    input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NumWrites, seqNo)
+                                                   IP_addr, Port, NumWrites, seqNo, relaxed_consistency)
                 output_data = get_the_output(outfile)
                 return output_data
 
-            elif input_values['Operation'] == "read" and input_values['NoofWrites'] != "":
+            elif input_values['Operation'] == "read" and input_values['NoofWrites'] != "" and input_values['relaxed_consistency']:
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, input_values['Key'], Value,
                                                    input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, input_values['NoofWrites'], input_values['seqNo'])
+                                                   IP_addr, Port, input_values['NoofWrites'], input_values['seqNo'], 
+                                                   input_values['relaxed_consistency'])
                 output_data = get_the_output(outfile)
                 return output_data
 
@@ -352,7 +359,7 @@ class LookupModule(LookupBase):
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, Key, Value,
                                                    input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NumWrites, seqNo)
+                                                   IP_addr, Port, NumWrites, seqNo, relaxed_consistency)
                 output_data = get_the_output(outfile)
                 return {"membership":output_data}
 
@@ -360,7 +367,7 @@ class LookupModule(LookupBase):
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, Key, Value,
                                                    input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NumWrites, seqNo)
+                                                   IP_addr, Port, NumWrites, seqNo, relaxed_consistency)
                 output_data = get_the_output(outfile)
                 return {"NISDGossip":output_data}
 
@@ -368,7 +375,7 @@ class LookupModule(LookupBase):
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, Key, Value,
                                                    input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NumWrites, seqNo)
+                                                   IP_addr, Port, NumWrites, seqNo, relaxed_consistency)
                 output_data = get_the_output(outfile)
                 return {"config":output_data}
 
