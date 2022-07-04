@@ -35,7 +35,7 @@
     failed_when: >
       ((srv_port | int) >= 65536) or
       ((client_port | int) >= 65536) or
-      ((backend_type != "raft") and (backend_type != "pumicedb"))
+      ((backend_type != "raft") and (backend_type != "pumicedb") and (backend_type != ""))
 
 
   - name: "Print the special feature parameters."
