@@ -43,7 +43,7 @@
        loop: "{{ range(0, NonRunningServers | length - 1) | list }}"
 
      # Start proxy servers
-     - name: "{{ recipe_name }}: Start proxy servers."
+     - name: "{{ recipe_name }}: Start multiple proxy servers."
        include_role:
           name: common
           tasks_from: start_proxy_server
@@ -63,7 +63,7 @@
        with_items:
           - "{{ ncpclires }}"
        register: membership
-       no_log: true
+         #   no_log: true
 
      - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
        pause:
@@ -79,6 +79,7 @@
                 'Port': '',
                 'OutfileName': 'write_output', 
                 'NoofWrites': '',
+                'wait_for_outfile': True
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -86,7 +87,7 @@
        with_items:
           - "{{ ncpcliwr }}"
        register: writeres
-       no_log: true
+         #       no_log: true
 
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
@@ -104,7 +105,7 @@
                 'OutfileName': 'read_output',
                 'NoofWrites': '', 
                 'seqNo': '',
-                'relaxed_consistency': 'false'
+                'wait_for_outfile': True
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:

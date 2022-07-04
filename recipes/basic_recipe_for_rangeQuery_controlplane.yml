@@ -10,6 +10,10 @@
   tasks:
   - block:
 
+     - name: "Check if parent recipe failed"
+       debug: msg="Check if parent recipe {{ parent }} failed"
+       failed_when: terminate_recipe == true
+
     # check for the app_type
      - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
        vars:
@@ -36,14 +40,15 @@
        with_items:
           - "{{ ncpclires }}"
        register: membership
-       no_log: true
+         #       no_log: true
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeWrite with n as 5."
        vars:
          input_param: {
                 'Operation': 'write',
                 'OutfileName': 'Rangewrite_output',
-                'NoofWrites': '5'
+                'NoofWrites': '5',
+                'wait_for_outfile': True
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -61,7 +66,7 @@
                  'OutfileName': 'RangeRead_output',
                  'NoofWrites': '5', 
                  'seqNo': '',
-                 'relaxed_consistency': 'false' 
+                 'wait_for_outfile': True
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -97,7 +102,7 @@
                 'OutfileName': 'singleRangeRead_output',
                 'NoofWrites': '5',
                 'seqNo': '',
-                'relaxed_consistency': 'false'
+                'wait_for_outfile': True
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -123,7 +128,7 @@
                 'OutfileName': 'RangeRead_output_prefix',
                 'NoofWrites': '5',
                 'seqNo': '',
-                'relaxed_consistency': 'false'
+                'wait_for_outfile': True
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -170,7 +175,7 @@
                 'OutfileName': 'RangeRead_vUUIDprefix_output',
                 'NoofWrites': '5',
                 'seqNo': '',
-                'relaxed_consistency': 'false'
+                'wait_for_outfile': True
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -197,7 +202,7 @@
                 'OutfileName': 'RangeRead_InvalidPrefix_output',
                 'NoofWrites': '5',
                 'seqNo': '',
-                'relaxed_consistency': 'false'
+                'wait_for_outfile': True
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:

@@ -38,7 +38,8 @@
          input_param: {
                 'Operation': 'write',
                 'OutfileName': 'Rangewrite_output',
-                'NoofWrites': '5'
+                'NoofWrites': '5',
+                'wait_for_outfile': True
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -72,7 +73,7 @@
                  'OutfileName': 'RangeRead_output',
                  'NoofWrites': '5',
                  'seqNo': '',
-                 'relaxed_consistency': 'false' 
+                 'wait_for_outfile': True
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -80,7 +81,7 @@
        with_items:
          - "{{ ncpclird }}"
        register: readres5keys
-         #       no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: Store the key which needs to be overwritten for single key write task."
        vars:
@@ -100,7 +101,7 @@
        with_items:
            - "{{ seq_no }}"
        register: seqNo
-         # no_log: true
+       no_log: true
          
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
@@ -112,6 +113,7 @@
                 'Port': '',
                 'OutfileName': 'overWriteRangewrite_output', 
                 'NoofWrites': '',
+                'wait_for_outfile': True
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -129,7 +131,7 @@
                 'OutfileName': 'overWrite_RangeRead_output',
                 'NoofWrites': '5',
                 'seqNo': '{{ seqNo["results"][0]["item"] }}',
-                'relaxed_consistency': 'false'
+                'wait_for_outfile': True
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -227,7 +229,7 @@
                 'OutfileName': 'overWrite_RangeRead_afterRemovingFaultInjection_output',
                 'NoofWrites': '5',
                 'seqNo': '{{ seqNo["results"][0]["item"] }}',
-                'relaxed_consistency': 'false'
+                'wait_for_outfile': True
                       }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
