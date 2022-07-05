@@ -32,7 +32,7 @@ def start_ncpc_process(cluster_params, Key, Value, Operation,
     ConfigPath = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
 
     outfilePath = "%s/%s/%s_%s" % (base_dir, raft_uuid, OutfileName, uuid.uuid1())
-    print(outfilePath)
+    
     if Operation == "read":
         if seqNo != "" and NumWrites != "":
             process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
