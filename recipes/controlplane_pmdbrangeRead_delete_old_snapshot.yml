@@ -78,7 +78,7 @@
        with_items:
            - "{{ seq_no }}"
        register: seqNo
-         # no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
@@ -120,7 +120,7 @@
        with_items:
           - "{{ ncpclird }}"
        register: specificSeqno_rangereadres
-         #    no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: Validate that we should see updated seq no as snapshot is deleted."
        vars:
