@@ -1,11 +1,11 @@
-- import_playbook: basic_controlplane_membership.yml
+- import_playbook: controlPlane_operation_all.yml
 
-- name: "Controlplane_recipe"
+- name: "controlPlane_cluster_state_verify"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "Controlplane_recipe"
-    parent: basic_controlplane_membership
+    recipe_name: "controlPlane_cluster_state_verify"
+    parent: controlPlane_operation_all
 
   tasks:
   - block:
@@ -13,15 +13,6 @@
      - name: "Check if parent recipe failed"
        debug: msg="Check if parent recipe {{ parent }} failed"
        failed_when: terminate_recipe == true
-
-      # check for the app_type
-     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
-       vars:
-         app_type: "{{ app_type }}"
-       debug:
-         msg: "app_type is: {{ app_type }}"
-       failed_when:
-         (app_type != "controlplane")
 
      - name: "{{ recipe_name }}: get the list of non-running servers."
        include_role:

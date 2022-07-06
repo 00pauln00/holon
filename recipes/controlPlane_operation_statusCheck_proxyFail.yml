@@ -1,23 +1,15 @@
-- import_playbook: basic_controlplane_membership.yml
+- import_playbook: controlPlane_operation_all.yml
 
 - name: "Controlplane_recipe"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "Controlplane_killAll_Proxy_recipe"
-    parent: basic_controlplane_membership
+    recipe_name: "controlPlane_operation_statusCheck_proxyFail"
+    parent: controlPlane_operation_all
 
   tasks:
   - block:
-      # check for the app_type
-     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
-       vars:
-         app_type: "{{ app_type }}"
-       debug:
-         msg: "app_type is: {{ app_type }}"
-       failed_when:
-         (app_type != "controlplane")
-
+     
      - name: "{{ recipe_name }}: get the list of non-running servers."
        include_role:
           name: common
