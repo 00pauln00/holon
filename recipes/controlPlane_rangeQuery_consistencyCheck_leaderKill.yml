@@ -202,7 +202,7 @@
          name: common
          tasks_from: remove_fault_injection_and_verify
        vars:
-         ServerUUID: "LeaderUUID['/0/leader-uuid']"
+         ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
          fault_injection_name: "pmdb_range_read_keep_old_snapshot"
 
      - name: "{{ recipe_name }}: Remove previously applied fault injection."
@@ -210,7 +210,7 @@
          name: common
          tasks_from: remove_fault_injection_and_verify
        vars:
-         ServerUUID: "LeaderUUID['/0/leader-uuid']"
+         ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
          fault_injection_name: "pmdb_range_read_keep_snapshot"
 
     rescue:
