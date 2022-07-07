@@ -46,3 +46,64 @@
        pause:
         seconds: 5
 
+     - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
+       vars:
+         input_param: {
+                'Operation': 'membership',
+                'OutfileName': 'pmdbServer_membership'
+                 }
+         pmdbGossip: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "get membership details of running servers."
+       with_items:
+          - "{{ pmdbGossip }}"
+       register: pmdbMembership
+       no_log: true
+
+     - name: "{{ recipe_name }}: Verify pmdb servers are up and running."
+       vars:
+         verifyStatus: "{{ pmdbMembership['results'][0]['item']['membership'][NRunningPeers[item]]['Status'] }}"
+       debug:
+         msg: "Verifying status of the pmdbs servers."
+       failed_when: verifyStatus != "alive"
+       loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to get the config values."
+       vars:
+         input_param: {
+                'Operation': 'config',
+                'OutfileName': 'config_output'
+                 }
+       debug:
+         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       no_log: true
+
+     - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
+       set_fact:
+          nodeList: "{{ nodeList | default([]) + [ 'Node_' ~ item ] }}"
+       loop: "{{ ClientUUIDS }}"
+
+     - debug:
+         msg: "Node name list: {{ nodeList }}"
+
+     - name: "{{ recipe_name }}: Get proxy server's status."
+       vars:
+         input_param: {
+                  'Operation': 'membership',
+                  'OutfileName': 'get_nodestatus'
+                  }
+         getNodeData: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Get node name"
+       with_items:
+          - "{{ getNodeData }}"
+       register: nodeName
+       no_log : true
+
+     - name: "{{ recipe_name }}: Check if proxy node status is 'alive'."
+       vars:
+         verifyNodeStatus: "{{ nodeName['results'][0]['item']['membership'][nodeList[item]]['Status'] }}"
+       debug:
+         msg: "Verify proxy server's Status"
+       failed_when: verifyNodeStatus != "alive"
+       loop: "{{ range(0, nodeList | length) | list }}"
