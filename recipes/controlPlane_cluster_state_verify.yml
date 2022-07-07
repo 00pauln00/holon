@@ -24,15 +24,6 @@
          name: common
          tasks_from: get_follower_stats
 
-     # Start 5th PMDB servers.
-     - name: "{{ recipe_name }}: Start  5th  pmdb servers in the cluster."
-       include_role:
-         name: common
-         tasks_from: start_server_golang
-       vars:
-         ServerUUID: "{{ NonRunningServers[item] }}"
-       loop: "{{ range(0, NonRunningServers| length) | list }}"
-
      - name: "{{ recipe_name }}: Store the UUID of 5th pmdb server."
        vars:
          peer: "{{ TotalNServersList[4] }}"
