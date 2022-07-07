@@ -1,4 +1,4 @@
-- import_playbook: controlPlane_rangeQuery.yml
+- import_playbook: controlPlane_operation_all.yml
 
 - name: "controlPlane_rangeQuery_consistencyCheck_leaderKill.yml"
   hosts: localhost
