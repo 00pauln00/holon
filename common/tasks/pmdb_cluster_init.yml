@@ -80,7 +80,7 @@
 
      - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
        set_fact:
-          nodeList: "{{ nodeList | default([]) + [ 'Node_' ~ item ] }}"
+          nodeList: "{{ nodeList | default[] + [ 'Node_' ~ item ] }}"
        loop: "{{ ClientUUIDS }}"
 
      - debug:
