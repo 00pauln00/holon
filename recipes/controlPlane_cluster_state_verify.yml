@@ -5,7 +5,7 @@
   connection: local
   vars:
     recipe_name: "controlPlane_cluster_state_verify"
-    parent: controlPlane_operation_all
+    parent: "controlPlane_operation_all"
 
   tasks:
   - block:
@@ -13,7 +13,7 @@
      - name: "Check if parent recipe failed"
        debug: msg="Check if parent recipe {{ parent }} failed"
        failed_when: terminate_recipe == true
-
+    
      - name: "{{ recipe_name }}: get the list of non-running servers."
        include_role:
           name: common
@@ -23,6 +23,15 @@
        include_role:
          name: common
          tasks_from: get_follower_stats
+
+     # Start 5th PMDB servers.
+     - name: "{{ recipe_name }}: Start  5th  pmdb servers in the cluster."
+       include_role:
+         name: common
+         tasks_from: start_server_golang
+       vars:
+         ServerUUID: "{{ NonRunningServers[item] }}"
+       loop: "{{ range(0, NonRunningServers | length) | list }}"
 
      - name: "{{ recipe_name }}: Store the UUID of 5th pmdb server."
        vars:
@@ -174,6 +183,16 @@
        debug:
          msg: "Verify killed pmdb server status"
        failed_when: verifyPmdbServerStatus['membership'][killedPmdbServer]['Status'] != "failed"
+
+
+     - name: "{{ recipe_name }}: Start killed proxy server."
+       debug:
+         msg:  "{{ lookup('niova_raftprocess', 'start', ClientUUIDS[0], wantlist=True) }}"
+
+
+     - name: "{{ recipe_name }}: Start Killed pmdb server."
+       debug:
+         msg:  "{{ lookup('niova_raftprocess', 'start', Peer5['results'][0]['item'], wantlist=True) }}"
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

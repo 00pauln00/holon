@@ -23,6 +23,7 @@
           tasks_from: pmdb_cluster_init.yml
        vars:
          number_of_clients: 2
+         number_of_PMDBServers: 4
 
      - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
        vars:
