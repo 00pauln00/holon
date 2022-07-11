@@ -67,7 +67,8 @@
                  'Operation': 'read',
                  'OutfileName': 'Insert_RangeRead_output',
                  'NoofWrites': '5',
-                 'seqNo': ''
+                 'seqNo': '', 
+                 'wait_for_outfile': True
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -75,7 +76,7 @@
        with_items:
          - "{{ ncpclird }}"
        register: readres5keys
-         #       no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
        vars:
