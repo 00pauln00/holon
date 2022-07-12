@@ -43,7 +43,7 @@
        loop: "{{ range(0, NonRunningServers | length - 1) | list }}"
 
      # Start proxy servers
-     - name: "{{ recipe_name }}: Start proxy servers."
+     - name: "{{ recipe_name }}: Start multiple proxy servers."
        include_role:
           name: common
           tasks_from: start_proxy_server
@@ -79,6 +79,7 @@
                 'Port': '',
                 'OutfileName': 'write_output', 
                 'NoofWrites': '',
+                'wait_for_outfile': True
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -86,7 +87,7 @@
        with_items:
           - "{{ ncpcliwr }}"
        register: writeres
-       no_log: true
+         #       no_log: true
 
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
@@ -103,7 +104,8 @@
                 'Operation': 'read',
                 'OutfileName': 'read_output',
                 'NoofWrites': '', 
-                'seqNo': ''
+                'seqNo': '',
+                'wait_for_outfile': True
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -159,9 +161,16 @@
        failed_when: verifyStatus != "alive"
        loop: "{{ range(0, NRunningPeers | length) | list }}"
 
+         #     - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
+         #set_fact:
+         # nodeList: "{{ nodeList | default([]) + [ 'Node_' ~ item ] }}"
+         # loop: "{{ ClientUUIDS }}"
+
      - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
+       vars:
+          node_item: "{{ 'Node_' ~ item }}"
        set_fact:
-          nodeList: "{{ nodeList | default([]) + [ 'Node_' ~ item ] }}"
+          nodeList: "{{ nodeList|default([]) + [node_item] }}"
        loop: "{{ ClientUUIDS }}"
 
      - debug:

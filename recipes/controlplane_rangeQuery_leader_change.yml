@@ -38,7 +38,8 @@
          input_param: {
                 'Operation': 'write',
                 'OutfileName': 'Rangewrite_LeaderChange',
-                'NoofWrites': '5', 
+                'NoofWrites': '5',
+                'wait_for_outfile': True
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -62,7 +63,7 @@
          tasks_from: set_fault_injection_and_verify
        vars:
          ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
-         fault_injection_name: "pmdb_range_read_keep_snapshot"
+         fault_injection_name: "pmdb_range_read_keep_old_snapshot"
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with n as 5."
        vars:
@@ -71,7 +72,8 @@
                 'Operation': 'read',
                 'OutfileName': 'RangeRead_LeaderChange',
                 'NoofWrites': '5',
-                'seqNo': ''
+                'seqNo': '',
+                'wait_for_outfile': True
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -99,23 +101,6 @@
        register: seqNo
        no_log: true
 
-     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed."
-       vars:
-         input_param: {
-                'Key': '*',
-                'Operation': 'read',
-                'OutfileName': 'seqnoPassed_RangeRead_output',
-                'NoofWrites': '5',
-                'seqNo': '{{ seqNo["results"][0]["item"] }}'
-                 }
-         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       debug:
-         msg: "Read key-value from ncpc."
-       with_items:
-          - "{{ ncpclird }}"
-       register: seqnoPassed_rangereadres
-       no_log: true
-
      - name: "{{ recipe_name }}: get the list of non-running servers."
        include_role:
           name: common
@@ -135,6 +120,24 @@
         - "{{ oldLeader }}"
        register: oldLeaderUUID
 
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed."
+       vars:
+         input_param: {
+                'Key': '*',
+                'Operation': 'read',
+                'OutfileName': 'seqnoPassed_RangeRead_output',
+                'NoofWrites': '5',
+                'seqNo': '{{ seqNo["results"][0]["item"] }}',
+                'wait_for_outfile': False
+                 }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Read key-value from ncpc."
+       with_items:
+          - "{{ ncpclird }}"
+       register: seqnoPassed_rangereadres
+       no_log: true
+
      - name: "{{ recipe_name }}: Kill the Leader."
        debug:
         msg: "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True) }}"
@@ -143,14 +146,22 @@
      - name: "{{ recipe_name }}: Wait until leader election happens."
        include_role:
          name: common
-         tasks_from: wait_until_leader_election
+         tasks_from: wait_until_leader_election    
 
+     - name: Display the JSON file content
+       shell: cat {{seqnoPassed_rangereadres['results'][0]['item'] + '.json'}}
+       register: result
+
+     - name: save the Json data to a Variable as a Fact
+       set_fact:
+          jsondata: "{{ result.stdout | from_json }}"
+     
        # check if read is successful
      - name: "{{ recipe_name }}: Check if read is successful"
        debug:
          msg: "Check if read is successful"
        failed_when: >
-         ( readres5keys['results'][0]['item']['Response']['Status'] != 0)
+         ( jsondata['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead."
        vars:
@@ -159,7 +170,8 @@
                 'Operation': 'read',
                 'OutfileName': 'seqno_RangeRead_output',
                 'NoofWrites': '5',
-                'seqNo': '{{ seqNo["results"][0]["item"] }}'
+                'seqNo': '{{ seqNo["results"][0]["item"] }}',
+                'wait_for_outfile': True
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -205,24 +217,6 @@
          msg: "Check if new leader is elected."
        failed_when: >
          ( oldLeaderUUID == newLeaderUUID )
-
-     - name: "{{ recipe_name }}: Apply cmd to remove fault injection from leader."
-       vars:
-         stage: "recipe_cleanup"
-         cmd: "enabled@false"
-         where: "/fault_injection_points/name@pmdb_range_read_keep_old_snapshot"
-       debug:
-         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
-       no_log: true
-
-     - name: "{{ recipe_name }}: Apply cmd to remove fault injection from leader."
-       vars:
-         stage: "recipe_cleanup"
-         cmd: "enabled@false"
-         where: "/fault_injection_points/name@pmdb_range_read_keep_snapshot"
-       debug:
-         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
-       no_log: true
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

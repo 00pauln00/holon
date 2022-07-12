@@ -1,0 +1,158 @@
+- import_playbook: basic_recipe_for_rangeQuery_controlplane.yml
+
+- name: "controlplane_rangeQuery_read_from_2threads_simultaneously.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlplane_rangeQuery_read_from_2threads_simultaneously"
+    parent: "basic_recipe_for_rangeQuery"
+
+  tasks:
+  - block:
+
+     - name: "Check if parent recipe failed"
+       debug: msg="Check if parent recipe {{ parent }} failed"
+       failed_when: terminate_recipe == true
+
+    # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "controlplane")
+
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     - name: "{{ recipe_name }}: Get the leader and follower uuids."
+       include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeWrite with n as 5."
+       vars:
+         input_param: {
+                'Operation': 'write',
+                'OutfileName': 'Rangewrite_for_2_threads_simultaneously',
+                'NoofWrites': '5',
+                'wait_for_outfile': True
+                 }
+         ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from ncpc."
+       with_items:
+          - "{{ ncpcliwr }}"
+       register: writeres5keys
+       no_log: true
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with n as 5."
+       vars:
+         input_param: {
+                'Key': '*',
+                'Operation': 'read',
+                'OutfileName': 'RangeRead_for_2_threads_simultaneously',
+                'NoofWrites': '5',
+                'seqNo': '',
+                'wait_for_outfile': True
+                 }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Read key-value from ncpc."
+       with_items:
+          - "{{ ncpclird }}"
+       register: readres5keys
+       no_log: true
+
+     - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
+       vars:
+          seq_no: "{{ readres5keys['results'][0]['item']['Response']['Sequence_number'] }}"
+       debug:
+         msg: "Get the seq no"
+       with_items:
+           - "{{ seq_no }}"
+       register: seqNo
+       no_log: true
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed with 2 threads simultaneously."
+       vars:
+         input_param: {
+                'Key': '*',
+                'Operation': 'read',
+                'OutfileName': 'rangeRead_thread1',
+                'NoofWrites': '5',
+                'seqNo': '{{ seqNo["results"][0]["item"] }}',
+                'wait_for_outfile': False
+                 }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Read key-value from ncpc."
+       with_items:
+          - "{{ ncpclird }}"
+       register: rangereadres_thread1
+       no_log: true
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed with 2 threads simultaneously."
+       vars:
+         input_param: {
+                'Key': '*',
+                'Operation': 'read',
+                'OutfileName': 'rangeRead_thread2',
+                'NoofWrites': '5',
+                'seqNo': '{{ seqNo["results"][0]["item"] }}',
+                'wait_for_outfile': False
+                 }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Read key-value from ncpc."
+       with_items:
+          - "{{ ncpclird }}"
+       register: rangereadres_thread2
+       no_log: true
+
+     - name: Display the JSON file content for first thread
+       shell: cat {{rangereadres_thread1['results'][0]['item'] + '.json'}}
+       register: result_thread1
+
+     - name: save the Json data to a Variable as a Fact
+       set_fact:
+          jsondata_thread1: "{{ result_thread1.stdout | from_json }}"
+
+       # check if read is successful
+     - name: "{{ recipe_name }}: Check if read is successful"
+       debug:
+         msg: "Check if read is successful"
+       failed_when: >
+         ( jsondata_thread1['Response']['Status'] != 0)
+
+     - name: Display the JSON file content
+       shell: cat {{rangereadres_thread1['results'][0]['item'] + '.json'}}
+       register: result_thread2
+
+     - name: save the Json data to a Variable as a Fact
+       set_fact:
+          jsondata_thread2: "{{ result_thread2.stdout | from_json }}"
+
+       # check if read is successful
+     - name: "{{ recipe_name }}: Check if read is successful"
+       debug:
+         msg: "Check if read is successful"
+       failed_when: >
+         ( jsondata_thread2['Response']['Status'] != 0)
+
+     - name: "{{ recipe_name }}: Compare read output of thread1 and thread2  with all the keys passed."
+       vars:
+         read_thread1: "{{ jsondata_thread1['Response']['Response'] }}"
+         read_thread2: "{{ jsondata_thread2['Response']['Response'] }}"
+       debug:
+         msg: "compare read and write output with all the keys passed"
+       failed_when: read_thread2[item.key] != read_thread1[item.key]
+       with_dict: "{{ writeres5keys['results'][0]['item'] }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+          terminate_recipe: true
