@@ -1,4 +1,4 @@
-- import_playbook: controlPlane_rangeQuery.yml
+- import_playbook: control_plane_check_meminfo_after_kill.yml
 
 - name: "controlPlane_rangeQuery_consistencyCheck_overwrites_insert.yml"
   hosts: localhost
@@ -29,7 +29,8 @@
          input_param: {
                 'Operation': 'write',
                 'OutfileName': 'Rangewrite_consistencyCheckOutput',
-                'NoofWrites': '5'
+                'NoofWrites': '5',
+                'wait_for_outfile': True
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -64,7 +65,8 @@
                  'Operation': 'read',
                  'OutfileName': 'RangeRead_consistencyCheckOutput',
                  'NoofWrites': '5',
-                 'seqNo': ''
+                 'seqNo': '',
+                 'wait_for_outfile': True
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -104,6 +106,7 @@
                 'Port': '',
                 'OutfileName': 'overWriteRangewrite_output', 
                 'NoofWrites': '',
+                'wait_for_outfile': True
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -123,6 +126,7 @@
                 'Port': '',
                 'OutfileName': 'InsertRangewrite_output',
                 'NoofWrites': '',
+                'wait_for_outfile': True
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -139,7 +143,8 @@
                 'Operation': 'read',
                 'OutfileName': 'RangeRead_consistencyCheck_afterPassingSeqno',
                 'NoofWrites': '5',
-                'seqNo': '{{ seqNo["results"][0]["item"] }}'  
+                'seqNo': '{{ seqNo["results"][0]["item"] }}',
+                'wait_for_outfile': True
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -184,7 +189,8 @@
                 'Operation': 'read',
                 'OutfileName': 'consistencyCheck_RangeRead_afterRemovingFaultInjection_output',
                 'NoofWrites': '5',
-                'seqNo': '{{ seqNo["results"][0]["item"] }}'
+                'seqNo': '{{ seqNo["results"][0]["item"] }}',
+                'wait_for_outfile': True
                       }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
