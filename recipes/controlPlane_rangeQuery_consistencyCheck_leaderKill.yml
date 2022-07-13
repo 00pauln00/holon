@@ -1,0 +1,232 @@
+- import_playbook: controlPlane_cluster_state_verify.yml 
+
+- name: "controlPlane_rangeQuery_consistencyCheck_leaderKill.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlPlane_rangeQuery_consistencyCheck_leaderKill"
+    parent: "controlPlane_rangeQuery"
+
+  tasks:
+  - block:
+
+     - name: "Check if parent recipe failed"
+       debug: msg="Check if parent recipe {{ parent }} failed"
+       failed_when: terminate_recipe == true
+
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     - name: "{{ recipe_name }}: Get the leader and follower uuids."
+       include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeWrite with n as 5."
+       vars:
+         input_param: {
+                'Operation': 'write',
+                'OutfileName': 'Rangewrite_LeaderChange',
+                'NoofWrites': '5', 
+                 }
+         ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from ncpc."
+       with_items:
+          - "{{ ncpcliwr }}"
+       register: writeres5keys
+       no_log: true
+
+     - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
+       include_role:
+         name: common
+         tasks_from: set_fault_injection_and_verify
+       vars:
+         ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+         fault_injection_name: "pmdb_range_read_keep_snapshot"
+
+     - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
+       include_role:
+         name: common
+         tasks_from: set_fault_injection_and_verify
+       vars:
+         ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+         fault_injection_name: "pmdb_range_read_keep_snapshot"
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with n as 5."
+       vars:
+         input_param: {
+                'Key': '*',
+                'Operation': 'read',
+                'OutfileName': 'RangeRead_LeaderChange',
+                'NoofWrites': '5',
+                'seqNo': ''
+                 }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Read key-value from ncpc."
+       with_items:
+          - "{{ ncpclird }}"
+       register: readres5keys
+       no_log: true
+
+     - name: "{{ recipe_name }}: Compare write and read output with all the keys passed."
+       vars:
+         readall: "{{ readres5keys['results'][0]['item']['Response']['Response'] }}"
+       debug:
+         msg: "compare read and write with all the keys passed"
+       failed_when: item.value['Value'] != readall[item.key]
+       with_dict: "{{ writeres5keys['results'][0]['item'] }}"
+
+     - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
+       vars:
+          seq_no: "{{ readres5keys['results'][0]['item']['Response']['Sequence_number'] }}"
+       debug:
+         msg: "Get the seq no"
+       with_items:
+           - "{{ seq_no }}"
+       register: seqNo
+       no_log: true
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed."
+       vars:
+         input_param: {
+                'Key': '*',
+                'Operation': 'read',
+                'OutfileName': 'seqnoPassed_RangeRead_output',
+                'NoofWrites': '5',
+                'seqNo': '{{ seqNo["results"][0]["item"] }}'
+                 }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Read key-value from ncpc."
+       with_items:
+          - "{{ ncpclird }}"
+       register: seqnoPassed_rangereadres
+       no_log: true
+
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     - name: "{{ recipe_name }}: Get the leader and follower uuids."
+       include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+     - name: "{{ recipe_name }}: Get leaderUUID."
+       vars:
+         oldLeader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+       debug:
+        msg: "Get the leaderUUID"
+       with_items:
+        - "{{ oldLeader }}"
+       register: oldLeaderUUID
+
+     - name: "{{ recipe_name }}: Kill the Leader."
+       debug:
+        msg: "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True) }}"
+       no_log: True
+
+     - name: "{{ recipe_name }}: Wait until killed pmdb server's status gets changed."
+       vars:
+         getPmdbServer: "{{ LeaderUUID['/0/leader-uuid'] }}"
+         input_param: {
+                  'Operation': 'membership',
+                  'OutfileName': 'wait_for_killedPmdbServerStatus'
+                  }
+       debug:
+         msg: "Verifying pmdb server's status"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getPmdbServer) | map(attribute='Status') | list | first == "failed"
+       retries: 60
+       delay: 1
+     
+     - name: "{{ recipe_name }}: Wait until leader election happens."
+       include_role:
+         name: common
+         tasks_from: wait_until_leader_election
+
+       # check if read is successful
+     - name: "{{ recipe_name }}: Check if read is successful"
+       debug:
+         msg: "Check if read is successful"
+       failed_when: >
+         ( readres5keys['results'][0]['item']['Response']['Status'] != 0)
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead."
+       vars:
+         input_param: {
+                'Key': '*',
+                'Operation': 'read',
+                'OutfileName': 'seqno_RangeRead_output',
+                'NoofWrites': '5',
+                'seqNo': '{{ seqNo["results"][0]["item"] }}'
+                 }
+         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "read the result after removing fault injection with same seq no"
+       with_items:
+          - "{{ ncpclird }}"
+       register: seqno_rangereadres
+
+     - name: "{{ recipe_name }}: Get the sequence no from the read result after removing fault injection."
+       vars:
+          seq_no: "{{ seqno_rangereadres['results'][0]['item']['Response']['Sequence_number'] }}"
+       debug:
+         msg: "Get the seq no"
+       with_items:
+           - "{{ seq_no }}"
+       register: seqNo_latest
+
+     - name: "{{ recipe_name }}: Validate that we should see updated seq no."
+       vars:
+          seqNo_earlier: "{{ seqNo['results'][0]['item'] }}"
+          seqNo_new: "{{ seqNo_latest['results'][0]['item'] }}"
+       debug:
+         msg: "compare earlier seqno with old seq no."
+       failed_when: seqNo_earlier == seqNo_new
+      
+     - name: "{{ recipe_name }}: Get the leader and follower uuids."
+       include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+     - name: "{{ recipe_name }}: Get leaderUUID."
+       vars:
+         newLeader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+       debug:
+         msg: "Get the leaderUUID"
+       with_items:
+         - "{{ newLeader }}"
+       register: newLeaderUUID
+
+      # Verify if new leader is elected.
+     - name: "{{ recipe_name }}: Check if new leader is elected."
+       debug:
+         msg: "Check if new leader is elected."
+       failed_when: >
+         ( oldLeaderUUID == newLeaderUUID )
+
+     - name: "{{ recipe_name }}: Remove previously applied fault injection."
+       include_role:
+         name: common
+         tasks_from: remove_fault_injection_and_verify
+       vars:
+         ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+         fault_injection_name: "pmdb_range_read_keep_old_snapshot"
+
+     - name: "{{ recipe_name }}: Remove previously applied fault injection."
+       include_role:
+         name: common
+         tasks_from: remove_fault_injection_and_verify
+       vars:
+         ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+         fault_injection_name: "pmdb_range_read_keep_snapshot"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+          terminate_recipe: true
