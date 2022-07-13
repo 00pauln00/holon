@@ -49,6 +49,7 @@
                 'Port': '',
                 'OutfileName': 'write_output', 
                 'NoofWrites': '',
+                'wait_for_outfile': True
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -73,7 +74,8 @@
                 'Operation': 'read',
                 'OutfileName': 'read_output',
                 'NoofWrites': '', 
-                'seqNo': ''
+                'seqNo': '',
+                'wait_for_outfile': True
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -130,8 +132,10 @@
        loop: "{{ range(0, NRunningPeers | length) | list }}"
 
      - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
+       vars:
+          node_item: "{{ 'Node_' ~ item }}"
        set_fact:
-          nodeList: "{{ nodeList | default([]) + [ 'Node_' ~ item ] }}"
+          nodeList: "{{ nodeList|default([]) + [node_item] }}"
        loop: "{{ ClientUUIDS }}"
 
      - debug:
