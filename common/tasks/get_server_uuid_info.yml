@@ -20,16 +20,19 @@
 
     - name: "Initialize the running peers array"
       set_fact:
-        NRunningPeers: []
-        NonRunningServers: []
+         NRunningPeers: "{{ NRunningPeers|default([])}}"
+         NonRunningServers: "{{NonRunningServers|default([])}}"
 
     - name: "Get the running server uuids"
       vars:
         process_uuid: "{{ raft_processes[item]['process_uuid'] }}"
       set_fact:
-        NRunningPeers: "{{ NRunningPeers|default([]) + [process_uuid] }}"
+        NRunningPeers: "{{ NRunningPeers + [process_uuid] }}"
       when: raft_processes[item]['process_type'] == "server" and raft_processes[item]['process_status'] == "running"
       loop: "{{ range(0, raft_processes | length) | list }}"
+
+    - debug: 
+        msg: "{{NRunningPeers}}"
 
     - name: "Get the list of all peers"
       set_fact:
@@ -47,7 +50,7 @@
 
     - name: "Get the non-running peer list"
       set_fact:
-       NonRunningServers: "{{ NonRunningServers|default([]) + (TotalNServersList | difference(NRunningPeers)) }}"
+       NonRunningServers: "{{ NonRunningServers + (TotalNServersList | difference(NRunningPeers)) }}"
 
     - name: "Print non-running peers"
       debug:
