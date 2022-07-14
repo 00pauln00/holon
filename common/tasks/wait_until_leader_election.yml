@@ -1,5 +1,6 @@
 ---
-    - name: "{{ recipe_name }}: Get the updated list of runing peers."
+
+    - name: "{{ recipe_name }}: Get the updated list of running peers."
       include_role:
         name: common
         tasks_from: get_server_uuid_info
