@@ -31,6 +31,9 @@
      - debug:
         msg: "Client UUID: {{ client_uuid }}"
 
+     - name: "Prepare gossip node configs"
+       set_fact: niovakv_config_creation="{{lookup('niova_raftconfig', "niovakv", wantlist=True)}}"
+
      # Start all PMDB servers.
      - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
        include_role:
