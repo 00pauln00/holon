@@ -44,7 +44,8 @@
        vars:
           input_param: {
              'nisd_uuid': '{{ nisdUUID.stdout }}',
-             'nisd_dev_size': '68719476736'
+             'nisd_dev_size': '68719476736',
+             'lookout_uuid': ''
               }
        debug:
          msg: "{{ lookup('nisd_standalone', 'niova-block-ctl', input_param, wantlist=True) }}"
@@ -54,11 +55,12 @@
        vars:
          input_param: {
                   'nisd_uuid' : '{{ nisdUUID.stdout }}',
-                  'uport' : '1053'
+                  'uport' : '1053',
+                  'lookout_uuid': ''
                   }
        debug:
          msg: "{{ lookup('nisd_standalone', 'nisd', input_param, wantlist=True) }}"
-       no_log: True
+       #no_log: True
 
      - pause:
          seconds: 2
@@ -70,7 +72,7 @@
        debug:
          msg: "Waiting for nisd to get updated"
        until: lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, '/nisd_root_entry/0/status', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "running"
-       retries: 10
+       retries: 60
        delay: 1
 
      - name: "{{ recipe_name }}: Get nisd_root_entry info."
@@ -154,7 +156,8 @@
        vars:
           input_param: {
                   'nisd_uuid' : '{{ nisdUUID.stdout }}',
-                  'uport' : '1053'
+                  'uport' : '1053',
+                  'lookout_uuid': ''
                   }
        debug:
          msg: "{{ lookup('nisd_standalone', 'nisd', input_param, wantlist=True) }}"
@@ -218,7 +221,8 @@
                  'num_ops' : '50',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False
+                 'blocking_process' : False,
+                 'lookout_uuid': ''
                  }
          wr_success: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -288,24 +292,12 @@
      - pause:
         seconds: 2
 
-     #- name: "{{ recipe_name }}: Wait until killed nisd's status gets changed."
-     #  vars:
-     #    getNisd: "{{ nisdUUID.stdout }}"
-     #    input_param: {
-     #             'Operation': 'NISDGossip',
-     #             'OutfileName': 'wait_for_killed_nisdStatus'
-     #             }
-     #  debug:
-     #    msg: "Verifying NISD's Status"
-     #  until: lookup('nisd_standalone', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Dead"
-     #  retries: 10
-     #  delay: 1
-
      - name: "{{ recipe_name }}: Restart same nisd process."
        vars:
           input_param: {
                   'nisd_uuid' : '{{ nisdUUID.stdout }}',
-                  'uport' : '1053'
+                  'uport' : '1053',
+                  'lookout_uuid': ''
                   }
        debug:
          msg: "{{ lookup('nisd_standalone', 'nisd', input_param, wantlist=True) }}"
@@ -313,19 +305,6 @@
 
      - pause:
          seconds: 2
-
-     #- name: "{{ recipe_name }}: Wait until restarted nisd's status gets changed."
-     #  vars:
-     #    getNisd: "{{ nisdUUID.stdout }}"
-     #    input_param: {
-     #             'Operation': 'NISDGossip',
-     #             'OutfileName': 'restarted_nisdGossip'
-     #             }
-     #  debug:
-     #    msg: "Verifying NISD's Status"
-     #  until: lookup('nisd_standalone', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
-     #  retries: 20
-     #  delay: 1
 
      - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
        vars:
@@ -387,7 +366,8 @@
                  'num_ops' : '50',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False
+                 'blocking_process' : False,
+                 'lookout_uuid': ''
                  }
          rd_success: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
        debug:

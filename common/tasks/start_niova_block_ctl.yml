@@ -7,7 +7,7 @@
                   'lookout_uuid' :  '{{ lookoutUUIDList[item] }}'
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'niova-block-ctl', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True) }}"
        loop: "{{ range(0, lookoutUUIDList | length) | list }}"
        loop_control:
           pause: 3

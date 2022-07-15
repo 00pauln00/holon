@@ -13,6 +13,10 @@
 
   tasks:
   - block:
+     - name: "Check if parent recipe failed"
+       debug: msg="Check if parent recipe {{ parent }} failed"
+       failed_when: terminate_recipe == true
+
       # check for the app_type
      - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
        vars:
@@ -43,11 +47,13 @@
                   'Operation': 'write',
                   'IP_addr': '127.0.0.1',
                   'Port': '350{{ item }}',
+                  'NoofWrites': '5',
+                  'wait_for_outfile': True,
                   'OutfileName': 'nisd_config_output_{{ item }}'
                   }
        debug:
          msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       no_log: True
+       #no_log: True
        loop: "{{ range(0, nisd_uuids | length) | list }}"
        loop_control:
           pause: 2
@@ -57,11 +63,14 @@
          input_param: {
                   'Key': '{{ nisd_uuids[item] }}',
                   'Operation': 'read',
+                  'NoofWrites': '',
+                  'seqNo': '',
+                  'wait_for_outfile': True,
                   'OutfileName': 'read_output_{{ item }}'
                   }
        debug:
          msg: "{{ lookup('controlplane','ncpc', input_param, wantlist=True) }}"
-       no_log: True
+       #no_log: True
        loop: "{{ range(0, nisd_uuids | length) | list }}"
        loop_control:
           pause: 2
@@ -161,7 +170,7 @@
                   'lookout_uuid' :  '{{ lookout_uuids[0] }}'
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
        no_log: True
        loop: "{{ range(0, nisd_uuid_list | length) | list }}"
        loop_control:
@@ -176,7 +185,7 @@
                   'lookout_uuid' :  '{{ lookout_uuids[1] }}'
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
        no_log: True
        loop: "{{ range(0, get_nisd_list | length) | list }}"
        loop_control:
