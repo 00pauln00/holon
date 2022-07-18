@@ -23,6 +23,10 @@
 
   tasks:
   - block:
+     - name: "Check if parent recipe failed"
+       debug: msg="Check if parent recipe {{ parent }} failed"
+       failed_when: terminate_recipe == true
+
      - debug:
          msg:
           - "{{ nisdUUID.stdout }}"
@@ -297,6 +301,9 @@
                  }
        debug:
          msg: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+
+     - pause:
+         seconds: 2
 
      - name: "{{ recipe_name }}: Verify nisd_chunks Checks"
        vars:

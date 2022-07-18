@@ -10,6 +10,10 @@
 
   tasks:
   - block:
+     - name: "Check if parent recipe failed"
+       debug: msg="Check if parent recipe {{ parent }} failed"
+       failed_when: terminate_recipe == true
+
      - debug:
          msg:
           - "{{ nisdUUID.stdout }}"
