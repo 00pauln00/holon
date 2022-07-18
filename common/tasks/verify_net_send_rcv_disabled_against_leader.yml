@@ -12,7 +12,7 @@
          net_send_list: "{{ net_send_list + [nse] }}"
       loop: "{{  ctl_svc_nodes_arr }}"
       when: uuid == old_leader
-      #no_log: True
+      no_log: True
 
     - name: "{{ recipe_name }}: Check if net_rcv is disabled."
       debug:
