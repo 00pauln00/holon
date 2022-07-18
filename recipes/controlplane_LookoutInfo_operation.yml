@@ -132,11 +132,11 @@
          lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
          nisd_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID['stdout_lines'][0], nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
-         msg: "Verify nisd_root_entry info: {{ nisd_root_entry }}"
+         msg: "Verify nisd_root_entry info"
        no_log: True
        failed_when: >
-         (nisd_root_entry['/0/uuid'] != nisdUUID["stdout_lines"][0]) or
-         (nisd_root_entry['/0/status'] != "running")
+         (nisd_root_entry['/0/uuid'] != gossipData[0]['uuid']) or
+         (nisd_root_entry['/0/status'] != gossipData[0]['status'])
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
