@@ -313,7 +313,7 @@
          aftrRead: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Verify nisd_chunks Checks: {{ aftrRead }}"
-       #no_log: True
+       no_log: True
        failed_when: >
          (aftrRead['/0/vblks-read'] != 2816) or
          (aftrRead['/0/vblks-written'] != ((old_values['/0/vblks-written'] | int) * 2)) or
