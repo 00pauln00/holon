@@ -73,7 +73,7 @@ def start_ncpc_process(cluster_params, Key, Value, Operation,
     return process_popen, outfilePath
 
 def get_the_output(outfilePath):
-    outfile = outfilePath+'.json'
+    outfile = outfilePath + '.json'
     counter = 0
     timeout = 160
 
@@ -329,65 +329,77 @@ class LookupModule(LookupBase):
                                                    input_values['IP_addr'], input_values['Port'], NumWrites, seqNo,
                                                    lookout_uuid, nisd_uuid, cmd)
 
-                output_data = get_the_output(outfile)
-                return output_data
+                if input_values['wait_for_outfile']:
+                    output_data = get_the_output(outfile)
+                    return output_data
+                else:
+                    return outfile
 
             elif input_values['Operation'] == "write" and input_values['NoofWrites'] != "":
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, Key, Value,
-                                                   input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, input_values['NoofWrites'], seqNo,
-                                                   lookout_uuid, nisd_uuid, cmd)
-                output_data = get_the_output(outfile)
-                return output_data
+                                                     input_values['Operation'], input_values['OutfileName'],
+                                                     IP_addr, Port, input_values['NoofWrites'], seqNo,
+                                                     lookout_uuid, nisd_uuid, cmd)
+                if input_values['wait_for_outfile']:
+                    output_data = get_the_output(outfile)
+                    return output_data
+                else:
+                    return outfile
 
             elif input_values['Operation'] == "read" and input_values['NoofWrites'] == "":
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, input_values['Key'], Value,
-                                                   input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NumWrites, seqNo,
-                                                   lookout_uuid, nisd_uuid, cmd)
-                output_data = get_the_output(outfile)
-                return output_data
+                                                     input_values['Operation'], input_values['OutfileName'],
+                                                     IP_addr, Port, NumWrites, seqNo,
+                                                     lookout_uuid, nisd_uuid, cmd)
+                if input_values['wait_for_outfile']:
+                    output_data = get_the_output(outfile)
+                    return output_data
+                else:
+                    return outfile
 
             elif input_values['Operation'] == "read" and input_values['NoofWrites'] != "":
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, input_values['Key'], Value,
-                                                   input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, input_values['NoofWrites'], input_values['seqNo'],
-                                                   lookout_uuid, nisd_uuid, cmd)
-                output_data = get_the_output(outfile)
-                return output_data
+                                                     input_values['Operation'], input_values['OutfileName'],
+                                                     IP_addr, Port, input_values['NoofWrites'], input_values['seqNo'],
+                                                     lookout_uuid, nisd_uuid, cmd)
+                if input_values['wait_for_outfile']:
+                    output_data = get_the_output(outfile)
+                    return output_data
+                else:
+                    return outfile
 
             elif input_values['Operation'] == "membership":
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, Key, Value,
-                                                   input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NumWrites, seqNo, lookout_uuid, nisd_uuid, cmd)
+                                                     input_values['Operation'], input_values['OutfileName'],
+                                                     IP_addr, Port, NumWrites, seqNo, lookout_uuid, nisd_uuid, cmd)
                 output_data = get_the_output(outfile)
                 return {"membership":output_data}
 
             elif input_values['Operation'] == "NISDGossip":
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, Key, Value,
-                                                   input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NumWrites, seqNo, lookout_uuid, nisd_uuid, cmd)
+                                                     input_values['Operation'], input_values['OutfileName'],
+                                                     IP_addr, Port, NumWrites, seqNo, lookout_uuid, nisd_uuid, cmd)
                 output_data = get_the_output(outfile)
                 return {"NISDGossip":output_data}
 
             elif input_values['Operation'] == "config":
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, Key, Value,
-                                                   input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NumWrites, seqNo, lookout_uuid, nisd_uuid, cmd)
+                                                     input_values['Operation'], input_values['OutfileName'],
+                                                     IP_addr, Port, NumWrites, seqNo, lookout_uuid, nisd_uuid, cmd)
                 output_data = get_the_output(outfile)
                 return {"config":output_data}
 
             elif input_values['Operation'] == "LookoutInfo":
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
                 process,outfile = start_ncpc_process(cluster_params, Key, Value, input_values['Operation'],
-                                                   input_values['OutfileName'], IP_addr, Port, NumWrites, seqNo,
-                                                   input_values['lookout_uuid'], input_values['nisd_uuid'], input_values['cmd'])
+                                                     input_values['OutfileName'], IP_addr, Port, NumWrites, seqNo,
+                                                     input_values['lookout_uuid'], input_values['nisd_uuid'], input_values['cmd'])
                 output_data = get_the_output(outfile)
                 return {"LookoutInfo":output_data}
 

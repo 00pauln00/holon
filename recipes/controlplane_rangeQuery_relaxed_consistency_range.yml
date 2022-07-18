@@ -1,11 +1,11 @@
-- import_playbook: control_plane_check_meminfo_after_kill.yml
+- import_playbook: basic_controlplane_membership.yml
 
-- name: "controlplane_rangeQuery_overwrite_existing_key.yml"
+- name: "controlplane_rangeQuery_relaxed_consistency_range.yml"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "RangeQuery_overwrite_existing_key"
-    parent: "control_plane_check_meminfo_after_kill"
+    recipe_name: "RangeQuery_relaxed_consistency"
+    parent: "basic_controlPlane_membership"
     
   tasks:
   - block:
@@ -38,7 +38,7 @@
          input_param: {
                 'Operation': 'write',
                 'OutfileName': 'Rangewrite_output',
-                'NoofWrites': '5'
+                'NoofWrites': '2'
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -70,8 +70,9 @@
                  'Key': '*',
                  'Operation': 'read',
                  'OutfileName': 'RangeRead_output',
-                 'NoofWrites': '5',
-                 'seqNo': ''
+                 'NoofWrites': '2',
+                 'seqNo': '',
+                 'relaxed_consistency': 'false'
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -120,14 +121,15 @@
        register: writeres_overwrite
        no_log: true
 
-     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed."
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed with relaxed consistency option."
        vars:
          input_param: {
                 'Key': '{{ Key["results"][0]["item"] }}*',
                 'Operation': 'read',
                 'OutfileName': 'overWrite_RangeRead_output',
-                'NoofWrites': '5',
-                'seqNo': '{{ seqNo["results"][0]["item"] }}'  
+                'NoofWrites': '2',
+                'seqNo': '{{ seqNo["results"][0]["item"] }}',
+                'relaxed_consistency': 'true'
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -137,14 +139,21 @@
        register: overWrite_rangereadres
        no_log: true
 
-     - name: "{{ recipe_name }}: Validate that we should not see the new value written with existing key."         
+     - name: "{{ recipe_name }}: Validate that we should see the new value written with existing key."         
        vars:
           read_earlier: "{{ overWrite_rangereadres['results'][0]['item']['Response']['Response'][Key['results'][0]['item']] }}"
           write_res: "{{ writeres_overwrite['results'][0]['item']['Response']['Response'] }}"     
        debug:
          msg: "compare earlier read and read after new write with same sequence no"
-       failed_when: read_earlier == write_res
-   
+       failed_when: read_earlier != write_res
+
+     - name: "{{ recipe_name }}: Validate that we should see the new value same seq no with read before overwriting the key and read after that."
+       vars:
+          seqno_latest: "{{ overWrite_rangereadres['results'][0]['item']['Response']['Sequence_number'] }}"
+       debug:
+         msg: "compare earlier read and read after new write with same sequence no"
+       failed_when: seqNo["results"][0]["item"] != seqno_latest
+
      - name: "{{ recipe_name }}: Remove fault injection {{ fault_injection_name }} on leader."
        vars:
          stage: "remove_fault_injection_leader"
@@ -212,53 +221,6 @@
          msg: "{{ fault_injection_point_enabled }}"
        no_log: True
        failed_when: fault_injection_point_enabled != False
-
-     - name: "{{ recipe_name }}: Pause for 60 seconds so that snapshot gets deleted successfully."
-       pause:
-        seconds: 60
-         
-     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed after removing fault injection."
-       vars:
-         input_param: {
-                'Key': '{{ Key["results"][0]["item"] }}*',
-                'Operation': 'read',
-                'OutfileName': 'overWrite_RangeRead_afterRemovingFaultInjection_output',
-                'NoofWrites': '5',
-                'seqNo': '{{ seqNo["results"][0]["item"] }}'
-                      }
-         ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       debug:
-         msg: "read the result after removing fault injection with same seq no"
-       with_items:
-          - "{{ ncpclird }}"
-       register: overWrite_rangereadres_afterRemoving_FaultInjection
-       no_log: true
-
-     - name: "{{ recipe_name }}: Get the sequence no from the read result after removing fault injection."
-       vars:
-          seq_no: "{{ overWrite_rangereadres_afterRemoving_FaultInjection['results'][0]['item']['Response']['Sequence_number'] }}"
-       debug:
-         msg: "Get the seq no"
-       with_items:
-           - "{{ seq_no }}"
-       register: seqNo_latest
-       no_log: true
-
-     - name: "{{ recipe_name }}: Validate that we should see updated seq no."
-       vars:
-          seqNo_earlier: "{{ seqNo['results'][0]['item'] }}"
-          seqNo_new: "{{ seqNo_latest['results'][0]['item'] }}"
-       debug:
-         msg: "compare earlier seqno with old seq no."
-       failed_when: seqNo_earlier == seqNo_new
-
-     - name: "{{ recipe_name }}: Validate that we should see the updated value for the key after removing the fault injection."
-       vars:
-          Value_earlier: "{{ overWrite_rangereadres['results'][0]['item']['Response']['Response'][Key['results'][0]['item']] }}"
-          Value_new: "{{ overWrite_rangereadres_afterRemoving_FaultInjection ['results'][0]['item']['Response']['Response'][Key['results'][0]['item']] }}"
-       debug:
-         msg: "compare earlier seqno with old seq no."
-       failed_when: Value_earlier == Value_new
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
