@@ -13,15 +13,12 @@ def create_gdb_file(app_name, peer_uuid, ptype, binary_dir, gdb_cmd):
     if app_name == "pumicedb":
          if ptype == "server":
              gdb_file = '%s/debug_server_%s.gdb' % (binary_dir, peer_uuid)
-             print(gdb_file)
              cmd = "--command=%s" % gdb_file
          else:
              gdb_file = '%s/debug_client_%s.gdb' % (binary_dir, peer_uuid)
-             print(gdb_file)
              cmd = "--command=%s" % gdb_file
     else:
          gdb_file = '%s/nblock_test_%s.gdb' % (binary_dir, peer_uuid)
-         print(gdb_file)
          cmd = "--command=%s" % gdb_file
 
     # Open the file in append & read mode ('a+')
@@ -33,7 +30,6 @@ def create_gdb_file(app_name, peer_uuid, ptype, binary_dir, gdb_cmd):
         if len(data) > 0 :
             file_object.write("\n")
         # Append text at the end of file
-        #file_object.write("set pagination off\n")
         file_object.write("\n" + gdb_cmd + "\n")
 
     return cmd
@@ -139,10 +135,6 @@ class LookupModule(LookupBase):
 
         elif app_name == "controlplane":
              input_values = terms[3]
-             Key = ""
-             Value = ""
-             IP_addr = ""
-             Port = ""
 
              cmd = create_gdb_file(app_name, peer_uuid, ptype, binary_dir, gdb_cmd)
              set_environment_variables(cluster_params, input_values['lookout_uuid'])
@@ -154,6 +146,3 @@ class LookupModule(LookupBase):
                                                                           input_values['queue_depth'], input_values['num_ops'])
 
         return process_popen
-
-
-
