@@ -22,6 +22,7 @@
           tasks_from: pmdb_cluster_init.yml
        vars:
          number_of_clients: 1
+         number_of_PMDBServers: 5
   
      - name: "{{ recipe_name }}: Starting niovakv_client to write the value."
        vars:

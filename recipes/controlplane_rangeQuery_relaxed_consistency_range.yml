@@ -1,18 +1,28 @@
-- import_playbook: controlPlane_rangeQuery.yml
-
-- name: "controlplane_rangeQuery_overwrite_existing_key.yml"
+- name: "controlplane_rangeQuery_relaxed_consistency_range.yml"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "controlplane_rangeQuery_overwrite_existing_key.yml"
-    parent: "controlPlane_rangeQuery"
+    recipe_name: "RangeQuery_relaxed_consistency"
     
   tasks:
   - block:
 
-     - name: "Check if parent recipe failed"
-       debug: msg="Check if parent recipe {{ parent }} failed"
-       failed_when: terminate_recipe == true
+     # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "controlplane")
+     
+     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+       include_role:
+          name: common
+          tasks_from: pmdb_cluster_init.yml
+       vars:
+         number_of_clients: 2
+         number_of_PMDBServers: 5
 
      - name: "{{ recipe_name }}: get the list of non-running servers."
        include_role:
@@ -29,7 +39,7 @@
          input_param: {
                 'Operation': 'write',
                 'OutfileName': 'Rangewrite_output',
-                'NoofWrites': '5'
+                'NoofWrites': '2'
                  }
          ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -61,8 +71,9 @@
                  'Key': '*',
                  'Operation': 'read',
                  'OutfileName': 'RangeRead_output',
-                 'NoofWrites': '5',
-                 'seqNo': ''
+                 'NoofWrites': '2',
+                 'seqNo': '',
+                 'relaxed_consistency': 'false'
                 }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -111,14 +122,15 @@
        register: writeres_overwrite
        no_log: true
 
-     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed."
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed with relaxed consistency option."
        vars:
          input_param: {
                 'Key': '{{ Key["results"][0]["item"] }}*',
                 'Operation': 'read',
                 'OutfileName': 'overWrite_RangeRead_output',
-                'NoofWrites': '5',
-                'seqNo': '{{ seqNo["results"][0]["item"] }}'  
+                'NoofWrites': '2',
+                'seqNo': '{{ seqNo["results"][0]["item"] }}',
+                'relaxed_consistency': 'true'
                  }
          ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
@@ -128,13 +140,13 @@
        register: overWrite_rangereadres
        no_log: true
 
-     - name: "{{ recipe_name }}: Validate that we should not see the new value written with existing key."         
+     - name: "{{ recipe_name }}: Validate that we should see the new value written with existing key."         
        vars:
           read_earlier: "{{ overWrite_rangereadres['results'][0]['item']['Response']['Response'][Key['results'][0]['item']] }}"
           write_res: "{{ writeres_overwrite['results'][0]['item']['Response']['Response'] }}"     
        debug:
          msg: "compare earlier read and read after new write with same sequence no"
-       failed_when: read_earlier == write_res
+       failed_when: read_earlier != write_res
    
      - name: "{{ recipe_name }}: Remove previously applied fault injection."
        include_role:
@@ -198,8 +210,8 @@
        debug:
          msg: "compare earlier seqno with old seq no."
        failed_when: Value_earlier == Value_new
-
-    rescue:
+    
+  rescue:
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true 
