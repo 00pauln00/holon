@@ -1,11 +1,9 @@
-- import_playbook: basic_controlplane_membership.yml 
-
 - name: "controlplane_pmdbrangeRead_delete_old_snapshot.yml"
   hosts: localhost
   connection: local
   vars:
     recipe_name: "RangeQuery_delete_old_snapshot"
-    parent: "controlplane_rangeQuery_overwrite_existing_key"
+    parent: None
 
   tasks:
   - block:
@@ -22,6 +20,14 @@
          msg: "app_type is: {{ app_type }}"
        failed_when:
          (app_type != "controlplane")
+
+     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+       include_role:
+          name: common
+          tasks_from: pmdb_cluster_init.yml
+       vars:
+         number_of_clients: 2
+         number_of_PMDBServers: 5
 
      - name: "{{ recipe_name }}: Get the leader and follower uuids."
        include_role:

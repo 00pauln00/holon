@@ -1,15 +1,14 @@
-- import_playbook: basic_recipe_for_rangeQuery_controlplane.yml
+- import_playbook: basic_controlplane_membership.yml
 
-- name: "controlplane_rangeQuery_leader_change.yml"
+- name: "controlplane_rangeQuery_disable_leader.yml"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "controlplane_rangeQuery_leader_change"
-    parent: "basic_recipe_for_rangeQuery"
+    recipe_name: "controlplane_rangeQuery_disable_leader"
+    parent: "basic_controlplane_membership"
 
   tasks:
   - block:
-
      - name: "Check if parent recipe failed"
        debug: msg="Check if parent recipe {{ parent }} failed"
        failed_when: terminate_recipe == true
@@ -138,30 +137,106 @@
        register: seqnoPassed_rangereadres
        no_log: true
 
-     - name: "{{ recipe_name }}: Kill the Leader."
-       debug:
-        msg: "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True) }}"
-       no_log: True
-
-     - name: "{{ recipe_name }}: Wait until leader election happens."
+     - name: "{{ recipe_name }}: Get the updated list of runing peers."
        include_role:
          name: common
-         tasks_from: wait_until_leader_election    
+         tasks_from: get_server_uuid_info
 
-     - name: Display the JSON file content
+     - name: "{{ recipe_name }}: Disable Msg(Recv) net_recv_enabled from leader to the cluster."
+       vars:
+         stage: "disable_peers_mode"
+         cmd: "net_recv_enabled@false"
+         where: "/ctl_svc_nodes/uuid@{{ LeaderUUID['/0/leader-uuid'] }}"
+         disable_net_rcv: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where, wantlist=True) }}"
+       debug:
+         msg: "{{ disable_net_rcv }}"
+       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
+       loop_control:
+         pause: 1
+       no_log: True
+
+     - name: "{{ recipe_name }}: Disable Msg(Send) net_send_enabled from leader to the cluster."
+       vars:
+         stage: "disable_peers_mode"
+         cmd: "net_send_enabled@false"
+         where: "/ctl_svc_nodes/uuid@{{ LeaderUUID['/0/leader-uuid'] }}"
+         disable_send: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where, wantlist=True) }}"
+       debug:
+         msg: "{{ disable_send }}"
+       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
+       loop_control:
+         pause: 1
+       no_log: True
+
+     - name: "{{ recipe_name }}: Sleep for 3 sec to elect new leader"
+       pause:
+         seconds: 3
+
+     - name: "{{ recipe_name }}: Get 'ctl_svc_nodes' list for all peers."
+       vars:
+        stage: "after_disable_all"
+        raft_keys:
+             - "/ctl_svc_nodes"
+       set_fact:
+         ctl_svc_nodes: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, raft_keys, wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: Verify ctl_svc_nodes/net_recv_enabled and ctl_svc_nodes/net_send_enabled on all peers for leader."
+       include_role:
+         name: common
+         tasks_from: verify_net_send_rcv_disabled_against_leader
+       vars:
+        ctl_svc_nodes_arr: "{{ ctl_svc_nodes[idx]['//ctl_svc_nodes'] }}"
+        old_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+       loop: "{{ range(0, ctl_svc_nodes | length) | list }}"
+       loop_control:
+         loop_var: idx
+
+     - name: "{{ recipe_name }}: Wait until the new leader gets  elected."
+       include_role:
+         name: common
+         tasks_from: verify_new_leader_election
+       vars:
+        peer_list: "{{ FollowerUUIDs }}"
+        old_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+       loop: "{{ range(0, peer_list | length) | list }}"
+       loop_control:
+          loop_var: itr
+
+     - name: "{{ recipe_name }}: Get the leader and follower uuids."
+       include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+     - name: "{{ recipe_name }}: Get leaderUUID."
+       vars:
+         newLeader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+       debug:
+         msg: "Get the leaderUUID"
+       with_items:
+         - "{{ newLeader }}"
+       register: newLeaderUUID
+
+      # Verify if new leader is elected.
+     - name: "{{ recipe_name }}: Check if new leader is elected."
+       debug:
+         msg: "Check if new leader is elected."
+       failed_when: >
+         (oldLeaderUUID == newLeaderUUID )
+
+     - name: "{{ recipe_name }}: Display the JSON file content"
        shell: cat {{seqnoPassed_rangereadres['results'][0]['item'] + '.json'}}
        register: result
 
      - name: save the Json data to a Variable as a Fact
        set_fact:
           jsondata: "{{ result.stdout | from_json }}"
-     
+
        # check if read is successful
      - name: "{{ recipe_name }}: Check if read is successful"
        debug:
          msg: "Check if read is successful"
        failed_when: >
-         ( jsondata['Response']['Status'] != 0)
+         (jsondata['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead."
        vars:
@@ -196,27 +271,6 @@
        debug:
          msg: "compare earlier seqno with old seq no."
        failed_when: seqNo_earlier == seqNo_new
-      
-     - name: "{{ recipe_name }}: Get the leader and follower uuids."
-       include_role:
-         name: common
-         tasks_from: get_follower_stats
-
-     - name: "{{ recipe_name }}: Get leaderUUID."
-       vars:
-         newLeader: "{{ LeaderUUID['/0/leader-uuid'] }}"
-       debug:
-         msg: "Get the leaderUUID"
-       with_items:
-         - "{{ newLeader }}"
-       register: newLeaderUUID
-
-      # Verify if new leader is elected.
-     - name: "{{ recipe_name }}: Check if new leader is elected."
-       debug:
-         msg: "Check if new leader is elected."
-       failed_when: >
-         ( oldLeaderUUID == newLeaderUUID )
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

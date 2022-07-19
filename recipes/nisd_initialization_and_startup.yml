@@ -75,6 +75,16 @@
        retries: 60
        delay: 1
 
+     - name: "Enable debug on nisd"
+       vars:
+         stage: "enable_debug"
+         cmd: "master_log_level@debug"
+         where: "/log_subsystem/master_log_level@warn"
+         lookout_uuid: ""
+         debug_on: "{{ lookup('niova_ctlrequest', 'apply_cmd', nisdUUID.stdout, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
+       debug:
+         msg: "{{ debug_on }}"
+
      - name: "{{ recipe_name }}: Get nisd_root_entry info."
        vars:
          stage: "get_nisd_root_entry"

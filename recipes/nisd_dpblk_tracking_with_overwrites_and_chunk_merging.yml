@@ -34,6 +34,10 @@
 
   tasks:
   - block:
+     - name: "Check if parent recipe failed"
+       debug: msg="Check if parent recipe {{ parent }} failed"
+       failed_when: terminate_recipe == true
+
      #1 - Capture the /nisd_root_entry Values left by the parent
      - name: "{{ recipe_name }}: Capture the /nisd_root_entry Values left by the parent."
        vars:

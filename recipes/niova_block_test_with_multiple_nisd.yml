@@ -151,18 +151,18 @@
          nisdUuidsList: "{{ nisd_uuids }}"
          nisdDevFile: '21474836480'
 
-     - name: "{{ recipe_name }}: Prepare 5 nisd uuid list."
+     - name: "{{ recipe_name }}: Prepare 3 nisd uuid list."
        vars:
          nisd_uuid_list: []
        set_fact:
          nisd_uuid_list: "{{ nisd_uuid_list + [nisd_uuids[item]] }}"
        loop: "{{ range(0, nisd_uuids | length - 2) | list }}"
 
-     - name: "{{ recipe_name }}: Prepare 3 uuid list."
+     - name: "{{ recipe_name }}: Prepare 2 uuid list."
        set_fact:
          get_nisd_list: "{{ nisd_uuids | difference(nisd_uuid_list) }}"
 
-     - name: "{{ recipe_name }}: Start 5 nisd process for 1 lookout process."
+     - name: "{{ recipe_name }}: Start 3 nisd process for 1 lookout process."
        vars:
          input_param: {
                   'nisd_uuid' : '{{ nisd_uuid_list[item] }}',
@@ -176,7 +176,7 @@
        loop_control:
           pause: 3
 
-     - name: "{{ recipe_name }}: Start 3 nisd process for another lookout process."
+     - name: "{{ recipe_name }}: Start 2 nisd process for another lookout process."
        vars:
          get_nisd_list: "{{ nisd_uuids | difference(nisd_uuid_list) }}"
          input_param: {
@@ -190,6 +190,17 @@
        loop: "{{ range(0, get_nisd_list | length) | list }}"
        loop_control:
           pause: 3
+
+     - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
+       vars:
+         stage: "wait_for_nisd_root_entry"
+         lookout_uuid: "{{ lookout_uuids[0] }}"
+       debug:
+         msg: "Waiting for nisd to get updated"
+       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid_list[item], '/nisd_root_entry/0/status', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "running"
+       retries: 30
+       delay: 1
+       loop: "{{ range(0, nisd_uuid_list | length) | list }}"
 
      - name: "{{ recipe_name }}: Wait until Nisd's status gets updated."
        vars:
