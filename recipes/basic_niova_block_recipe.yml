@@ -33,17 +33,22 @@
                   'Operation': 'write',
                   'IP_addr': '127.0.0.1',
                   'Port': '3505',
+                  'NoofWrites': '5',
+                  'wait_for_outfile': True,
                   'OutfileName': 'nisd_config_output'
                   }
        debug:
          msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       no_log: True
+       #no_log: True
 
      - name: "{{ recipe_name }}: Starting controlplane_client to read the config data"
        vars:
          input_param: {
                   'Key': '{{ nisdUUID["stdout_lines"][0] }}',
                   'Operation': 'read',
+                  'NoofWrites': '',
+                  'seqNo': '',
+                  'wait_for_outfile': True,
                   'OutfileName': 'read_output'
                   }
        debug:
@@ -58,11 +63,10 @@
        vars:
          input_param: {
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}',
-                 'aport' : '3900',
-                 'hport' : '8001',
-                 'rport' : '3901',
-                 'uport' : '1053',
-                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 'aport' : '4900',
+                 'hport' : '9001',
+                 'rport' : '4901',
+                 'uport' : '2053',
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
@@ -112,7 +116,7 @@
              'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
               }
        debug:
-         msg: "{{ lookup('controlplane', 'niova-block-ctl', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True) }}"
 
      - name: "{{ recipe_name }}: Start nisd process."
        vars:
@@ -122,7 +126,7 @@
                   'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
 
      - pause:
          seconds: 2
@@ -199,6 +203,9 @@
                  'request_size_in_bytes' : '16',
                  'queue_depth' : '1',
                  'num_ops' : '1000',
+                 'integrity_check' : True,
+                 'sequential_writes' : False,
+                 'blocking_process' : False,
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                  }
          gdb_cmd: |
@@ -211,9 +218,9 @@
                run
        debug:
          msg: "{{ lookup('write_gdb_script', 'niova_block_test', gdb_cmd, nisdUUID['stdout_lines'][0], input_param, wantlist=True) }}"
+       no_log: True
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
-
