@@ -55,8 +55,7 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
 
         if app_type == "niovakv":
             # Read the config file.
-            binary_dir = os.getenv('NIOVA_BIN_PATH')
-            config_path = "%s/niovakv.config" % binary_dir
+            config_path = "%s/niovakv.config" % base_dir
             with open(config_path) as f:
                 lines = f.read().splitlines()
 

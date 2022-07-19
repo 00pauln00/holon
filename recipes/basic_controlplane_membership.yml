@@ -31,7 +31,7 @@
        loop: "{{ range(0, number_of_clients) | list }}"
 
      - name: "Prepare gossip node configs"
-       set_fact: gossipCreation="{{lookup('niova_raftconfig', "controlplane", TotalNServersList, ClientUUIDS, wantlist=True)}}"
+       set_fact: gossipCreation="{{lookup('niova_raftconfig', "controlplane", ClientUUIDS, wantlist=True)}}"
 
      # Start 4 PMDB servers.
      - name: "{{ recipe_name }}: Start 4 pmdb servers in the cluster."
