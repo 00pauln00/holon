@@ -11,7 +11,7 @@ from genericcmd import *
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
 
-def start_ncpc_process(cluster_params, Key, Value, Operation,
+def start_ncpc(cluster_params, Key, Value, Operation,
                                      OutfileName, IP_addr, Port, NumWrites, seqNo):
     base_dir = cluster_params['base_dir']
     app_name = cluster_params['app_type']
@@ -67,6 +67,82 @@ def start_ncpc_process(cluster_params, Key, Value, Operation,
     # Sync the log file so all the logs from ncpc gets written to log file.
     os.fsync(fp)
     return process_popen, outfilePath
+
+def extracting_dictionary(cluster_params, input_values):
+    Key = ""
+    Value = ""
+    IP_addr = ""
+    Port = ""
+    NumWrites = ""
+    seqNo = ""
+
+    if input_values['Operation'] == "write" and input_values['NoofWrites'] == "":
+        # Start the ncpc_client and perform the specified operation e.g write/read/config.
+        process,outfile = start_ncpc(cluster_params, input_values['Key'], input_values['Value'],
+                                           input_values['Operation'], input_values['OutfileName'],
+                                           input_values['IP_addr'], input_values['Port'], NumWrites, seqNo)
+        if input_values['wait_for_outfile']:
+            output_data = get_the_output(outfile)
+            return output_data
+        else:
+            return outfile
+
+    elif input_values['Operation'] == "write" and input_values['NoofWrites'] != "":
+        # Start the ncpc_client and perform the specified operation e.g write/read/config.
+        process,outfile = start_ncpc(cluster_params, Key, Value,
+                                           input_values['Operation'], input_values['OutfileName'],
+                                           IP_addr, Port, input_values['NoofWrites'], seqNo)
+        if input_values['wait_for_outfile']:
+            output_data = get_the_output(outfile)
+            return output_data
+        else:
+            return outfile
+
+    elif input_values['Operation'] == "read" and input_values['NoofWrites'] == "":
+        # Start the ncpc_client and perform the specified operation e.g write/read/config.
+        process,outfile = start_ncpc(cluster_params, input_values['Key'], Value,
+                                           input_values['Operation'], input_values['OutfileName'],
+                                           IP_addr, Port, NumWrites, seqNo)
+        if input_values['wait_for_outfile']:
+            output_data = get_the_output(outfile)
+            return output_data
+        else:
+            return outfile
+
+    elif input_values['Operation'] == "read" and input_values['NoofWrites'] != "":
+        # Start the ncpc_client and perform the specified operation e.g write/read/config.
+        process,outfile = start_ncpc(cluster_params, input_values['Key'], Value,
+                                           input_values['Operation'], input_values['OutfileName'],
+                                           IP_addr, Port, input_values['NoofWrites'], input_values['seqNo'])
+        if input_values['wait_for_outfile']:
+            output_data = get_the_output(outfile)
+            return output_data
+        else:
+            return outfile
+
+    elif input_values['Operation'] == "membership":
+        # Start the ncpc_client and perform the specified operation e.g write/read/config.
+        process,outfile = start_ncpc(cluster_params, Key, Value,
+                                           input_values['Operation'], input_values['OutfileName'],
+                                           IP_addr, Port, NumWrites, seqNo)
+        output_data = get_the_output(outfile)
+        return {"membership":output_data}
+
+    elif input_values['Operation'] == "NISDGossip":
+        # Start the ncpc_client and perform the specified operation e.g write/read/config.
+        process,outfile = start_ncpc(cluster_params, Key, Value,
+                                           input_values['Operation'], input_values['OutfileName'],
+                                           IP_addr, Port, NumWrites, seqNo)
+        output_data = get_the_output(outfile)
+        return {"NISDGossip":output_data}
+
+    elif input_values['Operation'] == "config":
+        # Start the ncpc_client and perform the specified operation e.g write/read/config.
+        process,outfile = start_ncpc(cluster_params, Key, Value,
+                                           input_values['Operation'], input_values['OutfileName'],
+                                           IP_addr, Port, NumWrites, seqNo)
+        output_data = get_the_output(outfile)
+        return {"config":output_data}
 
 def get_the_output(outfilePath):
     outfile = outfilePath + '.json'
@@ -175,95 +251,26 @@ class LookupModule(LookupBase):
         #Get lookup parameter values
         process_type = terms[0]
         input_values = terms[1]
-        Key = ""
-        Value = ""
-        IP_addr = ""
-        Port = ""
-        NumWrites = ""
-        seqNo = ""
 
         cluster_params = kwargs['variables']['ClusterParams']
 
         if process_type == "ncpc":
-            if input_values['Operation'] == "write" and input_values['NoofWrites'] == "":
-                # Start the ncpc_client and perform the specified operation e.g write/read/config.
-                process,outfile = start_ncpc_process(cluster_params, input_values['Key'], input_values['Value'],
-                                                   input_values['Operation'], input_values['OutfileName'],
-                                                   input_values['IP_addr'], input_values['Port'], NumWrites, seqNo)
-                if input_values['wait_for_outfile']:
-                    output_data = get_the_output(outfile)
-                    return output_data
-                else:
-                    return outfile
-
-            elif input_values['Operation'] == "write" and input_values['NoofWrites'] != "":
-                # Start the ncpc_client and perform the specified operation e.g write/read/config.
-                process,outfile = start_ncpc_process(cluster_params, Key, Value,
-                                                   input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, input_values['NoofWrites'], seqNo)
-                if input_values['wait_for_outfile']:
-                    output_data = get_the_output(outfile)
-                    return output_data
-                else:
-                    return outfile
-
-            elif input_values['Operation'] == "read" and input_values['NoofWrites'] == "":
-                # Start the ncpc_client and perform the specified operation e.g write/read/config.
-                process,outfile = start_ncpc_process(cluster_params, input_values['Key'], Value,
-                                                   input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NumWrites, seqNo)
-                if input_values['wait_for_outfile']:
-                    output_data = get_the_output(outfile)
-                    return output_data
-                else:
-                    return outfile
-
-            elif input_values['Operation'] == "read" and input_values['NoofWrites'] != "":
-                # Start the ncpc_client and perform the specified operation e.g write/read/config.
-                process,outfile = start_ncpc_process(cluster_params, input_values['Key'], Value,
-                                                   input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, input_values['NoofWrites'], input_values['seqNo'])
-                if input_values['wait_for_outfile']:
-                    output_data = get_the_output(outfile)
-                    return output_data
-                else:
-                    return outfile
-
-            elif input_values['Operation'] == "membership":
-                # Start the ncpc_client and perform the specified operation e.g write/read/config.
-                process,outfile = start_ncpc_process(cluster_params, Key, Value,
-                                                   input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NumWrites, seqNo)
-                output_data = get_the_output(outfile)
-                return {"membership":output_data}
-
-            elif input_values['Operation'] == "NISDGossip":
-                # Start the ncpc_client and perform the specified operation e.g write/read/config.
-                process,outfile = start_ncpc_process(cluster_params, Key, Value,
-                                                   input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NumWrites, seqNo)
-                output_data = get_the_output(outfile)
-                return {"NISDGossip":output_data}
-
-            elif input_values['Operation'] == "config":
-                # Start the ncpc_client and perform the specified operation e.g write/read/config.
-                process,outfile = start_ncpc_process(cluster_params, Key, Value,
-                                                   input_values['Operation'], input_values['OutfileName'],
-                                                   IP_addr, Port, NumWrites, seqNo)
-                output_data = get_the_output(outfile)
-                return {"config":output_data}
+            
+            data = extracting_dictionary(cluster_params, input_values)
+            
+            return data
 
         elif process_type == "niova-lookout":
 
-                niova_lookout_path = "%s/%s/niova_lookout" % (cluster_params['base_dir'],
+            niova_lookout_path = "%s/%s/niova_lookout" % (cluster_params['base_dir'],
                                                            cluster_params['raft_uuid'])
 
-                if os.path.exists(niova_lookout_path):
-                    print("file already exist")
-                else:
-                    os.mkdir(niova_lookout_path)
+            if os.path.exists(niova_lookout_path):
+                print("file already exist")
+            else:
+                os.mkdir(niova_lookout_path)
 
-                niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['lookout_uuid'],
+            niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['lookout_uuid'],
                                                                       input_values['aport'], input_values['hport'],
                                                                       input_values['rport'], input_values['uport'])
-                return niova_lookout_process
+            return niova_lookout_process
