@@ -22,7 +22,7 @@
          tasks_from: start_server_golang
        vars:
          ServerUUID: "{{ NonRunningServers[item] }}"
-       loop: "{{ range(0, NonRunningServers | length ) | list }}"
+       loop: "{{ range(0, number_of_PMDBServers) | list }}"
 
      # Start proxy servers
      - name: "{{ recipe_name }}: Start proxy servers."
