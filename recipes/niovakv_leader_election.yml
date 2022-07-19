@@ -25,14 +25,16 @@
       # Write key-value before killing leader.
      - name: "{{ recipe_name }}: Write the key-value before killing the leader."
        vars:
-         Operation: "write"
-         Key: "Country"
-         Value: "India"
-         OutfileName: "beforeWrite"
-         NumRequest: 1
-         MultiKey: False
-         Sequential : False
-         nkvclires: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
+         input_param: {
+              "Operation": "write",
+              "Key": "Country",
+              "Value": "India",
+              "OutfileName": "beforeWrite",
+              "NumRequest": 1,
+              "MultiKey": False,
+              "Sequential" : False
+              }
+         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
@@ -49,14 +51,16 @@
        # Get leader.
      - name: "{{ recipe_name}}: Get Leader UUID"
        vars:
-         Operation: "leader"
-         Key: ""
-         Value: ""
-         OutfileName: "getLeader"
-         NumRequest: 0
-         MultiKey: False
-         Sequential: False
-         getLeader_values: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
+         input_param: {
+              "Operation": "leader",
+              "Key": "",
+              "Value": "",
+              "OutfileName": "getLeader",
+              "NumRequest": 0,
+              "MultiKey": False,
+              "Sequential" : False
+              }
+         getLeader_values: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
        debug:
          msg: "Get the Old Leader UUID {{ getLeader_values }}"
        with_items:
@@ -93,14 +97,16 @@
       # Get newly elected leader.
      - name: "{{ recipe_name}}: Get New Leader UUID"
        vars:
-         Operation: "leader"
-         Key: ""
-         Value: ""
-         OutfileName: "getLeader"
-         NumRequest: 0
-         MultiKey: False
-         Sequential: False
-         getLeader_values: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
+         input_param: {
+              "Operation": "leader",
+              "Key": "",
+              "Value": "",
+              "OutfileName": "getNewLeader",
+              "NumRequest": 0,
+              "MultiKey": False,
+              "Sequential" : False
+              }
+         getLeader_values: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
        debug:
          msg: "Get the New Leader UUID {{ getLeader_values }}"
        with_items:
@@ -116,14 +122,16 @@
       # Read back value after electing new leader
      - name: "{{ recipe_name }}: Read the value after electing new leader."
        vars:
-         Operation: "read"
-         Key: "Country"
-         Value: ""
-         OutfileName: "afterRead"
-         NumRequest: 1
-         MultiKey: False
-         Sequential : False
-         nkvclires: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
+         input_param: {
+             "Operation": "read",
+             "Key": "Country",
+             "Value": "",
+             "OutfileName": "afterRead",
+             "NumRequest": 1,
+             "MultiKey": False,
+             "Sequential" : False
+              }
+         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
        debug:
          msg: "Read value from niovakv_client."
        with_items:
@@ -145,6 +153,3 @@
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
           terminate_recipe: true
-
-
-
