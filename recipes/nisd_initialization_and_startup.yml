@@ -48,7 +48,7 @@
              'lookout_uuid': ''
               }
        debug:
-         msg: "{{ lookup('nisd_standalone', 'niova-block-ctl', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True) }}"
        #no_log: True
 
      - name: "{{ recipe_name }}: Start nisd process."
@@ -59,7 +59,7 @@
                   'lookout_uuid': ''
                   }
        debug:
-         msg: "{{ lookup('nisd_standalone', 'nisd', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
        #no_log: True
 
      - pause:
@@ -160,7 +160,7 @@
                   'lookout_uuid': ''
                   }
        debug:
-         msg: "{{ lookup('nisd_standalone', 'nisd', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
        no_log: True
 
      - pause:
@@ -224,7 +224,7 @@
                  'blocking_process' : False,
                  'lookout_uuid': ''
                  }
-         wr_success: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
          msg: "get write's return code"
        #no_log:  True
@@ -300,7 +300,7 @@
                   'lookout_uuid': ''
                   }
        debug:
-         msg: "{{ lookup('nisd_standalone', 'nisd', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
        no_log: True
 
      - pause:
@@ -369,7 +369,7 @@
                  'blocking_process' : False,
                  'lookout_uuid': ''
                  }
-         rd_success: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+         rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
          msg: "get read's return code"
        with_items:
