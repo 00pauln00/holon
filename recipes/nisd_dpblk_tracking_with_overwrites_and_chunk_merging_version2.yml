@@ -76,9 +76,10 @@
                  'num_ops' : '1000',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False
+                 'blocking_process' : False,
+                 'lookout_uuid': ''
                  }
-         wr_success: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
          msg: "get write's return code"
        no_log:  True
@@ -194,9 +195,10 @@
                  'num_ops' : '1000',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False
+                 'blocking_process' : False,
+                 'lookout_uuid': ''
                  }
-         rd_success: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+         rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
          msg: "get read's return code"
        with_items:
@@ -242,10 +244,11 @@
                  'num_ops' : '1000',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False
+                 'blocking_process' : False,
+                 'lookout_uuid': ''
                  }
        debug:
-         msg: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
        with_items:
          - 2
          - 7
@@ -291,10 +294,11 @@
                  'num_ops' : '1000',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False
+                 'blocking_process' : False,
+                 'lookout_uuid': ''
                  }
        debug:
-         msg: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
        with_items:
          - 2
          - 7
