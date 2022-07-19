@@ -15,6 +15,7 @@ def start_niova_block_ctl_process(cluster_params, nisdPath, nisd_uuid):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
+    #print("lookout-uuid:", lookout_uuid)
     # Prepare path for log file.
     log_file = "%s/%s/niovablockctl_%s_log.txt" % (base_dir, raft_uuid, nisd_uuid)
 
@@ -126,6 +127,21 @@ def set_environment_variables(cluster_params):
 
     return ctl_interface_path
 
+def controlplane_environment_variables(cluster_params,lookout_uuid):
+    niova_lookout_ctl_interface_path = "%s/%s/niova_lookout/%s" % (cluster_params['base_dir'],
+                                                           cluster_params['raft_uuid'], lookout_uuid)
+
+    if os.path.exists(niova_lookout_ctl_interface_path):
+        logging.info("file already exist")
+    else:
+        os.mkdir(niova_lookout_ctl_interface_path)
+
+    #set environment variables
+    os.environ['NIOVA_INOTIFY_BASE_PATH'] = niova_lookout_ctl_interface_path
+    os.environ['NIOVA_LOCAL_CTL_SVC_DIR'] = niova_lookout_ctl_interface_path
+
+    return niova_lookout_ctl_interface_path
+
 def start_niova_block_test(cluster_params, nisd_uuid_to_write, vdev, read_operation_ratio_percentage,
                                 random_seed, client_uuid, request_size_in_bytes, queue_depth, num_ops,
                                 integrity_check, sequential_writes, blocking_process):
@@ -188,44 +204,50 @@ class LookupModule(LookupBase):
         #Get lookup parameter values
         process_type = terms[0]
         input_values = terms[1]
-        Key = ""
-        Value = ""
-        IP_addr = ""
-        Port = ""
+        lookout_uuid = ""
 
         cluster_params = kwargs['variables']['ClusterParams']
 
         if process_type == "niova-block-ctl":
 
-                set_environment_variables(cluster_params)
+               if input_values['lookout_uuid'] != "":
+                   controlplane_environment_variables(cluster_params, input_values['lookout_uuid'])
+               else:
+                   set_environment_variables(cluster_params)
 
-                # Start niova-block-ctl process
-                test_device_path = create_nisd_device_and_uuid(input_values['nisd_uuid'],
+               # Start niova-block-ctl process
+               test_device_path = create_nisd_device_and_uuid(input_values['nisd_uuid'],
                                                                 input_values['nisd_dev_size'])
-                niova_block_ctl_process = start_niova_block_ctl_process(cluster_params, test_device_path,
+               niova_block_ctl_process = start_niova_block_ctl_process(cluster_params, test_device_path,
                                                                                input_values['nisd_uuid'])
 
-                return niova_block_ctl_process
+               return niova_block_ctl_process
 
         elif process_type == "nisd":
 
-                set_environment_variables(cluster_params)
+               if input_values['lookout_uuid'] != "":
+                   controlplane_environment_variables(cluster_params, input_values['lookout_uuid'])
+               else:
+                   set_environment_variables(cluster_params)
 
-                #start nisd process
-                nisdPath = prepare_nisd_device_path(input_values['nisd_uuid'])
-                nisd_process = start_nisd_process(cluster_params,  input_values['nisd_uuid'], input_values['uport'], nisdPath)
+               #start nisd process
+               nisdPath = prepare_nisd_device_path(input_values['nisd_uuid'])
+               nisd_process = start_nisd_process(cluster_params,  input_values['nisd_uuid'], input_values['uport'], nisdPath)
 
-                return nisd_process
+               return nisd_process
 
         elif process_type == "niova-block-test":
 
-                set_environment_variables(cluster_params)
+               if input_values['lookout_uuid'] != "":
+                   controlplane_environment_variables(cluster_params, input_values['lookout_uuid'])
+               else:
+                   set_environment_variables(cluster_params)
 
-                # Start niova-block-test
-                niova_block_test_process = start_niova_block_test(cluster_params, input_values['uuid_to_write'], input_values['vdev'],
+               # Start niova-block-test
+               niova_block_test_process = start_niova_block_test(cluster_params, input_values['uuid_to_write'], input_values['vdev'],
                                                                   input_values['read_operation_ratio_percentage'], input_values['random_seed'],
                                                                   input_values['client_uuid'], input_values['request_size_in_bytes'],
                                                                   input_values['queue_depth'], input_values['num_ops'], input_values['integrity_check'],
                                                                   input_values['sequential_writes'], input_values['blocking_process'])
-                return niova_block_test_process
+               return niova_block_test_process
 

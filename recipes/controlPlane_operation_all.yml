@@ -1,10 +1,9 @@
-- name: "basic_controlplane_membership.yml"
+- name: "controlPlane_operation_all.yml"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "basic_controlplane_membership"
+    recipe_name: "controlPlane_operation_all"
     parent: None
-    number_of_clients: 2
 
   tasks:
   - block:
@@ -18,38 +17,13 @@
        failed_when:
          (app_type != "controlplane")
 
-     - name: "{{ recipe_name }}: get the list of non-running servers."
+     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
        include_role:
           name: common
-          tasks_from: get_server_uuid_info
-
-     # Get multiple client uuids using common task.
-     - name: "Get multiple client uuids."
-       include_role:
-        name: common
-        tasks_from: get_multiple_client_uuids
-       loop: "{{ range(0, number_of_clients) | list }}"
-
-     - name: "Prepare gossip node configs"
-       set_fact: gossipCreation="{{lookup('niova_raftconfig', "controlplane", ClientUUIDS, wantlist=True)}}"
-
-     # Start 4 PMDB servers.
-     - name: "{{ recipe_name }}: Start 4 pmdb servers in the cluster."
-       include_role:
-         name: common
-         tasks_from: start_server_golang
+          tasks_from: pmdb_cluster_init.yml
        vars:
-         ServerUUID: "{{ NonRunningServers[item] }}"
-       loop: "{{ range(0, NonRunningServers | length - 1) | list }}"
-
-     # Start proxy servers
-     - name: "{{ recipe_name }}: Start multiple proxy servers."
-       include_role:
-          name: common
-          tasks_from: start_proxy_server
-       vars:
-          ClientUUID: "{{ ClientUUIDS[item] }}"
-       loop: "{{ range(0, ClientUUIDS | length) |list }}"
+         number_of_clients: 2
+         number_of_PMDBServers: 4
 
      - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
        vars:
@@ -64,10 +38,6 @@
           - "{{ ncpclires }}"
        register: membership
        no_log: true
-
-     - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
-       pause:
-        seconds: 5
 
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
        vars:
@@ -87,7 +57,7 @@
        with_items:
           - "{{ ncpcliwr }}"
        register: writeres
-         #       no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
@@ -160,11 +130,6 @@
          msg: "Verifying status of the pmdbs servers."
        failed_when: verifyStatus != "alive"
        loop: "{{ range(0, NRunningPeers | length) | list }}"
-
-         #     - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
-         #set_fact:
-         # nodeList: "{{ nodeList | default([]) + [ 'Node_' ~ item ] }}"
-         # loop: "{{ ClientUUIDS }}"
 
      - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
        vars:
