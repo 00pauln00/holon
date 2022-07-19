@@ -87,7 +87,7 @@
        with_items:
           - "{{ ncpcliwr }}"
        register: writeres
-       no_log: true
+         #       no_log: true
 
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
@@ -160,6 +160,11 @@
          msg: "Verifying status of the pmdbs servers."
        failed_when: verifyStatus != "alive"
        loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+         #     - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
+         #set_fact:
+         # nodeList: "{{ nodeList | default([]) + [ 'Node_' ~ item ] }}"
+         # loop: "{{ ClientUUIDS }}"
 
      - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
        vars:
