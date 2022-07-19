@@ -115,13 +115,13 @@ def start_lkvt_subprocess(cluster_params, database_type, size_of_key,
 def get_the_output(outfilePath):
     outfile = outfilePath+'.json'
     counter = 0
-    timeout = 120
+    timeout = 200
 
     # Wait till the output json file gets created.
     while True:
         if not os.path.exists(outfile):
             counter += 1
-            time.sleep(0.1)
+            time.sleep(1)
             if counter == timeout:
                 return {"status":-1,"msg":"Timeout checking for output file"}
         else:
@@ -181,12 +181,11 @@ def extract_lkvt_client_values_perform_operation(cluster_params, input_values):
                                                          choose_algorithm, specific_server_name, outfileName)
             return outfile
         else:
-            outfile_path = str(terms[0]['outfile_path'])
-            wait_for_outfile = terms[0]['wait_for_outfile']
-            timeout = terms[0]['timeout']
+            outfile_path = str(input_values['outfile_path'])
+            wait_for_outfile = input_values['wait_for_outfile']
 
             if  wait_for_outfile == True:
-                output_data = get_the_output(outfile_path, timeout)
+                output_data = get_the_output(outfile_path)
                 return output_data
 
 class LookupModule(LookupBase):

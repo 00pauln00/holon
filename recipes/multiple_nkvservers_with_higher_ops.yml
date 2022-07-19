@@ -66,7 +66,7 @@
                 specific_server_name: "",
                 outfileName: "write_result"  
                } 
-        nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
+        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', parameters, wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
@@ -78,10 +78,9 @@
        vars:
         outfile_parameters: {
           outfile_path: "{{ writeres['results'][0]['item'] }}",
-          wait_for_outfile: True,
-          timeout: 10000 
+          wait_for_outfile: True
           }
-        nkvclires: "{{ lookup('lkvt_client', outfile_parameters , wantlist=True) }}"
+        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', outfile_parameters , wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
@@ -92,7 +91,7 @@
      - name: "{{ recipe_name }}: Get the information for number of request distributions across multiple niovakv servers."
        debug:
          msg: "{{ write_op['results'][0]['item']['NkvcClient']['RequestDistribution'] }}"
-       no_log: true
+         no_log: true
 
       #Check if write is successful.
      - name: "{{ recipe_name }}: Check if Put is successful"
@@ -123,7 +122,7 @@
                 specific_server_name: "",
                 outfileName: "read_result" 
                }
-         nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
+         nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', parameters, wantlist=True) }}"
        debug:
          msg: "Read key-value from lkvt_client."
        with_items:
@@ -135,10 +134,9 @@
        vars:
          outfile_parameters: {
           outfile_path: "{{ readres['results'][0]['item']}}",
-          wait_for_outfile: True,
-          timeout: 10000 
+          wait_for_outfile: True
           }
-         nkvclires: "{{ lookup('lkvt_client', outfile_parameters, wantlist=True) }}"
+         nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', outfile_parameters, wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
