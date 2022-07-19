@@ -128,6 +128,19 @@
         msg: "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True) }}"
        no_log: True
 
+     - name: "{{ recipe_name }}: Wait until killed pmdb server's status gets changed."
+       vars:
+         getPmdbServer: "{{  LeaderUUID['/0/leader-uuid'] }}"
+         input_param: {
+                  'Operation': 'membership',
+                  'OutfileName': 'status_of_killedPmdbServerStatus'
+                  }
+       debug:
+         msg: "Verifying pmdb server's status"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getPmdbServer) | map(attribute='Status') | list | first == "failed"
+       retries: 10
+       delay: 1
+
      - name: "{{ recipe_name }}: Wait until leader election happens."
        include_role:
          name: common
