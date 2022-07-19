@@ -261,9 +261,6 @@
        register: perform_rd
 
      - debug:
-         msg: "{{ perform_rd['results'][0]['item'] }}"
-
-     - debug:
          msg: "Verify read must fail"
        failed_when: (perform_rd['results'][0]['item'] == "0")
 
