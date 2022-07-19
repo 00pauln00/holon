@@ -237,7 +237,7 @@
          wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
          msg: "get write's return code"
-       #no_log:  True
+       no_log:  True
        with_items:
         - "{{ wr_success }}"
        register: get_wr

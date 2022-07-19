@@ -35,9 +35,10 @@
           input_param: {
                   'nisd_uuid' : '{{ nisdUUID.stdout }}',
                   'uport' : '1053',
+                  'lookout_uuid': ''
                   }
        debug:
-         msg: "{{ lookup('nisd_standalone', 'nisd', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
        no_log: True
 
      - pause:
@@ -92,9 +93,10 @@
                  'num_ops' : '{{ no_of_ops | string }}',
                  'integrity_check' : False,
                  'sequential_writes' : False,
-                 'blocking_process' : False
+                 'blocking_process' : False,
+                 'lookout_uuid': ''
                  }
-         rd_success: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+         rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
          msg: "get read's return code"
        with_items:

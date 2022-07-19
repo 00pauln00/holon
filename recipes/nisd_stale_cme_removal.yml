@@ -25,10 +25,6 @@
        debug: msg="Check if parent recipe {{ parent }} failed"
        failed_when: terminate_recipe == true
 
-     - debug:
-         msg:
-          - "{{ nisdUUID.stdout }}"
-
      - name: Generate new vdev-uuid
        shell: "/usr/bin/uuid"
        register: staleVdev
@@ -51,9 +47,10 @@
                  'num_ops' : '{{ no_of_ops | string }}',
                  'integrity_check' : False,
                  'sequential_writes' : True,
-                 'blocking_process' : False
+                 'blocking_process' : False,
+                 'lookout_uuid': ''
                  }
-         wr_success: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
          msg: "get write's return code"
        no_log:  True
@@ -94,9 +91,10 @@
                  'num_ops' : '{{ no_of_ops | string }}',
                  'integrity_check' : False,
                  'sequential_writes' : True,
-                 'blocking_process' : False
+                 'blocking_process' : False,
+                 'lookout_uuid': ''
                  }
-         rd_success: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+         rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
          msg: "get read's return code"
        with_items:
@@ -161,9 +159,10 @@
                  'num_ops' : '1',
                  'integrity_check' : False,
                  'sequential_writes' : True,
-                 'blocking_process' : False
+                 'blocking_process' : False,
+                 'lookout_uuid': ''
                  }
-         wr_success: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
          msg: "get write's return code"
        no_log:  True
@@ -188,9 +187,10 @@
                  'num_ops' : '1',
                  'integrity_check' : False,
                  'sequential_writes' : True,
-                 'blocking_process' : False
+                 'blocking_process' : False,
+                 'lookout_uuid': ''
                  }
-         rd_success: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+         rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
          msg: "get read's return code"
        with_items:
