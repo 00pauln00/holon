@@ -1,4 +1,4 @@
-- import_playbook: control_plane_check_meminfo_after_kill.yml
+- import_playbook: controlPlane_rangeQuery.yml
 
 - name: "controlPlane_rangeQuery_consistencyCheck_overwrites_insert.yml"
   hosts: localhost
@@ -169,7 +169,7 @@
        vars:
          ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
          fault_injection_name: "pmdb_range_read_keep_old_snapshot"
-
+     
      - name: "{{ recipe_name }}: Remove previously applied fault injection."
        include_role:
          name: common
@@ -177,6 +177,7 @@
        vars:
          ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
          fault_injection_name: "pmdb_range_read_keep_snapshot"
+  
      
      - name: "{{ recipe_name }}: Pause for 60 seconds so that snapshot gets deleted successfully."
        pause:

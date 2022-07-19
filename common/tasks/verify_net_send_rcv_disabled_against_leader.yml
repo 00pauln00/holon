@@ -1,0 +1,27 @@
+---
+
+    - name: "{{ recipe_name }}: Gather 'net_recv_enabled' values for peers to be disabled."
+      vars:
+        uuid: "{{ item['uuid'] }}"
+        nre: "{{ item['net_recv_enabled'] }}"
+        nse: "{{ item['net_send_enabled'] }}"
+        net_rcv_list: []
+        net_send_list: []
+      set_fact:
+         net_rcv_list: "{{ net_rcv_list + [nre] }}"
+         net_send_list: "{{ net_send_list + [nse] }}"
+      loop: "{{  ctl_svc_nodes_arr }}"
+      when: uuid == old_leader
+      no_log: True
+
+    - name: "{{ recipe_name }}: Check if net_rcv is disabled."
+      debug:
+        msg: "Check if peers are disabled."
+      failed_when: item != false
+      loop: "{{ net_rcv_list }}"
+
+    - name: "{{ recipe_name }}: Check if net_send is disabled."
+      debug:
+        msg: "Check if peers are disabled."
+      failed_when: item != false
+      loop: "{{ net_send_list }}"

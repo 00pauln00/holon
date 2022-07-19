@@ -8,6 +8,10 @@
 
   tasks:
   - block:
+     - name: "Check if parent recipe failed"
+       debug: msg="Check if parent recipe {{ parent }} failed"
+       failed_when: terminate_recipe == true
+
       # Check for the app_type
      - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
        vars:
@@ -165,7 +169,7 @@
        shell: "/usr/bin/uuid"
        register: blockTestClientUUID
 
-     - name: "{{ recipe_name }}: Start niova-block-test process."
+     - name: "{{ recipe_name}}: Set a breakpoint on 'NiovaBlockClientDestroy' function."
        vars:
          input_param: {
                  'uuid_to_write' : 'unix:{{ nisdUUID["stdout_lines"][0] }}',
@@ -178,9 +182,35 @@
                  'num_ops' : '1000',
                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                  }
+         gdb_cmd: |
+            break NiovaBlockClientDestroy
        debug:
-         msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
-       no_log:  True
+         msg: "{{ lookup('write_gdb_script', 'niova_block_test', gdb_cmd, nisdUUID['stdout_lines'][0], input_param, wantlist=True) }}"
+
+     - name: "{{ recipe_name}}: Copy input cmd file to nisd's directory"
+       vars:
+         base_dir: "{{ ClusterInfo | json_query('base_dir_path')}}"
+         input_param: {
+                 'uuid_to_write' : 'unix:{{ nisdUUID["stdout_lines"][0] }}',
+                 'vdev' : '{{ vdevUUID.stdout }}',
+                 'read_operation_ratio_percentage' : '0',
+                 'random_seed' : '123',
+                 'client_uuid' : '{{ blockTestClientUUID.stdout }}',
+                 'request_size_in_bytes' : '16',
+                 'queue_depth' : '1',
+                 'num_ops' : '1000',
+                 'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                 }
+         gdb_cmd: |
+               command 1
+               bt
+               shell cp ./cmds/conn.cmd {{base_dir}}/niova_lookout/{{lookoutUUID["stdout_lines"][0]}}/{{nisdUUID["stdout_lines"][0] }}/input
+               shell ls {{base_dir}}/niova_lookout/{{lookoutUUID["stdout_lines"][0]}}/{{nisdUUID["stdout_lines"][0] }}/input
+               continue
+               end
+               run
+       debug:
+         msg: "{{ lookup('write_gdb_script', 'niova_block_test', gdb_cmd, nisdUUID['stdout_lines'][0], input_param, wantlist=True) }}"
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

@@ -1,11 +1,11 @@
-- import_playbook: basic_controlplane_membership.yml
+- import_playbook: controlPlane_cluster_state_verify.yml
 
 - name: "Controlplane_recipe"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "Controlplane_killAll_Proxy_recipe"
-    parent: basic_controlplane_membership
+    recipe_name: "controlPlane_operation_statusCheck_proxyFail"
+    parent: "controlPlane_cluster_state_verify"
 
   tasks:
   - block:
@@ -75,6 +75,11 @@
      - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
        pause:
         seconds: 5
+
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeWrite with n as 5."
        vars:

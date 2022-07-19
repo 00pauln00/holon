@@ -1,4 +1,5 @@
-- import_playbook: basic_recipe_for_niovakv.yml
+- import_playbook: niovakv_operation_all.yml
+
 - name: "niovakv_leader_election"
   hosts: localhost
   connection: local
