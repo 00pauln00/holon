@@ -27,10 +27,6 @@
        debug: msg="Check if parent recipe {{ parent }} failed"
        failed_when: terminate_recipe == true
 
-     - debug:
-         msg:
-          - "{{ nisdUUID.stdout }}"
-
      - name: Generate new vdev-uuid
        shell: "/usr/bin/uuid"
        register: mergeVdev
@@ -53,9 +49,10 @@
                  'num_ops' : '{{ no_of_ops | string }}',
                  'integrity_check' : False,
                  'sequential_writes' : True,
-                 'blocking_process' : False
+                 'blocking_process' : False,
+                 'lookout_uuid': ''
                  }
-         wr_success: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
          msg: "get write's return code"
        failed_when: wr_success != "0"
@@ -125,10 +122,11 @@
                  'num_ops' : '3',
                  'integrity_check' : False,
                  'sequential_writes' : False,
-                 'blocking_process' : True
+                 'blocking_process' : True,
+                 'lookout_uuid': ''
                  }
        debug:
-         msg: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
 
      - name: "{{ recipe_name }}: Verify conns, tasks and nisd_chunk."
        vars:
@@ -205,9 +203,10 @@
                  'num_ops' : '{{ no_of_ops | string }}',
                  'integrity_check' : False,
                  'sequential_writes' : True,
-                 'blocking_process' : False
+                 'blocking_process' : False,
+                 'lookout_uuid': ''
                  }
-         wr_success: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
          msg: "get write's return code"
        failed_when: wr_success != "0"
@@ -297,10 +296,11 @@
                  'num_ops' : '{{ no_of_ops | string }}',
                  'integrity_check' : False,
                  'sequential_writes' : False,
-                 'blocking_process' : True
+                 'blocking_process' : True,
+                 'lookout_uuid': ''
                  }
        debug:
-         msg: "{{ lookup('nisd_standalone', 'niova-block-test', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
 
      - pause:
          seconds: 2
