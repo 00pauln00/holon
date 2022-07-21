@@ -12,8 +12,8 @@
         tasks_from: get_multiple_client_uuids
        loop: "{{ range(0, number_of_clients) | list }}"
 
-     - name: "Prepare gossip node configs"
-       set_fact: gossipCreation="{{lookup('niova_raftconfig', "controlplane", TotalNServersList, ClientUUIDS, wantlist=True)}}"
+     - name: "Prepare gossip node config and proxy.config file"
+       set_fact: gossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", ClientUUIDS, wantlist=True)}}"
 
      # Start PMDB servers.
      - name: "{{ recipe_name }}: Start pmdb servers in the cluster."

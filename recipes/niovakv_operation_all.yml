@@ -19,6 +19,7 @@
      - name: "{{ recipe_name }}: Start pmdb and proxy servers."
        include_role:
           name: common
+          tasks_from: pmdb_cluster_init
        vars:
          number_of_clients: 1
          number_of_PMDBServers: 5
