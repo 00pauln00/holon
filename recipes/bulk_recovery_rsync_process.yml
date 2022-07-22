@@ -127,15 +127,6 @@
            (getCPOnAll["/0/lowest-idx"] == -1)
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-   #Apply fault injection on peer4 for limiting bandwidth_limit.
-    - name: "{{ recipe_name }}: Apply fault injection on newly started peer."
-      include_role:
-        name: common
-        tasks_from: set_fault_injection_and_verify
-      vars:
-        ServerUUID: "{{ newlyStartedPeer4['results'][0]['item'] }}"
-        fault_injection_name: "raft_limit_rsync_bw"
-    
     - name: "{{ recipe_name }}: Start new peer with empty DB."
       include_role:
         name: common
@@ -148,6 +139,15 @@
         name: common
         tasks_from: get_server_uuid_info
 
+    #Apply fault injection on peer4 for limiting bandwidth_limit.
+    - name: "{{ recipe_name }}: Apply fault injection on newly started peer."
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ newlyStartedPeer4['results'][0]['item'] }}"
+        fault_injection_name: "raft_limit_rsync_bw"
+    
     - name: "{{ recipe_name }}: Apply fault injection on newly started peer."
       include_role:
         name: common
