@@ -16,40 +16,15 @@
        failed_when:
          (app_type != "niovakv")
 
-       # Start pmdb servers.
-     - name: "{{ recipe_name }}: get the list of non-running servers."
+     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
        include_role:
           name: common
-          tasks_from: get_server_uuid_info
-
-       #Get multiple client uuids using common task.
-     - name: "Get multiple client uuids."
+          tasks_from: pmdb_cluster_init.yml
        vars:
          number_of_clients: 5
-       include_role:
-         name: common
-         tasks_from: get_multiple_client_uuids
-       loop: "{{ range(0, number_of_clients) | list }}" #loop for no. of required client uuids.
-
-      # Start all PMDB servers.
-     - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
-       include_role:
-         name: common
-         tasks_from: start_server_golang
-       vars:
-         ServerUUID: "{{ NonRunningServers[item] }}"
-       loop: "{{ range(0, NonRunningServers | length) | list }}"
-
-      #Start niovakv_server.
-     - name: "{{ recipe_name }}: Start new niovakv server which starts pmdb client."
-       include_role:
-         name: common
-         tasks_from: start_client_golang
-       vars:
-         ClientUUID: "{{ ClientUUIDS[item] }}"
-       loop: "{{ range(0, ClientUUIDS | length) |list }}"
-
-     # Start lkvt_client to write the value.
+         number_of_PMDBServers: 5
+              
+      # Start lkvt_client to write the value.
      - name: "{{ recipe_name }}: Starting lkvt_client to write the value."
        vars: 
         parameters: {
