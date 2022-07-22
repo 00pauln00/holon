@@ -1,0 +1,22 @@
+---
+
+    - name: "{{ recipe_name }}: Reset default max-scan-entries on all peers."
+      vars:
+        stage: "resetMaxScanEntriesOnAll"
+        cmd: "max-scan-entries@100000"
+        where: "/raft_net_info/max-scan-entries"
+        key: "/raft_net_info/max-scan-entries"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', Peers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Reset default log-reap-factor on all peers."
+      vars:
+        stage: "resetLRPOnAll"
+        cmd: "log-reap-factor@5"
+        where: "/raft_net_info/log-reap-factor"
+        key: "/raft_net_info/log-reap-factor"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', Peers, cmd, where, wantlist=True) }}"
+      no_log: true
+
