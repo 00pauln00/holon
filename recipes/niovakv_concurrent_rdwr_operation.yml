@@ -8,6 +8,10 @@
 
   tasks:
   - block:
+     - name: "Check if parent recipe failed"
+       debug: msg="Check if parent recipe {{ parent }} failed"
+       failed_when: terminate_recipe == true
+
       # check for the app_type
      - name: "{{ recipe_name }}: Check if the app_type is 'niovakv'."
        vars:
@@ -41,14 +45,16 @@
      #Start niovakv_client by sending multiple requested key-value.
      - name: "{{ recipe_name }}: Start niovakv client to multi-key write/read concurrently."
        vars:
-         Operation: "write/read"
-         Key: "India"
-         Value: "Asia"
-         OutfileName: "multikey_concurrent"
-         NumRequest: 10
-         MultiKey: True
-         Sequential: False
-         multicli: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
+         input_param: {
+              "Operation": "write/read",
+              "Key": "India",
+              "Value": "Asia",
+              "OutfileName": "multikey_concurrent",
+              "NumRequest": 10,
+              "MultiKey": True,
+              "Sequential" : False
+              }
+         multicli: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
        debug:
          msg: "Read value from niovakv_client."
        with_items:

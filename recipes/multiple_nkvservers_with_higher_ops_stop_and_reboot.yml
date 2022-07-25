@@ -41,7 +41,7 @@
                 specific_server_name: "",
                 outfileName: "writeres_random_server"
                }
-         nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
+         nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', parameters, wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
@@ -92,16 +92,18 @@
       #Check if rebooted niovakv server joins again.
      - name: "{{ recipe_name }}: Wait until node status gets changed."
        vars:
-         Operation: "membership"
-         Key: ""
-         Value: ""
-         OutfileName: "nodestatus"
-         NumRequest: 0
-         MultiKey: False
-         Sequential: False
+         parameters: {
+            "Operation": "membership",
+            "Key": "",
+            "Value": "",
+            "OutfileName": "nodestatus",
+            "NumRequest": 0,
+            "MultiKey": False,
+            "Sequential": False
+            }
        debug:
          msg: "Verifying node status: {{ NodeName['results'][0]['item'] }}"
-       until: lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) | dict2items | map(attribute='value') | map(attribute=NodeName['results'][0]['item']) | map(attribute='Status') | list | first == "alive"
+       until: lookup('niovakv_client_handler', 'niovakv', parameters, wantlist=True) | dict2items | map(attribute='value') | map(attribute=NodeName['results'][0]['item']) | map(attribute='Status') | list | first == "alive"
        retries: 10
        delay: 1
 
@@ -109,10 +111,9 @@
        vars:
         outfile_parameters: {
           outfile_path: "{{ writeres['results'][0]['item'] }}",
-          wait_for_outfile: True,
-          timeout: 10000
+          wait_for_outfile: True
           }
-        nkvclires: "{{ lookup('lkvt_client', outfile_parameters , wantlist=True) }}"
+        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', outfile_parameters , wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
@@ -154,7 +155,7 @@
                 specific_server_name: "",
                 outfileName: "readres_random_server"
                }
-        nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
+        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', parameters, wantlist=True) }}"
        debug:
          msg: "Read key-value from lkvt_client."
        with_items:
@@ -166,10 +167,9 @@
        vars:
         outfile_parameters: {
           outfile_path: "{{ readres['results'][0]['item']}}",
-          wait_for_outfile: True,
-          timeout: 10000
+          wait_for_outfile: True
           }
-        nkvclires: "{{ lookup('lkvt_client', outfile_parameters, wantlist=True) }}"
+        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', outfile_parameters, wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
@@ -211,7 +211,7 @@
                 specific_server_name: "",
                 outfileName: "writeres_round_robin"
                }
-         nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
+         nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', parameters, wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
@@ -223,10 +223,9 @@
        vars:
         outfile_parameters: {
           outfile_path: "{{ writeres_option1['results'][0]['item'] }}",
-          wait_for_outfile: True,
-          timeout: 10000
+          wait_for_outfile: True
           }
-        nkvclires: "{{ lookup('lkvt_client', outfile_parameters , wantlist=True) }}"
+        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', outfile_parameters , wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
@@ -252,7 +251,7 @@
                 outfileName: "readres_round_robin"
 
                }
-        nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
+        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', parameters, wantlist=True) }}"
        debug:
          msg: "Read key-value from lkvt_client."
        with_items:
@@ -264,10 +263,9 @@
        vars:
         outfile_parameters: {
           outfile_path: "{{ readres_option1['results'][0]['item']}}",
-          wait_for_outfile: True,
-          timeout: 10000
+          wait_for_outfile: True
           }
-        nkvclires: "{{ lookup('lkvt_client', outfile_parameters, wantlist=True) }}"
+        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', outfile_parameters, wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
@@ -292,7 +290,7 @@
                 specific_server_name: "Node1",
                 outfileName: "writeres_specific_server"
                }
-         nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
+         nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', parameters, wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
@@ -304,10 +302,9 @@
        vars:
         outfile_parameters: {
           outfile_path: "{{ writeres_option2['results'][0]['item'] }}",
-          wait_for_outfile: True,
-          timeout: 10000
+          wait_for_outfile: True
           }
-        nkvclires: "{{ lookup('lkvt_client', outfile_parameters , wantlist=True) }}"
+        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', outfile_parameters , wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
@@ -333,7 +330,7 @@
                 outfileName: "readres_specific_server"
 
                }
-        nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
+        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', parameters, wantlist=True) }}"
        debug:
          msg: "Read key-value from lkvt_client."
        with_items:
@@ -345,10 +342,9 @@
        vars:
         outfile_parameters: {
           outfile_path: "{{ readres_option2['results'][0]['item']}}",
-          wait_for_outfile: True,
-          timeout: 10000
+          wait_for_outfile: True
           }
-        nkvclires: "{{ lookup('lkvt_client', outfile_parameters, wantlist=True) }}"
+        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', outfile_parameters, wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
