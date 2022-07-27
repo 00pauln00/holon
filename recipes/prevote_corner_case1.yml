@@ -103,13 +103,13 @@
       loop_control:
         pause: 2
 
-     - name: "{{ recipe_name }}: Remove applied fault injection."
-       include_role:
-         name: common
-         tasks_from: remove_fault_injection_and_verify
-       vars:
-         ServerUUID: "{{ peer4 }}"
-         fault_injection_name: "raft_pvc_becomes_candidate"
+    - name: "{{ recipe_name }}: Remove applied fault injection."
+      include_role:
+        name: common
+        tasks_from: remove_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ peer4 }}"
+        fault_injection_name: "raft_pvc_becomes_candidate"
         
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

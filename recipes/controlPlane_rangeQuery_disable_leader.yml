@@ -1,11 +1,11 @@
-- import_playbook: basic_controlplane_membership.yml
+- import_playbook: controlPlane_operation_all.yml
 
 - name: "controlplane_rangeQuery_disable_leader.yml"
   hosts: localhost
   connection: local
   vars:
     recipe_name: "controlplane_rangeQuery_disable_leader"
-    parent: "basic_controlplane_membership"
+    parent: "controlPlane_operation_all.yml"
 
   tasks:
   - block:

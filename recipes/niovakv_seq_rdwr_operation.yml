@@ -45,14 +45,16 @@
      #Start niovakv_client by sending multiple requested key-value.
      - name: "{{ recipe_name }}: Start niovakv client to multi-key write/read sequentially."
        vars:
-         Operation: "write/read"
-         Key: "russia"
-         Value: "sputnic"
-         OutfileName: "multikey"
-         NumRequest: 10
-         MultiKey: True
-         Sequential: True
-         multicli: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
+         input_param: {
+              "Operation": "write/read",
+              "Key": "russia",
+              "Value": "sputnic",
+              "OutfileName": "multikey_sequential_wr",
+              "NumRequest": 10,
+              "MultiKey": True,
+              "Sequential" : True
+              }
+         multicli: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
        debug:
          msg: "Read value from niovakv_client."
        with_items:

@@ -26,14 +26,16 @@
   
      - name: "{{ recipe_name }}: Starting niovakv_client to write the value."
        vars:
-         Operation: "write"
-         Key: "Key"
-         Value: "Value"
-         OutfileName: "wrop"
-         NumRequest: 1
-         MultiKey: False
-         Sequential : False
-         nkvclires: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
+         input_param: {
+              "Operation": "write",
+              "Key": "Key",
+              "Value": "Value",
+              "OutfileName": "wrop",
+              "NumRequest": 1,
+              "MultiKey": False,
+              "Sequential" : False
+              }
+         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
@@ -49,14 +51,16 @@
 
      - name: "{{ recipe_name }}: Starting niovakv_client to read the value."
        vars:
-         Operation: "read"
-         Key: "Key"
-         Value: ""
-         OutfileName: "rdop"
-         NumRequest: 1
-         MultiKey: False
-         Sequential : False
-         nkvclires: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
+         input_param: {
+             "Operation": "read",
+             "Key": "Key",
+             "Value": "",
+             "OutfileName": "rdop",
+             "NumRequest": 1,
+             "MultiKey": False,
+             "Sequential" : False
+              }
+         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
        debug:
          msg: "Read value from niovakv_client."
        with_items:

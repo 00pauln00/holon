@@ -22,8 +22,9 @@
           tasks_from: pmdb_cluster_init.yml
        vars:
          number_of_clients: 1
+         number_of_PMDBServers: 5
 
-         # Start lkvt_client to write the value.
+      # Start lkvt_client to write the value.
      - name: "{{ recipe_name }}: Starting lkvt_client to write the value."
        vars:
         parameters: {
@@ -40,7 +41,7 @@
                 specific_server_name: "", 
                 outfileName: "write_operation" 
                }
-        nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
+        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', parameters, wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
@@ -52,10 +53,9 @@
        vars:
         outfile_parameters: {
           outfile_path: "{{ writeres['results'][0]['item'] }}",
-          wait_for_outfile: True, 
-          timeout: 10
+          wait_for_outfile: True
           }
-        nkvclires: "{{ lookup('lkvt_client', outfile_parameters , wantlist=True) }}"
+        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', outfile_parameters , wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:
@@ -92,7 +92,7 @@
                 specific_server_name: "" ,
                 outfileName: "read_operation" 
                }
-        nkvclires: "{{ lookup('lkvt_client', parameters, wantlist=True) }}"
+        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', parameters, wantlist=True) }}"
        debug:
          msg: "Read key-value from lkvt_client."
        with_items:
@@ -104,10 +104,9 @@
        vars:
          outfile_parameters: {
           outfile_path: "{{ readres['results'][0]['item']}}",
-          wait_for_outfile: True,
-          timeout: 10 
+          wait_for_outfile: True
           }
-         nkvclires: "{{ lookup('lkvt_client', outfile_parameters, wantlist=True) }}"
+         nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', outfile_parameters, wantlist=True) }}"
        debug:
          msg: "Write key-value from lkvt_client."
        with_items:

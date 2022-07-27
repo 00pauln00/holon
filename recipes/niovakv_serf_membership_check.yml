@@ -45,14 +45,16 @@
       # Write key-value before killing niovakv-server.
      - name: "{{ recipe_name }}: Write the key-value before killing the niovakv-server."
        vars:
-         Operation: "write"
-         Key: "China"
-         Value: "population"
-         OutfileName: "wrkey"
-         NumRequest: 1
-         MultiKey: False
-         Sequential : False
-         nkvclires: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
+         input_param: {
+              "Operation": "write",
+              "Key": "China",
+              "Value": "population",
+              "OutfileName": "wrkey",
+              "NumRequest": 1,
+              "MultiKey": False,
+              "Sequential" : False
+              }
+         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
@@ -90,16 +92,18 @@
 
      - name: "{{ recipe_name }}: Wait until node status gets changed."
        vars:
-         Operation: "membership"
-         Key: ""
-         Value: ""
-         OutfileName: "nodestatus"
-         NumRequest: 0
-         MultiKey: False
-         Sequential: False
+         input_param: {
+              "Operation": "membership",
+              "Key": "",
+              "Value": "",
+              "OutfileName": "node_status",
+              "NumRequest": 0,
+              "MultiKey": False,
+              "Sequential" : False
+              }
        debug:
          msg: "Verifying node status"
-       until: lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNodeName) | map(attribute='Status') | list | first == "failed"
+       until: lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNodeName) | map(attribute='Status') | list | first == "failed"
        loop: "{{ range(0, 10) | list }}"
        loop_control:
           pause: 1
@@ -107,14 +111,16 @@
      # Read key-value after killing node.
      - name: "{{ recipe_name }}: Read the value of requested key."
        vars:
-         Operation: "read"
-         Key: "China"
-         Value: ""
-         OutfileName: "rdval"
-         NumRequest: 1
-         MultiKey: False
-         Sequential : False
-         nkvclires: "{{ lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True) }}"
+         input_param: {
+             "Operation": "read",
+             "Key": "China",
+             "Value": "",
+             "OutfileName": "rdval",
+             "NumRequest": 1,
+             "MultiKey": False,
+             "Sequential" : False
+              }
+         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
        debug:
          msg: "Read value from niovakv_client."
        with_items:
@@ -131,7 +137,7 @@
        failed_when: >
         (rdval['Status'] != 0) or
         (rdval['Response'] != wrval['Value'])
-        
+
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
