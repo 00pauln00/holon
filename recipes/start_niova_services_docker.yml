@@ -1,0 +1,100 @@
+- name: "controlPlane_services.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlPlane_services"
+    parent: None
+    num_of_lookout_uuids: "{{ nlookouts | int}}"
+    num_of_nisd_uuids: "{{ nnisds | int}}"
+
+  tasks:
+  - block:
+
+    # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "controlplane")
+
+     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+       include_role:
+          name: common
+          tasks_from: pmdb_cluster_init.yml
+       vars:
+         number_of_clients: "{{ nclients | int }}"
+         number_of_PMDBServers: "{{ npeers | int }}"
+
+     - name: "Generate UUIDs to start niova-lookout process."
+       shell: "/usr/bin/uuid"
+       loop: "{{ range(0, num_of_nisd_uuids | int) }}"
+       register: unique_lookout_uuids
+
+     - name: "Create list of lookout uuids."
+       set_fact:
+          lookout_uuids: "{{ lookout_uuids | default([]) + [unique_lookout_uuids['results'][item]['stdout']] }}"
+       loop: "{{ range(0, unique_lookout_uuids['results'] | length) | list }}"
+
+     - debug:
+         msg: "lookout uuids: {{ lookout_uuids }}"
+
+     - name: "{{ recipe_name }}: Start niova-lookout process."
+       vars:
+         input_param: {
+                 'lookout_uuid' :  '{{ lookout_uuids[item] }}',
+                 'aport' : '490{{ item }}',
+                 'hport' : '900{{ item }}',
+                 'rport' : '590{{ item }}',
+                 'uport' : '106{{ item }}'
+                 }
+       debug:
+         msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
+       no_log: True
+       loop: "{{ range(0, num_of_lookout_uuids | int) }}"
+       loop_control:
+          pause: 2
+
+     - pause:
+         seconds: 2
+
+     - name: "Generate 3 UUIDs to start nisd process."
+       shell: "/usr/bin/uuid"
+       loop: "{{ range(0, num_of_nisd_uuids | int) }}"
+       register: unique_nisd_uuids
+
+     - name: "Create list of nisd uuids."
+       set_fact:
+          nisd_uuids: "{{ nisd_uuids | default([]) + [unique_nisd_uuids['results'][item]['stdout']] }}"
+       loop: "{{ range(0, unique_nisd_uuids['results'] | length) | list }}"
+
+     - debug:
+         msg: "nisd uuid list: {{ nisd_uuids }}"
+
+     - name: "{{ recipe_name }}: Start niova-block-ctl process."
+       include_role:
+          name: common
+          tasks_from: start_niova_block_ctl
+       vars:
+         nisdUuidsList: "{{ nisd_uuids }}"
+         nisdDevFile: '21474836480'    
+         lookoutUUIDList: "{{ lookout_uuids }}"     
+
+     - name: "{{ recipe_name }}: Start 3 nisd process for 1 lookout process."
+       vars:
+         input_param: {
+                  'nisd_uuid' : '{{ nisd_uuids[item] }}',
+                  'uport' : '1060',
+                  'lookout_uuid' :  '{{ lookout_uuids[0] }}'
+                  }
+       debug:
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
+       loop: "{{ range(0, nisd_uuids | length) | list }}"
+       loop_control:
+          pause: 3
+    
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
