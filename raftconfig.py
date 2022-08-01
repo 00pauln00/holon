@@ -159,6 +159,95 @@ class RaftConfig:
         # Store the client UUID
         self.client_uuid_arr.append(client_uuid)
 
+
+
+    '''
+        Method: generate_niovakv_conf
+        Purpose: Create niovakv config for niovakv
+        Parameters: @nclients: no of clients
+                    @file_counter: file counter
+                    @ip_address: IP address for the client.
+                    @port: port number.
+    '''
+    def generate_niovakv_conf(self, nclients, file_counter, ip_address, port):
+
+        basicioobj = BasicIO()
+
+        '''
+        Prepare niovakv config information and right it to niovakv config file.
+        niovakv config file name format would be niovakv.config.
+        '''
+        niovakv_conf_path = "%s/niovakv.config" % (self.base_dir_path)
+        nk_fd = basicioobj.open_file(niovakv_conf_path)
+        port += 30
+        for i in range(nclients):
+            niovakv_buff = "Node%d %s %d %d %d\n" % (file_counter, ip_address, port, port+1, port+2)
+            # Write the config file
+            basicioobj.write_file(nk_fd, niovakv_buff)
+            file_counter += 1
+            port += 3
+        
+        # close the file
+        basicioobj.close_file(nk_fd)
+
+
+    '''
+        Method: generate_controlplane_conf
+        Purpose: Create controlplane config for controlplane
+        Parameters: @ip_address: ip_address
+                    @client_uuids: client uuid array.
+                    @port: port 
+    '''
+    def generate_controlplane_conf(self, ip_address, client_uuids, port):
+
+        basicioobj = BasicIO()
+
+        '''
+        Prepare proxy config information and right it to proxy config file.
+        proxy config file name format would be proxy.config.
+        '''
+        port += 50
+        for client in client_uuids:
+            cpp_config_dir = self.base_dir_path + "/"+ "cpp_configs_" + client
+            if not os.path.exists(cpp_config_dir):
+                os.mkdir(cpp_config_dir)
+
+            cpp_config = cpp_config_dir + '/' + "proxy.config"
+            
+            cp_fd = basicioobj.open_file(cpp_config)
+            controlPlane_buff = "Node_%s %s %d %d %d\n" % (client, ip_address, port + 10, port + 11, port + 12)
+            basicioobj.write_file(cp_fd, controlPlane_buff)
+            port = port + 3
+
+        # close the file
+        basicioobj.close_file(cp_fd)
+
+    '''
+        Method: generate_controlplane_gossipNodes
+        Purpose: Create controlplane gossipNodes for controlplane
+        Parameters: .
+    '''
+    def generate_controlplane_gossipNodes(self, ip_address, port, peeruuids):
+
+        basicioobj = BasicIO()
+
+        '''
+        Prepare gossipNodes information and right it to gossipNodes file.
+        gossipNodes file name format would be gossipNodes.
+        '''
+        print(peeruuids)
+        port += 80
+        gossip_path = self.base_dir_path + '/' + "gossipNodes"
+        gossip_fd = basicioobj.open_file(gossip_path)
+        for peer in peeruuids.values():
+            print(peer)
+            gossip_data = "%s %s %d %d \n" % ( peer, ip_address, port, port+1 )
+            basicioobj.write_file(gossip_fd, gossip_data)
+            port=port+2
+
+        # close the file
+        basicioobj.close_file(gossip_fd)
+
     '''
         Method: get_client_uuid_for_clientno
         Purpose: Get the client uuid for the client number from client_uuid_array

@@ -22,7 +22,7 @@
           tasks_from: get_server_uuid_info
 
      - name: "Prepare gossip node configs"
-       set_fact: gossipCreation="{{lookup('niova_raftconfig', "controlplane", TotalNServersList, wantlist=True)}}"
+       set_fact: gossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", wantlist=True)}}"
 
      - name: "{{ recipe_name }}: Start all pmdb servers in the cluster."
        include_role:

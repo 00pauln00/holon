@@ -224,7 +224,7 @@ class RaftProcess:
         fp = open(temp_file, "w")
 
         if app_type == "niovakv":
-            config_path = "%s/niovakv.config" % binary_dir
+            config_path = "%s/niovakv.config" % base_dir
         elif app_type == "controlplane":
             node_name  = "Node_" + self.process_uuid
             config_path = "%s/cpp_configs_%s/proxy.config" % (base_dir , self.process_uuid )
