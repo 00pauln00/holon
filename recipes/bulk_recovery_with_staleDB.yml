@@ -1,4 +1,5 @@
 - import_playbook: bulk_recovery_with_emptyDB.yml
+
 - name: "Bulk Recovery with StaleDB"
   hosts: localhost
   connection: local
@@ -55,9 +56,6 @@
         name: common
         tasks_from: get_new_client_uuid
       register: client_uuid
-
-    - debug:
-        msg: "Client UUID: {{ client_uuid }}"
 
     - name: "{{ recipe_name }}: Generate App UUID"
       shell: "/usr/bin/uuid"
@@ -130,36 +128,13 @@
         ServerUUID: "{{ newlyStartedPeer4['results'][0]['item'] }}"
         fault_injection_name: "raft_force_set_max_scan_entries"
 
-    - name: "{{ recipe_name }}: Set max-scan-entries on peer4."
+    - name: "{{ recipe_name }}: Set max scan entries to 1000 and log reap factor to 2 "
+      include_role:
+        name: common
+        tasks_from: set_maxScan_logReap_factor_andVerify
       vars:
-        stage: "set_max_scan_entries"
-        cmd: "max-scan-entries@1000"
-        where: "/raft_net_info/max-scan-entries"
-        key: "/raft_net_info/max-scan-entries"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', newlyStartedPeer4['results'][0]['item'], cmd, where, wantlist=True) }}"
-      no_log: true
-
-    - name: "{{ recipe_name }}: Set log-reap-factor on peer4."
-      vars:
-        stage: "set_log_reap_factor"
-        cmd: "log-reap-factor@2"
-        where: "/raft_net_info/log-reap-factor"
-        key: "/raft_net_info/log-reap-factor"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', newlyStartedPeer4['results'][0]['item'], cmd, where, wantlist=True) }}"
-      no_log: true
-
-    - name: "{{ recipe_name }}: Verify max-scan-entries and log-reap-factor on peer 4."
-      vars:
-         stage: "verifyMSEandLRPOnPeer4"
-         getPeer4Val: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys, wantlist=True) }}"
-      debug:
-        msg: "Verify max-scan-entries and log-reap-factor are set properly on peer 4."
-      failed_when: >
-           (getPeer4Val["/raft_net_info/max-scan-entries"] != 1000) or
-           (getPeer4Val["/raft_net_info/log-reap-factor"] != 2)
-
+          Peers: "{{ newlyStartedPeer4['results'][0]['item'] }}"
+    
     - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
       include_role:
          name: common
@@ -207,25 +182,13 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
 
-    - name: "{{ recipe_name }}: Reset default max-scan-entries on all peers."
+    - name: "{{ recipe_name }}: Reset max scan entries to 100000 and log reap factor to 5."
+      include_role:
+        name: common
+        tasks_from: Reset_maxScan_logReap_factor
       vars:
-        stage: "resetMaxScanEntriesOnAll"
-        cmd: "max-scan-entries@100000"
-        where: "/raft_net_info/max-scan-entries"
-        key: "/raft_net_info/max-scan-entries"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
-      no_log: true
-
-    - name: "{{ recipe_name }}: Reset default log-reap-factor on all peers."
-      vars:
-        stage: "resetLRPOnAll"
-        cmd: "log-reap-factor@5"
-        where: "/raft_net_info/log-reap-factor"
-        key: "/raft_net_info/log-reap-factor"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
-      no_log: true
+          Peers: "{{ NRunningPeers[item] }}"
+      loop: "{{ range(0, NRunningPeers | length) |list }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
