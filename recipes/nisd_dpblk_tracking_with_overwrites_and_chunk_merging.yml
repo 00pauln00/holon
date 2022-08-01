@@ -262,7 +262,7 @@
 
      - debug:
          msg: "Verify read must fail"
-       failed_when: (perform_rd['results'][0]['item'] == "0")
+       failed_when: (perform_rd['results'][0]['item'] == 0)
 
      #9 - Issue a Read of the Vblks using $CLIENT_UUID_NEW
      - name: "{{ recipe_name }}: Issue a Read of the Vblks using CLIENT_UUID_NEW."
