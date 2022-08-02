@@ -151,8 +151,12 @@ def start_niova_block_test(cluster_params, nisd_uuid_to_write, vdev, read_operat
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
-    # Prepare path for log file.
-    log_file = "%s/%s/niova-block-test_%s_log.txt" % (base_dir, raft_uuid, nisd_uuid_to_write[5:])
+    if read_operation_ratio_percentage == '0':
+        # Prepare path for log file.
+        log_file = "%s/%s/niova-block-test_write_%s_log.txt" % (base_dir, raft_uuid, nisd_uuid_to_write[5:])
+    else:
+        # Prepare path for log file.
+        log_file = "%s/%s/niova-block-test_read_%s_log.txt" % (base_dir, raft_uuid, nisd_uuid_to_write[5:])
 
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(log_file, "w")
@@ -162,20 +166,15 @@ def start_niova_block_test(cluster_params, nisd_uuid_to_write, vdev, read_operat
 
     logging.info("Do write/read operation on nisd by starting niova-block-test")
 
-    if sequential_writes == True and integrity_check == False and blocking_process == False:
+    if sequential_writes == True and integrity_check == False:
         ps = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
                                    '-u', client_uuid, '-Z', request_size_in_bytes,
                                    '-q', queue_depth, '-N', num_ops, '-I', '-Q'], stdout=fp, stderr=fp)
 
-    elif integrity_check == True and sequential_writes == False and blocking_process == False:
+    elif integrity_check == True and sequential_writes == False:
         ps = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
                                    '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
                                    '-q', queue_depth, '-N', num_ops, '-I'], stdout=fp, stderr=fp)
-
-    elif blocking_process == True and sequential_writes == False and integrity_check == False:
-        ps = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-                                   '-u', client_uuid, '-Z', request_size_in_bytes,
-                                   '-q', queue_depth, '-N', num_ops, '-I', '-Q'], stdout=fp, stderr=fp)
 
     else:
         ps = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,

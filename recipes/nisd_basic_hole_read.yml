@@ -93,7 +93,6 @@
                  'num_ops' : '{{ no_of_ops | string }}',
                  'integrity_check' : False,
                  'sequential_writes' : False,
-                 'blocking_process' : False,
                  'lookout_uuid': ''
                  }
          rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
