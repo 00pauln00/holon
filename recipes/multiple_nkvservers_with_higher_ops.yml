@@ -66,7 +66,7 @@
      - name: "{{ recipe_name }}: Get the information for number of request distributions across multiple niovakv servers."
        debug:
          msg: "{{ write_op['results'][0]['item']['NkvcClient']['RequestDistribution'] }}"
-         no_log: true
+       no_log: true
 
       #Check if write is successful.
      - name: "{{ recipe_name }}: Check if Put is successful"
