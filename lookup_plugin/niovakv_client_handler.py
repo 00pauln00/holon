@@ -26,7 +26,7 @@ def start_niovakv_subprocess(cluster_params, Operation, Key, Value, OutfileName,
     logfile = "%s/%s/niovakvclientlogfile.log" % (base_dir, raft_uuid)
 
     # Prepare config file path for niovakv_client
-    config_path = "%s/niovakv.config" % binary_dir
+    config_path = "%s/%s/niovakv.config" % (base_dir, raft_uuid)
 
     outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
 
@@ -95,7 +95,7 @@ def start_lkvt_subprocess(cluster_params, database_type, size_of_key,
     logfile = "%s/%s/lkvtclientlogfile.log" % (base_dir, raft_uuid)
 
     # Prepare config file path for niovakv_client
-    config_path = "%s/niovakv.config" % binary_dir
+    config_path = "%s/%s/niovakv.config" % (base_dir, raft_uuid)
 
     outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, outfileName)
 
