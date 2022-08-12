@@ -13,6 +13,7 @@ class RaftConfig:
     client_uuid_arr = [] # Client UUID array
     nservers = 0
 
+
     '''
         Constructor:
         Purpose: Initialisation
@@ -227,7 +228,7 @@ class RaftConfig:
         Purpose: Create controlplane gossipNodes for controlplane
         Parameters: .
     '''
-    def generate_controlplane_gossipNodes(self, ip_address, port, peeruuids):
+    def generate_controlplane_gossipNodes(self, cluster_params, ip_address, port, peeruuids):
 
         basicioobj = BasicIO()
 
@@ -235,15 +236,20 @@ class RaftConfig:
         Prepare gossipNodes information and right it to gossipNodes file.
         gossipNodes file name format would be gossipNodes.
         '''
-        print(peeruuids)
         port += 80
         gossip_path = self.base_dir_path + '/' + "gossipNodes"
         gossip_fd = basicioobj.open_file(gossip_path)
-        for peer in peeruuids.values():
-            print(peer)
-            gossip_data = "%s %s %d %d \n" % ( peer, ip_address, port, port+1 )
-            basicioobj.write_file(gossip_fd, gossip_data)
-            port=port+2
+
+        if int(cluster_params['prometheus_support']) == 0: 
+            for peer in peeruuids.values():
+                gossip_data = "%s %s %d %d \n" % ( peer, ip_address, port, port+1 )
+                basicioobj.write_file(gossip_fd, gossip_data)
+                port=port+2
+        else: 
+            for peer in peeruuids.values():
+                gossip_data = "%s %s %d %d %d \n" % ( peer, ip_address, port, port+1, port+2 )
+                basicioobj.write_file(gossip_fd, gossip_data)
+                port=port+3
 
         # close the file
         basicioobj.close_file(gossip_fd)

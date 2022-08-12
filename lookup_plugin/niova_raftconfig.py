@@ -76,10 +76,9 @@ def controlplane_gossipNodes_create(cluster_params, peer_uuids):
     raft_uuid = cluster_params['raft_uuid']
     port = int(cluster_params['srv_port'])
     raft_dir = "%s/%s" % (base_dir, raft_uuid)
-
     genericcmdobj = GenericCmds()
     raftconfobj = RaftConfig(raft_dir, raft_uuid, genericcmdobj)
-    raftconfobj.generate_controlplane_gossipNodes("127.0.0.1", port, peer_uuids)
+    raftconfobj.generate_controlplane_gossipNodes(cluster_params, "127.0.0.1", port, peer_uuids)
     return 0
 
 def controlplane_conf_create(cluster_params, client_uuids):
@@ -128,7 +127,7 @@ class LookupModule(LookupBase):
 
         elif config_type == "controlplane":
             peer_uuids = kwargs['variables']['ClusterInfo']['peer_uuid_dict']
-            
+            print(cluster_params) 
             if len(terms) < 2:
                 #Create gossipNodes file using peer-uuids
                 raftconfobj_dict = controlplane_gossipNodes_create(cluster_params, peer_uuids)
@@ -140,6 +139,7 @@ class LookupModule(LookupBase):
                 '''
                 raftconfobj_dict = controlplane_gossipNodes_create(cluster_params, peer_uuids)
                 raftconfobj_dict = controlplane_conf_create(cluster_params, client_uuids)
+
             return 0
         else:
             '''
