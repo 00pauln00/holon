@@ -33,7 +33,7 @@
       ClientIndex: 0
       app_type: "{{ app_name | default('pumicedb') }}"
       nlookouts: "{{ nlookouts | default(5) }}"
-      nnisds: "{{ nnisds | default(5) }}"
+      nnisds: "{{ nnisds | default(50) }}"
     failed_when: >
       ((srv_port | int) >= 65536) or
       ((client_port | int) >= 65536) or

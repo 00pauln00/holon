@@ -24,8 +24,8 @@
           name: common
           tasks_from: pmdb_cluster_init.yml
        vars:
-         number_of_clients: "{{ nclients | int }}"
-         number_of_PMDBServers: "{{ npeers | int }}"
+          number_of_clients: "{{ nclients | int }}"
+          number_of_PMDBServers: "{{ npeers | int }}"
 
      - name: "Generate UUIDs to start niova-lookout process."
        shell: "/usr/bin/uuid"
@@ -51,7 +51,7 @@
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
-       no_log: True
+           #  no_log: True
        loop: "{{ range(0, num_of_lookout_uuids | int) }}"
        loop_control:
           pause: 2
@@ -59,7 +59,7 @@
      - pause:
          seconds: 2
 
-     - name: "Generate 3 UUIDs to start nisd process."
+     - name: "Generate UUIDs to start nisd process."
        shell: "/usr/bin/uuid"
        loop: "{{ range(0, num_of_nisd_uuids | int) }}"
        register: unique_nisd_uuids
@@ -81,18 +81,48 @@
          nisdDevFile: '21474836480'    
          lookoutUUIDList: "{{ lookout_uuids }}"     
 
-     - name: "{{ recipe_name }}: Start 3 nisd process for 1 lookout process."
+     - name: "{{ recipe_name }}: Create nisd-uuid list."
+       set_fact: 
+          nisd_uuid_list1: "{{ nisd_uuid_list1 | default([]) + [nisd_uuids[item]] }}"
+       loop: "{{ range(0, 4) }}" 
+       loop_control:
+          pause: 1
+
+     - debug:
+          msg: "{{ nisd_uuid_list1 }}"
+
+            #     - name: "{{ recipe_name }}: Start 10 nisd process for per lookout process."
+            # vars:
+            #input_param: {
+            #     'nisd_uuid' : '{{ nisd_uuid_list1[item] }}',
+            #      'uport' : '1060 ',
+            #      'lookout_uuid' :  '{{ lookout_uuids[0] }}'
+            #     }
+            #debug:
+            #msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
+            #  loop: '{{ range(0, nisd_uuid_list1 | length) | list }}'
+            #- '{{ range(0, lookout_uuids  | int)}}'
+            # loop: "{{ range(0, nisd_uuid_list1 | length) | list }}"
+           #loop_control:
+           #pause: 3
+     
+     - name: "{{ recipe_name }}: Start 10 nisd process for per lookout process."
        vars:
+         #my_dict: 
+         #- lookout_uuids: '{{ lookout_uuids }}'
+         #  nisd_list: 
+         #    - nisd_uuids: '{{ nisd_uuid_list1 }}'
          input_param: {
-                  'nisd_uuid' : '{{ nisd_uuids[item] }}',
-                  'uport' : '1060',
-                  'lookout_uuid' :  '{{ lookout_uuids[0] }}'
+                  'nisd_uuid' : '{{ item.1 }}',
+                  'uport' : '1060 ',
+                  'lookout_uuid' :  '{{ item.0.key }}'
                   }
        debug:
          msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
-       loop: "{{ range(0, nisd_uuids | length) | list }}"
-       loop_control:
-          pause: 3
+       with_subelements:
+        - "{{ lookout_uuids |zip(nisd_uuid_list1)| list }}"
+        - value
+
     
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
