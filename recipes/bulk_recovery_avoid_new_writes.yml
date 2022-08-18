@@ -1,10 +1,10 @@
 - import_playbook: basic_leader_election2.yml
 
-- name: "Bulk Recovery Recipe3"
+- name: "Bulk Recovery Avoid New Writes"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "bulk_recovery3"
+     recipe_name: "bulk_recovery_avoid_new_writes"
      parent: "basic_leader_election2"
      num_writes: 1400
      number_of_app_uuids: 5
@@ -125,7 +125,7 @@
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
       until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((num_writes | int)* (number_of_app_uuids | int) + (origCI | int))
-      retries: 60
+      retries: 500
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
@@ -267,7 +267,7 @@
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers except peer4."
       until: lookup('niova_ctlrequest', 'lookup', exceptPeer4[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((num_writes | int) * (number_of_app_uuids) + (origCI | int))
-      retries: 60
+      retries: 500
       delay: 1
       loop: "{{ range(0, exceptPeer4 | length) | list }}"
 
@@ -345,7 +345,7 @@
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
       until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((num_writes | int)* (number_of_app_uuids) + (origCI | int))
-      retries: 60
+      retries: 500
       delay: 1
 
     #Set peer4 as a leader.
