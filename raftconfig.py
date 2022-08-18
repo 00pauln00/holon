@@ -242,12 +242,12 @@ class RaftConfig:
 
         if int(cluster_params['prometheus_support']) == 0: 
             for peer in peeruuids.values():
-                gossip_data = "%s %s %d %d \n" % ( peer, ip_address, port, port+1 )
+                gossip_data = "%s %s %d %d\n" % ( peer, ip_address, port, port+1 )
                 basicioobj.write_file(gossip_fd, gossip_data)
                 port=port+2
         else: 
             for peer in peeruuids.values():
-                gossip_data = "%s %s %d %d %d \n" % ( peer, ip_address, port, port+1, port+2 )
+                gossip_data = "%s %s %d %d %d\n" % ( peer, ip_address, port, port+1, port+2 )
                 basicioobj.write_file(gossip_fd, gossip_data)
                 port=port+3
 
