@@ -18,13 +18,9 @@
        debug: msg="Check if parent recipe {{ parent }} failed"
        failed_when: terminate_recipe == true
 
-     - debug:
-         msg:
-          - "Nisd UUID: {{ nisdUUID.stdout }}"
-
      - name: "{{ recipe_name }}: Kill the nisd process."
        debug:
-         msg:  "{{ lookup('niova_raftprocess', 'kill', nisdUUID.stdout, wantlist=True) }}"
+         msg:  "{{ lookup('niova_raftprocess', 'kill', get_nisd, wantlist=True) }}"
        no_log: True
 
      - pause:
@@ -33,7 +29,7 @@
      - name: "{{ recipe_name }}: Restart same nisd process."
        vars:
           input_param: {
-                  'nisd_uuid' : '{{ nisdUUID.stdout }}',
+                  'nisd_uuid' : '{{ get_nisd }}',
                   'uport' : '1053',
                   'lookout_uuid': ''
                   }
@@ -51,7 +47,7 @@
          lookout_uuid: ""
        debug:
          msg: "Waiting for nisd to get updated"
-       until: lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, "/nisd_root_entry/0/status", 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "running"
+       until: lookup('niova_ctlrequest', 'lookup', get_nisd, "/nisd_root_entry/0/status", 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "running"
        retries: 10
        delay: 1
 
@@ -59,12 +55,12 @@
        vars:
          stage: "afterRestart_nisd_root_entry"
          lookout_uuid: ""
-         nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "verify nisd root entry values: {{ nisdRootEntryVal }}"
        no_log: True
        failed_when: >
-         (nisdRootEntryVal['/0/uuid'] != nisdUUID.stdout) or
+         (nisdRootEntryVal['/0/uuid'] != get_nisd) or
          (nisdRootEntryVal['/0/status'] != "running") or
          (nisdRootEntryVal['/0/vblks-hole-read'] != 0)
 
@@ -83,7 +79,7 @@
      - name: "{{ recipe_name }}:  Perform some Reads to the NISD to a new UUID."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ nisdUUID.stdout }}',
+                 'uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ newVedv.stdout }}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : '123',
@@ -112,7 +108,7 @@
        vars:
          stage: "afterRead_nisd_root_entry"
          lookout_uuid: ""
-         nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "verify nisd root entry values: {{ nisdRootEntryVal }}"
        no_log: True
@@ -127,7 +123,7 @@
          nisd_keys:
               - "/nisd_chunks/*/vdev-uuid"
          lookout_uuid: ""
-         nisdChunk: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         nisdChunk: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "verify nisd root entry values: {{ nisdChunk }}"
        no_log: True
@@ -140,7 +136,7 @@
          name: common
          tasks_from: verify_nisd_tasks_parameters
        vars:
-         NisdUUID: "{{ nisdUUID.stdout }}"
+         NisdUUID: "{{ get_nisd }}"
          LookoutUUID: ""
 
     rescue:
