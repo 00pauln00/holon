@@ -49,7 +49,7 @@
                  }
        debug:
          msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
-       no_log: true
+       #no_log: true
 
      - name: "{{ recipe_name }}: Wait until lookout's status gets changed."
        vars:
