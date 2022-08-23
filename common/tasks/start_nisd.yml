@@ -1,0 +1,13 @@
+--- 
+     - name: "{{ recipe_name }}: Start nisd process."
+       vars:
+         input_param: {
+                  'nisd_uuid' : '{{ index }}',
+                  'uport' : '{{ UPort }}',
+                  'lookout_uuid': "{{ LookoutUuid }}"
+                  }
+       debug:
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
+       loop: "{{ nisd_list }}"
+       loop_control: 
+            loop_var: index
