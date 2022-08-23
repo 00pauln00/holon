@@ -107,11 +107,13 @@ def set_environment_variables(cluster_params,lookout_uuid):
 
     return niova_lookout_ctl_interface_path
 
-def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rport, uport):
+def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     app_name = cluster_params['app_type']
 
+    genericcmdobj = GenericCmds()
+    lookout_uuid = genericcmdobj.generate_uuid()
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
@@ -127,6 +129,24 @@ def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rpor
     #start niova block test process
     bin_path = '%s/lookout' % binary_dir
 
+    ports = { 'aport' : 0, 'hport' : 0, 'rport' : 0 ,'uport' : 0}
+
+    ports['aport'] = aport
+    ports['hport'] = hport
+    ports['rport'] = rport
+    ports['uport'] = uport
+
+    #writing the information of lookout uuids dict into raft_uuid.json
+    recipe_conf = load_recipe_op_config(cluster_params)
+
+    if not "lookout_uuid_dict" in recipe_conf:
+        recipe_conf['lookout_uuid_dict'] = {}
+
+    recipe_conf['lookout_uuid_dict'][lookout_uuid] = {}
+    recipe_conf['lookout_uuid_dict'][lookout_uuid] = ports
+
+    genericcmdobj.recipe_json_dump(recipe_conf)
+
     logging.info("starting niova-lookout process")
     process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes, '-n', lookout_uuid,
                                             '-p', aport, '-port', hport, '-r', rport, '-u', uport], stdout = fp, stderr = fp)
@@ -138,8 +158,7 @@ def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rpor
         logging.info("niova-lookout failed to start")
         raise subprocess.SubprocessError(process_popen.returncode)
 
-    #writing the information of nisd into raft_uuid.json
-    recipe_conf = load_recipe_op_config(cluster_params)
+    #writing the information of lookout uuid in raft_process into raft_uuid.json
     pid = process_popen.pid
     ps = psutil.Process(pid)
 
@@ -161,7 +180,7 @@ def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rpor
     # Sync the log file so all the logs from niova-block-test gets written to log file.
     os.fsync(fp)
 
-    return process_popen
+    return lookout_uuid
 
 def load_recipe_op_config(cluster_params):
     recipe_conf = {}
@@ -282,7 +301,6 @@ class LookupModule(LookupBase):
                 else:
                     os.mkdir(niova_lookout_path)
 
-                niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['lookout_uuid'],
-                                                                      input_values['aport'], input_values['hport'],
+                niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['aport'], input_values['hport'],
                                                                       input_values['rport'], input_values['uport'])
                 return niova_lookout_process
