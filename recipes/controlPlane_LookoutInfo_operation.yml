@@ -34,26 +34,21 @@
        loop_control:
           pause: 1
 
-     - name: generate new lookout-uuid
-       shell: uuidgen
-       register: lookoutUUID
-
      - name: "{{ recipe_name }}: Start niova-lookout process."
        vars:
          input_param: {
-                 'lookout_uuid' : '{{ lookoutUUID["stdout_lines"][0] }}',
                  'aport' : '4900',
                  'hport' : '9001',
                  'rport' : '4901',
                  'uport' : '2053',
                  }
-       debug:
-         msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
-       no_log: true
+       set_fact:
+         lookoutUUID: "{{ lookoutUUID | default([]) + [lookup('controlplane', 'niova-lookout', input_param, wantlist=true)] }}"
+       loop: "{{ range(0, nlookouts | int) }}"
 
      - name: "{{ recipe_name }}: Wait until lookout's status gets changed."
        vars:
-         getLookoutUUID: "{{ lookoutUUID['stdout_lines'][0] }}"
+         getLookoutUUID: "{{ lookoutUUID[0] }}"
          input_param: {
                   'Operation': 'membership',
                   'OutfileName': 'lookoutMembership'
@@ -64,27 +59,22 @@
        retries: 60
        delay: 1
 
-     - name: generate new uuid
-       shell: uuidgen
-       register: nisdUUID
-
      - name: "{{ recipe_name }}: Start niova-block-ctl process."
        vars:
           input_param: {
-             'nisd_uuid': '{{ nisdUUID["stdout_lines"][0] }}',
              'nisd_dev_size': '21474836480',
-             'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+             'lookout_uuid' :  '{{ lookoutUUID[0] }}'
               }
-       debug:
-         msg: "{{ lookup('controlplane', 'niova-block-ctl', input_param, wantlist=True) }}"
-       no_log: true
+       set_fact:
+         nisdUUID: "{{ nisdUUID | default([]) + [lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True)] }}"
+       loop: "{{ range(0, nnisds | int) }}"
 
      - name: "{{ recipe_name }}: Start nisd process."
        vars:
          input_param: {
-                  'nisd_uuid' : '{{ nisdUUID["stdout_lines"][0] }}',
+                  'nisd_uuid' : '{{ nisdUUID[0] }}',
                   'uport' : '1053',
-                  'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
+                  'lookout_uuid' :  '{{ lookoutUUID[0] }}'
                   }
        debug:
          msg: "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
@@ -94,7 +84,7 @@
 
      - name: "{{ recipe_name }}: Wait until Nisd's status gets updated."
        vars:
-         getNisd: "{{ nisdUUID['stdout_lines'][0] }}"
+         getNisd: "{{ nisdUUID[0] }}"
          input_param: {
                   'Operation': 'NISDGossip',
                   'OutfileName': 'wait_for_nisdGossip'
@@ -109,8 +99,8 @@
        vars:
          input_param: {
                 'Operation': 'LookoutInfo',
-                'lookout_uuid' : '{{ lookoutUUID["stdout_lines"][0] }}',
-                'nisd_uuid' : '{{ nisdUUID["stdout_lines"][0] }}',
+                'lookout_uuid' : '{{ lookoutUUID[0] }}',
+                'nisd_uuid' : '{{ nisdUUID[0] }}',
                 'cmd' : 'GET /.*/.*/.*/.*',
                 'OutfileName': 'lookoutInfo',
                  }
@@ -129,8 +119,8 @@
          nisd_keys:
               - "/nisd_root_entry/0/uuid"
               - "/nisd_root_entry/0/status"
-         lookout_uuid: "{{ lookoutUUID['stdout_lines'][0] }}"
-         nisd_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID['stdout_lines'][0], nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         lookout_uuid: "{{ lookoutUUID[0] }}"
+         nisd_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID[0], nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Verify nisd_root_entry info"
        no_log: True
