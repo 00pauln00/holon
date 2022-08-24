@@ -125,7 +125,7 @@ def start_niova_lookout_process(cluster_params, lookout_uuid, aport, hport, rpor
     gossipNodes = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
 
     #start niova block test process
-    bin_path = '%s/lookout' % binary_dir
+    bin_path = '%s/nisdLookout' % binary_dir
 
     logging.info("starting niova-lookout process")
     process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes, '-n', lookout_uuid,
