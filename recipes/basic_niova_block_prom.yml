@@ -1,4 +1,4 @@
-- import_playbook: basic_controlplane_membership.yml
+- import_playbook: controlPlane_operation_all.yml
 - name: "basic_niova_block_recipe"
   hosts: localhost
   connection: local
