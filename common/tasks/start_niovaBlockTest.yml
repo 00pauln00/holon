@@ -1,0 +1,29 @@
+---
+
+     - name: "Generate uuid to write operation"
+       shell: "/usr/bin/uuid"
+       register: nblock_test_uuid
+
+     - name: "Generate client-uuids for niova-block-test"
+       shell: "/usr/bin/uuid"
+       register: nblock_client_uuid
+
+     - name: "{{ recipe_name }}: Start niova-block-test process."
+       vars:
+         input_param: {
+                 'nisd_uuid_to_write' : 'unix:{{ nisd_uuid  }}',
+                 'vdev' : '{{ nblock_test_uuid["stdout"] }}',
+                 'read_operation_ratio_percentage' : '{{ read_op  }}',
+                 'random_seed' : '{{ seed }}',
+                 'client_uuid' : '{{ nblock_client_uuid["stdout"] }}',
+                 'request_size_in_bytes' : '{{ size_bytes   }}',
+                 'queue_depth' : '{{ queue_dep }}',
+                 'num_ops' : '{{ num_op }}',
+                 'integrity_check' : True,
+                 'sequential_writes' : False,
+                 'blocking_process' : False,
+                 'lookout_uuid' :  '{{ lookout_UUID }}'
+                 }
+       debug:
+         msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
+

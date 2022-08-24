@@ -33,6 +33,8 @@
       ClientIndex: 0
       app_type: "{{ app_name | default('pumicedb') }}"
       prometheus_support: "{{ prometheus | default(0) }}"
+      nlookouts: "{{ nlookouts | default(5) | int }}"
+      nnisds: "{{ nnisds | default(50) | int }}"
     failed_when: >
       ((srv_port | int) >= 65536) or
       ((client_port | int) >= 65536) or
@@ -78,6 +80,8 @@
            sync_mode: "{{ sync }}"
            file_counter: 0
            prometheus_support: "{{ prometheus_support }}"
+           nlookouts: "{{ nlookouts | default(5) }}"
+           nnisds: "{{ nnisds | default(5) }}"
 
   - name: "Prepare server configs"
     set_fact: ClusterInfo="{{lookup('niova_raftconfig', "server", wantlist=True)}}"
