@@ -248,7 +248,7 @@ class RaftConfig:
                 basicioobj.write_file(gossip_fd, gossip_data)
                 port=port+2
         else:
-            prom_targets_path = cluster_params['prometheus_path'] + '/' + "targets.json"
+            prom_targets_path = os.environ['PROMETHEUS_PATH'] + '/' + "targets.json"
             prom_targets_fd = basicioobj.open_file(prom_targets_path)
             target_data = []
             for peer in peeruuids.values():

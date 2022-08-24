@@ -33,7 +33,6 @@
       ClientIndex: 0
       app_type: "{{ app_name | default('pumicedb') }}"
       prometheus_support: "{{ prometheus | default(0) }}"
-      prometheus_path: "{{ prometheus_path | default('/holon') }}"
     failed_when: >
       ((srv_port | int) >= 65536) or
       ((client_port | int) >= 65536) or
@@ -79,7 +78,6 @@
            sync_mode: "{{ sync }}"
            file_counter: 0
            prometheus_support: "{{ prometheus_support }}"
-           prometheus_path: "{{ prometheus_path }}"
 
   - name: "Prepare server configs"
     set_fact: ClusterInfo="{{lookup('niova_raftconfig', "server", wantlist=True)}}"
