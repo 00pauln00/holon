@@ -4,7 +4,7 @@
   connection: local
   vars:
     recipe_name: "basic_niova_block_recipe"
-    parent: basic_controlplane_membership.yml
+    parent: controlPlane_operation_all.yml
 
   tasks:
   - block:
