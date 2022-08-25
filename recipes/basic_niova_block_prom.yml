@@ -1,4 +1,3 @@
-- import_playbook: controlPlane_operation_all.yml
 - name: "basic_niova_block_recipe"
   hosts: localhost
   connection: local
@@ -20,35 +19,13 @@
        shell: uuidgen
        register: nisdUUID
 
-     - name: "{{ recipe_name }}: Starting controlplane_client to write config information of nisd."
+     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+       include_role:
+         name: common
+         tasks_from: pmdb_cluster_init.yml
        vars:
-         input_param: {
-                  'Key': '{{ nisdUUID["stdout_lines"][0] }}',
-                  'Value': '',
-                  'Operation': 'write',
-                  'IP_addr': '127.0.0.1',
-                  'Port': '3505',
-                  'NoofWrites': '5',
-                  'wait_for_outfile': True,
-                  'OutfileName': 'nisd_config_output'
-                  }
-       debug:
-         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       #no_log: True
-
-     - name: "{{ recipe_name }}: Starting controlplane_client to read the config data"
-       vars:
-         input_param: {
-                  'Key': '{{ nisdUUID["stdout_lines"][0] }}',
-                  'Operation': 'read',
-                  'NoofWrites': '',
-                  'seqNo': '',
-                  'wait_for_outfile': True,
-                  'OutfileName': 'read_output'
-                  }
-       debug:
-         msg: "{{ lookup('controlplane','ncpc', input_param, wantlist=True) }}"
-       no_log: True
+         number_of_clients: "{{ nclients | int }}"
+         number_of_PMDBServers: "{{ npeers | int }}"
 
      - name: generate new lookout-uuid
        shell: uuidgen
@@ -68,40 +45,6 @@
 
      - pause:
          seconds: 2
-
-     - name: "{{ recipe_name }}: Wait until lookout's status gets changed."
-       vars:
-         getLookoutUUID: "{{ lookoutUUID['stdout_lines'][0] }}"
-         input_param: {
-                  'Operation': 'membership',
-                  'OutfileName': 'lookoutMembership'
-                  }
-       debug:
-         msg: "Verifying lookout's Status"
-       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getLookoutUUID) | map(attribute='Status') | list | first == "alive"
-       retries: 10
-       delay: 1
-
-     - name: "{{ recipe_name }}: Get lookout's membership details."
-       vars:
-         input_param: {
-                  'Operation': 'membership',
-                  'OutfileName': 'verify_lookout_info'
-                  }
-         lookout_membership: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       debug:
-         msg: "get lookout's gossip info"
-       with_items:
-          - "{{ lookout_membership }}"
-       register: verify_lookout_status
-
-     - name: "{{ recipe_name }}: Verify lookout's status."
-       vars:
-         getLookoutUUID: "{{ lookoutUUID['stdout_lines'][0] }}"
-         verifyStatus: "{{ verify_lookout_status['results'][0]['item']['membership'][getLookoutUUID]['Status'] }}"
-       debug:
-         msg: "Verifying status of the lookout."
-       failed_when: verifyStatus != "alive"
 
      - name: "{{ recipe_name }}: Start niova-block-ctl process."
        vars:
@@ -125,40 +68,6 @@
 
      - pause:
          seconds: 2
-
-     - name: "{{ recipe_name }}: Wait until Nisd's status gets updated."
-       vars:
-         getNisd: "{{ nisdUUID['stdout_lines'][0] }}"
-         input_param: {
-                  'Operation': 'NISDGossip',
-                  'OutfileName': 'wait_for_nisdGossip'
-                  }
-       debug:
-         msg: "Verifying NISD's Status"
-       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
-       retries: 10
-       delay: 1
-
-     - name: "{{ recipe_name }}: Get nisd's membership details."
-       vars:
-         input_param: {
-                  'Operation': 'NISDGossip',
-                  'OutfileName': 'verify_nisd_gossip_info'
-                  }
-         nisd_membership: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
-       debug:
-         msg: "get nisd's gossip info"
-       with_items:
-          - "{{ nisd_membership }}"
-       register: verify_nisd_status
-
-     - name: "{{ recipe_name }}: Verify nisd's status."
-       vars:
-         getNisd: "{{ nisdUUID['stdout_lines'][0] }}"
-         verifyStatus: "{{ verify_nisd_status['results'][0]['item']['NISDGossip'][getNisd]['Status'] }}"
-       debug:
-         msg: "Verifying status of the nisd."
-       failed_when: verifyStatus != "Alive"
 
      - name: Generate new vdev-uuid
        shell: "/usr/bin/uuid"

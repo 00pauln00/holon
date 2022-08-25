@@ -1,0 +1,121 @@
+- name: "controlPlane_services.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlPlane_services"
+    parent: None
+
+  tasks:
+  - block:
+
+    # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "controlplane")
+
+     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+       include_role:
+         name: common
+         tasks_from: pmdb_cluster_init.yml
+       vars:
+         number_of_clients: "{{ nclients | int }}"
+         number_of_PMDBServers: "{{ npeers | int }}"
+
+     - name: "{{ recipe_name }}: Start niova-lookout process."
+       vars:
+         input_param: {
+                 'aport' : '4900',
+                 'hport' : '9001',
+                 'rport' : '4901',
+                 'uport' : '2053',
+                 }
+       set_fact:
+         get_lookout: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
+
+     - name: "{{ recipe_name }}: Start niova-block-ctl process."
+       vars:
+          input_param: {
+             'nisd_dev_size': '68719476736',
+             'lookout_uuid': '{{ get_lookout }}'
+              }
+       set_fact:
+         get_nisd: "{{ lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True) }}"
+       loop: "{{ range(0, nnisds | int) }}"
+       #no_log: True
+
+     - name: "{{ recipe_name }}: Start nisd process."
+       vars:
+         input_param: {
+                  'nisd_uuid' : '{{ get_nisd }}',
+                  'uport' : '2053',
+                  'lookout_uuid': '{{ get_lookout }}'
+                  }
+       debug:
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
+       #no_log: True
+
+     - pause:
+         seconds: 2
+
+     - name: Generate new vdev-uuid
+       shell: "/usr/bin/uuid"
+       register: vdevUUID
+
+     - name: Generate new client-uuid for niova-block-test
+       shell: "/usr/bin/uuid"
+       register: blockTestClientUUID
+
+
+     - name: "{{ recipe_name }}: Perform some Writes to the NISD."
+       vars:
+         input_param: {
+                 'uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'vdev' : '{{ vdevUUID.stdout }}',
+                 'read_operation_ratio_percentage' : '0',
+                 'random_seed' : '123',
+                 'client_uuid' : '{{ blockTestClientUUID.stdout }}',
+                 'request_size_in_bytes' : '32',
+                 'queue_depth' : '1',
+                 'num_ops' : '50',
+                 'integrity_check' : True,
+                 'sequential_writes' : False,
+                 'blocking_process' : False,
+                 'lookout_uuid': '{{ get_lookout }}'
+                 }
+         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
+       debug:
+         msg: "get write's return code"
+       #no_log:  True
+       with_items:
+        - "{{ wr_success }}"
+       register: get_wr
+
+     - debug:
+         msg: "Verify write is success"
+       failed_when: (get_wr['results'][0]['item'] != "0")
+
+     - name: "{{ recipe_name }}: Get nisd_chunk info."
+       vars:
+         stage: "get_nisd_chunk"
+         nisd_keys:
+              - "/nisd_root_entry/0/vblks-written"
+              - "/nisd_root_entry/0/num-pblks-used"
+              - "/nisd_root_entry/0/num-reserved-pblks-used"
+              - "/nisd_chunks/0/vdev-uuid"
+              - "/nisd_chunks/0/num-data-pblks"
+              - "/nisd_chunks/0/num-meta-pblks"
+              - "/nisd_chunks/0/num-reserved-meta-pblks"
+         lookout_uuid: "{{ get_lookout }}"
+         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+       debug:
+         msg: "Verify nisd values after writes: {{ getNiovaBlockTest }}"
+       no_log: True
+ 
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true

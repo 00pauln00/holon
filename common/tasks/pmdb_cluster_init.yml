@@ -10,7 +10,7 @@
        include_role:
         name: common
         tasks_from: get_multiple_client_uuids
-       loop: "{{ range(0, number_of_clients) | list }}"
+       loop: "{{ range(0, nclients | int) }}"
 
      - name: "Prepare gossip node config and proxy.config file"
        set_fact: gossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", ClientUUIDS, wantlist=True)}}"
@@ -22,7 +22,7 @@
          tasks_from: start_server_golang
        vars:
          ServerUUID: "{{ NonRunningServers[item] }}"
-       loop: "{{ range(0, number_of_PMDBServers) | list }}"
+       loop: "{{ range(0, npeers | int) }}"
 
      # Start proxy servers
      - name: "{{ recipe_name }}: Start proxy servers."
