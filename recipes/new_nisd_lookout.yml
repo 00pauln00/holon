@@ -36,6 +36,7 @@
        set_fact:
          get_lookout: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
 
+
      - name: "{{ recipe_name }}: Start niova-block-ctl process."
        vars:
           input_param: {

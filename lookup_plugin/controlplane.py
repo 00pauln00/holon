@@ -148,13 +148,16 @@ def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
     genericcmdobj.recipe_json_dump(recipe_conf)
 
     logging.info("starting niova-lookout process")
+    print(ctl_interface_path)
     process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes, '-n', lookout_uuid,
                                             '-p', aport, '-port', hport, '-r', rport, '-u', uport], stdout = fp, stderr = fp)
 
     #Check if niova-lookout process exited with error
     if process_popen.poll() is None:
         logging.info("niova-lookout process started successfully")
+        print("niova-lookout process started successfully")
     else:
+        print("niova-lookout failed to start")
         logging.info("niova-lookout failed to start")
         raise subprocess.SubprocessError(process_popen.returncode)
 
