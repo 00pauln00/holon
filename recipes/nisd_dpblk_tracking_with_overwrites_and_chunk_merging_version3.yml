@@ -75,7 +75,6 @@
                  'num_ops' : '1000',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False,
                  'lookout_uuid': ''
                  }
          wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
@@ -208,7 +207,6 @@
                  'num_ops' : '1000',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False,
                  'lookout_uuid': ''
                  }
          rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
@@ -257,7 +255,6 @@
                  'num_ops' : '1000',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False,
                  'lookout_uuid': ''
                  }
        debug:
@@ -307,7 +304,6 @@
                  'num_ops' : '1000',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False,
                  'lookout_uuid': ''
                  }
        debug:

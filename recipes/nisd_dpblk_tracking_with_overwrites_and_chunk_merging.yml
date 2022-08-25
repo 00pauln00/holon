@@ -80,7 +80,6 @@
                  'num_ops' : '512',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False,
                  'lookout_uuid': ''
                  }
          wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
@@ -186,7 +185,6 @@
                  'num_ops' : '512',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False,
                  'lookout_uuid': ''
                  }
          rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
@@ -221,7 +219,6 @@
                  'num_ops' : '512',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False,
                  'lookout_uuid': ''
                  }
          wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
@@ -250,7 +247,6 @@
                  'num_ops' : '512',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False,
                  'lookout_uuid': ''
                  }
          rd_failure: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
@@ -262,7 +258,7 @@
 
      - debug:
          msg: "Verify read must fail"
-       failed_when: (perform_rd['results'][0]['item'] == "0")
+       failed_when: (perform_rd['results'][0]['item'] == 0)
 
      #9 - Issue a Read of the Vblks using $CLIENT_UUID_NEW
      - name: "{{ recipe_name }}: Issue a Read of the Vblks using CLIENT_UUID_NEW."
@@ -278,7 +274,6 @@
                  'num_ops' : '512',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False,
                  'lookout_uuid': ''
                  }
          rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
@@ -355,7 +350,6 @@
                  'num_ops' : '512',
                  'integrity_check' : True,
                  'sequential_writes' : False,
-                 'blocking_process' : False,
                  'lookout_uuid': ''
                  }
          rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
