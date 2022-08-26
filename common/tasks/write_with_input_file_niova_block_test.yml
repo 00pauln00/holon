@@ -1,0 +1,15 @@
+---
+
+     - debug:
+          msg: "{{ nisdUuidsList }}"
+
+     - name: "Generate vedv and client uuids and start niova-block-test process."
+       include_role:
+         name: common
+         tasks_from: start_niovaBlockTest
+       vars:
+         nisd_uuid : '{{ idx }}'
+         lookout_UUID :  '{{ lookoutUUID }}'
+       loop: "{{ nisdUuidsList }}" 
+       loop_control:
+          loop_var: idx

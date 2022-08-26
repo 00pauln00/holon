@@ -30,8 +30,8 @@ def start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values):
     #format and run the niova-block-ctl
     bin_path = '%s/niova-block-ctl' % binary_dir
 
-    #create nisd_uuid and uport dictionary
     nisd_dict = { nisd_uuid : 0 }
+
     nisd_dict[nisd_uuid] = 0
 
      #writing the information of lookout uuids dict into raft_uuid.json
@@ -87,11 +87,11 @@ def start_nisd_process(cluster_params, input_values, nisdPath):
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(log_file, "w")
 
+
     genericcmdobj = GenericCmds()
     #writing the information of lookout uuids dict into raft_uuid.json
     recipe_conf = load_recipe_op_config(cluster_params)
 
-    #get input parameters
     nisd_uuid = input_values['nisd_uuid']
     uport = input_values['uport']
 
@@ -99,8 +99,8 @@ def start_nisd_process(cluster_params, input_values, nisdPath):
         if nisd_uuid in recipe_conf['lookout_uuid_dict'][input_values['lookout_uuid']]['nisd_uuid_dict']:
             recipe_conf['lookout_uuid_dict'][input_values['lookout_uuid']]['nisd_uuid_dict'].update({ nisd_uuid : uport })
     else:
-        if nisd_uuid in recipe_conf['nisd_uuid_dict']:
-            recipe_conf['nisd_uuid_dict'].update({ nisd_uuid : uport })
+        if input_values['nisd_uuid'] in recipe_conf['nisd_uuid_dict'].keys():
+            recipe_conf['nisd_uuid_dict'][nisd_uuid] = uport
 
     #start nisd process
     bin_path = '%s/nisd' % binary_dir
@@ -185,6 +185,73 @@ def controlplane_environment_variables(cluster_params,lookout_uuid):
 
     return niova_lookout_ctl_interface_path
 
+def start_niova_block_test_with_inputFile(cluster_params, input_values):
+    # Prepare path for executables.
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+
+    f = open("niova_block_test_inputs.txt")
+    next(f)
+    
+    for line in f:
+      # parse input, assign values to variables
+        currentline = line.split(",")
+      
+        read_operation_ratio_percentage = currentline[0]
+        random_seed =  currentline[1]
+        request_size_in_bytes =  currentline[2]
+        queue_depth =  currentline[3]
+        num_ops =  currentline[4]
+        integrity_check =  currentline[5]
+        sequential_writes =  currentline[6]
+        blocking_process = currentline[7]
+        sleep = int(currentline[8])
+
+        nisd_uuid_to_write = input_values['nisd_uuid_to_write']
+        vdev = input_values['vdev']
+        client_uuid = input_values['client_uuid']
+       
+       # Prepare path for log file.
+        log_file = "%s/%s/niova-block-test_%s_log.txt" % (base_dir, raft_uuid, nisd_uuid_to_write[5:])
+
+       # Open the log file to pass the fp to subprocess.Popen
+        fp = open(log_file, "w")
+
+        #start niova block test process
+        bin_path = '%s/niova-block-test' % binary_dir
+
+        logging.info("Do write/read operation on nisd by starting niova-block-test")
+
+        if sequential_writes == True and integrity_check == False and blocking_process == False:
+            ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
+                                       '-u', client_uuid, '-Z', request_size_in_bytes,
+                                       '-q', queue_depth, '-N', num_ops, '-I', '-Q'), stdout=fp, stderr=fp)
+
+        elif integrity_check == True and sequential_writes == False and blocking_process == False:
+            ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
+                                       '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
+                                       '-q', queue_depth, '-N', num_ops, '-I'), stdout=fp, stderr=fp)
+
+        elif blocking_process == True and sequential_writes == False and integrity_check == False:
+            ps = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
+                                       '-u', client_uuid, '-Z', request_size_in_bytes,
+                                       '-q', queue_depth, '-N', num_ops, '-I', '-Q'], stdout=fp, stderr=fp)
+
+        else:
+            ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
+                                       '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
+                                       '-q', queue_depth, '-N', num_ops), stdout=fp, stderr=fp)
+
+            logging.info("return code: ", ps.returncode)
+            # Sync the log file so all the logs from niova-block-test gets written to log file.
+        os.fsync(fp)
+        time.sleep(sleep)
+
+    f.close()
+    return ps.returncode
+
 def start_niova_block_test(cluster_params, input_values):
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
@@ -193,7 +260,7 @@ def start_niova_block_test(cluster_params, input_values):
     raft_uuid = cluster_params['raft_uuid']
 
     #get input parameters
-    nisd_uuid_to_write = input_values['uuid_to_write']
+    nisd_uuid_to_write = input_values['nisd_uuid_to_write']
     vdev = input_values['vdev']
     read_operation_ratio_percentage = input_values['read_operation_ratio_percentage']
     random_seed = input_values['random_seed']
@@ -293,9 +360,14 @@ class LookupModule(LookupBase):
                    controlplane_environment_variables(cluster_params, input_values['lookout_uuid'])
                else:
                    set_environment_variables(cluster_params)
+              
+               NiovaBlocktest_input_file = cluster_params['niovaBlockTest_input_file_path']
 
-               # Start niova-block-test
-               niova_block_test_process = start_niova_block_test(cluster_params, input_values)
+               if cluster_params['niovaBlockTest_input_file_path'] == True:
+                    niova_block_test_process = start_niova_block_test_with_inputFile(cluster_params, input_values)
+               else:
+                    # Start niova-block-test
+                    niova_block_test_process = start_niova_block_test(cluster_params, input_values)
 
                return niova_block_test_process
 

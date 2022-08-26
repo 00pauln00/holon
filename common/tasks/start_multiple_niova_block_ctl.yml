@@ -1,0 +1,14 @@
+---
+
+     - name: "{{ recipe_name }}: Start niova-block-ctl process."
+       vars:
+          input_param: {
+             'nisd_dev_size': '68719476736',
+             'lookout_uuid': "{{ LookoutUuid }}"
+              }
+       debug:
+          msg: 
+            - "{{ lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True) }}"
+       loop: "{{ range(0, nnisds | int) }}"
+       loop_control: 
+          loop_var: index

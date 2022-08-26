@@ -4,6 +4,7 @@
   vars:
     recipe_name: "controlPlane_services"
     parent: None
+    number_of_uuids: 5
 
   tasks:
   - block:
@@ -17,13 +18,13 @@
        failed_when:
          (app_type != "controlplane")
 
-     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
-       include_role:
-         name: common
-         tasks_from: pmdb_cluster_init.yml
-       vars:
-         number_of_clients: "{{ nclients | int }}"
-         number_of_PMDBServers: "{{ npeers | int }}"
+         #     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+         #include_role:
+         #name: common
+         #  tasks_from: pmdb_cluster_init.yml
+         # vars:
+         #number_of_clients: "{{ nclients | int }}"
+         #number_of_PMDBServers: "{{ npeers | int }}"
 
      - name: "{{ recipe_name }}: Start niova-lookout process."
        vars:
@@ -43,7 +44,7 @@
      - name: "{{ recipe_name }}: Starting multiple niova-block-ctl."
        include_role:
          name: common
-         tasks_from: start_niova_block_ctl
+         tasks_from: start_multiple_niova_block_ctl
        vars:
          LookoutUuid: "{{ get_lookout[item] }}"
        loop: "{{ range(0, get_lookout | length) | list}}"
@@ -67,6 +68,19 @@
        vars:
         jmesquery: 'lookout_uuid_dict'
 
+     - debug: 
+         msg: "{{lookout_uuids}}"
+
+     - debug: 
+         msg: "{{ lookout_uuids[item]['uport'] }}"
+       loop: "{{ get_lookout }}"
+
+     - debug:
+          msg: 
+            - "{{ lookout_uuids[item] }}"
+            - "{{ lookout_uuids[item]['nisd_uuid_dict'].keys() }}"
+       loop: "{{ get_lookout }}"
+
      - name: "{{ recipe_name }}: Starting multiple nisds."
        include_role:
          name: common
@@ -75,21 +89,20 @@
          LookoutUuid: "{{ item }}"
          UPort: "{{ lookout_uuids[item]['uport'] }}"
          nisd_list: "{{ lookout_uuids[item]['nisd_uuid_dict'].keys() }}"
-       loop: "{{ get_lookout }}" 
+       loop: "{{ get_lookout }}"
+         
 
      - name: "{{ recipe_name }}: Do write operation through niova-block-test."
        include_role:
           name: common
-          tasks_from: write_with_niova_block_test
+          tasks_from: write_with_input_file_niova_block_test
        vars:
-         nisdUuidsList: "{{ lookout_uuids[item]['nisd_uuid_dict'].keys() }}"
-         lookoutUUID: "{{ item }}"
-         rd_op_ratio: '0'
-         num_of_ops: '10000'
-         req_sz: '16'
-         queueDepth: '100'
-         random_seed_pt: '123'
+         nisdUuidsList: "{{ lookout_uuids[itr]['nisd_uuid_dict'].keys() }}"
+         lookoutUUID: "{{ itr }}"
        loop: "{{ get_lookout }}"
+       loop_control:
+           loop_var: itr
+
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

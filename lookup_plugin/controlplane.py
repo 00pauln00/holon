@@ -127,7 +127,7 @@ def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
     gossipNodes = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
 
     #start niova block test process
-    bin_path = '%s/lookout' % binary_dir
+    bin_path = '%s/nisdLookout' % binary_dir
 
     ports = { 'aport' : 0, 'hport' : 0, 'rport' : 0 ,'uport' : 0}
 
@@ -209,7 +209,7 @@ class LookupModule(LookupBase):
         cmd = ""
 
         cluster_params = kwargs['variables']['ClusterParams']
-
+        
         if process_type == "ncpc":
             if input_values['Operation'] == "write" and input_values['NoofWrites'] == "":
                 # Start the ncpc_client and perform the specified operation e.g write/read/config.
@@ -300,7 +300,10 @@ class LookupModule(LookupBase):
                     print("file already exist")
                 else:
                     os.mkdir(niova_lookout_path)
-
+            
+                # Dont pass lookout uuid, create here and store inside the dict in cluster_params.
+                # if cluster_params['lookout'] does not exist.
+                # lookout : { 'lookout_uuid' : { 'aport' : , 'hport': }}
                 niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['aport'], input_values['hport'],
                                                                       input_values['rport'], input_values['uport'])
                 return niova_lookout_process
