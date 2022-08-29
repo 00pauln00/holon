@@ -4,7 +4,6 @@
   vars:
     recipe_name: "controlPlane_services"
     parent: None
-    number_of_uuids: 5
 
   tasks:
   - block:
@@ -18,13 +17,13 @@
        failed_when:
          (app_type != "controlplane")
 
-         #     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
-         #include_role:
-         #name: common
-         #  tasks_from: pmdb_cluster_init.yml
-         # vars:
-         #number_of_clients: "{{ nclients | int }}"
-         #number_of_PMDBServers: "{{ npeers | int }}"
+     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+       include_role:
+         name: common
+         tasks_from: pmdb_cluster_init.yml
+       vars:
+         number_of_clients: "{{ nclients | int }}"
+         number_of_PMDBServers: "{{ npeers | int }}"
 
      - name: "{{ recipe_name }}: Start niova-lookout process."
        vars:
@@ -102,7 +101,6 @@
        loop: "{{ get_lookout }}"
        loop_control:
            loop_var: itr
-
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

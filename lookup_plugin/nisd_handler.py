@@ -364,6 +364,7 @@ class LookupModule(LookupBase):
                NiovaBlocktest_input_file = cluster_params['niovaBlockTest_input_file_path']
 
                if cluster_params['niovaBlockTest_input_file_path'] == True:
+                    # Take niova-block-test input parameters from input file and start process
                     niova_block_test_process = start_niova_block_test_with_inputFile(cluster_params, input_values)
                else:
                     # Start niova-block-test
