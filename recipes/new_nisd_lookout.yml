@@ -31,7 +31,7 @@
                  'aport' : '4900',
                  'hport' : '9001',
                  'rport' : '4901',
-                 'uport' : '2053',
+                 'uport' : '3054',
                  }
        set_fact:
          get_lookout: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
