@@ -28,10 +28,10 @@
      - name: "{{ recipe_name }}: Start niova-lookout process."
        vars:
          input_param: {
-                 'aport' : '490{{ item }}',
-                 'hport' : '900{{ item }}',
-                 'rport' : '590{{ item }}',
-                 'uport' : '106{{ item }}'
+                 'aport' : '{{ (srv_port | int) + 100 + item }}',
+                 'hport' : '{{ (srv_port | int) + 200 + 1 + item }}',
+                 'rport' : '{{ (srv_port | int) + 300 + 2 + item }}',
+                 'uport' : '{{ (srv_port | int) + 400 + 3 + item }}'
                  }
        set_fact:
          get_lookout: "{{ get_lookout | default([]) + [lookup('controlplane', 'niova-lookout', input_param, wantlist=true)] }}"
@@ -70,16 +70,6 @@
      - debug: 
          msg: "{{lookout_uuids}}"
 
-     - debug: 
-         msg: "{{ lookout_uuids[item]['uport'] }}"
-       loop: "{{ get_lookout }}"
-
-     - debug:
-          msg: 
-            - "{{ lookout_uuids[item] }}"
-            - "{{ lookout_uuids[item]['nisd_uuid_dict'].keys() }}"
-       loop: "{{ get_lookout }}"
-
      - name: "{{ recipe_name }}: Starting multiple nisds."
        include_role:
          name: common
@@ -89,7 +79,6 @@
          UPort: "{{ lookout_uuids[item]['uport'] }}"
          nisd_list: "{{ lookout_uuids[item]['nisd_uuid_dict'].keys() }}"
        loop: "{{ get_lookout }}"
-         
 
      - name: "{{ recipe_name }}: Do write operation through niova-block-test."
        include_role:
