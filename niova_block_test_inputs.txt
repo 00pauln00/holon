@@ -1,6 +1,7 @@
-read_operation_ratio_percentage, random_seed, request_size_in_bytes, queue_depth, num_ops, integrity_check, sequential_writes, blocking_process, sleep 
-0,123,16,100,10000,True, False, False, 1
-0,130,10,120,20000,True, False, False, 2
-0,137,20,198,1000,True, False, False, 3
-0,143,25,193,2000,True, False, False, 4
-0,193,7,10,9000,True, False, False, 5
+write/read, read_operation_ratio_percentage, random_seed, request_size_in_bytes, queue_depth, num_ops, integrity_check, sequential_writes, blocking_process, sleep
+write,0,123,16,100,10000,True, False, False, 5
+write,0,130,10,120,20000,True, False, False, 10
+write,0,137,20,198,1000,True, False, False, 3
+read,100,123,16,100,10000,True, False, False, 3
+read,100,130,10,120,20000,True, False, False, 3
+read,100,137,20,198,1000,True, False, False, 3
