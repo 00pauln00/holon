@@ -1,0 +1,91 @@
+---
+
+     - name: "Generate uuid to write operation"
+       shell: "/usr/bin/uuid"
+       register: nblock_test_uuid
+
+     - debug:
+         msg: "niova_block_test UUID: {{ nblock_test_uuid['stdout'] }}"
+
+     - name: "Generate client-uuids for niova-block-test"
+       shell: "/usr/bin/uuid"
+       register: nblock_client_uuid
+
+     - debug:
+         msg: "niova_block_test Client UUID: {{ nblock_client_uuid['stdout'] }}"
+
+     - name: "{{ recipe_name }}: Start niova-block-test process."
+       vars:
+         input_param: {
+                 'nisd_uuid_to_write' : 'unix:{{ nisd_uuid  }}',
+                 'vdev' : '{{ nblock_test_uuid["stdout"] }}',
+                 'lookout_uuid' :  '{{ lookout_UUID }}',
+                 'client_uuid' : '{{ nblock_client_uuid["stdout"] }}',
+                  }
+       set_fact:
+         nblock_wr: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
+
+     - debug:
+         msg: "{{ nblock_wr | dict2items }}"
+
+     - name: "{{ recipe_name}}: Convert input paramters to list"
+       vars:
+          get_nisd: "{{ nblock_wr | dict2items | map(attribute='value') | list | first }}"
+          wr_returncode: "{{ get_nisd[nisd_uuid]['write-input'] | dict2items | map(attribute='value') | list }}"
+          rd_returncode: "{{ get_nisd[nisd_uuid]['read-input'] | dict2items | map(attribute='value') | list }}"
+       debug:
+         msg:
+          - "{{ wr_returncode[item]['returncode'] }}"
+          - "{{ rd_returncode[item]['returncode'] }}"
+       failed_when: >
+         ((wr_returncode[item]['returncode']|int) != 0) or
+         ((rd_returncode[item]['returncode']|int) != 0)
+       loop: "{{ range(0, wr_returncode |length) | list }}"
+
+     - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
+       vars:
+         stage: "wait_for_nisd_root_entry"
+         lookout_uuid: "{{ lookout_UUID }}"
+       debug:
+         msg: "Waiting for nisd to get updated"
+       #no_log: True
+       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid, "/nisd_root_entry/0/status", 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "running"
+       retries: 10
+       delay: 1
+
+     - name: "{{ recipe_name}}: Convert input paramters to list"
+       vars:
+          get_nisd: "{{ nblock_wr | dict2items | map(attribute='value') | list | first }}"
+          get_val: "{{ get_nisd[nisd_uuid]['write-input'] | dict2items | map(attribute='value') | list }}"
+          vblks_val: "{{ ((get_val[item]['num-ops'] |int) * (get_val[item]['req-size-bytes'] |int)|int) }}"
+       debug:
+         msg: "{{ (vblks_val |int) }}"
+       loop: "{{ range(0, get_val |length) | list }}"
+       register: total
+
+     - debug:
+         msg: "total num-ops: {{ total.results | map(attribute='msg') | map('int') | sum(start=0) }}"
+
+     - name: "{{ recipe_name}}: Wait until write operation complete"
+       vars:
+          stage: "wait_for_vblks_written"
+          lookout_uuid: "{{ lookout_UUID }}"
+          total_wr: "{{ total.results | map(attribute='msg') | map('int') | sum(start=0) }}"
+       debug:
+         msg: "wait until vblks-written complete"
+       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid, '/nisd_root_entry/0/vblks-written', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == (total_wr|int)
+       retries: 10
+       delay: 1
+
+     - name: "{{ recipe_name}}: Wait until read operation complete"
+       vars:
+          stage: "wait_for_vblks_read"
+          lookout_uuid: "{{ lookout_UUID }}"
+          total_wr: "{{ total.results | map(attribute='msg') | map('int') | sum(start=0) }}"
+       debug:
+         msg: "wait until vblks-read complete"
+       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid, '/nisd_root_entry/0/vblks-read', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == (total_wr|int)
+       retries: 10
+       delay: 1
+
+

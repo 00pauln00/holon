@@ -39,7 +39,7 @@
      - name: "{{ recipe_name }}: Perform some Writes to the NISD."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ nisdUUID.stdout }}',
+                 'uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ mergeVdev.stdout }}',
                  'read_operation_ratio_percentage' : '0',
                  'random_seed' : Null,
@@ -61,7 +61,7 @@
        vars:
          stage: "verifyAftrWr"
          lookout_uuid: ""
-         aftrWrNisdChunk: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         aftrWrNisdChunk: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Verify nisd values after writes: {{ aftrWrNisdChunk }}"
        #no_log: True
@@ -77,7 +77,7 @@
        vars:
          stage: "verify_nisd_chunk"
          lookout_uuid: ""
-         getPrevValues: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         getPrevValues: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Store num-data-pblks: {{ getPrevValues }}"
        no_log: True
@@ -92,7 +92,7 @@
          tasks_from: apply_fi_on_nisd
        vars:
          numRemaining: "{{ num_of_remaining }}"
-         NisdUUID: "{{ nisdUUID.stdout }}"
+         NisdUUID: "{{ get_nisd }}"
          LookoutUUID: ""
          fault_injection_name: "read_preempts_merge"
 
@@ -101,7 +101,7 @@
          name: common
          tasks_from: enable_fi_on_nisd
        vars:
-         NisdUUID: "{{ nisdUUID.stdout }}"
+         NisdUUID: "{{ get_nisd }}"
          LookoutUUID: ""
          fault_injection_name: "read_preempts_merge"
 
@@ -112,7 +112,7 @@
      - name: "{{ recipe_name }}: Launch Reads (num_remaining - 1)."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ nisdUUID.stdout }}',
+                 'uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ mergeVdev.stdout }}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : Null,
@@ -132,7 +132,7 @@
        vars:
          stage: "verfyAftrRd"
          lookout_uuid: ""
-         aftrRdNisdChunk: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         aftrRdNisdChunk: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Verify nisd values after read: {{ aftrRdNisdChunk }}"
        no_log: True
@@ -150,7 +150,7 @@
         task_key:
          - '/tasks'
        set_fact:
-         getFaultInject: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, task_key, 'nisd', lookout_uuid, wantlist=True) }}"
+         getFaultInject: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, task_key, 'nisd', lookout_uuid, wantlist=True) }}"
 
      - name: "{{ recipe_name }}: Verify 'wait-fault-inject'."
        set_fact:
@@ -171,14 +171,14 @@
          where: "/nisd_chunks/vdev-uuid@{{ mergeVdev.stdout }}"
          lookout_uuid: ""
        debug:
-         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', nisdUUID.stdout, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
        no_log: true
 
      - name: "{{ recipe_name }}: Verify after pause compaction."
        vars:
          stage: "verifyAftrPause"
          lookout_uuid: ""
-         aftrPause: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         aftrPause: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Verify after pause compaction: {{ aftrPause }}"
        no_log: True
@@ -193,7 +193,7 @@
      - name: "{{ recipe_name }}: Overwrite the VBLKS from Step #1 using a new CLIENT_UUID."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ nisdUUID.stdout }}',
+                 'uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ mergeVdev.stdout }}',
                  'read_operation_ratio_percentage' : '0',
                  'random_seed' : Null,
@@ -216,7 +216,7 @@
          stage: "verfyAftr2ndWr"
          old_values: "{{ origValues['results'][0]['item'] }}"
          lookout_uuid: ""
-         aftrWr: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         aftrWr: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Verify compaction has NOT occurred: {{ aftrWr }}"
        no_log: True
@@ -233,7 +233,7 @@
          where: "/nisd_chunks/vdev-uuid@{{ mergeVdev.stdout }}"
          lookout_uuid: ""
        debug:
-         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', nisdUUID.stdout, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
        no_log: true
 
      - name: "{{ recipe_name }}: Force Compaction."
@@ -243,14 +243,14 @@
          where: "/nisd_chunks/vdev-uuid@{{ mergeVdev.stdout }}"
          lookout_uuid: ""
        debug:
-         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', nisdUUID.stdout, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
        no_log: true
 
      - name: "{{ recipe_name }}: Verify after unpause compaction."
        vars:
          stage: "aftrForceCompaction"
          lookout_uuid: ""
-         aftrForceCompct: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         aftrForceCompct: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Verify after pause compaction: {{ aftrForceCompct }}"
        no_log: True
@@ -269,7 +269,7 @@
         task_key:
               - '/tasks'
        set_fact:
-         getTaskValue: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, task_key, 'nisd', lookout_uuid, wantlist=True) }}"
+         getTaskValue: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, task_key, 'nisd', lookout_uuid, wantlist=True) }}"
 
      - name: "{{ recipe_name }}: Verify 'wait-merge-preempted'."
        set_fact:
@@ -286,7 +286,7 @@
      - name: "{{ recipe_name }}: Enqueue Reads from the Client Used in Step #5"
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ nisdUUID.stdout }}',
+                 'uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ mergeVdev.stdout }}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : Null,
@@ -310,7 +310,7 @@
          stage: "aftrRead"
          old_values: "{{ origValues['results'][0]['item'] }}"
          lookout_uuid: ""
-         aftrRead: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         aftrRead: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Verify nisd_chunks Checks: {{ aftrRead }}"
        no_log: True

@@ -39,7 +39,7 @@
        vars:
          stage: "initial_value"
          lookout_uuid: ""
-         origVal: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         origVal: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Get nisd root entry values: {{ origVal }}"
        no_log: True
@@ -65,7 +65,7 @@
      - name: "{{ recipe_name }}: Perform some Writes to the NISD."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ nisdUUID.stdout }}',
+                 'uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ vdev.stdout}}',
                  'read_operation_ratio_percentage' : '0',
                  'random_seed' : '1010101',
@@ -97,7 +97,7 @@
          lookout_uuid: ""
        debug:
          msg: "Waiting for nisd to get 'idle'"
-       until: lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, '/nisd_chunks/0/chunk-merge-status', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "idle"
+       until: lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/chunk-merge-status', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "idle"
        retries: 10
        delay: 1
 
@@ -105,7 +105,7 @@
        vars:
          stage: "chunk_merge_cnt"
          lookout_uuid: ""
-         getChunkCnt: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_chunk_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         getChunkCnt: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_chunk_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Get nisd root entry values: {{ getChunkCnt }}"
        no_log: True
@@ -120,7 +120,7 @@
          where: "/nisd_chunks/vdev-uuid@{{ vdev.stdout }}"
          lookout_uuid: ""
        debug:
-         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', nisdUUID.stdout, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
        no_log: true
 
      - name: "{{ recipe_name}}: Wait until chunk cnt gets updated."
@@ -130,7 +130,7 @@
          lookout_uuid: ""
        debug:
          msg: "Waiting for chunk-cnt to get updated"
-       until: lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, '/nisd_chunks/0/chunk-merge-cnt', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == ((orig_merge_cnt | int) + 1)
+       until: lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/chunk-merge-cnt', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == ((orig_merge_cnt | int) + 1)
        retries: 20
        delay: 1
 
@@ -139,7 +139,7 @@
        vars:
          stage: "get_vblks-written"
          lookout_uuid: ""
-         getVblksWritten: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, '/nisd_chunks/0/vblks-written', 'nisd', lookout_uuid, wantlist=True) }}"
+         getVblksWritten: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/vblks-written', 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Store num-data-pblks: {{ getVblksWritten }}"
        no_log: True
@@ -153,7 +153,7 @@
          old_VblksWritten: "{{ origVblksWritten['results'][0]['item']['/0/vblks-written'] }}"
          stage: "verify_nisd_chunk"
          lookout_uuid: ""
-         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_chunk_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_chunk_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Verify nisd values after writes: {{ getNiovaBlockTest }}"
        no_log: True
@@ -170,7 +170,7 @@
        vars:
          stage: "verify_nisd_chunk"
          lookout_uuid: ""
-         getNumDataPblks: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, '/nisd_chunks/0/num-data-pblks', 'nisd', lookout_uuid, wantlist=True) }}"
+         getNumDataPblks: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/num-data-pblks', 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Store num-data-pblks: {{ getNumDataPblks }}"
        no_log: True
@@ -186,7 +186,7 @@
          old_num_reserved_block_used: "{{ initialValues['results'][0]['item']['/0/num-reserved-pblks-used'] }}"
          get_dpblk: "{{ origNumDataPblk['results'][0]['item']['/0/num-data-pblks'] }}"
          lookout_uuid: ""
-         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Verify /nisd_root_entry values: {{ getNiovaBlockTest }}, {{ old_num_block_used }}, {{ old_num_reserved_block_used }}"
        no_log: True
@@ -198,7 +198,7 @@
      - name: "{{ recipe_name }}: Issue a Read of the Vblks."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ nisdUUID.stdout }}',
+                 'uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ vdev.stdout}}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : '1010101',
@@ -228,7 +228,7 @@
          name: common
          tasks_from: overwrite_and_verify_vblk_written
        vars:
-        NisdUUID: "{{ nisdUUID.stdout }}"
+        NisdUUID: "{{ get_nisd }}"
         VdevUUID: "{{ vdev.stdout }}"
         ClientUUID: "{{ client_uuid.stdout }}"
         LookoutUUID: ""
@@ -247,7 +247,7 @@
      - name: "{{ recipe_name }}: Perform Read to the NISD."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ nisdUUID.stdout }}',
+                 'uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ vdev.stdout}}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : '1010101',
@@ -278,7 +278,7 @@
          where: "/nisd_chunks/vdev-uuid@{{ vdev.stdout }}"
          lookout_uuid: ""
        debug:
-         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', nisdUUID.stdout, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
        no_log: true
 
      - name: "{{ recipe_name }}: Verify num-data-pblks is equal to the original value captured in Step #4."
@@ -286,7 +286,7 @@
          old_value: "{{ origNumDataPblk['results'][0]['item']['/0/num-data-pblks'] }}"
          stage: "verify_numDataPblk"
          lookout_uuid: ""
-         verifyNumDataPblks: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, '/nisd_chunks/0/num-data-pblks', 'nisd', lookout_uuid, wantlist=True) }}"
+         verifyNumDataPblks: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/num-data-pblks', 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Verify num-data-pblks is equal to the original value: {{ verifyNumDataPblks }}"
        no_log: true
@@ -297,7 +297,7 @@
      - name: "{{ recipe_name }}: Perform Read to the NISD."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ nisdUUID.stdout }}',
+                 'uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ vdev.stdout}}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : '1010101',
@@ -329,7 +329,7 @@
          old_num_reserved_block_used: "{{ initialValues['results'][0]['item']['/0/num-reserved-pblks-used'] }}"
          get_dpblk: "{{ origNumDataPblk['results'][0]['item']['/0/num-data-pblks'] }}"
          lookout_uuid: ""
-         reVerifyRootEntry: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID.stdout, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         reVerifyRootEntry: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Re-verify /nisd_root_entry values: {{ reVerifyRootEntry }}, {{ old_num_block_used }}, {{ old_num_reserved_block_used }}"
        no_log: True
