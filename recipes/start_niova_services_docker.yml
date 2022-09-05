@@ -29,9 +29,9 @@
        vars:
          input_param: {
                  'aport' : '{{ (srv_port | int) + 200 + item }}',
-                 'hport' : '{{ (srv_port | int) + 400 + 1 + item }}',
-                 'rport' : '{{ (srv_port | int) + 600 + 2 + item }}',
-                 'uport' : '{{ (srv_port | int) + 800 + 3 + item }}'
+                 'hport' : '{{ (srv_port | int) + 400 + item }}',
+                 'rport' : '{{ (srv_port | int) + 600 + item }}',
+                 'uport' : '{{ (srv_port | int) + 800 + item }}'
                  }
        set_fact:
          get_lookout: "{{ get_lookout | default([]) + [lookup('controlplane', 'niova-lookout', input_param, wantlist=true)] }}"
