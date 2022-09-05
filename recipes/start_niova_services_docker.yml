@@ -1,0 +1,98 @@
+- name: "controlPlane_services.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlPlane_services"
+    parent: None
+
+  tasks:
+  - block:
+
+    # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "controlplane")
+
+     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+       include_role:
+         name: common
+         tasks_from: pmdb_cluster_init.yml
+       vars:
+         number_of_clients: "{{ nclients | int }}"
+         number_of_PMDBServers: "{{ npeers | int }}"
+
+     - name: "{{ recipe_name }}: Start niova-lookout process."
+       vars:
+         input_param: {
+                 'aport' : '{{ (srv_port | int) + 200 + item }}',
+                 'hport' : '{{ (srv_port | int) + 400 + item }}',
+                 'rport' : '{{ (srv_port | int) + 600 + item }}',
+                 'uport' : '{{ (srv_port | int) + 800 + item }}'
+                 }
+       set_fact:
+         get_lookout: "{{ get_lookout | default([]) + [lookup('controlplane', 'niova-lookout', input_param, wantlist=true)] }}"
+       loop: "{{ range(0, nlookouts | int) }}"
+
+     - debug:
+         msg: "{{ get_lookout }}"
+
+     - name: "{{ recipe_name }}: Starting multiple niova-block-ctl."
+       include_role:
+         name: common
+         tasks_from: start_multiple_niova_block_ctl
+       vars:
+         LookoutUuid: "{{ get_lookout[item] }}"
+       loop: "{{ range(0, get_lookout | length) | list}}"
+
+     - name: "{{ recipe_name }}: Get the json path."
+       set_fact:
+        base_dir="{{ ClusterInfo | json_query('base_dir_path')}}"
+        raft_uuid="{{ ClusterInfo | json_query('raft_uuid')}}"
+
+     - name: "{{ recipe_name }}: prepare path to read recipe JSON file."
+       shell: cat "{{base_dir}}"/"{{raft_uuid}}".json
+       register: result
+
+     - name: "{{ recipe_name }}: Convert output to JSON format."
+       set_fact:
+        jsondata: "{{ result.stdout | from_json }}"
+
+     - name: "{{ recipe_name }}: Get the running peer UUID(s) from recipe JSON."
+       set_fact:
+        lookout_uuids: "{{ jsondata | json_query(jmesquery) }}"
+       vars:
+        jmesquery: 'lookout_uuid_dict'
+
+     - debug: 
+         msg: "{{lookout_uuids}}"
+
+     - name: "{{ recipe_name }}: Starting multiple nisds."
+       include_role:
+         name: common
+         tasks_from: start_nisd 
+       vars:
+         LookoutUuid: "{{ item }}"
+         UPort: "{{ lookout_uuids[item]['uport'] }}"
+         nisd_list: "{{ lookout_uuids[item]['nisd_uuid_dict'].keys() }}"
+       loop: "{{ get_lookout }}"
+
+     - name: "{{ recipe_name }}: Do write operation through niova-block-test."
+       include_role:
+          name: common
+          tasks_from: write_with_input_file_niova_block_test
+       vars:
+         nisdUuidsList: "{{ lookout_uuids[itr]['nisd_uuid_dict'].keys() }}"
+         lookoutUUID: "{{ itr }}"
+       loop: "{{ get_lookout }}"
+       loop_control:
+           loop_var: itr
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+
+         terminate_recipe: true

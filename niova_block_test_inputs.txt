@@ -1,0 +1,7 @@
+write/read, read_operation_ratio_percentage, random_seed, request_size_in_bytes, queue_depth, num_ops, integrity_check, sequential_writes, blocking_process, sleep
+write,0,123,16,100,100,True, False, False, 5
+write,0,130,10,120,200,True, False, False, 5
+write,0,137,12,198,512,True, False, False, 5
+read,100,123,16,100,100,True, False, False, 3
+read,100,130,10,120,200,True, False, False, 3
+read,100,137,12,198,512,True, False, False, 3

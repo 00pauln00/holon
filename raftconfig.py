@@ -207,7 +207,7 @@ class RaftConfig:
         Prepare proxy config information and right it to proxy config file.
         proxy config file name format would be proxy.config.
         '''
-        port += 50
+        port += 40
         for client in client_uuids:
             cpp_config_dir = self.base_dir_path + "/"+ "cpp_configs_" + client
             if not os.path.exists(cpp_config_dir):
@@ -238,9 +238,13 @@ class RaftConfig:
         to targets.json file.
         gossipNodes file name format would be gossipNodes.
         '''
-        port += 80
+        port += 70
         gossip_path = self.base_dir_path + '/' + "gossipNodes"
         gossip_fd = basicioobj.open_file(gossip_path)
+        for peer in peeruuids.values():
+            gossip_data = "%s %s %d %d \n" % ( peer, ip_address, port, port+1 )
+            basicioobj.write_file(gossip_fd, gossip_data)
+            port=port+2
 
         if int(cluster_params['prometheus_support']) == 0:
             for peer in peeruuids.values():
