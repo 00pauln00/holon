@@ -288,7 +288,6 @@ class LookupModule(LookupBase):
             else:
                 os.mkdir(niova_lookout_path)
 
-            niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['lookout_uuid'],
-                                                                      input_values['aport'], input_values['hport'],
-                                                                      input_values['rport'], input_values['uport'])
+            niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['aport'], input_values['hport'],
+                                                                 input_values['rport'], input_values['uport'])
             return niova_lookout_process
