@@ -13,6 +13,7 @@ class RaftConfig:
     client_uuid_arr = [] # Client UUID array
     nservers = 0
 
+
     '''
         Constructor:
         Purpose: Initialisation
@@ -227,12 +228,14 @@ class RaftConfig:
         Purpose: Create controlplane gossipNodes for controlplane
         Parameters: .
     '''
-    def generate_controlplane_gossipNodes(self, ip_address, port, peeruuids):
+    def generate_controlplane_gossipNodes(self, cluster_params, ip_address, port, peeruuids):
 
         basicioobj = BasicIO()
 
         '''
-        Prepare gossipNodes information and right it to gossipNodes file.
+        Prepare gossipNodes information and write it to gossipNodes file.
+        Checks if prometheus_support is set and writes prometheus port info
+        to targets.json file.
         gossipNodes file name format would be gossipNodes.
         '''
         port += 70
@@ -243,6 +246,25 @@ class RaftConfig:
             basicioobj.write_file(gossip_fd, gossip_data)
             port=port+2
 
+        if int(cluster_params['prometheus_support']) == 0:
+            for peer in peeruuids.values():
+                gossip_data = "%s %s %d %d\n" % ( peer, ip_address, port, port+1 )
+                basicioobj.write_file(gossip_fd, gossip_data)
+                port=port+2
+        else:
+            prom_targets_path = os.environ['PROMETHEUS_PATH'] + '/' + "targets.json"
+            prom_targets_fd = basicioobj.open_file(prom_targets_path)
+            target_data = []
+            for peer in peeruuids.values():
+                gossip_data = "%s %s %d %d %d\n" % ( peer, ip_address, port, port+1, port+2 )
+                basicioobj.write_file(gossip_fd, gossip_data)
+                target_data.append({
+                    "targets":[ "localhost:" + str(port + 2) ],
+                    })
+                port=port+3
+            # Write targets to targets.json
+            basicioobj.write_file(prom_targets_fd, json.dumps(target_data))
+            basicioobj.close_file(prom_targets_fd)
         # close the file
         basicioobj.close_file(gossip_fd)
 
