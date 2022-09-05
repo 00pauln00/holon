@@ -127,7 +127,6 @@ class LookupModule(LookupBase):
 
         elif config_type == "controlplane":
             peer_uuids = kwargs['variables']['ClusterInfo']['peer_uuid_dict']
-            print(cluster_params) 
             if len(terms) < 2:
                 #Create gossipNodes file using peer-uuids
                 raftconfobj_dict = controlplane_gossipNodes_create(cluster_params, peer_uuids)
