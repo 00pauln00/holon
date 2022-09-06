@@ -241,10 +241,6 @@ class RaftConfig:
         port += 70
         gossip_path = self.base_dir_path + '/' + "gossipNodes"
         gossip_fd = basicioobj.open_file(gossip_path)
-        for peer in peeruuids.values():
-            gossip_data = "%s %s %d %d \n" % ( peer, ip_address, port, port+1 )
-            basicioobj.write_file(gossip_fd, gossip_data)
-            port=port+2
 
         if int(cluster_params['prometheus_support']) == 0:
             for peer in peeruuids.values():
@@ -262,6 +258,7 @@ class RaftConfig:
                     "targets":[ "localhost:" + str(port + 2) ],
                     })
                 port=port+3
+
             # Write targets to targets.json
             basicioobj.write_file(prom_targets_fd, json.dumps(target_data))
             basicioobj.close_file(prom_targets_fd)
