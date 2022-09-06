@@ -197,6 +197,10 @@ def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(log_file, "w")
     gossipNodes = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
+    print("gossipNodes", gossipNodes)
+    data = open(gossipNodes, 'a')
+    data.write("%s %s %s %s %s\n" % ( lookout_uuid, aport, hport, rport, uport ))
+    data.close()
 
     #start niova block test process
     bin_path = '%s/nisdLookout' % binary_dir
