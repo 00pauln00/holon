@@ -151,12 +151,22 @@
        - "{{ peer_values }}"
       register: stage1_values
 
+    - name: "{{ recipe_name }}: Wait until commit-idx gets incremented on all peers after write operation."
+      vars:
+         stage: "getCIFrmAll"
+      debug:
+        msg: "Verify Commit-Idx get incrementing on all peers."
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == (pri_num_writes | int) * (no_of_app_uuids | int) + 1
+      retries: 500
+      delay: 1
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
     - name: "{{ recipe_name }}: Verify commit-idx gets updated on all peers after first write operation."
       vars:
          getAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys, wantlist=True) }}"
          stage: "Get_commit_idx"
       debug:
-        msg: "Verify all values on all peers."
+        msg: "Verify commit-idx on all peers."
       failed_when: getAll["/0/commit-idx"] != (pri_num_writes | int) * (no_of_app_uuids | int) + 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
@@ -197,6 +207,17 @@
       with_items:
        - "{{ peer_values }}"
       register: stage2_values
+
+    - name: "{{ recipe_name }}: Wait until commit-idx gets incremented on all peers after write operation."
+      vars:
+         initial_vals: "{{ stage1_values['results'][0]['item']}}"
+         stage: "aftrNewWrgetCIFrmAll"
+      debug:
+        msg: "Verify Commit-Idx get incrementing on all peers."
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == (pri_num_writes | int) * (no_of_app_uuids | int) + (initial_vals["/0/commit-idx"])
+      retries: 500
+      delay: 1
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Verify commit-idx on all peers after 2nd write operation"
       vars:
