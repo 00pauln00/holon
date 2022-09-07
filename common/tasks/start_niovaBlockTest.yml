@@ -66,6 +66,7 @@
      - debug:
          msg: "total num-ops: {{ total.results | map(attribute='msg') | map('int') | sum(start=0) }}"
 
+     #TODO After uploading new changes, modify wait-until check
      - name: "{{ recipe_name}}: Wait until write operation complete"
        vars:
           stage: "wait_for_vblks_written"
@@ -73,7 +74,7 @@
           total_wr: "{{ total.results | map(attribute='msg') | map('int') | sum(start=0) }}"
        debug:
          msg: "wait until vblks-written complete"
-       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid, '/nisd_root_entry/0/vblks-written', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == (total_wr|int)
+       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid, '/nisd_root_entry/0/vblks-written', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first <= (total_wr|int)
        retries: 10
        delay: 1
 
@@ -84,7 +85,7 @@
           total_wr: "{{ total.results | map(attribute='msg') | map('int') | sum(start=0) }}"
        debug:
          msg: "wait until vblks-read complete"
-       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid, '/nisd_root_entry/0/vblks-read', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == (total_wr|int)
+       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid, '/nisd_root_entry/0/vblks-read', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first <= (total_wr|int)
        retries: 10
        delay: 1
 
