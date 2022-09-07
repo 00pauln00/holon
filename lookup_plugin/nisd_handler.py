@@ -390,11 +390,6 @@ class LookupModule(LookupBase):
 
         elif process_type == "niova-block-test":
 
-               if input_values['lookout_uuid'] != "":
-                   controlplane_environment_variables(cluster_params, input_values['lookout_uuid'])
-               else:
-                   set_environment_variables(cluster_params)
-
                NiovaBlocktest_input_file = cluster_params['niovaBlockTest_input_file_path']
 
                if cluster_params['niovaBlockTest_input_file_path'] == True:
