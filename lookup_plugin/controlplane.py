@@ -201,6 +201,16 @@ def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
     data.write("%s %s %s %s %s\n" % ( lookout_uuid, aport, hport, rport, uport ))
     data.close()
 
+    # Set the target ports in the targets.json file for prometheus exporter
+    if cluster_params['prometheus_support']:
+        prom_targets_path = os.environ['PROMETHEUS_PATH'] + '/' + "targets.json"
+        prom_targets = []
+        with open(prom_targets_path, "r") as f:
+            prom_targets = json.load(f)
+            prom_targets.append({'targets':['localhost:'+str(hport)]})
+        with open(prom_targets_path, "w") as f:
+            json.dump(prom_targets, f)
+
     #start niova block test process
     bin_path = '%s/nisdLookout' % binary_dir
 
