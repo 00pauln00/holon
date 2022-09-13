@@ -50,16 +50,14 @@ def start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values):
             recipe_conf['nisd_uuid_dict'] = {}
         recipe_conf['nisd_uuid_dict'].update(nisd_dict)
 
-
     genericcmdobj.recipe_json_dump(recipe_conf)
 
-    alt_name = "nisd_test_dev_%s" % nisd_uuid
     nisdPath = prepare_nisd_device_path(nisd_uuid)
 
     # Start niova-block-ctl process
     test_device_path = create_nisd_device_and_uuid(nisd_uuid, input_values['nisd_dev_size'])
 
-    process_popen = subprocess.Popen([bin_path, '-n', alt_name, '-d', nisdPath, '-i', '-u', nisd_uuid],
+    process_popen = subprocess.Popen([bin_path, '-n', input_values['alt_name'], '-d', nisdPath, '-i', '-u', nisd_uuid],
                                    stdout = fp, stderr = fp)
 
     #Check if niova-block-ctl process exited with error
