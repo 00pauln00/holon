@@ -4,7 +4,8 @@
        vars:
           input_param: {
              'nisd_dev_size': '90719476736',
-             'lookout_uuid': "{{ LookoutUuid }}"
+             'lookout_uuid': '{{ LookoutUuid }}',
+             'alt_name': 'nisd{{index}}'
               }
        debug:
           msg:

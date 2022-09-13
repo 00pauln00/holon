@@ -50,7 +50,6 @@ def start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values):
             recipe_conf['nisd_uuid_dict'] = {}
         recipe_conf['nisd_uuid_dict'].update(nisd_dict)
 
-
     genericcmdobj.recipe_json_dump(recipe_conf)
 
     nisdPath = prepare_nisd_device_path(nisd_uuid)
@@ -58,7 +57,7 @@ def start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values):
     # Start niova-block-ctl process
     test_device_path = create_nisd_device_and_uuid(nisd_uuid, input_values['nisd_dev_size'])
 
-    process_popen = subprocess.Popen([bin_path, '-d', nisdPath, '-i', '-u', nisd_uuid],
+    process_popen = subprocess.Popen([bin_path, '-n', input_values['alt_name'], '-d', nisdPath, '-i', '-u', nisd_uuid],
                                    stdout = fp, stderr = fp)
 
     #Check if niova-block-ctl process exited with error
@@ -141,7 +140,7 @@ def start_nisd_process(cluster_params, input_values, nisdPath):
 
 def prepare_nisd_device_path(nisd_uuid):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
-    nisdPath = "%s/test_nisd_%s.device" % (binary_dir, nisd_uuid)
+    nisdPath = "%s/%s.device" % (binary_dir, nisd_uuid)
     return nisdPath
 
 def create_nisd_device_and_uuid(nisd_uuid, nisd_dev_size):
