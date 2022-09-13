@@ -77,10 +77,10 @@
                   'lookout_uuid' :  '{{ lookoutUUID[0] }}'
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'nisd', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
 
      - pause:
-         seconds: 2
+         seconds: 5
 
      - name: "{{ recipe_name }}: Wait until Nisd's status gets updated."
        vars:
