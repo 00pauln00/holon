@@ -25,8 +25,6 @@ def initialize_logger(log_file):
     #Now we are going to Set the threshold of logger to DEBUG
     logger.setLevel(logging.DEBUG)
 
-    #logger.disabled = True
-
     return logger
 
 def start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values):
@@ -109,9 +107,6 @@ def start_nisd_process(cluster_params, input_values, nisdPath):
 
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(log_path, "a+")
-
-    # Initialize the logger
-    #logger = initialize_logger(log_path)
 
     genericcmdobj = GenericCmds()
     #writing the information of lookout uuids dict into raft_uuid.json
