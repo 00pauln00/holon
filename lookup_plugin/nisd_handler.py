@@ -10,6 +10,24 @@ import subprocess
 from genericcmd import *
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
+import logging
+
+def initialize_logger(log_file):
+
+    #now we will Create and configure logger
+    logging.basicConfig(filename=log_file,
+                                        format='%(asctime)s [%(filename)s:%(lineno)d] %(message)s',
+                                        filemode='a+')
+
+    #Let us Create an object
+    logger=logging.getLogger()
+
+    #Now we are going to Set the threshold of logger to DEBUG
+    logger.setLevel(logging.DEBUG)
+
+    #logger.disabled = True
+
+    return logger
 
 def start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values):
     base_dir = cluster_params['base_dir']
@@ -21,8 +39,11 @@ def start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values):
     # Prepare path for log file.
     log_file = "%s/%s/niovablockctl_%s_log.txt" % (base_dir, raft_uuid, nisd_uuid)
 
+    # Initialize the logger
+    logger = initialize_logger(log_file)
+
     # Open the log file to pass the fp to subprocess.Popen
-    fp = open(log_file, "w")
+    fp = open(log_file, "a+")
 
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
@@ -54,17 +75,20 @@ def start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values):
 
     nisdPath = prepare_nisd_device_path(nisd_uuid)
 
+    logger.debug("nisd-uuid: %s", nisd_uuid)
+
     # Start niova-block-ctl process
     test_device_path = create_nisd_device_and_uuid(nisd_uuid, input_values['nisd_dev_size'])
 
-    process_popen = subprocess.Popen([bin_path, '-n', input_values['alt_name'], '-d', nisdPath, '-i', '-u', nisd_uuid],
-                                   stdout = fp, stderr = fp)
+    process_popen = subprocess.Popen([bin_path, '-n', input_values['alt_name'], '-d', nisdPath, '-i', '-u', nisd_uuid,
+                                       '-Z', input_values['nisd_dev_size']], stdout = fp, stderr = fp)
 
+    logger.info("niova-block-ctl args: %s", process_popen.args)
     #Check if niova-block-ctl process exited with error
     if process_popen.poll() is None:
-        logging.info("niova-block-ctl process started successfully")
+        logger.info("niova-block-ctl process started successfully")
     else:
-        logging.info("niova-block-ctl process failed to start")
+        logger.error("niova-block-ctl process failed to start")
         raise subprocess.SubprocessError(process_popen.returncode)
 
     # Sync the log file so all the logs from niova-block-ctl gets written to log file.
@@ -81,11 +105,13 @@ def start_nisd_process(cluster_params, input_values, nisdPath):
     raft_uuid = cluster_params['raft_uuid']
 
     # Prepare seperate path for nisd log file.
-    log_file = "%s/%s/nisd_%s_log.txt" % (base_dir, raft_uuid, input_values['nisd_uuid'])
+    log_path = "%s/%s/nisd_%s_log.txt" % (base_dir, raft_uuid, input_values['nisd_uuid'])
 
     # Open the log file to pass the fp to subprocess.Popen
-    fp = open(log_file, "w")
+    fp = open(log_path, "a+")
 
+    # Initialize the logger
+    #logger = initialize_logger(log_path)
 
     genericcmdobj = GenericCmds()
     #writing the information of lookout uuids dict into raft_uuid.json
@@ -101,17 +127,20 @@ def start_nisd_process(cluster_params, input_values, nisdPath):
         if input_values['nisd_uuid'] in recipe_conf['nisd_uuid_dict'].keys():
             recipe_conf['nisd_uuid_dict'][nisd_uuid] = uport
 
+    fp.write("starting nisd process\n")
+    fp.write("nisd-uuid: "+nisd_uuid+"\n")
+
     #start nisd process
     bin_path = '%s/nisd' % binary_dir
     process_popen = subprocess.Popen([bin_path, '-u', nisd_uuid, '-p', uport, '-d', nisdPath],
                                       stdout = fp, stderr = fp)
-    logging.info("starting nisd process")
 
+    fp.write("nisd args: "+str(process_popen.args)+"\n")
     #Check if nisd process exited with error
     if process_popen.poll() is None:
-        logging.info("NISD process started successfully")
+        fp.write("NISD process started successfully")
     else:
-        logging.info("NISD process failed to start")
+        fp.write("NISD process failed to start")
         raise subprocess.SubprocessError(process_popen.returncode)
 
     # writing the information of lookout and nisd into raft_uuid.json file
@@ -241,20 +270,26 @@ def start_niova_block_test_with_inputFile(cluster_params, input_values):
             input_dict['niova-block-test-input'][nisd_uuid_to_write[5:]]['read-input'][input_cnt] = {}
             input_dict['niova-block-test-input'][nisd_uuid_to_write[5:]]['read-input'][input_cnt] = info
 
-        if read_operation_ratio_percentage == '0':
+        if operation_type == 'write':
             # prepare path for log file.
-            log_path = "%s/%s/niova-block-test_write_%s.log" % (base_dir, raft_uuid, nisd_uuid_to_write[5:])
+            log_path = "%s/%s/niova-block-test_%s_%s.log" % (base_dir, raft_uuid, operation_type, nisd_uuid_to_write[5:])
         else:
             # Prepare path for log file.
-            log_path = "%s/%s/niova-block-test_read_%s.log" % (base_dir, raft_uuid, nisd_uuid_to_write[5:])
+            log_path = "%s/%s/niova-block-test_%s_%s.log" % (base_dir, raft_uuid, operation_type, nisd_uuid_to_write[5:])
+
+        # Initialize the logger
+        logger = initialize_logger(log_path)
 
         # Open the log file to pass the fp to subprocess.Popen
-        fp = open(log_path, "w")
+        fp = open(log_path, "a+")
 
         #start niova block test process
         bin_path = '%s/niova-block-test' % binary_dir
 
-        logging.info("Do write/read operation on nisd by starting niova-block-test")
+        logger.debug("Do write/read operation on nisd by starting niova-block-test")
+        logger.debug("nisd-uuid: %s", nisd_uuid_to_write[5:])
+        logger.debug("vdev-uuid: %s", vdev)
+        logger.debug("client-uuid: %s", client_uuid)
 
         if sequential_writes == True and integrity_check == False and blocking_process == False:
             ps = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
@@ -277,6 +312,8 @@ def start_niova_block_test_with_inputFile(cluster_params, input_values):
                                        '-q', queue_depth, '-N', num_ops], stdout=fp, stderr=fp)
 
         out, err = ps.communicate()
+        logger.info("niova-block-test: %s", ps.args)
+        logger.info("return code: %d", ps.returncode)
         info['returncode'] = ps.returncode
         # Sync the log file so all the logs from niova-block-test gets written to log file.
         os.fsync(fp)
@@ -305,16 +342,26 @@ def start_niova_block_test(cluster_params, input_values):
     sequential_writes = input_values['sequential_writes']
     blocking_process = input_values['blocking_process']
 
-    # Prepare path for log file.
-    log_file = "%s/%s/niova-block-test_%s_log.txt" % (base_dir, raft_uuid, nisd_uuid_to_write[5:])
+    if read_operation_ratio_percentage == '0':
+        # prepare path for log file.
+        log_path = "%s/%s/niova-block-test_write_%s.log" % (base_dir, raft_uuid, nisd_uuid_to_write[5:])
+    else:
+        # Prepare path for log file.
+        log_path = "%s/%s/niova-block-test_read_%s.log" % (base_dir, raft_uuid, nisd_uuid_to_write[5:])
+
+    # Initialize the logger
+    logger = initialize_logger(log_path)
 
     # Open the log file to pass the fp to subprocess.Popen
-    fp = open(log_file, "w")
+    fp = open(log_path, "a+")
 
     #start niova block test process
     bin_path = '%s/niova-block-test' % binary_dir
 
-    logging.info("Do write/read operation on nisd by starting niova-block-test")
+    logger.debug("Do write/read operation on nisd by starting niova-block-test")
+    logger.debug("nisd-uuid: %s", nisd_uuid_to_write[5:])
+    logger.debug("vdev-uuid: %s", vdev)
+    logger.debug("client-uuid: %s", client_uuid)
 
     if sequential_writes == True and integrity_check == False and blocking_process == False:
         ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
@@ -336,7 +383,8 @@ def start_niova_block_test(cluster_params, input_values):
                                    '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
                                    '-q', queue_depth, '-N', num_ops), stdout=fp, stderr=fp)
 
-    logging.info("return code: ", ps.returncode)
+    logger.info("niova-block-test args: %s", ps.args)
+    logger.info("return code: %d", ps.returncode)
     # Sync the log file so all the logs from niova-block-test gets written to log file.
     os.fsync(fp)
 

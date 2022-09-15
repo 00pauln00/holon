@@ -61,10 +61,10 @@
 
      - name: Generate new client-uuid for niova-block-test
        shell: "/usr/bin/uuid"
-       register: client_uuid
+       register: old_cli_uuid
 
      - debug:
-         msg: "{{ client_uuid.stdout }}"
+         msg: "{{ old_cli_uuid.stdout }}"
 
      #2 - Perform a Number of Single Block Writes to the NISD
      - name: "{{ recipe_name }}: Perform some Writes to the NISD."
@@ -74,7 +74,7 @@
                  'vdev' : '{{ vdev.stdout}}',
                  'read_operation_ratio_percentage' : '0',
                  'random_seed' : '987',
-                 'client_uuid' : '{{ client_uuid.stdout }}',
+                 'client_uuid' : '{{ old_cli_uuid.stdout }}',
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '512',
@@ -180,7 +180,7 @@
                  'vdev' : '{{ vdev.stdout}}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : '987',
-                 'client_uuid' : '{{ client_uuid.stdout }}',
+                 'client_uuid' : '{{ old_cli_uuid.stdout }}',
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '512',
@@ -202,10 +202,10 @@
 
      - name: Generate new client-uuid for niova-block-test
        shell: "/usr/bin/uuid"
-       register: client_uuid_new
+       register: new_cli_uuid
 
      - debug:
-         msg: "{{ client_uuid_new.stdout }}"
+         msg: "{{ new_cli_uuid.stdout }}"
 
      #7 - Overwrite the Vblks Using a New CLIENT_UUID
      - name: "{{ recipe_name }}: Overwrite the Vblks Using a New CLIENT_UUID."
@@ -215,7 +215,7 @@
                  'vdev' : '{{ vdev.stdout}}',
                  'read_operation_ratio_percentage' : '0',
                  'random_seed' : '987',
-                 'client_uuid' : '{{ client_uuid_new.stdout }}',
+                 'client_uuid' : '{{ new_cli_uuid.stdout }}',
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '512',
@@ -244,7 +244,7 @@
                  'vdev' : '{{ vdev.stdout}}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : '987',
-                 'client_uuid' : '{{ client_uuid.stdout }}',
+                 'client_uuid' : '{{ old_cli_uuid.stdout }}',
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '512',
@@ -272,7 +272,7 @@
                  'vdev' : '{{ vdev.stdout}}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : '987',
-                 'client_uuid' : '{{ client_uuid_new.stdout }}',
+                 'client_uuid' : '{{ new_cli_uuid.stdout }}',
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '512',
@@ -349,7 +349,7 @@
                  'vdev' : '{{ vdev.stdout}}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : '987',
-                 'client_uuid' : '{{ client_uuid_new.stdout }}',
+                 'client_uuid' : '{{ new_cli_uuid.stdout }}',
                  'request_size_in_bytes' : '1',
                  'queue_depth' : '1',
                  'num_ops' : '512',
