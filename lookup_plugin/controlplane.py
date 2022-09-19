@@ -68,7 +68,6 @@ def start_ncpc(cluster_params, Key, Value, Operation,
                                              '-v', Value, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath],
                                              stdout = fp, stderr = fp)
-
     # Sync the log file so all the logs from ncpc gets written to log file.
     os.fsync(fp)
     return process_popen, outfilePath
@@ -220,9 +219,9 @@ def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
     data = open(gossipNodes, 'a')
     data.write("%s %s %s %s %s\n" % ( lookout_uuid, aport, hport, rport, uport ))
     data.close()
-
+    
     # Set the target ports in the targets.json file for prometheus exporter
-    if cluster_params['prometheus_support']:
+    if cluster_params['prometheus_support'] == 1:
         prom_targets_path = os.environ['PROMETHEUS_PATH'] + '/' + "targets.json"
         prom_targets = []
         with open(prom_targets_path, "r") as f:
@@ -230,6 +229,8 @@ def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
             prom_targets.append({'targets':['localhost:'+str(hport)]})
         with open(prom_targets_path, "w") as f:
             json.dump(prom_targets, f)
+    else:
+        pass
 
     #start niova block test process
     bin_path = '%s/nisdLookout' % binary_dir
