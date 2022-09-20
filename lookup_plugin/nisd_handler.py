@@ -369,9 +369,14 @@ def start_niova_block_test(cluster_params, input_values):
                                    '-q', queue_depth, '-N', num_ops, '-I'), stdout=fp, stderr=fp)
 
     elif blocking_process == True and sequential_writes == False and integrity_check == False:
-        ps = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
+        proc = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
                                    '-u', client_uuid, '-Z', request_size_in_bytes,
                                    '-q', queue_depth, '-N', num_ops, '-I', '-Q'], stdout=fp, stderr=fp)
+
+        poll = proc.poll()  # returns the exit code or None if the process is still running
+        logger.info("niova-block-test args: %s", proc.args)
+        logger.info("return code: %s", proc.returncode)
+        return proc.returncode
 
     else:
         ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
