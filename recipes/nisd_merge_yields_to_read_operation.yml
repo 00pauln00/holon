@@ -128,6 +128,19 @@
        debug:
          msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
 
+     - pause:
+         seconds: 2
+
+     - name: "{{ recipe_name}}: Wait until 'conns' gets updated"
+       vars:
+         stage: "wait_for_conns"
+         lookout_uuid: ""
+       debug:
+         msg: "Waiting for 'conns' to get updated"
+       until: lookup('niova_ctlrequest', 'lookup', get_nisd, '/conns/0/num-pending', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == 3
+       retries: 60
+       delay: 2
+
      - name: "{{ recipe_name }}: Verify conns, tasks and nisd_chunk."
        vars:
          stage: "verfyAftrRd"
