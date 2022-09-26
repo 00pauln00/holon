@@ -81,7 +81,7 @@
          msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
 
      - pause:
-         seconds: 5
+         seconds: 10
 
      - name: "{{ recipe_name }}: Wait until Nisd's status gets updated."
        vars:
