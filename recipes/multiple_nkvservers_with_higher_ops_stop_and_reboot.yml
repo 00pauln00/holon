@@ -49,6 +49,20 @@
        register: writeres
        no_log: true
 
+     - name: "{{ recipe_name }}: Check for outfile."
+       vars:
+        outfile_parameters: {
+          outfile_path: "{{ writeres['results'][0]['item'] }}",
+          wait_for_outfile: True
+          }
+        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', outfile_parameters , wantlist=True) }}"
+       debug:
+         msg: "Write key-value from lkvt_client."
+       with_items:
+          - "{{ nkvclires }}"
+       register: write_op
+       no_log: true
+
      #Stop niovakv servers.
      - name: "{{ recipe_name }}: Stop niovakv server."
        include_role:
@@ -106,20 +120,6 @@
        until: lookup('niovakv_client_handler', 'niovakv', parameters, wantlist=True) | dict2items | map(attribute='value') | map(attribute=NodeName['results'][0]['item']) | map(attribute='Status') | list | first == "alive"
        retries: 10
        delay: 1
-
-     - name: "{{ recipe_name }}: Check for outfile."
-       vars:
-        outfile_parameters: {
-          outfile_path: "{{ writeres['results'][0]['item'] }}",
-          wait_for_outfile: True
-          }
-        nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', outfile_parameters , wantlist=True) }}"
-       debug:
-         msg: "Write key-value from lkvt_client."
-       with_items:
-          - "{{ nkvclires }}"
-       register: write_op
-       no_log: true
 
      - name: "{{ recipe_name }}: Get the information for number of request distributions across multiple niovakv servers."
        debug:
