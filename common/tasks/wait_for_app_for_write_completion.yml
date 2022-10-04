@@ -9,7 +9,7 @@
         msg:
           - "Waiting for writes completion"
       until: pmdb_test_apps_pmdb_seqno != (exp_list[index | int] | int - 1)
-      loop: "{{ range(0, 10) | list }}"
+      loop: "{{ range(0, 20) | list }}"
       loop_control:
         pause: 1
 

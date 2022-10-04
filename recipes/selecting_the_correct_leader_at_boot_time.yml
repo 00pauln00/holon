@@ -200,7 +200,7 @@
             debug:
               msg: "Waiting for client to finish writing"
             until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (nwrites - 1)
-            retries: 10
+            retries: 60
             delay: 1
 
           - name: "{{ recipe_name }}: Get the follower-stat after pausing some followers."
