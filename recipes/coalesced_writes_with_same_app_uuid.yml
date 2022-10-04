@@ -8,8 +8,7 @@
      recipe_name: "coalesced_writes_with_same_app_uuid"
      parent: "healthy_raftserver_cluster_type1"
      requirement: "pumicedb"
-     number_of_app_uuids: 1
-     coalesced_num_writes: 100
+     num_writes: 1
 
   tasks:
   - block:
@@ -26,69 +25,162 @@
         name: common
         tasks_from: recipe_compatibility_requirement
 
-    #start multiple clients using common task.
-    - name: "{{ recipe_name }}: start 2 clients."
-      include_role:
-        name: common
-        tasks_from: start_multiple_clients
-      vars:
-        number_of_clients: 2
-
-    #Create set of required number of app_uuids.
-    - name: "{{ recipe_name }}: Get set of required number of app_uuids."
-      include_role:
-        name: common
-        tasks_from: create_app_uuid_set
-      vars:
-        number_of_apps: "{{ number_of_app_uuids }}"
-
-     #Perform write operations for multiple clients. (passing one client at a time.)
-    - name: "{{ recipe_name }}: Perform write operations for multiple clients."
+    - name: "{{ recipe_name }}: Get the leader and follower uuids."
       include_role:
          name: common
-         tasks_from: perform_writes
-      vars:
-        pmdb_apps: "{{ pmdb_app_uuids }}"
-        constant_number_of_writes: "{{ coalesced_num_writes }}"
-        ClientUUID: "{{ ClientUUIDS[idx] }}"
-      loop: "{{ range(0, ClientUUIDS | length) |list }}"
-      loop_control:
-          loop_var: idx
+         tasks_from: get_follower_stats
 
-    #wait for write operations to complete.
-    - name: "{{ recipe_name }}: wait for write completion."
+    - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
       include_role:
         name: common
-        tasks_from: wait_for_write_completion
+        tasks_from: set_fault_injection_and_verify
       vars:
-        Client_UUID: "{{ ClientUUIDS[cl_idx] }}"
-      loop: "{{  range(0, ClientUUIDS | length) | list }}"
-      loop_control:
-          loop_var: cl_idx
+        ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        fault_injection_name: "coalesced_writes"
 
-    #Verify client parameters after successful write operations.
-    - name: "{{ recipe_name }}: Verify client parameters."
+    - name: "{{ recipe_name }}: Generate client uuid 1"
+      shell: "/usr/bin/uuid"
+      register: client_uuid1
+
+    - debug:
+        msg: "Client UUID: {{ client_uuid1.stdout }}"
+
+    - name: "{{ recipe_name }}: Start 1st client process"
       include_role:
         name: common
-        tasks_from: verify_client_parameters
+        tasks_from: start_client
       vars:
-        Client_UUID: "{{ ClientUUIDS[client_idx] }}"
-      loop: "{{  range(0, ClientUUIDS | length) | list }}"
-      loop_control:
-          loop_var: client_idx
+        ClientUUID: "{{ client_uuid1.stdout }}"
 
-    #Perform read operations for multiple clients. (passing one client at a time.)
-    - name: "{{ recipe_name }}: Perform read operations for multiple clients."
+    - name: "{{ recipe_name }}: Verify leader is viable."
       include_role:
         name: common
-        tasks_from: verify_read_ops
+        tasks_from: verify_leader_viable
       vars:
-        pmdb_apps: "{{ pmdb_app_uuids }}"
-        ClientUUID: "{{ ClientUUIDS[idx] }}"
-        recipe_num_writes: "{{ coalesced_num_writes }}"
-      loop: "{{ range(0, ClientUUIDS | length) |list }}"
-      loop_control:
-         loop_var: idx
+        ClientUUID: "{{ client_uuid1.stdout }}"
+
+    - name: "{{ recipe_name }}: Generate App UUID"
+      shell: "/usr/bin/uuid"
+      register: app_uuid
+
+    - name: "{{ recipe_name}}: Write at seqno 0 and perform the write {{ num_writes }} times."
+      vars:
+        stage: "first_write"
+        cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
+        where: "/pumice_db_test_client/input"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid1.stdout, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - pause:
+        seconds: 3
+
+    - name: "{{ recipe_name }}: Get Values from leader after 1st write."
+      vars:
+        stage: "after_1st_wr_get_coalesed_vals"
+        raft_key:
+           - "/raft_root_entry/0/coalesce-items-pending"
+        get_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+      debug:
+        msg: "Get values after 1st write"
+      no_log: true
+      with_items:
+        - "{{ get_vals }}"
+      register: leader_values
+
+    - name: "{{ recipe_name }}: Generate client uuid 1"
+      shell: "/usr/bin/uuid"
+      register: client_uuid2
+
+    - debug:
+        msg: "Client UUID: {{ client_uuid2.stdout }}"
+
+    - name: "{{ recipe_name }}: Start 2nd client process"
+      include_role:
+        name: common
+        tasks_from: start_client
+      vars:
+        ClientUUID: "{{ client_uuid2.stdout }}"
+
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid2.stdout }}"
+
+    - name: "{{ recipe_name}}: Write at seqno 0 and perform the write {{ num_writes }} times."
+      vars:
+        stage: "first_write"
+        cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
+        where: "/pumice_db_test_client/input"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid2.stdout, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - pause:
+        seconds: 3
+
+    - name: "{{ recipe_name }}: Verify 2nd write should not happen with same app-uuid."
+      vars:
+        leader_info: "{{ leader_values['results'][0]['item'] }}"
+        stage: "after_2nd_wr_get_coalesed_vals"
+        raft_key:
+           - "/raft_root_entry/0/coalesce-items-pending"
+        curr_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+      debug:
+        msg: "Comapre values after 2nd write"
+      failed_when: >
+         (curr_vals["/0/coalesce-items-pending"] != leader_info["/0/coalesce-items-pending"])
+
+    #Remove fault injection from leader
+    - name: "{{ recipe_name }}: Apply cmd to remove fault injection from the leader."
+      vars:
+        stage: "recipe_cleanup"
+        cmd: "enabled@false"
+        where: "/fault_injection_points/name@coalesced_writes"
+        remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ remove_fault_inject }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Get fault_injection_points array to remove fault injection."
+      vars:
+        stage: "stage6"
+        raft_key:
+           - "/fault_injection_points"
+        remove_fi: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+      debug:
+        msg: "Getting fault_injection_points array."
+      no_log: True
+      with_items:
+          - "{{ remove_fi }}"
+      register: stage6_value
+
+    - name: "{{ recipe_name }}: Get 'enabled' value for 'coalesced_writes' to remove fault injection."
+      vars:
+        fi_value: "{{ stage6_value['results'][0]['item'] }}"
+      set_fact:
+        Coalesced_write_fault_injection: "{{ fi_value['//fault_injection_points'][item]['enabled'] }}"
+      when: (fi_value['//fault_injection_points'][item]['name'] == "coalesced_writes")
+      loop: "{{  range(0, fi_value['//fault_injection_points'] | length) | list }}"
+
+    - name: "{{ recipe_name }}: Verify fault injection is removed from leader."
+      debug:
+        msg: "{{ Coalesced_write_fault_injection }}"
+      no_log: True
+      failed_when: Coalesced_write_fault_injection != False
+
+    - name: "{{ recipe_name }}: Verify leader's values after removing fault injection."
+      vars:
+        stage: "final_stage"
+        raft_key:
+           - "/raft_root_entry/0/coalesce-items-pending"
+        final_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+      debug:
+        msg: "Verify after removing fault injection"
+      failed_when: >
+         (final_vals["/0/coalesce-items-pending"] != 0)
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
