@@ -77,7 +77,7 @@
       debug:
         msg: "Waiting for client to finish writing"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
-      retries: 60
+      retries: 120
       delay: 1
       loop: "{{ range(0, pmdb_app_uuids | length) | list }}"
 
