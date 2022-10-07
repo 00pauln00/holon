@@ -30,6 +30,8 @@
          name: common
          tasks_from: get_follower_stats
 
+     - pause: seconds=60
+
      - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
        vars:
          input_param: {
@@ -43,8 +45,6 @@
           - "{{ ncpclires }}"
        register: membership
        no_log: true
-
-     - pause: seconds=60
 
      - name: "{{ recipe_name }}: Verify leader state is 1."
        vars:
@@ -83,6 +83,8 @@
          - "{{ newLeader }}"
        register: newLeaderUUID
 
+     - pause: seconds=60
+
      - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
        vars:
          input_param: {
@@ -94,19 +96,16 @@
          msg: "get membership details of running servers."
        with_items:
          - "{{ ncpclires }}"
-       register: membership
+       register: membershipres
        no_log: true
-
-     - pause: seconds=60
 
      - name: "{{ recipe_name }}: Verify leader state is 1 second time"
        vars:
-         rdval: "{{ membership['results'][0]['item']['membership'][newLeaderUUID]]['Tags']['State'] }}"
+         rdval: "{{ membershipres['results'][0]['item']['membership'][newLeaderUUID['results'][0]['item']]['Tags']['State'] }}"
        debug:
          msg: "Verifying parameter after read operation"
        failed_when: >
            (rdval != "1")
-
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
