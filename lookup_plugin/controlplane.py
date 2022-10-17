@@ -10,6 +10,7 @@ import subprocess
 from genericcmd import *
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
+from inotifypath import *
 
 def start_ncpc(cluster_params, Key, Value, Operation,
                                      OutfileName, IP_addr, Port, NumWrites, seqNo, lookout_uuid, nisd_uuid, cmd):
@@ -288,6 +289,52 @@ def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
 
     return lookout_uuid
 
+def start_cfgApp(cluster_params, input_values):
+        base_dir = cluster_params['base_dir']
+        raft_uuid = cluster_params['raft_uuid']
+
+        #Prepare path for executables.
+        binary_dir = os.getenv('NIOVA_BIN_PATH')
+        bin_path = '%s/cfgApp' % binary_dir
+
+        gossipNodes_path = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
+        # Prepare path for log file.
+
+        log_file = "%s/%s/cfgApp_%s.txt" % (base_dir, raft_uuid, input_values['Operation'])
+
+        # Open the log file to pass the fp to subprocess.Popen
+        fp = open(log_file, "w")
+
+        cfg_uuid = uuid.uuid4()
+
+        ctlsvc_path = "%s/%s/cpp_configs_%s" % (base_dir, raft_uuid, cfg_uuid)
+
+        if os.path.exists(ctlsvc_path):
+                logging.info("file already exist")
+        else:
+                os.mkdir(ctlsvc_path)
+
+        get_process_type = "pmdb"
+        lookout_uuid = ""
+        base_directory = base_dir + "/" + raft_uuid
+        inotifyobj = InotifyPath(base_directory, True, get_process_type, lookout_uuid)
+        inotifyobj.export_ctlsvc_path(ctlsvc_path)
+
+        port = cluster_params['srv_port']
+        port1 = int(port)+2000
+        port2 = int(port)+5000
+        Port_range = str(port1) + "-" + str(port2)
+
+        #start client process and pass the cmd.
+        if input_values['Operation'] == "write" :
+            process_popen = subprocess.Popen([bin_path,'-r', raft_uuid , '-p' , Port_range , '-g', gossipNodes_path],
+                                             stdout = fp, stderr = fp)
+
+        elif input_values['Operation'] == "read":
+            process_popen = subprocess.Popen([bin_path,'-r', raft_uuid , '-g', gossipNodes_path, '-o', 'True'],
+                                            stdout = fp, stderr = fp)
+
+
 def load_recipe_op_config(cluster_params):
     recipe_conf = {}
     raft_json_fpath = "%s/%s/%s.json" % (cluster_params['base_dir'],
@@ -325,3 +372,9 @@ class LookupModule(LookupBase):
             niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['aport'], input_values['hport'],
                                                                  input_values['rport'], input_values['uport'])
             return niova_lookout_process
+
+        elif process_type == "cfgApp":
+
+            start_cfg_application = start_cfgApp(cluster_params, input_values)
+
+            return start_cfg_application

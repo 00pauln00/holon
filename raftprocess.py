@@ -146,7 +146,7 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
             log_path = "%s/%s_control_plane_proxy_server.log" % (base_dir, peer_uuid)
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid, '-pa', gossipNodes,
-                                    '-c', config_path, '-n', node_name, '-l', log_path],
+                                    '-n', node_name, '-l', log_path],
                                     stdout = fp, stderr = fp)
     return process_popen
 
@@ -227,7 +227,7 @@ class RaftProcess:
             config_path = "%s/niovakv.config" % base_dir
         elif app_type == "controlplane":
             node_name  = "Node_" + self.process_uuid
-            config_path = "%s/cpp_configs_%s/proxy.config" % (base_dir , self.process_uuid )
+            config_path = ""
         else:
             config_path = ""
         process_popen = run_process(fp, self.process_raft_uuid, self.process_uuid,

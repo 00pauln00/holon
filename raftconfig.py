@@ -191,38 +191,6 @@ class RaftConfig:
         # close the file
         basicioobj.close_file(nk_fd)
 
-
-    '''
-        Method: generate_controlplane_conf
-        Purpose: Create controlplane config for controlplane
-        Parameters: @ip_address: ip_address
-                    @client_uuids: client uuid array.
-                    @port: port 
-    '''
-    def generate_controlplane_conf(self, ip_address, client_uuids, port):
-
-        basicioobj = BasicIO()
-
-        '''
-        Prepare proxy config information and right it to proxy config file.
-        proxy config file name format would be proxy.config.
-        '''
-        port += 40
-        for client in client_uuids:
-            cpp_config_dir = self.base_dir_path + "/"+ "cpp_configs_" + client
-            if not os.path.exists(cpp_config_dir):
-                os.mkdir(cpp_config_dir)
-
-            cpp_config = cpp_config_dir + '/' + "proxy.config"
-            
-            cp_fd = basicioobj.open_file(cpp_config)
-            controlPlane_buff = "Node_%s %s %d %d %d\n" % (client, ip_address, port + 10, port + 11, port + 12)
-            basicioobj.write_file(cp_fd, controlPlane_buff)
-            port = port + 3
-
-        # close the file
-        basicioobj.close_file(cp_fd)
-
     '''
         Method: generate_controlplane_gossipNodes
         Purpose: Create controlplane gossipNodes for controlplane

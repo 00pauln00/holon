@@ -42,6 +42,43 @@
        delay: 1
        loop: "{{ range(0, NRunningPeers | length) | list }}"
 
+     - name: "{{ recipe_name }}: Wait until leader election happens."
+       include_role:
+         name: common
+         tasks_from: wait_until_leader_election
+
+     - name: "{{ recipe_name }}: Starting start cfg application."
+       vars:
+         input_param: {
+               'Operation': 'write'
+                            }
+         cfgwrites: "{{ lookup('controlplane', 'cfgApp', input_param, wantlist=True) }}"
+       debug:
+          msg: "write through cfg application"
+       with_items:
+           - "{{ cfgwrites }}"
+       register: write_cfg_app
+
+     - name: "{{ recipe_name }}: Pause for 5 seconds."
+       pause:
+        seconds: 5
+
+     - name: "{{ recipe_name }}: Starting start cfg application."
+       vars:
+         input_param: {
+               'Operation': 'read'
+                            }
+         cfgread: "{{ lookup('controlplane', 'cfgApp', input_param, wantlist=True) }}"
+       debug:
+          msg: "read the key written through cfg application"
+       with_items:
+           - "{{ cfgread }}"
+       register: read_cfg_app
+
+     - name: "{{ recipe_name }}: Pause for 10 seconds."
+       pause:
+        seconds: 10
+
      # Start proxy servers
      - name: "{{ recipe_name }}: Start proxy servers."
        include_role:
