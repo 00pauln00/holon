@@ -24,6 +24,24 @@
          ServerUUID: "{{ NonRunningServers[item] }}"
        loop: "{{ range(0, number_of_PMDBServers | int ) | list }}"
 
+     - name: "{{ recipe_name }}: get the list of running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     - name: "{{ recipe_name}}: Wait until pmdb server bootup properly."
+       vars:
+        input_param: {
+                  'Operation': 'membership',
+                  'OutfileName': 'get_pmdbstatus'
+                  }
+       debug:
+        msg: "Verify PMDB Server bootup properly"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=NRunningPeers[item]) | map(attribute='Status') | list | first == "alive"
+       retries: 20
+       delay: 1
+       loop: "{{ range(0, NRunningPeers | length) | list }}"
+
      # Start proxy servers
      - name: "{{ recipe_name }}: Start proxy servers."
        include_role:
@@ -37,3 +55,39 @@
        pause:
         seconds: 5
 
+     - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
+       vars:
+          node_item: "{{ 'Node_' ~ item }}"
+       set_fact:
+          nodeList: "{{ nodeList|default([]) + [node_item] }}"
+       loop: "{{ ClientUUIDS }}"
+
+     - debug:
+         msg: "Node name list: {{ nodeList }}"
+
+     - name: "{{ recipe_name }}: Get proxy server's status."
+       vars:
+         input_param: {
+                  'Operation': 'membership',
+                  'OutfileName': 'get_nodestatus'
+                  }
+         getNodeData: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Get node name"
+       with_items:
+          - "{{ getNodeData }}"
+       register: nodeName
+       no_log : true
+
+     - name: "{{ recipe_name}}: Wait until proxy server bootup properly."
+       vars:
+        input_param: {
+                  'Operation': 'membership',
+                  'OutfileName': 'get_nodestatus'
+                  }
+       debug:
+        msg: "Verify Proxy server bootup properly"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=nodeList[item]) | map(attribute='Status') | list | first == "alive"
+       retries: 20
+       delay: 1
+       loop: "{{ range(0, nodeList | length) | list }}"
