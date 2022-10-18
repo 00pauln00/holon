@@ -229,8 +229,6 @@ def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
             prom_targets.append({'targets':['localhost:'+str(hport)]})
         with open(prom_targets_path, "w") as f:
             json.dump(prom_targets, f)
-    else:
-        pass
 
     #start niova block test process
     bin_path = '%s/nisdLookout' % binary_dir
