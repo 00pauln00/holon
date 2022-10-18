@@ -221,7 +221,7 @@ def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
     data.close()
     
     # Set the target ports in the targets.json file for prometheus exporter
-    if cluster_params['prometheus_support'] == 1:
+    if cluster_params['prometheus_support'] == "1":
         prom_targets_path = os.environ['PROMETHEUS_PATH'] + '/' + "targets.json"
         prom_targets = []
         with open(prom_targets_path, "r") as f:
