@@ -215,7 +215,7 @@
      - name: "{{ recipe_name }}: Perform some Writes to the NISD."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ vdevUUID.stdout }}',
                  'read_operation_ratio_percentage' : '0',
                  'random_seed' : '123',
@@ -360,7 +360,7 @@
      - name: "{{ recipe_name }}: Perform a Read of the Previously Written VBLKS."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ vdevUUID.stdout }}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : '123',

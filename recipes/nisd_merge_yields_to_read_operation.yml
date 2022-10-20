@@ -39,7 +39,7 @@
      - name: "{{ recipe_name }}: Perform some Writes to the NISD."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ mergeVdev.stdout }}',
                  'read_operation_ratio_percentage' : '0',
                  'random_seed' : Null,
@@ -112,7 +112,7 @@
      - name: "{{ recipe_name }}: Launch Reads (num_remaining - 1)."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ mergeVdev.stdout }}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : Null,
@@ -206,7 +206,7 @@
      - name: "{{ recipe_name }}: Overwrite the VBLKS from Step #1 using a new CLIENT_UUID."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ mergeVdev.stdout }}',
                  'read_operation_ratio_percentage' : '0',
                  'random_seed' : Null,
@@ -299,7 +299,7 @@
      - name: "{{ recipe_name }}: Enqueue Reads from the Client Used in Step #5"
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ mergeVdev.stdout }}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : Null,
