@@ -25,4 +25,3 @@
        loop: "{{ nisd_list }}"
        loop_control:
           loop_var: idx
-          pause: 5
