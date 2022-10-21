@@ -37,7 +37,7 @@
      - name: "{{ recipe_name }}: Perform some Writes to the NISD."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ staleVdev.stdout }}',
                  'read_operation_ratio_percentage' : '0',
                  'random_seed' : Null,
@@ -81,7 +81,7 @@
      - name: "{{ recipe_name }}: Issue a Read of the Vblks."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ staleVdev.stdout }}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : Null,
@@ -149,7 +149,7 @@
      - name: "{{ recipe_name }}: Write one more VBLK to the Chunk."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ staleVdev.stdout }}',
                  'read_operation_ratio_percentage' : '0',
                  'random_seed' : Null,
@@ -177,7 +177,7 @@
      - name: "{{ recipe_name }}: Read back the one VBLK."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ staleVdev.stdout}}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : Null,
