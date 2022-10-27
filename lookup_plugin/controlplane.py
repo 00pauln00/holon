@@ -199,7 +199,7 @@ def set_environment_variables(cluster_params,lookout_uuid):
 
     return niova_lookout_ctl_interface_path
 
-def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
+def start_niova_lookout_process(cluster_params, uport):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     app_name = cluster_params['app_type']
@@ -217,46 +217,13 @@ def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(log_file, "w")
     gossipNodes = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
-    data = open(gossipNodes, 'a')
-    data.write("%s %s %s %s %s\n" % ( lookout_uuid, aport, hport, rport, uport ))
-    data.close()
     
-    # Set the target ports in the targets.json file for prometheus exporter
-    if cluster_params['prometheus_support'] == 1:
-        prom_targets_path = os.environ['PROMETHEUS_PATH'] + '/' + "targets.json"
-        prom_targets = []
-        with open(prom_targets_path, "r") as f:
-            prom_targets = json.load(f)
-            prom_targets.append({'targets':['localhost:'+str(hport)]})
-        with open(prom_targets_path, "w") as f:
-            json.dump(prom_targets, f)
-    else:
-        pass
-
     #start niova block test process
     bin_path = '%s/nisdLookout' % binary_dir
-
-    ports = { 'aport' : 0, 'hport' : 0, 'rport' : 0 ,'uport' : 0}
-
-    ports['aport'] = aport
-    ports['hport'] = hport
-    ports['rport'] = rport
-    ports['uport'] = uport
-
-    #writing the information of lookout uuids dict into raft_uuid.json
-    recipe_conf = load_recipe_op_config(cluster_params)
-
-    if not "lookout_uuid_dict" in recipe_conf:
-        recipe_conf['lookout_uuid_dict'] = {}
-
-    recipe_conf['lookout_uuid_dict'][lookout_uuid] = {}
-    recipe_conf['lookout_uuid_dict'][lookout_uuid] = ports
-
-    genericcmdobj.recipe_json_dump(recipe_conf)
-
     logging.info("starting niova-lookout process")
-    process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes, '-n', lookout_uuid,
-                                            '-p', aport, '-port', hport, '-r', rport, '-u', uport], stdout = fp, stderr = fp)
+    process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes,
+                                            '-n', lookout_uuid, '-r', raft_uuid,
+                                            '-u', uport], stdout = fp, stderr = fp)
 
     #Check if niova-lookout process exited with error
     if process_popen.poll() is None:
@@ -264,6 +231,10 @@ def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
     else:
         logging.info("niova-lookout failed to start")
         raise subprocess.SubprocessError(process_popen.returncode)
+
+    
+    #writing the information of lookout uuids dict into raft_uuid.json
+    recipe_conf = load_recipe_op_config(cluster_params)
 
     #writing the information of lookout uuid in raft_process into raft_uuid.json
     pid = process_popen.pid
@@ -307,7 +278,7 @@ def start_cfgApp(cluster_params, input_values):
 
         cfg_uuid = uuid.uuid4()
 
-        ctlsvc_path = "%s/%s/cpp_configs_%s" % (base_dir, raft_uuid, cfg_uuid)
+        ctlsvc_path = "%s/%s/cfg_%s" % (base_dir, raft_uuid, cfg_uuid)
 
         if os.path.exists(ctlsvc_path):
                 logging.info("file already exist")
@@ -321,8 +292,8 @@ def start_cfgApp(cluster_params, input_values):
         inotifyobj.export_ctlsvc_path(ctlsvc_path)
 
         port = cluster_params['srv_port']
-        port1 = int(port)+2000
-        port2 = int(port)+5000
+        port1 = int(port) + 200
+        port2 = int(port) + 600
         Port_range = str(port1) + "-" + str(port2)
 
         #start client process and pass the cmd.
@@ -368,9 +339,9 @@ class LookupModule(LookupBase):
                 print("file already exist")
             else:
                 os.mkdir(niova_lookout_path)
-
-            niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['aport'], input_values['hport'],
-                                                                 input_values['rport'], input_values['uport'])
+             
+            niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['uport'])
+            print("niova_lookout_process", niova_lookout_process)
             return niova_lookout_process
 
         elif process_type == "cfgApp":
@@ -378,3 +349,16 @@ class LookupModule(LookupBase):
             start_cfg_application = start_cfgApp(cluster_params, input_values)
 
             return start_cfg_application
+
+        elif process_type == "prometheus":
+            
+            # Set the target ports in the targets.json file for prometheus exporter
+            if cluster_params['prometheus_support'] == "1":
+                prom_targets_path = os.environ['PROMETHEUS_PATH'] + '/' + "targets.json"
+                prom_targets = []
+                with open(prom_targets_path, "r") as f:
+                    prom_targets = json.load(f)
+                    prom_targets.append({'targets':['localhost:'+str(hport)]})
+                with open(prom_targets_path, "w") as f:
+                    json.dump(prom_targets, f)
+
