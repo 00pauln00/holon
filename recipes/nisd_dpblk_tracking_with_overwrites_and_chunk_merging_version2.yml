@@ -66,7 +66,7 @@
      - name: "{{ recipe_name }}: Perform some Writes to the NISD."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ vdev.stdout}}',
                  'read_operation_ratio_percentage' : '0',
                  'random_seed' : '1010101',
@@ -185,7 +185,7 @@
      - name: "{{ recipe_name }}: Issue a Read of the Vblks."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ vdev.stdout}}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : '1010101',
@@ -234,7 +234,7 @@
      - name: "{{ recipe_name }}: Perform Read to the NISD."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ vdev.stdout}}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : '1010101',
@@ -284,7 +284,7 @@
      - name: "{{ recipe_name }}: Perform Read to the NISD."
        vars:
          input_param: {
-                 'uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ vdev.stdout}}',
                  'read_operation_ratio_percentage' : '100',
                  'random_seed' : '1010101',

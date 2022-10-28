@@ -325,7 +325,7 @@ def start_niova_block_test(cluster_params, input_values):
     raft_uuid = cluster_params['raft_uuid']
 
     #get input parameters
-    nisd_uuid_to_write = input_values['uuid_to_write']
+    nisd_uuid_to_write = input_values['nisd_uuid_to_write']
     vdev = input_values['vdev']
     read_operation_ratio_percentage = input_values['read_operation_ratio_percentage']
     random_seed = input_values['random_seed']
