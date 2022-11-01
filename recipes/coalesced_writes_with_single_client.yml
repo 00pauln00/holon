@@ -73,9 +73,10 @@
     - name: "{{ recipe_name}}: Wait until write completes from client."
       vars:
         stage: "wait_for_write_compltn"
+        idx: "{{ item }}"
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
       debug:
-        msg: "Waiting for client to finish writing"
+        msg: "{{item}}"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
       retries: 60
       delay: 1
@@ -92,13 +93,29 @@
          - "{{ raft_root_entry }}"
       register: coalesced_wr_cnt
 
-    #Verify client parameters after successful write operations.
-    - name: "{{ recipe_name }}: Verify client parameters."
+    - name: "Get list of expected num writes for client."
       include_role:
         name: common
-        tasks_from: verify_client_parameters
+        tasks_from: get_list_of_expected_num_writes
       vars:
         Client_UUID: "{{ client_uuid.stdout }}"
+
+    - set_fact:
+        pmdb_apps: "{{ pmdb_app_uuids | reverse | list }}"
+
+    - debug:
+        msg: "pmdb_apps: {{ pmdb_apps }}"
+
+    - name: "Verify write completitions for every app."
+      include_role:
+        name: common
+        tasks_from: verify_client_parameters_for_every_app
+      vars:
+        idx: "{{ app_index }}"
+        Client_UUID: "{{ client_uuid.stdout }}"
+      loop: "{{ range(0, pmdb_apps | length) | list }}"
+      loop_control:
+          loop_var: app_index
 
     #Perform read operations.
     - name: "{{ recipe_name }}: Perform read operations on single  client."
