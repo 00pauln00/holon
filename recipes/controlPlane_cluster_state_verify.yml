@@ -13,7 +13,7 @@
      - name: "Check if parent recipe failed"
        debug: msg="Check if parent recipe {{ parent }} failed"
        failed_when: terminate_recipe == true
-    
+
      - name: "{{ recipe_name }}: get the list of non-running servers."
        include_role:
           name: common
@@ -64,12 +64,20 @@
          msg: "Write key-value from ncpc."
        with_items:
           - "{{ ncpcWrRes }}"
-       register: writeres
+       register: writeresult
        no_log: true
+
+     - name: "{{ recipe_name }}: Verify outfile status"
+       debug:
+         msg:
+           - "Check write outfile status: {{ writeresult['results'][0]['item']['outfile_status'] }}"
+       no_log: true
+       failed_when: >
+         (writeresult['results'][0]['item']['outfile_status'] != 0)
 
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
-         wrstatus: "{{ writeres['results'][0]['item']['Response']['Status'] }}"
+         wrstatus: "{{ writeresult['results'][0]['item']['output_data']['Response']['Status'] }}"
        debug:
          msg: "Check if write is successful."
        failed_when: >
@@ -107,7 +115,7 @@
                   }
        debug:
          msg: "Verifying node status"
-       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNodeName) | map(attribute='Status') | list | first == "failed"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute='output_data') | map(attribute=getNodeName) | map(attribute='Status') | list | first == "failed"
        retries: 10
        delay: 1
 
@@ -119,8 +127,9 @@
                   }
          getProxyServerData: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
-         msg: "Verify proxy server status"
-       failed_when: getProxyServerData['membership'][getNodeName]['Status'] != "failed"
+         msg: "Verify proxy server status: {{ getProxyServerData }}"
+       no_log: true
+       failed_when: getProxyServerData['membership']['output_data'][getNodeName]['Status'] != "failed"
 
      - name: "{{ recipe_name }}: Starting controlplane_client to read the value and verify its status."
        vars:
@@ -137,12 +146,22 @@
          msg: "Reading through ncpc client."
        with_items:
           - "{{ ncpRdRes }}"
-       register: readres
+       register: readresult
        no_log: true
+
+     - name: "{{ recipe_name }}: Verify outfile status and read status"
+       debug:
+        msg:
+         - "Check read outfile status: {{ readresult['results'][0]['item']['outfile_status'] }}"
+         - "Check read response status: {{readresult['results'][0]['item']['output_data']['Response']['Status'] }}"
+       no_log: true
+       failed_when:
+         (readresult['results'][0]['item']['outfile_status'] != 0) or
+         (readresult['results'][0]['item']['output_data']['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: compare values after sucessful write/read operation."
        vars:
-         rdval: "{{ readres['results'][0]['item']['Response'] }}"
+         rdval: "{{ readresult['results'][0]['item']['output_data']['Response'] }}"
        debug:
          msg: "Verifying parameter after read operation"
        failed_when: >
@@ -165,7 +184,7 @@
                   }
        debug:
          msg: "Verifying pmdb server's status"
-       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getPmdbServer) | map(attribute='Status') | list | first == "failed"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute='output_data') | map(attribute=getPmdbServer) | map(attribute='Status') | list | first == "failed"
        retries: 10
        delay: 1
 
@@ -179,7 +198,7 @@
          verifyPmdbServerStatus: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
        debug:
          msg: "Verify killed pmdb server status"
-       failed_when: verifyPmdbServerStatus['membership'][killedPmdbServer]['Status'] != "failed"
+       failed_when: verifyPmdbServerStatus['membership']['output_data'][killedPmdbServer]['Status'] != "failed"
 
 
      - name: "{{ recipe_name }}: Start killed proxy server."
