@@ -175,6 +175,15 @@
          name: common
          tasks_from: wait_until_leader_election
 
+     - name: "{{ recipe_name }}: Get outfile status."
+       stat:
+         path: "{{ seqnoPassed_rangereadres['results'][0]['item'] + '.json' }}"
+       register: file_status
+
+     - debug:
+         msg: "Outfile not exist"
+       failed_when: file_status.stat.exists == False
+
      - name: Display the JSON file content
        shell: cat {{seqnoPassed_rangereadres['results'][0]['item'] + '.json'}}
        register: result

@@ -130,6 +130,24 @@
        register: rangereadres_thread2
        no_log: true
 
+     - name: "{{ recipe_name }}: Get outfile status for 1st read thread."
+       stat:
+         path: "{{ rangereadres_thread1['results'][0]['item'] + '.json' }}"
+       register: file_status1
+
+     - debug:
+         msg: "Outfile not exist"
+       failed_when: file_status1.stat.exists == False
+
+     - name: "{{ recipe_name }}: Get outfile status for 2nd read thread."
+       stat:
+         path: "{{ rangereadres_thread2['results'][0]['item'] + '.json' }}"
+       register: file_status2
+
+     - debug:
+         msg: "Outfile not exist"
+       failed_when: file_status2.stat.exists == False
+
      - name: Display the JSON file content for first thread
        shell: cat {{rangereadres_thread1['results'][0]['item'] + '.json'}}
        register: result_thread1

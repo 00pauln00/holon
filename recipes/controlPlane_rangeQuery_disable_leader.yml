@@ -52,14 +52,14 @@
        debug:
          msg:
            - "Check write outfile status: {{ writeres5keys['results'][0]['item']['outfile_status'] }}"
-       no_log: true
+       #no_log: true
        failed_when: >
          (writeres5keys['results'][0]['item']['outfile_status'] != 0)
 
      - name: "{{ recipe_name }}: Verify write status"
        debug:
          msg: "Check write response status: {{ item.value['Status'] }}"
-       no_log: true
+       #no_log: true
        failed_when: >
          (item.value['Status'] != 0)
        with_dict: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
@@ -248,6 +248,15 @@
          msg: "Check if new leader is elected."
        failed_when: >
          (oldLeaderUUID == newLeaderUUID )
+
+     - name: "{{ recipe_name }}: Get outfile exists."
+       stat:
+         path: "{{ seqnoPassed_rangereadres['results'][0]['item'] + '.json' }}"
+       register: file_status
+
+     - debug:
+         msg: "Outfile not exist"
+       failed_when: file_status.stat.exists == False
 
      - name: "{{ recipe_name }}: Display the JSON file content"
        shell: cat {{seqnoPassed_rangereadres['results'][0]['item'] + '.json'}}
