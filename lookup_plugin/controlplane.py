@@ -100,7 +100,7 @@ def extracting_dictionary(cluster_params, input_values):
         # Start the ncpc_client and perform the specified operation e.g write/read/config.
         process,outfile = start_ncpc(cluster_params, Key, Value,
                                            input_values['Operation'], input_values['OutfileName'],
-                                           IP_addr, Port, input_values['NoofWrites'], seqNo, 
+                                           IP_addr, Port, input_values['NoofWrites'], seqNo,
                                            lookout_uuid, nisd_uuid, cmd)
         if input_values['wait_for_outfile']:
             output_data = get_the_output(outfile)
@@ -123,7 +123,7 @@ def extracting_dictionary(cluster_params, input_values):
         # Start the ncpc_client and perform the specified operation e.g write/read/config.
         process,outfile = start_ncpc(cluster_params, input_values['Key'], Value,
                                            input_values['Operation'], input_values['OutfileName'],
-                                           IP_addr, Port, input_values['NoofWrites'], input_values['seqNo'], 
+                                           IP_addr, Port, input_values['NoofWrites'], input_values['seqNo'],
                                            lookout_uuid, nisd_uuid, cmd)
         if input_values['wait_for_outfile']:
             output_data = get_the_output(outfile)
@@ -166,7 +166,7 @@ def extracting_dictionary(cluster_params, input_values):
 def get_the_output(outfilePath):
     outfile = outfilePath + '.json'
     counter = 0
-    timeout = 160
+    timeout = 100
 
     # Wait till the output json file gets created.
     while True:
@@ -174,14 +174,17 @@ def get_the_output(outfilePath):
             counter += 1
             time.sleep(1)
             if counter == timeout:
-                return {"status":-1,"msg":"Timeout checking for output file"}
+                return {'outfile_status':-1}
         else:
             break
 
     output_data = {}
+    json_data = {}
     with open(outfile, "r+", encoding="utf-8") as json_file:
         output_data = json.load(json_file)
-    return output_data
+    json_data['outfile_status'] = 0
+    json_data['output_data'] = output_data
+    return json_data
 
 def set_environment_variables(cluster_params,lookout_uuid):
     niova_lookout_ctl_interface_path = "%s/%s/niova_lookout/%s" % (cluster_params['base_dir'],
@@ -219,7 +222,7 @@ def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
     data = open(gossipNodes, 'a')
     data.write("%s %s %s %s %s\n" % ( lookout_uuid, aport, hport, rport, uport ))
     data.close()
-    
+
     # Set the target ports in the targets.json file for prometheus exporter
     if cluster_params['prometheus_support'] == "1":
         prom_targets_path = os.environ['PROMETHEUS_PATH'] + '/' + "targets.json"
@@ -304,11 +307,11 @@ class LookupModule(LookupBase):
         input_values = terms[1]
 
         cluster_params = kwargs['variables']['ClusterParams']
-        
+
         if process_type == "ncpc":
-            
+
             data = extracting_dictionary(cluster_params, input_values)
-            
+
             return data
 
         elif process_type == "niova-lookout":
