@@ -30,6 +30,26 @@
          name: common
          tasks_from: get_follower_stats
 
+    #start multiple clients using common task.
+    - name: "{{ recipe_name }}: start multiple clients."
+      include_role:
+        name: common
+        tasks_from: start_multiple_clients
+      vars:
+        number_of_clients: 2
+
+    - name: "{{ recipe_name }}: Generate App UUID"
+      shell: "/usr/bin/uuid"
+      register: app_uuid
+
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ ClientUUIDS[item] }}"
+      loop: "{{ range(0, ClientUUIDS | length) |list }}"
+
     - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
       include_role:
         name: common
@@ -38,54 +58,14 @@
         ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
         fault_injection_name: "coalesced_writes"
 
-    - name: "{{ recipe_name }}: Generate client uuid 1"
-      shell: "/usr/bin/uuid"
-      register: client_uuid1
-
-    - debug:
-        msg: "Client UUID: {{ client_uuid1.stdout }}"
-
-    - name: "{{ recipe_name }}: Start 1st client process"
-      include_role:
-        name: common
-        tasks_from: start_client
-      vars:
-        ClientUUID: "{{ client_uuid1.stdout }}"
-
-    - name: "{{ recipe_name }}: Verify leader is viable."
-      include_role:
-        name: common
-        tasks_from: verify_leader_viable
-      vars:
-        ClientUUID: "{{ client_uuid1.stdout }}"
-
-    - name: "{{ recipe_name }}: Generate App UUID"
-      shell: "/usr/bin/uuid"
-      register: app_uuid
-
     - name: "{{ recipe_name}}: Write at seqno 0 and perform the write {{ num_writes }} times."
       vars:
         stage: "first_write"
         cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
         where: "/pumice_db_test_client/input"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid1.stdout, cmd, where, wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', ClientUUIDS[0], cmd, where, wantlist=True) }}"
       no_log: true
-
-    - pause:
-        seconds: 3
-
-    - name: "{{ recipe_name }}: Get client values after 1st write."
-      vars:
-        stage: "check_return_code_after_1st_wr"
-        raft_key:
-           - "/raft_client_root_entry/0/state"
-           - "/raft_client_root_entry/0/leader-uuid"
-           - "/raft_client_root_entry/0/recent-ops-wr/0/attempts"
-           - "/raft_client_root_entry/0/recent-ops-wr/0/rpc-user-tag"
-           - "/pumice_db_test_client/pmdb-request-history/0/last-request-tag"
-      debug:
-          msg: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid1.stdout, raft_key, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Get Values from leader after 1st write."
       vars:
@@ -100,50 +80,14 @@
         - "{{ get_vals }}"
       register: leader_values
 
-    - name: "{{ recipe_name }}: Generate client uuid 1"
-      shell: "/usr/bin/uuid"
-      register: client_uuid2
-
-    - debug:
-        msg: "Client UUID: {{ client_uuid2.stdout }}"
-
-    - name: "{{ recipe_name }}: Start 2nd client process"
-      include_role:
-        name: common
-        tasks_from: start_client
-      vars:
-        ClientUUID: "{{ client_uuid2.stdout }}"
-
-    - name: "{{ recipe_name }}: Verify leader is viable."
-      include_role:
-        name: common
-        tasks_from: verify_leader_viable
-      vars:
-        ClientUUID: "{{ client_uuid2.stdout }}"
-
     - name: "{{ recipe_name}}: Write at seqno 0 and perform the write {{ num_writes }} times."
       vars:
         stage: "first_write"
         cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
         where: "/pumice_db_test_client/input"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid2.stdout, cmd, where, wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', ClientUUIDS[1], cmd, where, wantlist=True) }}"
       no_log: true
-
-    - pause:
-        seconds: 3
-
-    - name: "{{ recipe_name }}: Get client values after 2nd write."
-      vars:
-        stage: "check_return_code"
-        raft_key:
-           - "/raft_client_root_entry/0/state"
-           - "/raft_client_root_entry/0/leader-uuid"
-           - "/raft_client_root_entry/0/recent-ops-wr/0/attempts"
-           - "/raft_client_root_entry/0/recent-ops-wr/0/rpc-user-tag"
-           - "/pumice_db_test_client/pmdb-request-history/0/last-request-tag"
-      debug:
-          msg: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid2.stdout, raft_key, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Verify 2nd write should not happen with same app-uuid."
       vars:
@@ -205,6 +149,43 @@
         msg: "Verify after removing fault injection"
       failed_when: >
          (final_vals["/0/coalesce-items-pending"] != 0)
+
+    - name: "{{ recipe_name}}: Wait until all write completes from client 1"
+      vars:
+        stage: "wait_for_client_write_comp"
+        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+      debug:
+        msg: "Waiting for client to finish writing"
+      until: lookup('niova_ctlrequest', 'lookup', ClientUUIDS[0], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
+      retries: 60
+      delay: 2
+
+    - name: "{{ recipe_name}}: Wait until writes should fail on client 2"
+      vars:
+        stage: "wait_for_client_write_comp"
+        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/status"
+      debug:
+        msg: "Waiting for client to finish writing"
+      until: lookup('niova_ctlrequest', 'lookup', ClientUUIDS[1], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == "Operation not permitted"
+      retries: 60
+      delay: 1
+
+    - name: "{{ recipe_name }}: Get client values for 1st client."
+      vars:
+        stage: "check_return_code_after_1st_wr"
+        raft_key:
+          - "/raft_client_root_entry/0/recent-ops-wr/0/attempts"
+          - "/raft_client_root_entry/0/recent-ops-wr/0/rpc-user-tag"
+          - "/pumice_db_test_client/pmdb-request-history/0/last-request-tag"
+          - "/pumice_db_test_client/pmdb-test-apps/0/app-user-id"
+          - "/pumice_db_test_client/pmdb-test-apps/0/status"
+          - "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+          - "/pumice_db_test_client/pmdb-test-apps/0/pmdb-write-pending"
+          - "/pumice_db_test_client/pmdb-test-apps/0/app-sync"
+          - "/pumice_db_test_client/pmdb-test-apps/0/app-seqno"
+      debug:
+          msg: "{{ lookup('niova_ctlrequest', 'lookup', ClientUUIDS[item], raft_key, wantlist=True) }}"
+      loop: "{{ range(0, ClientUUIDS | length) |list }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
