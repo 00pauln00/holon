@@ -1,14 +1,5 @@
 ---
 
-    - name: "{{ recipe_name}}: Wait until status gets updated from client."
-      vars:
-        stage: "wait_for_write_status"
-        cmd_str: '/pumice_db_test_client/pmdb-test-apps/{{idx}}/status'
-      debug:
-        msg: "cmd_str: {{ cmd_str }}"
-      until: lookup('niova_ctlrequest', 'lookup', Client_UUID, cmd_str, wantlist=True) | dict2items | map(attribute='value') | list | first == "Success"
-      retries: 60
-      delay: 2
 
     - name: "{{ recipe_name}}: Get the client parameters after successful write."
       vars:
