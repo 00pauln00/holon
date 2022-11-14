@@ -1,0 +1,140 @@
+- name: "controlPlane_pmdb_gossipNodesFile_testing.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlPlane_pmdb_gossipNodesFile_testing.yml"
+    parent: None
+    number_of_clients: 2
+    number_of_PMDBServers: 5
+
+  tasks:
+  - block:
+
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     # Get multiple client uuids using common task.
+     - name: "Get multiple client uuids."
+       include_role:
+        name: common
+        tasks_from: get_multiple_client_uuids
+       loop: "{{ range(0, number_of_clients | int) | list }}"
+
+     - name: "Prepare gossip node config and proxy.config file"
+       set_fact: gossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", ClientUUIDS, 1,  wantlist=True)}}"
+
+     # Start PMDB servers.
+     - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
+       include_role:
+         name: common
+         tasks_from: start_server_golang
+       vars:
+         ServerUUID: "{{ NonRunningServers[item] }}"
+       loop: "{{ range(0, number_of_PMDBServers | int ) | list }}"
+
+     - name: "{{ recipe_name }}: get the list of running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     - name: "{{ recipe_name}}: Wait until pmdb server bootup properly."
+       vars:
+        input_param: {
+                  'Operation': 'membership',
+                  'OutfileName': 'get_pmdbstatus'
+                  }
+       debug:
+        msg: "Verify PMDB Server bootup properly"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=NRunningPeers[item]) | map(attribute='Status') | list | first == "alive"
+       retries: 20
+       delay: 1
+       loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+     - name: "{{ recipe_name }}: Wait until leader election happens."
+       include_role:
+         name: common
+         tasks_from: wait_until_leader_election
+
+     - name: "{{ recipe_name }}: Starting start cfg application."
+       vars:
+         input_param: {
+               'Operation': 'write'
+                            }
+         cfgwrites: "{{ lookup('controlplane', 'cfgApp', input_param, wantlist=True) }}"
+       debug:
+          msg: "write through cfg application"
+       with_items:
+           - "{{ cfgwrites }}"
+       register: write_cfg_app
+
+     - name: "{{ recipe_name }}: Pause for 5 seconds."
+       pause:
+        seconds: 5
+
+     - name: "{{ recipe_name }}: Starting start cfg application."
+       vars:
+         input_param: {
+               'Operation': 'read'
+                            }
+         cfgread: "{{ lookup('controlplane', 'cfgApp', input_param, wantlist=True) }}"
+       debug:
+          msg: "read the key written through cfg application"
+       with_items:
+           - "{{ cfgread }}"
+       register: read_cfg_app
+
+     - name: "{{ recipe_name }}: Pause for 10 seconds."
+       pause:
+        seconds: 10
+
+     # Start proxy servers
+     - name: "{{ recipe_name }}: Start proxy servers."
+       include_role:
+          name: common
+          tasks_from: start_proxy_server
+       vars:
+          ClientUUID: "{{ ClientUUIDS[item] }}"
+       loop: "{{ range(0, ClientUUIDS | length) |list }}"
+
+     - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
+       pause:
+        seconds: 5
+
+     - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
+       vars:
+          node_item: "{{ 'Node_' ~ item }}"
+       set_fact:
+          proxyList: "{{ proxyList|default([]) + [node_item] }}"
+       loop: "{{ ClientUUIDS }}"
+
+     - debug:
+         msg: "Node name list: {{ proxyList }}"
+
+     - name: "{{ recipe_name}}: Wait until proxy server bootup properly."
+       vars:
+        input_param: {
+                  'Operation': 'membership',
+                  'OutfileName': 'get_nodestatus'
+                  }
+       debug:
+        msg: "Verify Proxy server bootup properly"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=proxyList[item]) | map(attribute='Status') | list | first == "alive"
+       retries: 20
+       delay: 1
+       loop: "{{ range(0, proxyList | length) | list }}"
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
+       vars:
+         input_param: {
+                'Operation': 'membership',
+                'OutfileName': 'membership_output'
+                 }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "get membership details of running servers."
+       with_items:
+          - "{{ ncpclires }}"
+       register: membership
+

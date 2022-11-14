@@ -196,7 +196,7 @@ class RaftConfig:
         Purpose: Create controlplane gossipNodes for controlplane
         Parameters: .
     '''
-    def generate_controlplane_gossipNodes(self, cluster_params, ip_address, port, peeruuids):
+    def generate_controlplane_gossipNodes(self, cluster_params, ip_address, port, peeruuids, entriesInFile):
 
         basicioobj = BasicIO()
 
@@ -209,7 +209,7 @@ class RaftConfig:
         gossip_path = self.base_dir_path + '/' + "gossipNodes"
         gossip_fd = basicioobj.open_file(gossip_path)
 
-        if int(cluster_params['prometheus_support']) == 0:
+        if entriesInFile == 0 :
             for peer in peeruuids.values():
                 gossip_data = "%s " % ip_address
                 basicioobj.write_file(gossip_fd, gossip_data)
@@ -218,22 +218,14 @@ class RaftConfig:
             Totalrange = str(startRange) + " " + str(endRange)
             basicioobj.write_file(gossip_fd, '\n' + Totalrange)
         else:
-            prom_targets_path = os.environ['PROMETHEUS_PATH'] + '/' + "targets.json"
-            prom_targets_fd = basicioobj.open_file(prom_targets_path)
-            target_data = []
-            for peer in peeruuids.values():
-                gossip_data = "%s %s %d %d %d\n" % ( peer, ip_address, port, port+1, port+2 )
+            for peer in range(entriesInFile):
+                gossip_data = "%s " % ip_address
                 basicioobj.write_file(gossip_fd, gossip_data)
-                target_data.append({
-                    "targets":[ "localhost:" + str(port + 2) ],
-                    })
-                port=port+3
+            startRange = port
+            endRange = int(port) + 1000
+            Totalrange = str(startRange) + " " + str(endRange)
+            basicioobj.write_file(gossip_fd, '\n' + Totalrange)
 
-            # Write targets to targets.json
-            basicioobj.write_file(prom_targets_fd, json.dumps(target_data))
-            basicioobj.close_file(prom_targets_fd)
-        # close the file
-        basicioobj.close_file(gossip_fd)
 
     '''
         Method: get_client_uuid_for_clientno

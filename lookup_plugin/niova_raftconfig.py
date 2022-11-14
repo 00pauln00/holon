@@ -71,14 +71,14 @@ def niova_client_conf_create(cluster_params):
     genericcmdobj.recipe_json_dump(recipe_conf)
     return recipe_conf['client_uuid_array']
 
-def controlplane_gossipNodes_create(cluster_params, peer_uuids):
+def controlplane_gossipNodes_create(cluster_params, peer_uuids, entriesInFile):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     port = int(cluster_params['srv_port'])
     raft_dir = "%s/%s" % (base_dir, raft_uuid)
     genericcmdobj = GenericCmds()
     raftconfobj = RaftConfig(raft_dir, raft_uuid, genericcmdobj)
-    raftconfobj.generate_controlplane_gossipNodes(cluster_params, "127.0.0.1", port, peer_uuids)
+    raftconfobj.generate_controlplane_gossipNodes(cluster_params, "127.0.0.1", port, peer_uuids, entriesInFile)
     return 0
 
 def niovakv_conf_create(cluster_params):
@@ -117,7 +117,7 @@ class LookupModule(LookupBase):
             peer_uuids = kwargs['variables']['ClusterInfo']['peer_uuid_dict']
 
             #Create gossipNodes file using peer-uuids
-            raftconfobj_dict = controlplane_gossipNodes_create(cluster_params, peer_uuids)
+            raftconfobj_dict = controlplane_gossipNodes_create(cluster_params, peer_uuids, terms[2])
 
             return 0
 
