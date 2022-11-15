@@ -292,8 +292,8 @@ def start_cfgApp(cluster_params, input_values):
         inotifyobj.export_ctlsvc_path(ctlsvc_path)
 
         port = cluster_params['srv_port']
-        port1 = int(port) + 200
-        port2 = int(port) + 600
+        port1 = int(port) + 1000
+        port2 = int(port) + 2000
         Port_range = str(port1) + "-" + str(port2)
 
         #start client process and pass the cmd.

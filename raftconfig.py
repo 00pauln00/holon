@@ -213,16 +213,16 @@ class RaftConfig:
             for peer in peeruuids.values():
                 gossip_data = "%s " % ip_address
                 basicioobj.write_file(gossip_fd, gossip_data)
-            startRange = int(port) + 100 
-            endRange = int(port) + 1100
+            startRange = int(port) + 1000 
+            endRange = int(port) + 2000
             Totalrange = str(startRange) + " " + str(endRange)
             basicioobj.write_file(gossip_fd, '\n' + Totalrange)
         else:
             for peer in range(entriesInFile):
                 gossip_data = "%s " % ip_address
                 basicioobj.write_file(gossip_fd, gossip_data)
-            startRange = int(port) + 100
-            endRange = int(port) + 1100
+            startRange = int(port) + 1000
+            endRange = int(port) + 2000
             Totalrange = str(startRange) + " " + str(endRange)
             basicioobj.write_file(gossip_fd, '\n' + Totalrange)
 
