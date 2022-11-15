@@ -55,7 +55,7 @@
                   }
        debug:
          msg: "Verifying lookout's Status"
-       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getLookoutUUID) | map(attribute='Status') | list | first == "alive"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute='output_data') | map(attribute=getLookoutUUID) | map(attribute='Status') | list | first == "alive"
        retries: 60
        delay: 1
 
@@ -92,7 +92,7 @@
                   }
        debug:
          msg: "Verifying NISD's Status"
-       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute='output_data') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
        retries: 60
        delay: 1
 
@@ -115,7 +115,7 @@
 
      - name: "{{ recipe_name }}: Get nisd_root_entry info."
        vars:
-         gossipData: "{{ getLookoutInfo['results'][0]['item']['LookoutInfo']['nisd_root_entry'] }}"
+         gossipData: "{{ getLookoutInfo['results'][0]['item']['LookoutInfo']['output_data']['nisd_root_entry'] }}"
          stage: "get_nisd_root_entry"
          nisd_keys:
               - "/nisd_root_entry/0/uuid"

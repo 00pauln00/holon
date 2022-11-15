@@ -42,6 +42,22 @@
        register: writeres5keys
        no_log: true
 
+     - name: "{{ recipe_name }}: Verify outfile status"
+       debug:
+         msg:
+           - "Check write outfile status: {{ writeres5keys['results'][0]['item']['outfile_status'] }}"
+       #no_log: true
+       failed_when: >
+         (writeres5keys['results'][0]['item']['outfile_status'] != 0)
+
+     - name: "{{ recipe_name }}: Verify write status"
+       debug:
+         msg: "Check write response status: {{ item.value['Status'] }}"
+       no_log: true
+       failed_when: >
+         (item.value['Status'] != 0)
+       with_dict: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
+
      - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
        include_role:
          name: common
@@ -76,9 +92,19 @@
        register: readres5keys
        no_log: true
 
+     - name: "{{ recipe_name }}: Verify outfile status and read status"
+       debug:
+        msg:
+         - "Check read outfile status: {{ readres5keys['results'][0]['item']['outfile_status'] }}"
+         - "Check read response status: {{readres5keys['results'][0]['item']['output_data']['Response']['Status'] }}"
+       no_log: true
+       failed_when:
+         (readres5keys['results'][0]['item']['outfile_status'] != 0) or
+         (readres5keys['results'][0]['item']['output_data']['Response']['Status'] != 0)
+
      - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
        vars:
-          seq_no: "{{ readres5keys['results'][0]['item']['Response']['Sequence_number'] }}"
+          seq_no: "{{ readres5keys['results'][0]['item']['output_data']['Response']['Sequence_number'] }}"
        debug:
          msg: "Get the seq no"
        with_items:
@@ -128,6 +154,9 @@
         msg: "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True) }}"
        no_log: True
 
+     - pause:
+         seconds: 2
+
      - name: "{{ recipe_name }}: Wait until killed pmdb server's status gets changed."
        vars:
          getPmdbServer: "{{  LeaderUUID['/0/leader-uuid'] }}"
@@ -137,14 +166,23 @@
                   }
        debug:
          msg: "Verifying pmdb server's status"
-       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getPmdbServer) | map(attribute='Status') | list | first == "failed"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute='output_data') | map(attribute=getPmdbServer) | map(attribute='Status') | list | first == "failed"
        retries: 10
        delay: 1
 
      - name: "{{ recipe_name }}: Wait until leader election happens."
        include_role:
          name: common
-         tasks_from: wait_until_leader_election    
+         tasks_from: wait_until_leader_election
+
+     - name: "{{ recipe_name }}: Get outfile status."
+       stat:
+         path: "{{ seqnoPassed_rangereadres['results'][0]['item'] + '.json' }}"
+       register: file_status
+
+     - debug:
+         msg: "Outfile not exist"
+       failed_when: file_status.stat.exists == False
 
      - name: Display the JSON file content
        shell: cat {{seqnoPassed_rangereadres['results'][0]['item'] + '.json'}}
@@ -153,13 +191,16 @@
      - name: save the Json data to a Variable as a Fact
        set_fact:
           jsondata: "{{ result.stdout | from_json }}"
-     
+
+     - debug:
+         msg: "{{ jsondata['Response']['Status'] }}"
+
        # check if read is successful
      - name: "{{ recipe_name }}: Check if read is successful"
        debug:
          msg: "Check if read is successful"
        failed_when: >
-         ( jsondata['Response']['Status'] != 0)
+         (jsondata['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead."
        vars:
@@ -179,9 +220,18 @@
        register: seqno_rangereadres
        no_log: true
 
+     - name: "{{ recipe_name }}: Verify outfile status and read status"
+       debug:
+        msg:
+         - "Check read outfile status: {{ seqno_rangereadres['results'][0]['item']['outfile_status'] }}"
+         - "Check read response status: {{ seqno_rangereadres['results'][0]['item']['output_data']['Response']['Status'] }}"
+       failed_when:
+         (seqno_rangereadres['results'][0]['item']['outfile_status'] != 0) or
+         (seqno_rangereadres['results'][0]['item']['output_data']['Response']['Status'] != 0)
+
      - name: "{{ recipe_name }}: Get the sequence no from the read result after removing fault injection."
        vars:
-          seq_no: "{{ seqno_rangereadres['results'][0]['item']['Response']['Sequence_number'] }}"
+          seq_no: "{{ seqno_rangereadres['results'][0]['item']['output_data']['Response']['Sequence_number'] }}"
        debug:
          msg: "Get the seq no"
        with_items:
@@ -195,7 +245,7 @@
        debug:
          msg: "compare earlier seqno with old seq no."
        failed_when: seqNo_earlier == seqNo_new
-      
+
      - name: "{{ recipe_name }}: Get the leader and follower uuids."
        include_role:
          name: common
