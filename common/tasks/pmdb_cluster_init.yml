@@ -37,7 +37,7 @@
                   }
        debug:
         msg: "Verify PMDB Server bootup properly"
-       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=NRunningPeers[item]) | map(attribute='Status') | list | first == "alive"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute='output_data') | map(attribute=NRunningPeers[item]) | map(attribute='Status') | list | first == "alive"
        retries: 20
        delay: 1
        loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -110,7 +110,7 @@
                   }
        debug:
         msg: "Verify Proxy server bootup properly"
-       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=proxyList[item]) | map(attribute='Status') | list | first == "alive"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute='output_data') | map(attribute=proxyList[item]) | map(attribute='Status') | list | first == "alive"
        retries: 20
        delay: 1
        loop: "{{ range(0, proxyList | length) | list }}"
