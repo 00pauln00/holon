@@ -117,7 +117,7 @@ class LookupModule(LookupBase):
             peer_uuids = kwargs['variables']['ClusterInfo']['peer_uuid_dict']
 
             #Create gossipNodes file using peer-uuids
-            raftconfobj_dict = controlplane_gossipNodes_create(cluster_params, peer_uuids, terms[2])
+            raftconfobj_dict = controlplane_gossipNodes_create(cluster_params, peer_uuids, terms[1])
 
             return 0
 
