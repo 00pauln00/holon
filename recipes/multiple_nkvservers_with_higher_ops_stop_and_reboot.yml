@@ -103,7 +103,7 @@
             }
        debug:
          msg: "Verifying node status: {{ NodeName['results'][0]['item'] }}"
-       until: lookup('niovakv_client_handler', 'niovakv', parameters, wantlist=True) | dict2items | map(attribute='value') | map(attribute=NodeName['results'][0]['item']) | map(attribute='Status') | list | first == "alive"
+       until: lookup('niovakv_client_handler', 'niovakv', parameters, wantlist=True) | dict2items | map(attribute='value')  | map(attribute='output_data') | map(attribute=NodeName['results'][0]['item']) | map(attribute='Status') | list | first == "alive"
        retries: 10
        delay: 1
 
@@ -121,9 +121,17 @@
        register: write_op
        no_log: true
 
+     - name: "{{ recipe_name }}: Verify outfile status"
+       debug:
+         msg:
+           - "Check write outfile status: {{ write_op['results'][0]['item']['outfile_status'] }}"
+             #no_log: true
+       failed_when: >
+         (write_op['results'][0]['item']['outfile_status'] != 0)
+
      - name: "{{ recipe_name }}: Get the information for number of request distributions across multiple niovakv servers."
        debug:
-         msg: "{{ write_op['results'][0]['item']['NkvcClient']['RequestDistribution'] }}"
+         msg: "{{ write_op['results'][0]['item']['output_data']['NkvcClient']['RequestDistribution'] }}"
        no_log: true
 
       #Check if write is successful.
@@ -131,12 +139,12 @@
        debug:
          msg: "Check if write is successful"
        failed_when: >
-         ( write_op['results'][0]['item']['Put_failures'] != 0 ) or
-         ( write_op['results'][0]['item']['Put_count'] != write_op['results'][0]['item']['Request_count'] ) or
-         ( write_op['results'][0]['item']['Get_count'] != 0 ) or
-         ( write_op['results'][0]['item']['Put_success'] != write_op['results'][0]['item']['Request_count']) or
-         ( write_op['results'][0]['item']['Get_failures'] != 0 ) or
-         ( write_op['results'][0]['item']['Get_success'] != 0 )
+         ( write_op['results'][0]['item']['output_data']['Put_failures'] != 0 ) or
+         ( write_op['results'][0]['item']['output_data']['Put_count'] != write_op['results'][0]['item']['output_data']['Request_count'] ) or
+         ( write_op['results'][0]['item']['output_data']['Get_count'] != 0 ) or
+         ( write_op['results'][0]['item']['output_data']['Put_success'] != write_op['results'][0]['item']['output_data']['Request_count']) or
+         ( write_op['results'][0]['item']['output_data']['Get_failures'] != 0 ) or
+         ( write_op['results'][0]['item']['output_data']['Get_success'] != 0 )
 
      #Start lkvt_client to read the value.
      - name: "{{ recipe_name }}: Perform read operation random server."
@@ -177,9 +185,17 @@
        register: read_op
        no_log: true
 
+     - name: "{{ recipe_name }}: Verify outfile status"
+       debug:
+         msg:
+           - "Check write outfile status: {{ read_op['results'][0]['item']['outfile_status'] }}"
+       no_log: true
+       failed_when: >
+         (read_op['results'][0]['item']['outfile_status'] != 0)
+
      - name: "{{ recipe_name }}: Get the information for number of request distributions across multiple niovakv servers."
        debug:
-         msg: "{{ read_op['results'][0]['item']['NkvcClient']['RequestDistribution'] }}"
+         msg: "{{ read_op['results'][0]['item']['output_data']['NkvcClient']['RequestDistribution'] }}"
        no_log: true
 
      #Check if read is successful.
@@ -187,12 +203,12 @@
        debug:
          msg: "Check if read is successful"
        failed_when: >
-         ( read_op['results'][0]['item']['Get_failures'] != 0 ) or
-         ( read_op['results'][0]['item']['Put_count'] != 0 ) or
-         ( read_op['results'][0]['item']['Put_success'] != 0 ) or
-         ( read_op['results'][0]['item']['Get_failures'] != 0 ) or
-         ( read_op['results'][0]['item']['Get_count'] != read_op['results'][0]['item']['Request_count'] ) or
-         ( read_op['results'][0]['item']['Get_success'] != read_op['results'][0]['item']['Request_count'])
+         ( read_op['results'][0]['item']['output_data']['Get_failures'] != 0 ) or
+         ( read_op['results'][0]['item']['output_data']['Put_count'] != 0 ) or
+         ( read_op['results'][0]['item']['output_data']['Put_success'] != 0 ) or
+         ( read_op['results'][0]['item']['output_data']['Get_failures'] != 0 ) or
+         ( read_op['results'][0]['item']['output_data']['Get_count'] != read_op['results'][0]['item']['output_data']['Request_count'] ) or
+         ( read_op['results'][0]['item']['output_data']['Get_success'] != read_op['results'][0]['item']['output_data']['Request_count'])
 
      # Start lkvt_client to write the value.
      - name: "{{ recipe_name }}: Perform write operation with round robin manner."
@@ -232,6 +248,14 @@
           - "{{ nkvclires }}"
        register: write_op_option1
        no_log: true
+
+     - name: "{{ recipe_name }}: Verify outfile status"
+       debug:
+         msg:
+           - "Check write outfile status: {{ write_op_option1['results'][0]['item']['outfile_status'] }}"
+       no_log: true
+       failed_when: >
+         (write_op_option1['results'][0]['item']['outfile_status'] != 0)
 
      #Start lkvt_client to read the value.
      - name: "{{ recipe_name }}: Perform read operation round robin."
@@ -273,6 +297,14 @@
        register: read_op_option1
        no_log: true
 
+     - name: "{{ recipe_name }}: Verify outfile status"
+       debug:
+         msg:
+           - "Check write outfile status: {{ read_op_option1['results'][0]['item']['outfile_status'] }}"
+       no_log: true
+       failed_when: >
+         (read_op_option1['results'][0]['item']['outfile_status'] != 0)
+
      # Start lkvt_client to write the value.
      - name: "{{ recipe_name }}: Perform write operation with specific server."
        vars:
@@ -311,6 +343,14 @@
           - "{{ nkvclires }}"
        register: write_op_option2
        no_log: true
+
+     - name: "{{ recipe_name }}: Verify outfile status"
+       debug:
+         msg:
+           - "Check write outfile status: {{ write_op_option2['results'][0]['item']['outfile_status'] }}"
+       no_log: true
+       failed_when: >
+         (write_op_option2['results'][0]['item']['outfile_status'] != 0)
 
      #Start lkvt_client to read the value.
      - name: "{{ recipe_name }}: Perform read operation specific server."
@@ -351,6 +391,14 @@
           - "{{ nkvclires }}"
        register: read_op_option2
        no_log: true
+
+     - name: "{{ recipe_name }}: Verify outfile status"
+       debug:
+         msg:
+           - "Check write outfile status: {{ read_op_option2['results'][0]['item']['outfile_status'] }}"
+       no_log: true
+       failed_when: >
+         (read_op_option2['results'][0]['item']['outfile_status'] != 0)
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

@@ -63,9 +63,17 @@
        register: write_op
        no_log: true
 
+     - name: "{{ recipe_name }}: Verify outfile status"
+       debug:
+         msg:
+           - "Check write outfile status: {{ write_op['results'][0]['item']['outfile_status'] }}"
+       no_log: true
+       failed_when: >
+         (write_op['results'][0]['item']['outfile_status'] != 0)
+
      - name: "{{ recipe_name }}: Get the information for number of request distributions across multiple niovakv servers."
        debug:
-         msg: "{{ write_op['results'][0]['item']['NkvcClient']['RequestDistribution'] }}"
+         msg: "{{ write_op['results'][0]['item']['output_data']['NkvcClient']['RequestDistribution'] }}"
        no_log: true
 
       #Check if write is successful.
@@ -73,12 +81,12 @@
        debug:
          msg: "Check if write is successful"
        failed_when: >
-         ( write_op['results'][0]['item']['Put_failures'] != 0 ) or
-         ( write_op['results'][0]['item']['Get_count'] != 0 ) or
-         ( write_op['results'][0]['item']['Get_failures'] != 0 ) or
-         ( write_op['results'][0]['item']['Get_success'] != 0 ) or
-         ( write_op['results'][0]['item']['Put_count'] != write_op['results'][0]['item']['Request_count'] ) or
-         ( write_op['results'][0]['item']['Put_success'] != write_op['results'][0]['item']['Request_count']) 
+         ( write_op['results'][0]['item']['output_data']['Put_failures'] != 0 ) or
+         ( write_op['results'][0]['item']['output_data']['Get_count'] != 0 ) or
+         ( write_op['results'][0]['item']['output_data']['Get_failures'] != 0 ) or
+         ( write_op['results'][0]['item']['output_data']['Get_success'] != 0 ) or
+         ( write_op['results'][0]['item']['output_data']['Put_count'] != write_op['results'][0]['item']['output_data']['Request_count'] ) or
+         ( write_op['results'][0]['item']['output_data']['Put_success'] != write_op['results'][0]['item']['output_data']['Request_count']) 
 
      #Start lkvt_client to read the value.
      - name: "{{ recipe_name }}: Starting lkvt_client to read the value."
@@ -119,9 +127,17 @@
        register: read_op
        no_log: true
 
+     - name: "{{ recipe_name }}: Verify outfile status"
+       debug:
+         msg:
+           - "Check write outfile status: {{ read_op['results'][0]['item']['outfile_status'] }}"
+       no_log: true
+       failed_when: >
+         (read_op['results'][0]['item']['outfile_status'] != 0)
+
      - name: "{{ recipe_name }}: Get the information for number of request distributions across multiple niovakv servers."
        debug:
-         msg: "{{ read_op['results'][0]['item']['NkvcClient']['RequestDistribution'] }}"
+         msg: "{{ read_op['results'][0]['item']['output_data']['NkvcClient']['RequestDistribution'] }}"
        no_log: true
 
      #Check if read is successful.
@@ -129,12 +145,12 @@
        debug:
          msg: "Check if read is successful"
        failed_when: >
-         ( read_op['results'][0]['item']['Get_failures'] != 0 ) or
-         ( read_op['results'][0]['item']['Put_count'] != 0 ) or
-         ( read_op['results'][0]['item']['Put_success'] != 0 ) or
-         ( read_op['results'][0]['item']['Get_failures'] != 0 ) or
-         ( read_op['results'][0]['item']['Get_count'] != read_op['results'][0]['item']['Request_count'] ) or
-         ( read_op['results'][0]['item']['Get_success'] != read_op['results'][0]['item']['Request_count'])
+         ( read_op['results'][0]['item']['output_data']['Get_failures'] != 0 ) or
+         ( read_op['results'][0]['item']['output_data']['Put_count'] != 0 ) or
+         ( read_op['results'][0]['item']['output_data']['Put_success'] != 0 ) or
+         ( read_op['results'][0]['item']['output_data']['Get_failures'] != 0 ) or
+         ( read_op['results'][0]['item']['output_data']['Get_count'] != read_op['results'][0]['item']['output_data']['Request_count'] ) or
+         ( read_op['results'][0]['item']['output_data']['Get_success'] != read_op['results'][0]['item']['output_data']['Request_count'])
             
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
