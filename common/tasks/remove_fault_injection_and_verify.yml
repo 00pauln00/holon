@@ -14,7 +14,7 @@
            - "/fault_injection_points"
       set_fact:
          fault_injection_remove_points: "{{ lookup('niova_ctlrequest', 'lookup', ServerUUID, raft_keys, wantlist=True) }}"
-  
+
     - name: "{{ recipe_name }}: Verify fault injection is removed on followers properly."
       set_fact:
          fault_injection_point_disabled: "{{ fault_injection_remove_points['//fault_injection_points'][index]['enabled'] }}"
@@ -24,5 +24,5 @@
           loop_var: index
 
     - debug:
-        msg: "{{ recipe_name }}: Check if fault_injection is disabled."
+        msg: "Check if fault_injection is disabled."
       failed_when: fault_injection_point_disabled != false
