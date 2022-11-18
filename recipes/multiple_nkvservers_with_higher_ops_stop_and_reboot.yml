@@ -103,7 +103,7 @@
             }
        debug:
          msg: "Verifying node status: {{ NodeName['results'][0]['item'] }}"
-       until: lookup('niovakv_client_handler', 'niovakv', parameters, wantlist=True) | dict2items | map(attribute='value')  | map(attribute='output_data') | map(attribute=NodeName['results'][0]['item']) | map(attribute='Status') | list | first == "alive"
+       until: lookup('niovakv_client_handler', 'niovakv', parameters, wantlist=True) | dict2items | map(attribute='value') | map(attribute=NodeName['results'][0]['item']) | map(attribute='Status') | list | first == "alive"
        retries: 10
        delay: 1
 
