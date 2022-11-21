@@ -50,7 +50,7 @@
          msg: "wait untill lookout status gets updated in gossip"
        until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=get_lookout) | map(attribute='Status') | list| first == "running"
        retries: 20
-          delay: 1
+       delay: 1
 
      - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
        vars:
