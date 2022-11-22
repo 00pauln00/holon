@@ -137,7 +137,7 @@
         (stage1_values['/0/app-sync'] != False) or
         (stage1_values['/0/app-seqno'] != 2) or
         (stage1_values['/0/recent-ops-wr'][0]['sub-app-user-id'] != rncui) or
-        (stage1_values['/0/recent-ops-wr'][0]['status'] != "Invalid exchange")
+        (stage1_values['/0/recent-ops-wr'][0]['status'] != "Success")
 
     - name: "{{ recipe_name }}: Now Apply valid write seqno i.e 0"
       vars:
