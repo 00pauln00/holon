@@ -27,6 +27,8 @@ def start_ncpc(cluster_params, Key, Value, Operation,
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(log_file, "w")
     logfile = "%s/%s/ncpclogfile.log" % (base_dir, raft_uuid)
+    
+    serviceRetry = "3"
 
     # Prepare config file path for ncpc
     ConfigPath = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
@@ -37,26 +39,26 @@ def start_ncpc(cluster_params, Key, Value, Operation,
         if seqNo != "" and NumWrites != "":
             process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-k', Key, '-n', NumWrites, '-S', seqNo], stdout = fp, stderr = fp)
+                                             '-k', Key, '-n', NumWrites, '-S', seqNo, '-sr', serviceRetry], stdout = fp, stderr = fp)
         elif NumWrites != "":
             process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-k', Key, '-n', NumWrites], stdout = fp, stderr = fp)
+                                             '-k', Key, '-n', NumWrites, '-sr', serviceRetry], stdout = fp, stderr = fp)
         else:
             process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-k', Key], stdout = fp, stderr = fp)
+                                             '-k', Key, '-sr', serviceRetry], stdout = fp, stderr = fp)
 
     elif Operation == "write":
         if NumWrites == "":
             process_popen = subprocess.Popen([bin_path, '-k', Key, '-v', Value,'-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-a' , IP_addr, '-p', Port],
+                                             '-a' , IP_addr, '-p', Port, '-sr', serviceRetry],
                                              stdout = fp, stderr = fp)
         else:
             process_popen = subprocess.Popen([bin_path, '-k', Key, '-v', Value,'-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-a' , IP_addr, '-p', Port, '-n', NumWrites],
+                                             '-a' , IP_addr, '-p', Port, '-n', NumWrites, '-sr', serviceRetry],
                                              stdout = fp, stderr = fp)
     elif Operation == "LookoutInfo":
         process_popen = subprocess.Popen([bin_path, '-c', ConfigPath, '-o', Operation, '-u',
