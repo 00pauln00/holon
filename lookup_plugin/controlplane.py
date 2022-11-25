@@ -38,36 +38,36 @@ def start_ncpc(cluster_params, Key, Value, Operation,
         if seqNo != "" and NumWrites != "":
             process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-k', Key, '-n', NumWrites, '-S', seqNo], stdout = fp, stderr = fp)
+                                             '-k', Key, '-n', NumWrites, '-S', seqNo, '-ru', raft_uuid], stdout = fp, stderr = fp)
         elif NumWrites != "":
             process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-k', Key, '-n', NumWrites], stdout = fp, stderr = fp)
+                                             '-k', Key, '-n', NumWrites, '-ru', raft_uuid], stdout = fp, stderr = fp)
         else:
             process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-k', Key], stdout = fp, stderr = fp)
+                                             '-k', Key, '-ru', raft_uuid], stdout = fp, stderr = fp)
 
     elif Operation == "write":
         if NumWrites == "":
             process_popen = subprocess.Popen([bin_path, '-k', Key, '-v', Value,'-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-a' , IP_addr, '-p', Port],
+                                             '-a' , IP_addr, '-p', Port, '-ru', raft_uuid],
                                              stdout = fp, stderr = fp)
         else:
             process_popen = subprocess.Popen([bin_path, '-k', Key, '-v', Value,'-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-a' , IP_addr, '-p', Port, '-n', NumWrites],
+                                             '-a' , IP_addr, '-p', Port, '-n', NumWrites, '-ru', raft_uuid],
                                              stdout = fp, stderr = fp)
     elif Operation == "LookoutInfo":
         process_popen = subprocess.Popen([bin_path, '-c', ConfigPath, '-o', Operation, '-u',
                                             lookout_uuid, '-k', nisd_uuid, '-v', cmd,
-                                            '-l', logfile, '-j', outfilePath],
+                                            '-l', logfile, '-j', outfilePath, '-ru', raft_uuid],
                                             stdout = fp, stderr = fp)
     else:
         process_popen = subprocess.Popen([bin_path, '-k', Key,
                                              '-v', Value, '-c', ConfigPath,
-                                             '-l', logfile, '-o', Operation, '-j', outfilePath],
+                                             '-l', logfile, '-o', Operation, '-j', outfilePath, '-ru', raft_uuid],
                                              stdout = fp, stderr = fp)
     # Sync the log file so all the logs from ncpc gets written to log file.
     os.fsync(fp)
@@ -371,7 +371,7 @@ class LookupModule(LookupBase):
                 prom_targets = []
                 with open(prom_targets_path, "r") as f:
                     prom_targets = json.load(f)
-                    prom_targets.append({'targets':['localhost:'+str(#hport)]})
+                    prom_targets.append({'targets':['localhost:'+str(hport)]})
                 with open(prom_targets_path, "w") as f:
                     json.dump(prom_targets, f)
 
