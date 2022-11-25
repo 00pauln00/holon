@@ -223,6 +223,16 @@ def start_niova_lookout_process(cluster_params, uport):
     
     #start niova block test process
     bin_path = '%s/nisdLookout' % binary_dir
+
+      #writing the information of lookout uuids dict into raft_uuid.json
+    recipe_conf = load_recipe_op_config(cluster_params)
+
+    if not "lookout_uuid_dict" in recipe_conf:
+        recipe_conf['lookout_uuid_dict'] = {}
+
+    recipe_conf['lookout_uuid_dict'][lookout_uuid] = {}
+
+    genericcmdobj.recipe_json_dump(recipe_conf)
     logging.info("starting niova-lookout process")
     process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes,
                                             '-n', lookout_uuid, '-r', raft_uuid,
@@ -354,14 +364,14 @@ class LookupModule(LookupBase):
             return start_cfg_application
 
         elif process_type == "prometheus":
-            
+            #hport = input_values['Hport']
             # Set the target ports in the targets.json file for prometheus exporter
             if cluster_params['prometheus_support'] == "1":
                 prom_targets_path = os.environ['PROMETHEUS_PATH'] + '/' + "targets.json"
                 prom_targets = []
                 with open(prom_targets_path, "r") as f:
                     prom_targets = json.load(f)
-                    prom_targets.append({'targets':['localhost:'+str(hport)]})
+                    prom_targets.append({'targets':['localhost:'+str(#hport)]})
                 with open(prom_targets_path, "w") as f:
                     json.dump(prom_targets, f)
 
