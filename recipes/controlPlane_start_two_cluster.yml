@@ -1,0 +1,198 @@
+- name: "controlPlane_start_two_cluster.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlPlane_start_cluster"
+    parent: None
+
+  tasks:
+  - block:
+
+    # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "controlplane")
+
+     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+       include_role:
+          name: common
+          tasks_from: pmdb_cluster_init.yml
+       vars:
+         number_of_clients: 2
+         number_of_PMDBServers: 4
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
+       vars:
+         input_param: {
+                'Operation': 'membership',
+                'OutfileName': 'membership_output_firstCluster'
+                 }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "get membership details of running servers."
+       with_items:
+          - "{{ ncpclires }}"
+       register: membership_firstCluster
+
+     - debug:
+         msg: "first cluster {{membership_firstCluster}}" 
+
+     - debug: 
+         msg: "{{ item.value['Tags'] }}"
+       with_dict: "{{ membership_firstCluster['results'][0]['item']['membership']['output_data'] }}"
+
+     - name: "{{ recipe_name }}: get the list of running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     - debug:
+         msg: "{{ NRunningPeers }}"
+
+     - name: "{{ recipe_name }}: Check if raft_uuid is same for all the nodes in first cluster."
+       vars:
+         raftuuid_val_firstCluster: "{{ membership_firstCluster['results'][0]['item']['membership']['output_data'][item]['Tags']['RU'] }}"
+       debug:
+         msg: "check that raft uuid is same for all the nodes running in first cluster"
+           #       failed_when: >
+           # (raftuuid_val_firstCluster !=  membership_firstCluster['results'][0]['item']['membership']['output_data'][NRunningPeers[0]]['Tags']['RU'])
+       loop: "{{ range(0, NRunningPeers | length) | list }}" 
+
+     - name: "{{ recipe_name }}: Create new Raft UUID."
+       shell: "/usr/bin/uuid"
+       register: new_cluster_uuid
+
+     - name: "Prepare the new cluster information."
+       set_fact:
+        ClusterParams:
+             base_dir: "{{ dir_path }}"
+             raft_uuid: "{{ new_cluster_uuid.stdout}}"
+             ctype: "{{ backend_type }}"
+             npeers: "{{ npeers }}"
+             client_port: "{{ client_port }}"
+             srv_port: "{{ srv_port }}"
+             nclients: 5
+             app_type: "controlplane"
+             coal_wr: "{{ 0 }}"
+             sync_mode: "{{ 0 }}"
+             file_counter: 0
+             prometheus_support: 0
+
+     - name: "{{ recipe_name }}: Prepare config for new cluster using same ports as already running cluster."
+       set_fact:
+        new_server_cluster: "{{ lookup('niova_raftconfig', 'server', wantlist=True) }}"
+
+     - debug:
+         msg: "{{ new_server_cluster }}"
+
+     - name: "{{ recipe_name }}: Prepare config for the new client uuids."
+       set_fact:
+        new_client_cluster: "{{ lookup('niova_raftconfig', 'client', wantlist=True) }}"
+
+     - debug:
+         msg: "{{ new_client_cluster }}"
+
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: server_uuid_info_for_new_cluster
+       vars:
+          base_dir_path: "{{ new_server_cluster['base_dir_path'] }}"
+          RAFT_UUID: "{{ new_cluster_uuid.stdout}}"
+          New_ClusterInfo: "{{ new_server_cluster }}"
+
+     - name: "Prepare gossip node config and proxy.config file"
+       set_fact: gossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", 0, wantlist=True)}}"
+
+     # Start PMDB servers.
+     - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
+       include_role:
+         name: common
+         tasks_from: start_server_golang
+       vars:
+         ServerUUID: "{{ NonRunningPeers[item] }}"
+         number_of_PMDBServers: 4
+       loop: "{{ range(0, number_of_PMDBServers | int ) | list }}"
+  
+     - name: "{{ recipe_name }}: Starting start cfg application."
+       vars:
+         input_param: {
+               'Operation': 'write'
+                            }
+         cfgwrites: "{{ lookup('controlplane', 'cfgApp', input_param, wantlist=True) }}"
+       debug:
+          msg: "write through cfg application"
+       with_items:
+           - "{{ cfgwrites }}"
+       register: write_cfg_app
+
+     - name: "{{ recipe_name }}: Pause for 5 seconds."
+       pause:
+        seconds: 5
+
+     - name: "{{ recipe_name }}: Starting start cfg application."
+       vars:
+         input_param: {
+               'Operation': 'read'
+                            }
+         cfgread: "{{ lookup('controlplane', 'cfgApp', input_param, wantlist=True) }}"
+       debug:
+          msg: "read the key written through cfg application"
+       with_items:
+           - "{{ cfgread }}"
+       register: read_cfg_app
+
+     - name: "{{ recipe_name }}: Pause for 10 seconds."
+       pause:
+        seconds: 5
+
+     # Start proxy servers
+     - name: "{{ recipe_name }}: Start proxy servers."
+       include_role:
+          name: common
+          tasks_from: start_proxy_server
+       vars:
+          ClientUUID: "{{ new_client_cluster[item] }}"
+       loop: "{{ range(0, new_client_cluster | length) |list }}"
+
+     - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
+       pause:
+        seconds: 5
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
+       vars:
+         input_param: {
+                'Operation': 'membership',
+                'OutfileName': 'membership_output_secondCluster'
+                 }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "get membership details of running servers."
+       with_items:
+          - "{{ ncpclires }}"
+       register: membership_secondCluster
+
+     - debug:
+         msg: "first cluster {{membership_secondCluster}}"
+
+     - debug: 
+         msg: "{{ membership_secondCluster['results'][0]['item']['membership']['output_data'][item]['Tags']['RU'] }}"
+       loop: "{{ range(0, NumRunningPeers | length) | list }}" 
+
+     - name: "{{ recipe_name }}: Check if raft_uuid is same for all the nodes in second cluster."
+       vars:
+         raftuuid_val_secondCluster: "{{ membership_secondCluster['results'][0]['item']['membership']['output_data'][item]['Tags']['RU'] }}"
+       debug:
+         msg: "check that raft uuid is same for all the nodes running in second cluster"
+       failed_when: >
+         (raftuuid_val_secondCluster != "{{ new_cluster_uuid.stdout}}" )
+       loop: "{{ range(0, NumRunningPeers | length) | list }}"
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
