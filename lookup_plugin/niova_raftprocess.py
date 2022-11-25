@@ -95,7 +95,7 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
         lookout_uuid = ""
         inotifyobj = InotifyPath(base_dir, True, get_process_type, lookout_uuid)
         inotifyobj.export_ctlsvc_path(ctlsvc_path)
-        serverproc.start_process(base_dir, node_name, coalesced_wr, sync)
+        serverproc.start_process(base_dir, node_name, coalesced_wr, sync, cluster_params)
 
     elif operation == "pause":
         serverproc.pause_process(pid)
