@@ -86,14 +86,14 @@ def niovakv_conf_create(cluster_params):
     raft_uuid = cluster_params['raft_uuid']
     port = int(cluster_params['srv_port'])
     npeers = cluster_params['npeers']
-    nclients = int(cluster_params['nclients'])
+#    nclients = int(cluster_params['nclients'])
     raft_dir = "%s/%s" % (base_dir, raft_uuid)
     
     genericcmdobj = GenericCmds()
     raftconfobj = RaftConfig(raft_dir, raft_uuid, genericcmdobj)
     file_counter = 1
 
-    raftconfobj.generate_niovakv_conf(nclients, file_counter, "127.0.0.1", port)
+    raftconfobj.generate_niovakv_conf(npeers, file_counter, "127.0.0.1", port)
     return 0
 
 class LookupModule(LookupBase):

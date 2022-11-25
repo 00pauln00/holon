@@ -53,7 +53,7 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
         client_uuid_array = recipe_conf['client_uuid_array']
         index = client_uuid_array.index(peer_uuid)
 
-        if app_type == "niovakv":
+        '''if app_type == "niovakv":
             # Read the config file.
             config_path = "%s/niovakv.config" % base_dir
             with open(config_path) as f:
@@ -67,7 +67,7 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
                 recipe_conf['serf_nodes'] = {}
 
             recipe_conf['serf_nodes'][peer_uuid] = node_name
-
+        '''
 
     if operation == "start":
         if(is_process_running(peer_uuid, recipe_conf)):

@@ -231,7 +231,7 @@ class RaftProcess:
         fp = open(temp_file, "w")
 
         if app_type == "niovakv":
-            config_path = "%s/niovakv.config" % base_dir
+            config_path = "%s/gossipNodes" % base_dir
         elif app_type == "controlplane":
             node_name  = "Node_" + self.process_uuid
             config_path = ""

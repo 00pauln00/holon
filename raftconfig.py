@@ -170,13 +170,14 @@ class RaftConfig:
                     @ip_address: IP address for the client.
                     @port: port number.
     '''
-    def generate_niovakv_conf(self, nclients, file_counter, ip_address, port):
+    def generate_niovakv_conf(self, npeers, file_counter, ip_address, port):
 
         basicioobj = BasicIO()
 
         '''
         Prepare niovakv config information and right it to niovakv config file.
         niovakv config file name format would be niovakv.config.
+        '''
         '''
         niovakv_conf_path = "%s/niovakv.config" % (self.base_dir_path)
         nk_fd = basicioobj.open_file(niovakv_conf_path)
@@ -190,6 +191,17 @@ class RaftConfig:
         
         # close the file
         basicioobj.close_file(nk_fd)
+        '''
+        gossip_path = self.base_dir_path + '/' + "gossipNodes"
+        gossip_fd = basicioobj.open_file(gossip_path)
+
+        for peer in range(0, int(npeers)):
+                gossip_data = "%s " % ip_address
+                basicioobj.write_file(gossip_fd, gossip_data)
+        startRange = int(port) + 40
+        endRange = int(port) + 1040
+        Totalrange = str(startRange) + " " + str(endRange)
+        basicioobj.write_file(gossip_fd, '\n' + Totalrange)
 
     '''
         Method: generate_controlplane_gossipNodes
