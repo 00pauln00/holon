@@ -37,29 +37,29 @@
        with_items:
           - "{{ ncpclires }}"
        register: membership_firstCluster
-
-     - debug:
-         msg: "first cluster {{membership_firstCluster}}" 
-
-     - debug: 
-         msg: "{{ item.value['Tags'] }}"
-       with_dict: "{{ membership_firstCluster['results'][0]['item']['membership']['output_data'] }}"
-
+     
      - name: "{{ recipe_name }}: get the list of running servers."
        include_role:
           name: common
           tasks_from: get_server_uuid_info
-
-     - debug:
-         msg: "{{ NRunningPeers }}"
+     
+     - name: "{{ recipe_name }}: Get the raft uuid of the first cluster."
+       vars:
+           raft_uuid_first_cluster: "{{ membership_firstCluster['results'][0]['item']['membership']['output_data'][NRunningPeers[0]]['Tags']['RU'] }}"
+       debug:
+          msg: "raft uuid of the first cluster"
+       with_items:
+            - "{{ raft_uuid_first_cluster }}"
+       register: raft_uuid_first
 
      - name: "{{ recipe_name }}: Check if raft_uuid is same for all the nodes in first cluster."
        vars:
-         raftuuid_val_firstCluster: "{{ membership_firstCluster['results'][0]['item']['membership']['output_data'][item]['Tags']['RU'] }}"
+         raft_uuid: "{{raft_uuid_first['results'][0]['item']}}"
+         raftuuid_val_firstCluster: "{{ membership_firstCluster['results'][0]['item']['membership']['output_data'][NRunningPeers[item]]['Tags']['RU'] }}"
        debug:
          msg: "check that raft uuid is same for all the nodes running in first cluster"
-           #       failed_when: >
-           # (raftuuid_val_firstCluster !=  membership_firstCluster['results'][0]['item']['membership']['output_data'][NRunningPeers[0]]['Tags']['RU'])
+       failed_when: 
+           raftuuid_val_firstCluster !=  raft_uuid
        loop: "{{ range(0, NRunningPeers | length) | list }}" 
 
      - name: "{{ recipe_name }}: Create new Raft UUID."
@@ -73,8 +73,8 @@
              raft_uuid: "{{ new_cluster_uuid.stdout}}"
              ctype: "{{ backend_type }}"
              npeers: "{{ npeers }}"
-             client_port: "{{ client_port }}"
-             srv_port: "{{ srv_port }}"
+             client_port: "{{ client_port | int + 100 }}"
+             srv_port: "{{ srv_port | int + 100 }}"
              nclients: 5
              app_type: "controlplane"
              coal_wr: "{{ 0 }}"
@@ -116,35 +116,7 @@
        vars:
          ServerUUID: "{{ NonRunningPeers[item] }}"
          number_of_PMDBServers: 4
-       loop: "{{ range(0, number_of_PMDBServers | int ) | list }}"
-  
-     - name: "{{ recipe_name }}: Starting start cfg application."
-       vars:
-         input_param: {
-               'Operation': 'write'
-                            }
-         cfgwrites: "{{ lookup('controlplane', 'cfgApp', input_param, wantlist=True) }}"
-       debug:
-          msg: "write through cfg application"
-       with_items:
-           - "{{ cfgwrites }}"
-       register: write_cfg_app
-
-     - name: "{{ recipe_name }}: Pause for 5 seconds."
-       pause:
-        seconds: 5
-
-     - name: "{{ recipe_name }}: Starting start cfg application."
-       vars:
-         input_param: {
-               'Operation': 'read'
-                            }
-         cfgread: "{{ lookup('controlplane', 'cfgApp', input_param, wantlist=True) }}"
-       debug:
-          msg: "read the key written through cfg application"
-       with_items:
-           - "{{ cfgread }}"
-       register: read_cfg_app
+       loop: "{{ range(0, number_of_PMDBServers | int ) | list }}" 
 
      - name: "{{ recipe_name }}: Pause for 10 seconds."
        pause:
@@ -175,9 +147,7 @@
        with_items:
           - "{{ ncpclires }}"
        register: membership_secondCluster
-
-     - debug:
-         msg: "first cluster {{membership_secondCluster}}"
+       no_log: true
 
      - debug: 
          msg: "{{ membership_secondCluster['results'][0]['item']['membership']['output_data'][item]['Tags']['RU'] }}"
@@ -185,7 +155,7 @@
 
      - name: "{{ recipe_name }}: Check if raft_uuid is same for all the nodes in second cluster."
        vars:
-         raftuuid_val_secondCluster: "{{ membership_secondCluster['results'][0]['item']['membership']['output_data'][item]['Tags']['RU'] }}"
+         raftuuid_val_secondCluster: "{{ membership_secondCluster['results'][0]['item']['membership']['output_data'][NumRunningPeers[item]]['Tags']['RU'] }}"
        debug:
          msg: "check that raft uuid is same for all the nodes running in second cluster"
        failed_when: >
