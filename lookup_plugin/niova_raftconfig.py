@@ -86,7 +86,6 @@ def niovakv_conf_create(cluster_params):
     raft_uuid = cluster_params['raft_uuid']
     port = int(cluster_params['srv_port'])
     npeers = cluster_params['npeers']
-#    nclients = int(cluster_params['nclients'])
     raft_dir = "%s/%s" % (base_dir, raft_uuid)
     
     genericcmdobj = GenericCmds()

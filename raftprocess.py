@@ -115,6 +115,7 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
                                     stdout = fp, stderr = fp)
 
         elif app_type == "niovakv":
+            
             log_path = "%s/%s_niovakv_pmdbServer.log" % (base_dir, peer_uuid)
             process_popen = subprocess.Popen([bin_path, '-r',
                                           raft_uuid, '-u', peer_uuid, '-l' ,log_path],
@@ -145,9 +146,10 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
                                     stdout = fp, stderr = fp)
         elif app_type == "niovakv":
             log_path = "%s/%s_niovakv_server.log" % (base_dir, peer_uuid)
+            
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid,
-                                    '-c', config_path, '-n', node_name, '-l', log_path],
+                                    '-c', gossipNodes, '-n', node_name, '-l', log_path],
                                     stdout = fp, stderr = fp)
         elif app_type == "controlplane":
             log_path = "%s/%s_control_plane_proxy_server.log" % (base_dir, peer_uuid)
@@ -230,13 +232,10 @@ class RaftProcess:
         temp_file = "%s/%s_log_Pmdb_%s_%s.txt" % (base_dir, app_type, self.process_type, self.process_uuid)
         fp = open(temp_file, "w")
 
-        if app_type == "niovakv":
-            config_path = "%s/gossipNodes" % base_dir
-        elif app_type == "controlplane":
+        if app_type == "controlplane":
             node_name  = "Node_" + self.process_uuid
-            config_path = ""
-        else:
-            config_path = ""
+
+        config_path = ""
         process_popen = run_process(fp, self.process_raft_uuid, self.process_uuid,
                                     self.process_type, self.process_app_type, bin_path,
                                     base_dir, config_path, node_name, coalesced_wr, sync, cluster_params)

@@ -178,20 +178,7 @@ class RaftConfig:
         Prepare niovakv config information and right it to niovakv config file.
         niovakv config file name format would be niovakv.config.
         '''
-        '''
-        niovakv_conf_path = "%s/niovakv.config" % (self.base_dir_path)
-        nk_fd = basicioobj.open_file(niovakv_conf_path)
-        port += 30
-        for i in range(nclients):
-            niovakv_buff = "Node%d %s %d %d %d\n" % (file_counter, ip_address, port, port+1, port+2)
-            # Write the config file
-            basicioobj.write_file(nk_fd, niovakv_buff)
-            file_counter += 1
-            port += 3
-        
-        # close the file
-        basicioobj.close_file(nk_fd)
-        '''
+         
         gossip_path = self.base_dir_path + '/' + "gossipNodes"
         gossip_fd = basicioobj.open_file(gossip_path)
 
@@ -233,8 +220,8 @@ class RaftConfig:
             for peer in range(entriesInFile):
                 gossip_data = "%s " % ip_address
                 basicioobj.write_file(gossip_fd, gossip_data)
-            startRange = int(port) + 1000
-            endRange = int(port) + 2000
+            startRange = int(port) + 100
+            endRange = int(port) + 1100
             Totalrange = str(startRange) + " " + str(endRange)
             basicioobj.write_file(gossip_fd, '\n' + Totalrange)
 
