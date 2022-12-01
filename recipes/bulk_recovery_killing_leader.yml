@@ -132,7 +132,7 @@
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
       no_log: true
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
       retries: 60
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"

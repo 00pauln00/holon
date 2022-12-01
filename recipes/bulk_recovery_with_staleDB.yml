@@ -108,7 +108,7 @@
          stage: "getValsFrmAll"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
       retries: 60
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -134,7 +134,7 @@
         tasks_from: set_maxScan_logReap_factor_andVerify
       vars:
           Peers: "{{ newlyStartedPeer4['results'][0]['item'] }}"
-    
+
     - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
       include_role:
          name: common
@@ -145,8 +145,8 @@
          origCI: "{{ origValues['results'][0]['item']['/0/commit-idx'] }}"
          stage: "getCIFrmPeer4"
       debug:
-        msg: "Verify Commit-Idx get incrementing on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
+        msg: "Verify Commit-Idx get incrementing on newly started peer."
+      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
       retries: 60
       delay: 1
 
@@ -170,7 +170,7 @@
       failed_when: >
            (getAll["/0/leader-uuid"] != initial_vals["/0/leader-uuid"]) or
            (getAll["/0/term"] != initial_vals["/0/term"]) or
-           (getAll["/0/commit-idx"] != ((num_writes | int) * (number_of_app_uuids | int)) + initial_vals["/0/commit-idx"])
+           (getAll["/0/commit-idx"] < ((num_writes | int) * (number_of_app_uuids | int)) + initial_vals["/0/commit-idx"])
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Apply cmd to remove fault injection from all peers."
