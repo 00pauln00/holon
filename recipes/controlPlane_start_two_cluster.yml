@@ -23,7 +23,7 @@
           tasks_from: pmdb_cluster_init.yml
        vars:
          number_of_clients: 2
-         number_of_PMDBServers: 4
+         number_of_PMDBServers: 5
 
      - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
        vars:
@@ -161,6 +161,26 @@
        failed_when: >
          (raftuuid_val_secondCluster != "{{ new_cluster_uuid.stdout}}" )
        loop: "{{ range(0, NumRunningPeers | length) | list }}"
+
+     - name: "{{ recipe_name }}: Kill the pmdb servers from second cluster."
+       debug:
+        msg: "{{lookup('niova_raftprocess', 'kill', NonRunningPeers[item], wantlist=True)}}"
+       loop: "{{ range(0, NonRunningPeers | length) |list }}"
+         #no_log: True
+
+     - debug:
+         msg: "{{NonRunningPeers}} and {{NumRunningPeers}}"
+
+     - name: "{{ recipe_name }}: Kill the proxy servers from second cluster."
+       debug:
+        msg: "{{lookup('niova_raftprocess', 'kill', new_client_cluster[item], wantlist=True)}}"
+       loop: "{{ range(0, new_client_cluster | length) |list }}"
+         #no_log: True
+
+     - name: "{{ recipe_name }}: Wait until leader election happens."
+       include_role:
+         name: common
+         tasks_from: wait_until_leader_election
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
