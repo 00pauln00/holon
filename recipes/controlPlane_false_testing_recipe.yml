@@ -1,0 +1,77 @@
+- name: "ControlPlane_false_testing_recipe.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "ControlPlane_false_testing_recipe"
+    parent: None
+
+  tasks:
+  - block:
+
+    # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "controlplane")
+
+     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+       include_role:
+          name: common
+          tasks_from: pmdb_cluster_init.yml
+       vars:
+         number_of_clients: 2
+         number_of_PMDBServers: 4
+ 
+     - name: "{{ recipe_name }}: Start test application."
+       vars:
+         input_param: {
+                'Operation': 'start'
+                 }
+         testres: "{{ lookup('controlplane', 'testApp', input_param, wantlist=True) }}"
+       debug:
+         msg: "start test application."
+       with_items:
+          - "{{ testres }}"
+       register: startTestApp
+
+     - pause:
+         seconds: 10
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
+       vars:
+         input_param: {
+                'Operation': 'membership',
+                'OutfileName': 'membership_output'
+                 }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "get membership details of running servers."
+       with_items:
+          - "{{ ncpclires }}"
+       register: membership
+       no_log: true
+
+     - name: "{{ recipe_name }}: prepare path to read recipe JSON file."
+       shell: cat "{{base_dir}}"/"{{raft_uuid}}".json
+       register: result
+
+     - name: "{{ recipe_name }}: Convert output to JSON format."
+       set_fact:
+         getTestAppDetails: "{{ result.stdout | from_json }}"
+
+     - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
+       set_fact:
+         getTestPid: "{{ getTestAppDetails | json_query(jmesquery) }}"
+       vars:
+         jmesquery: 'testApp'
+
+     - name: "{{ recipe_name }}: Force kill stuck processes"
+       shell: "kill -9 {{getTestPid['process_pid']}}"
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
