@@ -17,6 +17,9 @@
        failed_when:
          (app_type != "controlplane")
 
+     - set_fact:
+         orig_cluster_param: "{{ ClusterParams }}"
+
      - name: "{{ recipe_name }}: Start pmdb and proxy servers."
        include_role:
           name: common
@@ -37,12 +40,12 @@
        with_items:
           - "{{ ncpclires }}"
        register: membership_firstCluster
-     
+
      - name: "{{ recipe_name }}: get the list of running servers."
        include_role:
           name: common
           tasks_from: get_server_uuid_info
-     
+
      - name: "{{ recipe_name }}: Get the raft uuid of the first cluster."
        vars:
            raft_uuid_first_cluster: "{{ membership_firstCluster['results'][0]['item']['membership']['output_data'][NRunningPeers[0]]['Tags']['RU'] }}"
@@ -58,9 +61,22 @@
          raftuuid_val_firstCluster: "{{ membership_firstCluster['results'][0]['item']['membership']['output_data'][NRunningPeers[item]]['Tags']['RU'] }}"
        debug:
          msg: "check that raft uuid is same for all the nodes running in first cluster"
-       failed_when: 
+       failed_when:
            raftuuid_val_firstCluster !=  raft_uuid
-       loop: "{{ range(0, NRunningPeers | length) | list }}" 
+       loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+     - name: "{{ recipe_name }}: Get the raft values for all running peers"
+       vars:
+         stage: "stage0_get_all"
+         raft_keys:
+            - "/raft_root_entry/0/leader-uuid"
+         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+       debug:
+        msg: "Getting stats for all running peers"
+       no_log: true
+       with_items:
+         - "{{ peers_val }}"
+       register: stage0_peers_vals
 
      - name: "{{ recipe_name }}: Create new Raft UUID."
        shell: "/usr/bin/uuid"
@@ -75,7 +91,7 @@
              npeers: "{{ npeers }}"
              client_port: "{{ client_port | int + 100 }}"
              srv_port: "{{ srv_port | int + 100 }}"
-             nclients: 5
+             nclients: 2
              app_type: "controlplane"
              coal_wr: "{{ 0 }}"
              sync_mode: "{{ 0 }}"
@@ -86,15 +102,9 @@
        set_fact:
         new_server_cluster: "{{ lookup('niova_raftconfig', 'server', wantlist=True) }}"
 
-     - debug:
-         msg: "{{ new_server_cluster }}"
-
      - name: "{{ recipe_name }}: Prepare config for the new client uuids."
        set_fact:
         new_client_cluster: "{{ lookup('niova_raftconfig', 'client', wantlist=True) }}"
-
-     - debug:
-         msg: "{{ new_client_cluster }}"
 
      - name: "{{ recipe_name }}: get the list of non-running servers."
        include_role:
@@ -116,9 +126,9 @@
        vars:
          ServerUUID: "{{ NonRunningPeers[item] }}"
          number_of_PMDBServers: 4
-       loop: "{{ range(0, number_of_PMDBServers | int ) | list }}" 
+       loop: "{{ range(0, number_of_PMDBServers | int ) | list }}"
 
-     - name: "{{ recipe_name }}: Pause for 10 seconds."
+     - name: "{{ recipe_name }}: pause for 5 seconds."
        pause:
         seconds: 5
 
@@ -131,7 +141,7 @@
           ClientUUID: "{{ new_client_cluster[item] }}"
        loop: "{{ range(0, new_client_cluster | length) |list }}"
 
-     - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
+     - name: "{{ recipe_name }}: Pause for 5 seconds to start proxy servers properly."
        pause:
         seconds: 5
 
@@ -149,10 +159,6 @@
        register: membership_secondCluster
        no_log: true
 
-     - debug: 
-         msg: "{{ membership_secondCluster['results'][0]['item']['membership']['output_data'][item]['Tags']['RU'] }}"
-       loop: "{{ range(0, NumRunningPeers | length) | list }}" 
-
      - name: "{{ recipe_name }}: Check if raft_uuid is same for all the nodes in second cluster."
        vars:
          raftuuid_val_secondCluster: "{{ membership_secondCluster['results'][0]['item']['membership']['output_data'][NumRunningPeers[item]]['Tags']['RU'] }}"
@@ -166,21 +172,35 @@
        debug:
         msg: "{{lookup('niova_raftprocess', 'kill', NonRunningPeers[item], wantlist=True)}}"
        loop: "{{ range(0, NonRunningPeers | length) |list }}"
-         #no_log: True
-
-     - debug:
-         msg: "{{NonRunningPeers}} and {{NumRunningPeers}}"
+       no_log: True
 
      - name: "{{ recipe_name }}: Kill the proxy servers from second cluster."
        debug:
         msg: "{{lookup('niova_raftprocess', 'kill', new_client_cluster[item], wantlist=True)}}"
        loop: "{{ range(0, new_client_cluster | length) |list }}"
-         #no_log: True
+       no_log: True
 
-     - name: "{{ recipe_name }}: Wait until leader election happens."
+     - name: "{{ recipe_name }}: Revert back the origin cluster information."
+       set_fact:
+         ClusterParams: "{{ orig_cluster_param }}"
+
+     - name: "{{ recipe_name }}: Get the updated list of running peers."
        include_role:
          name: common
-         tasks_from: wait_until_leader_election
+         tasks_from: get_server_uuid_info
+
+     - name: "{{ recipe_name }}: Verify 1st cluster leader-uuid is same as original leader-uuid"
+       vars:
+         stage: "verify_leader"
+         initial_vals: "{{ stage0_peers_vals['results'][0]['item'] }}"
+         raft_key:
+            - "/raft_root_entry/0/leader-uuid"
+         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_key, wantlist=True) }}"
+       debug:
+        msg: "Validate leader-uuid"
+       failed_when: >
+          (peers_val["/0/leader-uuid"] != initial_vals["/0/leader-uuid"])
+       loop: "{{ range(0, NRunningPeers|length) | list }}"
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
