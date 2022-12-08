@@ -104,7 +104,8 @@ def start_lkvt_subprocess(cluster_params, database_type, size_of_key,
                                          '-vs', size_of_value, '-n', no_of_operations,
                                          '-pp', precent_put_get, '-c', no_of_concurrent_req,
                                          '-jp', outfilePath ,'-cp', config_path,
-                                         '-ca', choose_algorithm, '-ss', specific_server_name],
+                                         '-ca', choose_algorithm, '-ss', specific_server_name,
+                                         '-ru', raft_uuid],
                                          stdout = fp, stderr = fp)
 
     # Sync the log file so all the logs from niovakv client gets written to log file.
