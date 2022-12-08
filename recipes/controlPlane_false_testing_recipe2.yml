@@ -1,8 +1,8 @@
-- name: "ControlPlane_false_testing_recipe.yml"
+- name: "ControlPlane_false_testing_recipe2.yml"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "ControlPlane_false_testing_recipe"
+    recipe_name: "ControlPlane_false_testing_recipe2"
     parent: None
 
   tasks:
@@ -17,14 +17,9 @@
        failed_when:
          (app_type != "controlplane")
 
-     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
-       include_role:
-          name: common
-          tasks_from: pmdb_cluster_init.yml
-       vars:
-         number_of_clients: 2
-         number_of_PMDBServers: 4
- 
+     - name: "Prepare gossip node config and proxy.config file"
+       set_fact: gossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", 0,  wantlist=True)}}"
+
      - name: "{{ recipe_name }}: Start test application."
        vars:
          input_param: {
@@ -54,8 +49,17 @@
        register: membership
        no_log: true
 
+     - name: "{{ recipe_name }}: Verify outfile status"
+       debug:
+         msg: "Check write outfile status: {{ membership['results'][0]['item']['membership']['output_data']['Response']['Response'] }}"
+       failed_when: >
+         (membership['results'][0]['item']['membership']['output_data']['Response']['Response'] != "No live serf agents" )
+
+     - set_fact:
+         orig_cluster_param: "{{ ClusterParams }}"
+
      - name: "{{ recipe_name }}: prepare path to read recipe JSON file."
-       shell: cat "{{base_dir}}"/"{{raft_uuid}}".json
+       shell: cat "{{ ClusterParams['base_dir'] }}/{{ ClusterParams['raft_uuid']}}/{{ ClusterParams['raft_uuid'] }}".json
        register: result
 
      - name: "{{ recipe_name }}: Convert output to JSON format."

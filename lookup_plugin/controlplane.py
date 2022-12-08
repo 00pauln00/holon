@@ -286,16 +286,15 @@ def load_recipe_op_config(cluster_params):
 
 def start_testApp(cluster_params, input_values):
     base_dir = cluster_params['base_dir']
-    raft_uuid = cluster_params['raft_uuid']
     port = int(cluster_params['srv_port'])
 
     #Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
     bin_path = '%s/testApp' % binary_dir
-    start_range = port+40
-    end_range = port+140
+    start_range = port
+    end_range = port+50
     Port_range = str(start_range)+"-"+str(end_range)
-    process_popen = subprocess.Popen([bin_path,'-r', raft_uuid , '-p' , Port_range])
+    process_popen = subprocess.Popen([bin_path, '-p' , Port_range])
 
     #writing the information of testApp in raft_process into raft_uuid.json
     recipe_conf = load_recipe_op_config(cluster_params)
