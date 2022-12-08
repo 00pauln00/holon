@@ -65,23 +65,9 @@
        vars:
          ClientUUID: "{{ ClientUUIDS[0] }}"
 
-     - name: "{{ recipe_name }}: prepare path to read recipe JSON file."
-       shell: cat "{{base_dir}}"/"{{raft_uuid}}".json
-       register: result
-       no_log: true
-
-     - name: "{{ recipe_name}}: Convert output to JSON format."
+     - name: "{{ recipe_name}}: Get the serf nodes from recipe."
        vars:
-         getNodeDetails: "{{ result.stdout | from_json }}"
-       debug: var="{{ getNodeDetails }}"
-       with_items:
-          - "{{ getNodeDetails }}"
-       register: NodeDetails
-       no_log: true
-
-     - name: "{{ recipe_name}}: Get the serf nodes from recipe JSON."
-       vars:
-          getNodeName: "{{ NodeDetails['results'][0]['item']['serf_nodes'][ClientUUIDS[0]] }}"
+          getNodeName: "{{ ClientUUIDS[0] }}"
        debug: 
         msg: "get the node name"
        with_items:
