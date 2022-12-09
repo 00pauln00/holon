@@ -71,6 +71,9 @@
         - "{{ peer4 }}"
       register: newlyStartedPeer4
 
+    - debug:
+        msg: "{{ newlyStartedPeer4['results'][0]['item'] }}"
+
     - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
       include_role:
         name: common
@@ -111,7 +114,7 @@
 
     - name: "{{ recipe_name}}: Wait until all write completes from client"
       vars:
-        stage: "wait_for_write_op"
+        stage: "wait_for_1st_write_op"
       debug:
         msg: "Waiting for client to finish writing"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
@@ -251,7 +254,7 @@
 
     - name: "{{ recipe_name}}: Wait until 2nd set of 7000 write completes from client"
       vars:
-        stage: "waitToCompWr"
+        stage: "waitToComp2ndWr"
       debug:
         msg: "Waiting for client to finish writing"
       until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
@@ -263,7 +266,7 @@
          nwrites: 7000
          origCI: "{{ after1stWr['results'][0]['item']['/0/commit-idx'] }}"
          exceptPeer4: "{{ NRunningPeers | difference(newlyStartedPeer4['results'][0]['item']) }}"
-         stage: "getCIfrmfrmAllexceptPeer4"
+         stage: "getCIaftr1stWrtexceptPeer4"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers except peer4."
       until: lookup('niova_ctlrequest', 'lookup', exceptPeer4[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
@@ -273,7 +276,7 @@
 
     - name: "{{ recipe_name }}: Verify after disabling send/recv checkpoint-idx and lowest-idx should increment on other peers except peer4."
       vars:
-         stage: "origValAftr10000Wr"
+         stage: "getLICPaftr1stWrexceptPeer4"
          aftr1stWrVal: "{{ after1stWr['results'][item]['item'] }}"
          exceptPeer4: "{{ NRunningPeers | difference(newlyStartedPeer4['results'][0]['item']) }}"
          verifyAftr2ndWr: "{{ lookup('niova_ctlrequest', 'lookup', exceptPeer4[item], raft_root_entry_keys, wantlist=True) }}"
@@ -287,7 +290,7 @@
 
     - name: "{{ recipe_name }}: Verify after disabling send/recv checkpoint-idx and lowest-idx is not incremented on peer4."
       vars:
-         stage: "origValAftr10000Wr"
+         stage: "aftr1stWrPeer4"
          aftr1stWrVal: "{{ after1stWrForPeer4['results'][0]['item'] }}"
          verifyPeer4: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys, wantlist=True) }}"
       debug:
