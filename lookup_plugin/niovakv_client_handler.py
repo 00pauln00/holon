@@ -112,11 +112,10 @@ def start_lkvt_subprocess(cluster_params, database_type, size_of_key,
     os.fsync(fp)
     return process_popen, outfilePath
 
-
-def get_the_output(outfilePath):
-    outfile = outfilePath+'.json'
+def get_the_output(outfilePath, client_type):
+    outfile = outfilePath + '.json'
     counter = 0
-    timeout = 200
+    timeout = 100
 
     # Wait till the output json file gets created.
     while True:
@@ -124,17 +123,25 @@ def get_the_output(outfilePath):
             counter += 1
             time.sleep(1)
             if counter == timeout:
-                return {"status":-1,"msg":"Timeout checking for output file"}
+                return {'outfile_status':-1}
         else:
             break
-
+    
     output_data = {}
-    with open(outfile, "r+", encoding="utf-8") as json_file:
-        output_data = json.load(json_file)
 
-    return output_data
+    if client_type == "lkvt":
+        json_data = {}
+        with open(outfile, "r+", encoding="utf-8") as json_file:
+            output_data = json.load(json_file)
+        json_data['outfile_status'] = 0
+        json_data['output_data'] = output_data
+        return json_data
+    else:
+        with open(outfile, "r+", encoding="utf-8") as json_file:
+            output_data = json.load(json_file)
+        return output_data
 
-def extract_niovakv_client_values_perform_operation(cluster_params, input_values):
+def extract_niovakv_client_values_perform_operation(cluster_params, client_type, input_values):
         Operation = input_values['Operation']
         Key = input_values['Key']
         Value = input_values['Value']
@@ -142,12 +149,12 @@ def extract_niovakv_client_values_perform_operation(cluster_params, input_values
         NumRequest = str(input_values['NumRequest'])
         MultiKey = input_values['MultiKey']
         Sequential = input_values['Sequential']
-                
+
         # Start the niovakv_client and perform the specified operation e.g write/read/getLeader.
         process,outfile = start_niovakv_subprocess(cluster_params, Operation, Key,
                                            Value, OutfileName, NumRequest,
                                            MultiKey, Sequential)
-        output_data = get_the_output(outfile)
+        output_data = get_the_output(outfile, client_type)
 
         if Operation == "write":
                 return {"write":output_data['write']}
@@ -160,7 +167,7 @@ def extract_niovakv_client_values_perform_operation(cluster_params, input_values
         else:
                 return output_data
 
-def extract_lkvt_client_values_perform_operation(cluster_params, input_values):
+def extract_lkvt_client_values_perform_operation(cluster_params, client_type, input_values):
         wait_for_outfile = input_values["wait_for_outfile"]
         if wait_for_outfile == False:
             database_type = str(input_values["database_type"])
@@ -185,8 +192,8 @@ def extract_lkvt_client_values_perform_operation(cluster_params, input_values):
             outfile_path = str(input_values['outfile_path'])
             wait_for_outfile = input_values['wait_for_outfile']
 
-            if  wait_for_outfile == True:
-                output_data = get_the_output(outfile_path)
+            if wait_for_outfile == True:
+                output_data = get_the_output(outfile_path, client_type)
                 return output_data
 
 class LookupModule(LookupBase):
@@ -197,9 +204,9 @@ class LookupModule(LookupBase):
         input_values = terms[1]
 
         if client_type == "niovakv":
-                result = extract_niovakv_client_values_perform_operation(cluster_params, input_values)
+                result = extract_niovakv_client_values_perform_operation(cluster_params, client_type, input_values)
 
         elif client_type == "lkvt":
-                result = extract_lkvt_client_values_perform_operation(cluster_params, input_values)
+                result = extract_lkvt_client_values_perform_operation(cluster_params, client_type, input_values)
 
         return result

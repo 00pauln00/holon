@@ -90,12 +90,16 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
 
     if ptype == "server":
         if app_type == "pumicedb":
-            if coalesced_wr == "1":
+            if sync == "0" and coalesced_wr == "1":
                  process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid, '-a', '-c'],
                                     stdout = fp, stderr = fp)
-            elif sync == "1":
-                process_popen = subprocess.Popen([bin_path, '-r',
+            elif sync == "1" and coalesced_wr == "1":
+                 process_popen = subprocess.Popen([bin_path, '-r',
+                                          raft_uuid, '-u', peer_uuid, '-c'],
+                                          stdout = fp, stderr = fp)
+            elif sync == "1" and coalesced_wr == "0":
+                 process_popen = subprocess.Popen([bin_path, '-r',
                                           raft_uuid, '-u', peer_uuid],
                                           stdout = fp, stderr = fp)
             else:
@@ -348,10 +352,10 @@ class RaftProcess:
                 pass
             else:
                 os.kill(child.pid, signal.SIGTERM)
-        
+
         #Since we are just killing the child process, set parent process as running
         self.process_status = "running"
-        
+
         self.Wait_for_process_status("killed", child.pid)
-        
+
         return 0

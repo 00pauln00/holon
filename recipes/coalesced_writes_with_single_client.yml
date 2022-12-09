@@ -69,28 +69,39 @@
         constant_number_of_writes: 1
         ClientUUID: "{{ client_uuid.stdout }}"
 
+    - name: "{{ recipe_name}}: Wait until status gets updated from client."
+      vars:
+        stage: "wait_for_write_status"
+        cmd_str:
+           - "/pumice_db_test_client/pmdb-test-apps/*/status"
+      debug:
+        msg: "Wait until write status gets updated"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cmd_str, wantlist=True) | dict2items | map(attribute='value') | list | first == "Success"
+      retries: 100
+      delay: 2
+
     # Wait until write completes from client
     - name: "{{ recipe_name}}: Wait until write completes from client."
       vars:
         stage: "wait_for_write_compltn"
-        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+        write_key:
+          - "/pumice_db_test_client/pmdb-test-apps/*/pmdb-seqno"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
-      retries: 60
-      delay: 1
-      loop: "{{ range(0, pmdb_app_uuids | length) | list }}"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, write_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
+      retries: 100
+      delay: 2
 
-    - name: "{{ recipe_name }}: Get the value of coalesced-wr-cnt."
+    - name: "{{ recipe_name}}: Wait until 'app-syc == true'"
       vars:
-        stage: "get_coalesced_wr_cnt"
-        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], '/raft_root_entry/0/coalesced-wr-cnt', wantlist=True) }}"
+        stage: "wait_for_app_sync"
+        cmd_str:
+           - "/pumice_db_test_client/pmdb-test-apps/*/app-sync"
       debug:
-         msg: "Getting raft_root_entry for all servers."
-      no_log: true
-      with_items:
-         - "{{ raft_root_entry }}"
-      register: coalesced_wr_cnt
+        msg: "Wait until write status gets updated"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cmd_str, wantlist=True) | dict2items | map(attribute='value') | list | first == true
+      retries: 100
+      delay: 2
 
     #Verify client parameters after successful write operations.
     - name: "{{ recipe_name }}: Verify client parameters."
