@@ -305,7 +305,7 @@
                 no_of_concurrent_req: 20,
                 wait_for_outfile: false,
                 choose_algorithm: 2,
-                specific_server_name: "Node1",
+                specific_server_name: "{{ ClientUUIDS[0] }}",
                 outfileName: "writeres_specific_server"
                }
          nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', parameters, wantlist=True) }}"
@@ -352,7 +352,7 @@
                 no_of_concurrent_req: 20,
                 wait_for_outfile: false,
                 choose_algorithm: 0,
-                specific_server_name: "Node1",
+                specific_server_name: "{{ ClientUUIDS[0] }}",
                 outfileName: "readres_specific_server"
 
                }
