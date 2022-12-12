@@ -1,5 +1,6 @@
 ---
 
+
     - name: "{{ recipe_name }}: Get the leader-time for the peer in loop"
       vars:
         stage: "stage1"
@@ -12,6 +13,7 @@
       register: time_stamp
       debug:
         msg: "Running the lookup cmd in a loop with {{ sleep_time }} between iterations."
+      no_log: true
 
     - name: "{{ recipe_name }}: Verify stage1, leader-time should increament in each iteration"
       vars:
@@ -19,8 +21,8 @@
         orig_time: "{{ time_stamp_arr[item]['item']['/0/leader-time'] }}"
         curr_time: "{{ time_stamp_arr[item + 1]['item']['/0/leader-time'] }}"
       debug:
-         msg: "Curr leader-time: {{ curr_time }}, orig_time: {{ (orig_time | int) + (sleep_time | int) }}"
+         msg: "Curr leader-time: {{ curr_time }} and Orig leader-time: {{ (orig_time | float) + (sleep_time | int) }}"
       failed_when: >
-         ((curr_time | int) > ((orig_time | int) + (sleep_time | int)))
+         ((curr_time | float) <= ((orig_time | float) + (sleep_time | int)))
       loop: "{{ range(0, no_of_iter - 1)| list }}"
 
