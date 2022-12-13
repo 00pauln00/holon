@@ -411,6 +411,9 @@ class LookupModule(LookupBase):
 
         cluster_params = kwargs['variables']['ClusterParams']
 
+        #export NIOVA_THREAD_COUNT
+        os.environ['NIOVA_THREAD_COUNT'] = cluster_params['nthreads']
+
         if process_type == "niova-block-ctl":
 
                if input_values['lookout_uuid'] != "":

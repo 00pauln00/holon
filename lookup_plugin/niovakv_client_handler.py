@@ -125,7 +125,7 @@ def get_the_output(outfilePath, client_type):
                 return {'outfile_status':-1}
         else:
             break
-    
+
     output_data = {}
 
     if client_type == "lkvt":
@@ -199,6 +199,10 @@ class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
         cluster_params = kwargs['variables']['ClusterParams']
+
+        #export NIOVA_THREAD_COUNT
+        os.environ['NIOVA_THREAD_COUNT'] = cluster_params['nthreads']
+
         client_type = terms[0]
         input_values = terms[1]
 

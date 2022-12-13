@@ -15,7 +15,7 @@ def is_process_running(peer_uuid, recipe_conf):
         if peer_uuid in recipe_conf['raft_process']:
             if "process_status" in recipe_conf['raft_process'][peer_uuid]:
                 if recipe_conf['raft_process'][peer_uuid]['process_status'] == "running":
-                    return True 
+                    return True
     return False
 '''
 niova_raft_process_ops: This function perform operations like start, stop,pause
@@ -86,7 +86,7 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
             err = "Process with UUID (%s) is already running" % peer_uuid
             logging.error(err)
             raise Exception(err)
-            
+
         ctlsvc_path = "%s/configs" % base_dir
         if cluster_params['app_type'] == "controlplane" and proc_type == "client":
             logging.warning("app_type controlplane and proxy server getting started")
@@ -238,6 +238,9 @@ Main function for raftprocess lookup.
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
         cluster_params = kwargs['variables']['ClusterParams']
+
+        #export NIOVA_THREAD_COUNT
+        os.environ['NIOVA_THREAD_COUNT'] = cluster_params['nthreads']
 
         cluster_type = cluster_params['ctype']
         proc_operation = terms[0]
