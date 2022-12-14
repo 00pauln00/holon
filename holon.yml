@@ -36,7 +36,7 @@
       nlookouts: "{{ nlookouts | default(5) | int }}"
       nnisds: "{{ nnisds | default(50) | int }}"
       blocktest_input_file_path: "{{ blocktest_file_path | default(false) | bool }}"
-      nthreads:  "{{ nthreads | default(32) | int }}"
+      nthreads:  "{{ nthreads | default(2) | int }}"
     failed_when: >
       ((srv_port | int) >= 65536) or
       ((client_port | int) >= 65536) or
