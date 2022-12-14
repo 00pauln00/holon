@@ -28,7 +28,7 @@ def start_ncpc(cluster_params, Key, Value, Operation,
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(log_file, "w")
     logfile = "%s/%s/ncpclogfile.log" % (base_dir, raft_uuid)
-    
+
     serviceRetry = "3"
 
     # Prepare config file path for ncpc
@@ -320,6 +320,9 @@ class LookupModule(LookupBase):
         input_values = terms[1]
 
         cluster_params = kwargs['variables']['ClusterParams']
+
+        #export NIOVA_THREAD_COUNT
+        os.environ['NIOVA_THREAD_COUNT'] = cluster_params['nthreads']
 
         if process_type == "ncpc":
 

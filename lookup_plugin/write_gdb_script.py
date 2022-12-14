@@ -105,6 +105,10 @@ class LookupModule(LookupBase):
         peer_uuid = terms[2]
 
         cluster_params = kwargs['variables']['ClusterParams']
+
+        #export NIOVA_THREAD_COUNT
+        os.environ['NIOVA_THREAD_COUNT'] = cluster_params['nthreads']
+
         cluster_info = kwargs['variables']['ClusterInfo']
 
         raft_uuid = cluster_info['raft_uuid']
