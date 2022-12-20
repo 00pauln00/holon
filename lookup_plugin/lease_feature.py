@@ -3,6 +3,7 @@ import json
 import os
 import time
 import subprocess
+import uuid
 from genericcmd import *
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
@@ -47,17 +48,20 @@ def lease_operation(cluster_params, operation):
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(log_file, "w")
     
-    #start niova block test process
+    #start leaseApp process
     bin_path = '%s/leaseApp' % binary_dir
+
+    #uuid is added at end to generate unique json file.
+    outfilePath = "%s/%s/%s_%s" % (base_dir, raft_uuid, OutfileName, uuid.uuid1())
         
     if operation = "get_lease":
-        process_popen = subprocess.Popen([bin_path, '-u', client, '-v', resource, '-ru', raft_uuid], stdout = fp, stderr = fp)
+        process_popen = subprocess.Popen([bin_path, '-u', client, '-v', resource, '-ru', raft_uuid, '-j', outfilePath], stdout = fp, stderr = fp)
     
     elif operation = "lookup_lease":
-        process_popen = subprocess.Popen([bin_path,'-v', resource, '-ru', raft_uuid], stdout = fp, stderr = fp)
+        process_popen = subprocess.Popen([bin_path,'-v', resource, '-ru', raft_uuid, '-j', outfilePath], stdout = fp, stderr = fp)
     
     else:
-        process_popen = subprocess.Popen([bin_path, '-u', client, '-v', resource, '-ru', raft_uuid], stdout = fp, stderr = fp)
+        process_popen = subprocess.Popen([bin_path, '-u', client, '-v', resource, '-ru', raft_uuid, '-j', outfilePath], stdout = fp, stderr = fp)
 
     os.fsync(fp)
 
@@ -67,21 +71,21 @@ def extracting_dictionary(cluster_params, operation, input_values):
 
     if operation = "get_lease":
 
-        get_lease = lease_operation(operation, input_values['client'], input_values['resource'])
+        get_lease = lease_operation(operation, input_values['client'], input_values['resource'], input_values['outFileName'])
         output_data = get_the_output(outfile)
 
         return output_data
 
     if operation = "lookup_lease":
             
-        lookup_lease = lease_operation(operation, input_values['resource'])
+        lookup_lease = lease_operation(operation, input_values['resource'], input_values['outFileName'])
         output_data = get_the_output(outfile)
             
         return output_data
 
     if operation = "refresh_lease":
             
-        refresh_lease = lease_operation(operation, input_values['resource'])
+        refresh_lease = lease_operation(operation, input_values['client'], input_values['resource'], input_values['outFileName'])
         output_data = get_the_output(outfile)
             
         return output_data
