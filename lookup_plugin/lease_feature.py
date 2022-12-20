@@ -49,7 +49,7 @@ def lease_operation(cluster_params, operation):
     fp = open(log_file, "w")
     
     #start leaseApp process
-    bin_path = '%s/leaseApp' % binary_dir
+    bin_path = '%s/leaseClient' % binary_dir
 
     #uuid is added at end to generate unique json file.
     outfilePath = "%s/%s/%s_%s" % (base_dir, raft_uuid, OutfileName, uuid.uuid1())
