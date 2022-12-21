@@ -32,7 +32,7 @@ def get_the_output(outfilePath):
 
     return json_data
 
-def lease_operation(cluster_params, operation):
+def lease_operation(cluster_params, operation, client, resource, OutfileName):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     app_name = cluster_params['app_type']
@@ -55,13 +55,16 @@ def lease_operation(cluster_params, operation):
     outfilePath = "%s/%s/%s_%s" % (base_dir, raft_uuid, OutfileName, uuid.uuid1())
         
     if operation = "get_lease":
-        process_popen = subprocess.Popen([bin_path, '-u', client, '-v', resource, '-ru', raft_uuid, '-j', outfilePath], stdout = fp, stderr = fp)
+        process_popen = subprocess.Popen([bin_path, '-u', client, '-v', resource, '-ru', raft_uuid,
+                                            '-j', outfilePath], stdout = fp, stderr = fp)
     
     elif operation = "lookup_lease":
-        process_popen = subprocess.Popen([bin_path,'-v', resource, '-ru', raft_uuid, '-j', outfilePath], stdout = fp, stderr = fp)
+        process_popen = subprocess.Popen([bin_path,'-v', resource, '-ru', raft_uuid,
+                                            '-j', outfilePath], stdout = fp, stderr = fp)
     
     else:
-        process_popen = subprocess.Popen([bin_path, '-u', client, '-v', resource, '-ru', raft_uuid, '-j', outfilePath], stdout = fp, stderr = fp)
+        process_popen = subprocess.Popen([bin_path, '-u', client, '-v', resource, '-ru', raft_uuid,
+                                            '-j', outfilePath], stdout = fp, stderr = fp)
 
     os.fsync(fp)
 
@@ -78,7 +81,7 @@ def extracting_dictionary(cluster_params, operation, input_values):
 
     if operation = "lookup_lease":
             
-        lookup_lease = lease_operation(operation, input_values['resource'], input_values['outFileName'])
+        lookup_lease = lease_operation(operation, client, input_values['resource'], input_values['outFileName'])
         output_data = get_the_output(outfile)
             
         return output_data
