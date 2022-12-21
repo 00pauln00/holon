@@ -67,6 +67,7 @@ def lease_operation(cluster_params, operation, client, resource, OutfileName):
                                             '-j', outfilePath], stdout = fp, stderr = fp)
 
     os.fsync(fp)
+    return process_popen, outfilePath
 
 def extracting_dictionary(cluster_params, operation, input_values):
     client = ""
@@ -74,21 +75,21 @@ def extracting_dictionary(cluster_params, operation, input_values):
 
     if operation = "get_lease":
 
-        get_lease = lease_operation(operation, input_values['client'], input_values['resource'], input_values['outFileName'])
+        get_lease, outfile = lease_operation(operation, input_values['client'], input_values['resource'], input_values['outFileName'])
         output_data = get_the_output(outfile)
 
         return output_data
 
     if operation = "lookup_lease":
             
-        lookup_lease = lease_operation(operation, client, input_values['resource'], input_values['outFileName'])
+        lookup_lease, outfile = lease_operation(operation, client, input_values['resource'], input_values['outFileName'])
         output_data = get_the_output(outfile)
             
         return output_data
 
     if operation = "refresh_lease":
             
-        refresh_lease = lease_operation(operation, input_values['client'], input_values['resource'], input_values['outFileName'])
+        refresh_lease, outfile = lease_operation(operation, input_values['client'], input_values['resource'], input_values['outFileName'])
         output_data = get_the_output(outfile)
             
         return output_data

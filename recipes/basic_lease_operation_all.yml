@@ -34,62 +34,62 @@
       register: clientUUID
 
     - name: "{{ recipe_name }}: Perform 'get_lease' operation."
-       vars:
+      vars:
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
                 'outFileName': 'get_lease_{{ resourceUUID.stdout }}'
                  }
-       debug:
+      debug:
          msg: "{{ lookup('lease_feature', 'get_lease', input_param, wantlist=True) }}"
 
-     - name: "{{ recipe_name }}: Perform 'lookup_lease' operation."
-       vars:
+    - name: "{{ recipe_name }}: Perform 'lookup_lease' operation."
+      vars:
          input_param: {
                 'resource': '{{ resourceUUID.stdout }}',
                 'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
                  }
-       debug:
+      debug:
          msg: "{{ lookup('lease_feature', 'lookup_lease', input_param, wantlist=True) }}"
 
-     - name: "{{ recipe_name }}: Perform 'refresh_lease' operation."
-       vars:
+    - name: "{{ recipe_name }}: Perform 'refresh_lease' operation."
+      vars:
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
                 'outFileName': 'refresh_lease_{{ resourceUUID.stdout }}'
                  }
-       debug:
+      debug:
          msg: "{{ lookup('lease_feature', 'refresh_lease', input_param, wantlist=True) }}"
 
-     - name: "{{ recipe_name }}: Start niova-block-ctl process."
-       vars:
+    - name: "{{ recipe_name }}: Start niova-block-ctl process."
+      vars:
           input_param: {
              'nisd_dev_size': '68719476736',
              'lookout_uuid': '',
              'alt_name': 'nisd{{item}}'
               }
-       set_fact:
+      set_fact:
          get_nisd: "{{ lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True) }}"
-       loop: "{{ range(0, nnisds | int) }}"
-       #no_log: True
+      loop: "{{ range(0, nnisds | int) }}"
+      #no_log: True
 
-     - name: "{{ recipe_name }}: Start nisd process."
-       vars:
+    - name: "{{ recipe_name }}: Start nisd process."
+      vars:
          input_param: {
                   'nisd_uuid' : '{{ get_nisd }}',
                   'uport' : '1053',
                   'lookout_uuid': ''
                   }
-       debug:
+      debug:
          msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
-       #no_log: True
+      #no_log: True
 
-     - pause:
-         seconds: 2
+    - pause:
+        seconds: 2
 
-     - name: "{{ recipe_name }}: Perform some Writes to the NISD."
-       vars:
+    - name: "{{ recipe_name }}: Perform some Writes to the NISD."
+      vars:
          input_param: {
                  'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
                  'vdev' : '{{ resourceUUID.stdout }}',
@@ -104,8 +104,5 @@
                  'blocking_process' : False,
                  'lookout_uuid': ''
                  }
-       debug:
+      debug:
          msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
-
-
-
