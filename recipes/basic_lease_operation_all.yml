@@ -25,32 +25,6 @@
         name: common
         tasks_from: get_server_uuid_info
 
-    - name: "{{ recipe_name }}: Start niova-block-ctl process."
-       vars:
-          input_param: {
-             'nisd_dev_size': '68719476736',
-             'lookout_uuid': '',
-             'alt_name': 'nisd{{item}}'
-              }
-       set_fact:
-         get_nisd: "{{ lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True) }}"
-       loop: "{{ range(0, nnisds | int) }}"
-       #no_log: True
-
-     - name: "{{ recipe_name }}: Start nisd process."
-       vars:
-         input_param: {
-                  'nisd_uuid' : '{{ get_nisd }}',
-                  'uport' : '1053',
-                  'lookout_uuid': ''
-                  }
-       debug:
-         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
-       #no_log: True
-
-     - pause:
-         seconds: 2
-
     - name: Generate new resource
       shell: "/usr/bin/uuid"
       register: resourceUUID
@@ -58,25 +32,6 @@
     - name: Generate new client
       shell: "/usr/bin/uuid"
       register: clientUUID
-
-    - name: "{{ recipe_name }}: Perform some Writes to the NISD."
-      vars:
-         input_param: {
-                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
-                 'vdev' : '{{ resourceUUID.stdout }}',
-                 'read_operation_ratio_percentage' : '0',
-                 'random_seed' : '123',
-                 'client_uuid' : '{{ clientUUID.stdout }}',
-                 'request_size_in_bytes' : '32',
-                 'queue_depth' : '1',
-                 'num_ops' : '50',
-                 'integrity_check' : True,
-                 'sequential_writes' : False,
-                 'blocking_process' : False,
-                 'lookout_uuid': ''
-                 }
-      debug:
-        msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Perform 'get_lease' operation."
        vars:
@@ -106,4 +61,51 @@
                  }
        debug:
          msg: "{{ lookup('lease_feature', 'refresh_lease', input_param, wantlist=True) }}"
+
+     - name: "{{ recipe_name }}: Start niova-block-ctl process."
+       vars:
+          input_param: {
+             'nisd_dev_size': '68719476736',
+             'lookout_uuid': '',
+             'alt_name': 'nisd{{item}}'
+              }
+       set_fact:
+         get_nisd: "{{ lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True) }}"
+       loop: "{{ range(0, nnisds | int) }}"
+       #no_log: True
+
+     - name: "{{ recipe_name }}: Start nisd process."
+       vars:
+         input_param: {
+                  'nisd_uuid' : '{{ get_nisd }}',
+                  'uport' : '1053',
+                  'lookout_uuid': ''
+                  }
+       debug:
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
+       #no_log: True
+
+     - pause:
+         seconds: 2
+
+     - name: "{{ recipe_name }}: Perform some Writes to the NISD."
+       vars:
+         input_param: {
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'vdev' : '{{ resourceUUID.stdout }}',
+                 'read_operation_ratio_percentage' : '0',
+                 'random_seed' : '123',
+                 'client_uuid' : '{{ clientUUID.stdout }}',
+                 'request_size_in_bytes' : '32',
+                 'queue_depth' : '1',
+                 'num_ops' : '50',
+                 'integrity_check' : True,
+                 'sequential_writes' : False,
+                 'blocking_process' : False,
+                 'lookout_uuid': ''
+                 }
+       debug:
+         msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
+
+
 
