@@ -32,7 +32,7 @@ def get_the_output(outfilePath):
 
     return json_data
 
-def lease_operation(cluster_params, operation, client, resource, OutfileName):
+def lease_operation(cluster_params, operation, client, resource, outFileName):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     app_name = cluster_params['app_type']
@@ -52,13 +52,13 @@ def lease_operation(cluster_params, operation, client, resource, OutfileName):
     bin_path = '%s/leaseClient' % binary_dir
 
     #uuid is added at end to generate unique json file.
-    outfilePath = "%s/%s/%s_%s" % (base_dir, raft_uuid, OutfileName, uuid.uuid1())
+    outfilePath = "%s/%s/%s_%s" % (base_dir, raft_uuid, outFileName, uuid.uuid1())
         
-    if operation = "get_lease":
+    if operation == "get_lease":
         process_popen = subprocess.Popen([bin_path, '-u', client, '-v', resource, '-ru', raft_uuid,
                                             '-j', outfilePath], stdout = fp, stderr = fp)
     
-    elif operation = "lookup_lease":
+    elif operation == "lookup_lease":
         process_popen = subprocess.Popen([bin_path,'-v', resource, '-ru', raft_uuid,
                                             '-j', outfilePath], stdout = fp, stderr = fp)
     
@@ -73,23 +73,23 @@ def extracting_dictionary(cluster_params, operation, input_values):
     client = ""
     resource = ""
 
-    if operation = "get_lease":
+    if operation == "get_lease":
 
-        get_lease, outfile = lease_operation(operation, input_values['client'], input_values['resource'], input_values['outFileName'])
+        get_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'], input_values['outFileName'])
         output_data = get_the_output(outfile)
 
         return output_data
 
-    if operation = "lookup_lease":
+    if operation == "lookup_lease":
             
-        lookup_lease, outfile = lease_operation(operation, client, input_values['resource'], input_values['outFileName'])
+        lookup_lease, outfile = lease_operation(cluster_params, operation, client, input_values['resource'], input_values['outFileName'])
         output_data = get_the_output(outfile)
             
         return output_data
 
-    if operation = "refresh_lease":
+    if operation == "refresh_lease":
             
-        refresh_lease, outfile = lease_operation(operation, input_values['client'], input_values['resource'], input_values['outFileName'])
+        refresh_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'], input_values['outFileName'])
         output_data = get_the_output(outfile)
             
         return output_data
