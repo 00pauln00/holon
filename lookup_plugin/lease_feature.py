@@ -71,18 +71,9 @@ def lease_operation(cluster_params, operation, client, resource, outFileName):
     ctl_interface_path = set_environment_variables(cluster_params)
     print(ctl_interface_path)
 
-    if operation == "get_lease":
-        process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
+    process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
                                             '-j', outfilePath], stdout = fp, stderr = fp)
     
-    elif operation == "lookup_lease":
-        process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
-                                            '-j', outfilePath], stdout = fp, stderr = fp)
-    
-    else:
-        process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
-                                            '-j', outfilePath], stdout = fp, stderr = fp)
-
     os.fsync(fp)
     return process_popen, outfilePath
 
@@ -90,21 +81,21 @@ def extracting_dictionary(cluster_params, operation, input_values):
     client = ""
     resource = ""
 
-    if operation == "get_lease":
+    if operation == "GET":
 
         get_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'], input_values['outFileName'])
         output_data = get_the_output(outfile)
 
         return output_data
 
-    if operation == "lookup_lease":
+    if operation == "LOOKUP":
             
         lookup_lease, outfile = lease_operation(cluster_params, operation, client, input_values['resource'], input_values['outFileName'])
         output_data = get_the_output(outfile)
             
         return output_data
 
-    if operation == "refresh_lease":
+    if operation == "REFRESH":
             
         refresh_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'], input_values['outFileName'])
         output_data = get_the_output(outfile)
