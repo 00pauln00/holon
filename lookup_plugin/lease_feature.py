@@ -32,6 +32,21 @@ def get_the_output(outfilePath):
 
     return json_data
 
+def set_environment_variables(cluster_params):
+    ctl_interface_path = "%s/%s/configs" % (cluster_params['base_dir'],
+                                                           cluster_params['raft_uuid'])
+
+    if os.path.exists(ctl_interface_path):
+        logging.info("file already exist")
+    else:
+        os.mkdir(niova_lookout_ctl_interface_path)
+
+    #set environment variables
+    os.environ['NIOVA_INOTIFY_BASE_PATH'] = ctl_interface_path
+    os.environ['NIOVA_LOCAL_CTL_SVC_DIR'] = ctl_interface_path
+
+    return ctl_interface_path
+
 def lease_operation(cluster_params, operation, client, resource, outFileName):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -53,17 +68,19 @@ def lease_operation(cluster_params, operation, client, resource, outFileName):
 
     #uuid is added at end to generate unique json file.
     outfilePath = "%s/%s/%s_%s" % (base_dir, raft_uuid, outFileName, uuid.uuid1())
-        
+    ctl_interface_path = set_environment_variables(cluster_params)
+    print(ctl_interface_path)
+
     if operation == "get_lease":
-        process_popen = subprocess.Popen([bin_path, '-u', client, '-v', resource, '-ru', raft_uuid,
+        process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
                                             '-j', outfilePath], stdout = fp, stderr = fp)
     
     elif operation == "lookup_lease":
-        process_popen = subprocess.Popen([bin_path,'-v', resource, '-ru', raft_uuid,
+        process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
                                             '-j', outfilePath], stdout = fp, stderr = fp)
     
     else:
-        process_popen = subprocess.Popen([bin_path, '-u', client, '-v', resource, '-ru', raft_uuid,
+        process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
                                             '-j', outfilePath], stdout = fp, stderr = fp)
 
     os.fsync(fp)
