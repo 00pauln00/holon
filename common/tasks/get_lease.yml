@@ -1,0 +1,16 @@
+---
+
+    - name: "{{ recipe_name }}: Perform 'get_lease' operation."
+      vars:
+         input_param: {
+                'client': '{{ ClientUUID }}',
+                'resource': '{{ resourceUUID }}',
+                'outFileName': 'get_lease_{{ outfilename }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+      debug:
+         msg: "get lease operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: getLease
+

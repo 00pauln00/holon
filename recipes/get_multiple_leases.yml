@@ -26,6 +26,14 @@
         name: common
         tasks_from: get_server_uuid_info
 
+    - name: Generate new resource
+      shell: "/usr/bin/uuid"
+      register: resourceUUID
+
+    - name: Generate new client
+      shell: "/usr/bin/uuid"
+      register: clientUUID
+
     - name: "Get multiple client uuids."
       include_role:
         name: common
@@ -44,36 +52,33 @@
     - debug:
         msg: "{{ ClientUUIDS }}"
 
-    - name: "{{ recipe_name }}: Perform 'get_lease' operation."
+    - name: "Perform multiple 'get_lease' operation"
+      include_role:
+        name: common
+        tasks_from: get_lease
       vars:
-         input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
-                'resource': '{{ resourceUUIDS[item] }}',
-                'outFileName': 'get_lease_{{ resourceUUIDS[item] }}'
-                 }
-         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
-      debug:
-         msg: "get lease operation"
-      with_items:
-          - "{{ leaseApp }}"
-      register: getLease
+         ClientUUID: '{{ ClientUUIDS[idx] }}'
+         resourceUUID: '{{ resourceUUIDS[idx] }}'
+         outfilename: '{{ resourceUUIDS[idx] }}' 
       loop: "{{ range(0, no_of_leases) | list }}"
+      loop_control: 
+         loop_var: idx
 
-    - name: "{{ recipe_name }}: Perform 'lookup_lease' operation."
+    - debug:
+        msg: "{{getLease}}"
+ 
+    - name: "Perform multiple 'get_lease' operation"
+      include_role:
+        name: common
+        tasks_from: lookup_lease
       vars:
-         input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
-                'resource': '{{ resourceUUIDS[item] }}',
-                'outFileName': 'lookup_lease_{{ resourceUUIDS[item] }}'
-                 }
-         leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
-      debug:
-         msg: "lookup lease operation"
-      with_items:
-          - "{{ leaseApp }}"
-      register: lookupLease
+         ClientUUID: '{{ ClientUUIDS[idx] }}'
+         resourceUUID: '{{ resourceUUIDS[idx] }}'
+         outfilename: '{{ resourceUUIDS[idx] }}'
       loop: "{{ range(0, no_of_leases) | list }}"
-
-
-
+      loop_control:
+         loop_var: idx
+  
+    - debug:
+        msg: "{{ lookupLease }}"
 
