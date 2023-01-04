@@ -28,10 +28,7 @@
      - name: "{{ recipe_name }}: Start niova-lookout process."
        vars:
          input_param: {
-                 'aport' : '{{ (srv_port | int) + 200 + item }}',
-                 'hport' : '{{ (srv_port | int) + 400 + item }}',
-                 'rport' : '{{ (srv_port | int) + 600 + item }}',
-                 'uport' : '{{ (srv_port | int) + 800 + item }}'
+                 'uport' : '{{ (srv_port | int) + 10 + item }}'
                  }
        set_fact:
          get_lookout: "{{ get_lookout | default([]) + [lookup('controlplane', 'niova-lookout', input_param, wantlist=true)] }}"
@@ -39,6 +36,45 @@
 
      - debug:
          msg: "{{ get_lookout }}"
+
+     - pause:
+         seconds: 10
+
+     - name: "{{ recipe_name }}: Wait until we get lookout's status in gossip details."
+       vars:
+         input_param: {
+                  'Operation': 'membership',
+                  'OutfileName': 'membership_details'
+                  }
+       debug:
+         msg: "wait untill lookout status gets updated in gossip"
+       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=get_lookout) | map(attribute='Status') | list| first == "running"
+       retries: 20
+       delay: 1
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
+       vars:
+         input_param: {
+                'Operation': 'membership',
+                'OutfileName': 'membership_details'
+                 }
+         GossipDetails: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "get membership details of running servers."
+       with_items:
+          - "{{ GossipDetails }}"
+       register: membershipDetails
+
+     - debug:
+          msg: "{{membershipDetails['results'][0]['item']['membership']}}"
+     
+     - name: "{{ recipe_name }}: Starting controlplane_client to start prometheus."
+       vars:
+         input_param: {
+                  'Hport': '{{membershipDetails["results"][0]["item"]["membership"][get_lookout]["Tags"]["Hport"]}}'
+                  }
+       debug:
+         msg: "{{ lookup('controlplane', 'prometheus', input_param, wantlist=True) }}"
 
      - name: "{{ recipe_name }}: Starting multiple niova-block-ctl."
        include_role:

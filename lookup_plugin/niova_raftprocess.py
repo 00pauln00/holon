@@ -15,7 +15,7 @@ def is_process_running(peer_uuid, recipe_conf):
         if peer_uuid in recipe_conf['raft_process']:
             if "process_status" in recipe_conf['raft_process'][peer_uuid]:
                 if recipe_conf['raft_process'][peer_uuid]['process_status'] == "running":
-                    return True 
+                    return True
     return False
 '''
 niova_raft_process_ops: This function perform operations like start, stop,pause
@@ -53,40 +53,12 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
         client_uuid_array = recipe_conf['client_uuid_array']
         index = client_uuid_array.index(peer_uuid)
 
-        if app_type == "niovakv":
-            # Read the config file.
-            config_path = "%s/niovakv.config" % base_dir
-            with open(config_path) as f:
-                lines = f.read().splitlines()
-
-            node_line = lines[index]
-            node_name = node_line.split()[0]
-
-            logging.info("Node Name for starting niovakv_server is: %s", node_name)
-            if not "serf_nodes" in recipe_conf:
-                recipe_conf['serf_nodes'] = {}
-
-            recipe_conf['serf_nodes'][peer_uuid] = node_name
-
-        else:
-            # Read the config file.
-            config_path = "%s/cpp_configs_%s/proxy.config" % (base_dir, peer_uuid)
-            with open(config_path) as f:
-                lines = f.read().splitlines()
-
-            node_line = lines[0]
-            node_name = node_line.split()[0]
-            logging.info("Node Name for starting proxy_server is: %s", node_name)
-            if not "serf_nodes" in recipe_conf:
-                 recipe_conf['serf_nodes'] = {}
-            recipe_conf['serf_nodes'][peer_uuid] = node_name
-
     if operation == "start":
         if(is_process_running(peer_uuid, recipe_conf)):
             err = "Process with UUID (%s) is already running" % peer_uuid
             logging.error(err)
             raise Exception(err)
-            
+
         ctlsvc_path = "%s/configs" % base_dir
         if cluster_params['app_type'] == "controlplane" and proc_type == "client":
             logging.warning("app_type controlplane and proxy server getting started")
@@ -107,7 +79,8 @@ def niova_raft_process_ops(peer_uuid, operation, proc_type, recipe_conf,
         lookout_uuid = ""
         inotifyobj = InotifyPath(base_dir, True, get_process_type, lookout_uuid)
         inotifyobj.export_ctlsvc_path(ctlsvc_path)
-        serverproc.start_process(base_dir, node_name, coalesced_wr, sync)
+        node_name = "%s" % peer_uuid
+        serverproc.start_process(base_dir, node_name, coalesced_wr, sync, cluster_params)
 
     elif operation == "pause":
         serverproc.pause_process(pid)
@@ -238,6 +211,9 @@ Main function for raftprocess lookup.
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
         cluster_params = kwargs['variables']['ClusterParams']
+
+        #export NIOVA_THREAD_COUNT
+        os.environ['NIOVA_THREAD_COUNT'] = cluster_params['nthreads']
 
         cluster_type = cluster_params['ctype']
         proc_operation = terms[0]

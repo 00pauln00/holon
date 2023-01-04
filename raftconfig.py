@@ -170,7 +170,7 @@ class RaftConfig:
                     @ip_address: IP address for the client.
                     @port: port number.
     '''
-    def generate_niovakv_conf(self, nclients, file_counter, ip_address, port):
+    def generate_niovakv_conf(self, npeers, file_counter, ip_address, port):
 
         basicioobj = BasicIO()
 
@@ -178,57 +178,24 @@ class RaftConfig:
         Prepare niovakv config information and right it to niovakv config file.
         niovakv config file name format would be niovakv.config.
         '''
-        niovakv_conf_path = "%s/niovakv.config" % (self.base_dir_path)
-        nk_fd = basicioobj.open_file(niovakv_conf_path)
-        port += 30
-        for i in range(nclients):
-            niovakv_buff = "Node%d %s %d %d %d\n" % (file_counter, ip_address, port, port+1, port+2)
-            # Write the config file
-            basicioobj.write_file(nk_fd, niovakv_buff)
-            file_counter += 1
-            port += 3
-        
-        # close the file
-        basicioobj.close_file(nk_fd)
+         
+        gossip_path = self.base_dir_path + '/' + "gossipNodes"
+        gossip_fd = basicioobj.open_file(gossip_path)
 
-
-    '''
-        Method: generate_controlplane_conf
-        Purpose: Create controlplane config for controlplane
-        Parameters: @ip_address: ip_address
-                    @client_uuids: client uuid array.
-                    @port: port 
-    '''
-    def generate_controlplane_conf(self, ip_address, client_uuids, port):
-
-        basicioobj = BasicIO()
-
-        '''
-        Prepare proxy config information and right it to proxy config file.
-        proxy config file name format would be proxy.config.
-        '''
-        port += 40
-        for client in client_uuids:
-            cpp_config_dir = self.base_dir_path + "/"+ "cpp_configs_" + client
-            if not os.path.exists(cpp_config_dir):
-                os.mkdir(cpp_config_dir)
-
-            cpp_config = cpp_config_dir + '/' + "proxy.config"
-            
-            cp_fd = basicioobj.open_file(cpp_config)
-            controlPlane_buff = "Node_%s %s %d %d %d\n" % (client, ip_address, port + 10, port + 11, port + 12)
-            basicioobj.write_file(cp_fd, controlPlane_buff)
-            port = port + 3
-
-        # close the file
-        basicioobj.close_file(cp_fd)
+        for peer in range(0, int(npeers)):
+                gossip_data = "%s " % ip_address
+                basicioobj.write_file(gossip_fd, gossip_data)
+        startRange = int(port) + 40
+        endRange = int(port) + 140
+        Totalrange = str(startRange) + " " + str(endRange)
+        basicioobj.write_file(gossip_fd, '\n' + Totalrange)
 
     '''
         Method: generate_controlplane_gossipNodes
         Purpose: Create controlplane gossipNodes for controlplane
         Parameters: .
     '''
-    def generate_controlplane_gossipNodes(self, cluster_params, ip_address, port, peeruuids):
+    def generate_controlplane_gossipNodes(self, cluster_params, ip_address, port, peeruuids, entriesInFile):
 
         basicioobj = BasicIO()
 
@@ -238,32 +205,26 @@ class RaftConfig:
         to targets.json file.
         gossipNodes file name format would be gossipNodes.
         '''
-        port += 70
         gossip_path = self.base_dir_path + '/' + "gossipNodes"
         gossip_fd = basicioobj.open_file(gossip_path)
 
-        if int(cluster_params['prometheus_support']) == 0:
+        if entriesInFile == 0 :
             for peer in peeruuids.values():
-                gossip_data = "%s %s %d %d\n" % ( peer, ip_address, port, port+1 )
+                gossip_data = "%s " % ip_address
                 basicioobj.write_file(gossip_fd, gossip_data)
-                port=port+2
+            startRange = int(port) + 40
+            endRange = int(port) + 140
+            Totalrange = str(startRange) + " " + str(endRange)
+            basicioobj.write_file(gossip_fd, '\n' + Totalrange)
         else:
-            prom_targets_path = os.environ['PROMETHEUS_PATH'] + '/' + "targets.json"
-            prom_targets_fd = basicioobj.open_file(prom_targets_path)
-            target_data = []
-            for peer in peeruuids.values():
-                gossip_data = "%s %s %d %d %d\n" % ( peer, ip_address, port, port+1, port+2 )
+            for peer in range(entriesInFile):
+                gossip_data = "%s " % ip_address
                 basicioobj.write_file(gossip_fd, gossip_data)
-                target_data.append({
-                    "targets":[ "localhost:" + str(port + 2) ],
-                    })
-                port=port+3
+            startRange = int(port) + 100
+            endRange = int(port) + 1100
+            Totalrange = str(startRange) + " " + str(endRange)
+            basicioobj.write_file(gossip_fd, '\n' + Totalrange)
 
-            # Write targets to targets.json
-            basicioobj.write_file(prom_targets_fd, json.dumps(target_data))
-            basicioobj.close_file(prom_targets_fd)
-        # close the file
-        basicioobj.close_file(gossip_fd)
 
     '''
         Method: get_client_uuid_for_clientno

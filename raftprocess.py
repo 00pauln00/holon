@@ -85,7 +85,7 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
 
     return bin_path
 
-def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, config_path, node_name, coalesced_wr, sync):
+def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, config_path, node_name, coalesced_wr, sync, cluster_params):
     process_popen = {}
 
     # binary_dir = os.getenv('NIOVA_BIN_PATH')
@@ -111,10 +111,18 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
                                           stdout = fp, stderr = fp)
         elif app_type == "controlplane":
             log_path = "%s/%s_pmdbServer.log" % (base_dir, peer_uuid)
-            process_popen = subprocess.Popen([bin_path , '-g',  gossipNodes , '-r',
+            
+            if cluster_params['prometheus_support'] == 0: 
+                process_popen = subprocess.Popen([bin_path , '-g',  gossipNodes , '-r',
                                     raft_uuid, '-u', peer_uuid, '-l' , log_path],
                                     stdout = fp, stderr = fp)
+            else:
+                process_popen = subprocess.Popen([bin_path , '-g',  gossipNodes , '-r',
+                                    raft_uuid, '-u', peer_uuid, '-l' , log_path, '-p', cluster_params['prometheus_support']],
+                                    stdout = fp, stderr = fp)
+
         elif app_type == "niovakv":
+            
             log_path = "%s/%s_niovakv_pmdbServer.log" % (base_dir, peer_uuid)
             process_popen = subprocess.Popen([bin_path, '-r',
                                           raft_uuid, '-u', peer_uuid, '-l' ,log_path],
@@ -150,15 +158,16 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
                                     stdout = fp, stderr = fp)
         elif app_type == "niovakv":
             log_path = "%s/%s_niovakv_server.log" % (base_dir, peer_uuid)
+            
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid,
-                                    '-c', config_path, '-n', node_name, '-l', log_path],
+                                    '-c', gossipNodes, '-n', node_name, '-l', log_path],
                                     stdout = fp, stderr = fp)
         elif app_type == "controlplane":
             log_path = "%s/%s_control_plane_proxy_server.log" % (base_dir, peer_uuid)
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid, '-pa', gossipNodes,
-                                    '-c', config_path, '-n', node_name, '-l', log_path],
+                                    '-n', node_name, '-l', log_path],
                                     stdout = fp, stderr = fp)
     return process_popen
 
@@ -209,7 +218,7 @@ class RaftProcess:
         #if rc == 1:
         #    exit()
 
-    def start_process(self, base_dir, node_name, coalesced_wr, sync):
+    def start_process(self, base_dir, node_name, coalesced_wr, sync, cluster_params):
         logging.warning("Starting uuid: %s, cluster_type %s" % (self.process_uuid, self.process_backend_type))
 
         binary_dir = os.getenv('NIOVA_BIN_PATH')
@@ -235,16 +244,13 @@ class RaftProcess:
         temp_file = "%s/%s_log_Pmdb_%s_%s.txt" % (base_dir, app_type, self.process_type, self.process_uuid)
         fp = open(temp_file, "w")
 
-        if app_type == "niovakv":
-            config_path = "%s/niovakv.config" % base_dir
-        elif app_type == "controlplane":
+        if app_type == "controlplane":
             node_name  = "Node_" + self.process_uuid
-            config_path = "%s/cpp_configs_%s/proxy.config" % (base_dir , self.process_uuid )
-        else:
-            config_path = ""
+
+        config_path = ""
         process_popen = run_process(fp, self.process_raft_uuid, self.process_uuid,
                                     self.process_type, self.process_app_type, bin_path,
-                                    base_dir, config_path, node_name, coalesced_wr, sync)
+                                    base_dir, config_path, node_name, coalesced_wr, sync, cluster_params)
         #Make sure all the ouput gets flushed to the file before closing it
         os.fsync(fp)
 

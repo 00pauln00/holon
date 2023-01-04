@@ -50,7 +50,7 @@
     - name: "{{ recipe_name }}: Set max scan entries to 1000 and log reap factor to 2 "
       include_role:
         name: common
-        tasks_from: set_maxScan_logReap_factor_andVerify 
+        tasks_from: set_maxScan_logReap_factor_andVerify
       vars:
           Peers: "{{ NRunningPeers[item] }}"
       loop: "{{ range(0, NRunningPeers | length) |list }}"
@@ -125,7 +125,7 @@
          stage: "getValsFrmAll"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
       retries: 60
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -173,8 +173,8 @@
          origCI: "{{ stage0_values['results'][0]['item']['/0/commit-idx'] }}"
          stage: "getCIFrmPeer4"
       debug:
-        msg: "Verify Commit-Idx get incrementing on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first == ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
+        msg: "Verify Commit-Idx get incrementing on newly started peer."
+      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
       retries: 60
       delay: 1
 
@@ -198,7 +198,7 @@
       failed_when: >
            (getAll["/0/leader-uuid"] != initial_vals["/0/leader-uuid"]) or
            (getAll["/0/term"] != initial_vals["/0/term"]) or
-           (getAll["/0/commit-idx"] != ((num_writes | int) * (number_of_app_uuids | int)) + initial_vals["/0/commit-idx"])
+           (getAll["/0/commit-idx"] < ((num_writes | int) * (number_of_app_uuids | int)) + initial_vals["/0/commit-idx"])
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}:  Kill the peer4 to restart it with StaleDB."

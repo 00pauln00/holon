@@ -36,11 +36,11 @@
       nlookouts: "{{ nlookouts | default(5) | int }}"
       nnisds: "{{ nnisds | default(50) | int }}"
       blocktest_input_file_path: "{{ blocktest_file_path | default(false) | bool }}"
+      nthreads:  "{{ nthreads | default(2) | int }}"
     failed_when: >
       ((srv_port | int) >= 65536) or
       ((client_port | int) >= 65536) or
       ((backend_type != "raft") and (backend_type != "pumicedb"))
-
 
   - name: "Print the special feature parameters."
     debug:
@@ -48,7 +48,6 @@
        - "The app running is: {{ app_type }}"
        - "Coalesced enabled: {{ coalesced_wr }}"
        - "Sync enabled: {{ sync }}"
-
 
   - name: "Check if ports are already in use"
     vars:
@@ -84,6 +83,7 @@
            nlookouts: "{{ nlookouts | default(5) }}"
            nnisds: "{{ nnisds | default(5) }}"
            niovaBlockTest_input_file_path: "{{ blocktest_input_file_path }}"
+           nthreads:  "{{ nthreads }}"
 
 
   - name: "Prepare server configs"
@@ -100,6 +100,7 @@
         - "Recipe: {{ recipe }}"
         - "Raft params: {{ ClusterParams }}"
         - "Disable post run : {{ disable_post_run }}"
+        - "Number of thread count: {{ nthreads }}"
 
 - import_playbook: recipes/"{{ recipe }}"
   vars:

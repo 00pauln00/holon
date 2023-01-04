@@ -71,26 +71,14 @@ def niova_client_conf_create(cluster_params):
     genericcmdobj.recipe_json_dump(recipe_conf)
     return recipe_conf['client_uuid_array']
 
-def controlplane_gossipNodes_create(cluster_params, peer_uuids):
+def controlplane_gossipNodes_create(cluster_params, peer_uuids, entriesInFile):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     port = int(cluster_params['srv_port'])
     raft_dir = "%s/%s" % (base_dir, raft_uuid)
     genericcmdobj = GenericCmds()
     raftconfobj = RaftConfig(raft_dir, raft_uuid, genericcmdobj)
-    raftconfobj.generate_controlplane_gossipNodes(cluster_params, "127.0.0.1", port, peer_uuids)
-    return 0
-
-def controlplane_conf_create(cluster_params, client_uuids):
-    base_dir = cluster_params['base_dir']
-    raft_uuid = cluster_params['raft_uuid']
-    port = int(cluster_params['srv_port'])
-    nclients = int(cluster_params['nclients'])
-    raft_dir = "%s/%s" % (base_dir, raft_uuid)
-
-    genericcmdobj = GenericCmds()
-    raftconfobj = RaftConfig(raft_dir, raft_uuid, genericcmdobj)
-    raftconfobj.generate_controlplane_conf("127.0.0.1", client_uuids, port)
+    raftconfobj.generate_controlplane_gossipNodes(cluster_params, "127.0.0.1", port, peer_uuids, entriesInFile)
     return 0
 
 def niovakv_conf_create(cluster_params):
@@ -98,14 +86,13 @@ def niovakv_conf_create(cluster_params):
     raft_uuid = cluster_params['raft_uuid']
     port = int(cluster_params['srv_port'])
     npeers = cluster_params['npeers']
-    nclients = int(cluster_params['nclients'])
     raft_dir = "%s/%s" % (base_dir, raft_uuid)
     
     genericcmdobj = GenericCmds()
     raftconfobj = RaftConfig(raft_dir, raft_uuid, genericcmdobj)
     file_counter = 1
 
-    raftconfobj.generate_niovakv_conf(nclients, file_counter, "127.0.0.1", port)
+    raftconfobj.generate_niovakv_conf(npeers, file_counter, "127.0.0.1", port)
     return 0
 
 class LookupModule(LookupBase):
@@ -127,19 +114,12 @@ class LookupModule(LookupBase):
 
         elif config_type == "controlplane":
             peer_uuids = kwargs['variables']['ClusterInfo']['peer_uuid_dict']
-            if len(terms) < 2:
-                #Create gossipNodes file using peer-uuids
-                raftconfobj_dict = controlplane_gossipNodes_create(cluster_params, peer_uuids)
-            else:
-                client_uuids = terms[1]
-        
-                '''
-                Create gossipNodes and proxy.config config files
-                '''
-                raftconfobj_dict = controlplane_gossipNodes_create(cluster_params, peer_uuids)
-                raftconfobj_dict = controlplane_conf_create(cluster_params, client_uuids)
+
+            #Create gossipNodes file using peer-uuids
+            raftconfobj_dict = controlplane_gossipNodes_create(cluster_params, peer_uuids, terms[1])
 
             return 0
+
         else:
             '''
             Create client config files

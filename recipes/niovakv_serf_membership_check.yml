@@ -73,41 +73,6 @@
        debug:
         msg: "killing the niovakv-server: {{ lookup('niova_raftprocess', 'kill', client_uuid.stdout, wantlist=True) }}"
 
-     - name: "{{ recipe_name }}: prepare path to read recipe JSON file."
-       shell: cat "{{base_dir}}"/"{{raft_uuid}}".json
-       register: result
-
-     - name: "{{ recipe_name }}: Convert output to JSON format."
-       set_fact:
-         getNodeDetails: "{{ result.stdout | from_json }}"
-
-     - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
-       set_fact:
-         getNodeName: "{{ getNodeDetails | json_query(jmesquery) }}"
-       vars:
-         jmesquery: 'serf_nodes."{{ client_uuid.stdout }}"'
-
-     - debug:
-         msg: "Killed node name is: {{ getNodeName }}"
-
-     - name: "{{ recipe_name }}: Wait until node status gets changed."
-       vars:
-         input_param: {
-              "Operation": "membership",
-              "Key": "",
-              "Value": "",
-              "OutfileName": "node_status",
-              "NumRequest": 0,
-              "MultiKey": False,
-              "Sequential" : False
-              }
-       debug:
-         msg: "Verifying node status"
-       until: lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNodeName) | map(attribute='Status') | list | first == "failed"
-       loop: "{{ range(0, 10) | list }}"
-       loop_control:
-          pause: 1
-
      # Read key-value after killing node.
      - name: "{{ recipe_name }}: Read the value of requested key."
        vars:

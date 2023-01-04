@@ -1,0 +1,51 @@
+---
+
+    - name: "prepare path to read recipe JSON file"
+      shell: cat "{{base_dir_path}}"/"{{RAFT_UUID}}".json
+      register: new_cluster_result
+
+    - name: "Convert output to JSON format"
+      set_fact:
+        new_jsondata: "{{ new_cluster_result.stdout | from_json }}"
+
+    - name: "Get the running peer UUID(s) from recipe JSON"
+      set_fact:
+        new_raft_processes: "{{ new_jsondata | json_query(jmesquery) }}"
+      vars:
+        jmesquery: 'raft_process.*'
+
+    - name: "Initialize the running peers array"
+      set_fact:
+        NumRunningPeers: []
+        NonRunningPeers: []
+
+    - name: "Get the running server uuids"
+      vars:
+        new_process_uuid: "{{ new_raft_processes[item]['new_process_uuid'] }}"
+      set_fact:
+        NumRunningPeers: "{{ NumRunningPeers|default([]) + [new_process_uuid] }}"
+      when: new_raft_processes[item]['process_type'] == "server" and new_raft_processes[item]['process_status'] == "running"
+      loop: "{{ range(0, new_raft_processes | length) | list }}"
+
+    - name: "Get the list of all peers"
+      set_fact:
+        TotalNPeersDict: "{{ New_ClusterInfo | json_query('peer_uuid_dict') }}"
+
+    - name: "Convert dictionary values into list"
+      set_fact:
+        TotalNPeersList: "{{ TotalNPeersDict.values() | list }}"
+
+    - name: "Print the lists"
+      debug:
+        msg:
+         - "Total Peers: {{ TotalNPeersList }}"
+         - "Running peers: {{ NumRunningPeers }}"
+
+    - name: "Get the non-running peer list"
+      set_fact:
+       NonRunningPeers: "{{ NonRunningPeers|default([]) + (TotalNPeersList | difference(NumRunningPeers)) }}"
+
+    - name: "Print non-running peers"
+      debug:
+       msg: "{{ NonRunningPeers }}"
+

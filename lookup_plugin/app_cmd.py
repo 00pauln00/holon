@@ -34,19 +34,22 @@ class LookupModule(LookupBase):
         client_uuid = terms[1]
         cluster_params = kwargs['variables']['ClusterParams']
 
+        #export NIOVA_THREAD_COUNT
+        os.environ['NIOVA_THREAD_COUNT'] = cluster_params['nthreads']
+
         #Initialize the logger
         initialize_logger(cluster_params)
 
         raft_uuid = cluster_params['raft_uuid']
-        app_name = cluster_params['app_type'] 
+        app_name = cluster_params['app_type']
         recipe_conf = load_recipe_op_config(cluster_params)
         base_dir =  recipe_conf['raft_config']['base_dir_path']
-        
+
         #Get operation and file_name from cmd
-        opcode,fname = cmd.split("#")[0],cmd.split("#")[-1] 
+        opcode,fname = cmd.split("#")[0],cmd.split("#")[-1]
         temp_file = "%s/%s_log_Pmdb_%s_%s.txt" % (base_dir, app_name, "client", client_uuid)
         fp = open(temp_file, "w")
-         
+
         #Prepare path for executables.
         binary_dir = os.getenv('NIOVA_BIN_PATH')
         if app_name == "covid":
@@ -55,7 +58,7 @@ class LookupModule(LookupBase):
             bin_path = '%s/foodpalaceappclient' % binary_dir
 
         ctlsvc_path = "%s/configs" % base_dir
-       
+
         get_process_type = ''
         lookout_uuid = ''
 
@@ -65,7 +68,7 @@ class LookupModule(LookupBase):
         #start client process and pass the cmd.
         process_popen = subprocess.Popen([bin_path,'-r', raft_uuid,'-u',client_uuid,'-l', base_dir,'-c',cmd],
                                              stdout = fp, stderr = fp)
-        
+
         #Wait till output json file created
         counter = 0
         timeout = 2500
@@ -89,7 +92,7 @@ class LookupModule(LookupBase):
 
         #Output parsing
         try:
-            if "Read" in request['Operation']: 
+            if "Read" in request['Operation']:
                 return {"status":0,"response":request['Data']}
             elif "Write" in request['Operation']:
                 return {"status":0,"response":request['Data']}

@@ -90,25 +90,31 @@
      - pause:
          seconds: 2
 
-     - name: "{{ recipe_name }}: prepare path to read recipe JSON file."
-       shell: cat "{{base_dir}}"/"{{raft_uuid}}".json
-       register: result
-
-     - name: "{{ recipe_name }}: Convert output to JSON format."
-       set_fact:
-         getNodeDetails: "{{ result.stdout | from_json }}"
-
-     - name: "{{ recipe_name }}: Get the serf nodes from recipe JSON."
-       set_fact:
-         getNodeName: "{{ getNodeDetails | json_query(jmesquery) }}"
+     - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
        vars:
-         jmesquery: 'serf_nodes."{{ ClientUUIDS[0] }}"'
+         input_param: {
+                'Operation': 'membership',
+                'OutfileName': 'membership_output'
+                 }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "get membership details of running servers."
+       with_items:
+          - "{{ ncpclires }}"
+       register: membership
 
-     - debug:
-         msg: "Killed node name is: {{ getNodeName }}"
+     - name: "{{ recipe_name }}: Get the nodename of killed proxy server."
+       vars:
+         node: "{{ 'Node_' + ClientUUIDS[0] }}"
+       debug:
+         msg: "Killed node name is: {{ node }}"
+       with_items:
+           - "{{ node }}"
+       register: killed_node
 
      - name: "{{ recipe_name }}: Wait until proxy node status gets changed."
        vars:
+         getNodeName: "{{ killed_node['results'][0]['item'] }}"
          input_param: {
                   'Operation': 'membership',
                   'OutfileName': 'wait_for_proxyStatus'
@@ -121,6 +127,7 @@
 
      - name: "{{ recipe_name }}: Verify proxy server's status."
        vars:
+         getNodeName: "{{ killed_node['results'][0]['item'] }}"
          input_param: {
                   'Operation': 'membership',
                   'OutfileName': 'verify_proxyServerStatus'

@@ -1,0 +1,44 @@
+---
+
+     - name: "{{ recipe_name }}: get the list of non-running servers."
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     # Get multiple client uuids using common task.
+     - name: "Get multiple client uuids."
+       include_role:
+        name: common
+        tasks_from: get_multiple_client_uuids
+       loop: "{{ range(0, number_of_clients | int) | list }}"
+
+     - name: "Prepare gossip node config file"
+       set_fact: niovaKVgossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", 0,  wantlist=True)}}"
+
+     # Start PMDB servers.
+     - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
+       include_role:
+         name: common
+         tasks_from: start_server_golang
+       vars:
+         ServerUUID: "{{ NonRunningServers[item] }}"
+       loop: "{{ range(0, number_of_PMDBServers | int ) | list }}"
+
+     - name: "{{ recipe_name }}: Wait until leader election happens."
+       include_role:
+         name: common
+         tasks_from: wait_until_leader_election
+
+     # Start proxy servers
+     - name: "{{ recipe_name }}: Start proxy servers."
+       include_role:
+          name: common
+          tasks_from: start_proxy_server
+       vars:
+          ClientUUID: "{{ ClientUUIDS[item] }}"
+       loop: "{{ range(0, ClientUUIDS | length) |list }}"
+
+     - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
+       pause:
+        seconds: 5
+
