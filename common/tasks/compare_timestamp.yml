@@ -1,0 +1,21 @@
+---
+    #TODO Get original key-values from json response
+    - set_fact:
+         list_of_leader_time: 1.1451
+         list_of_nisd_time: [1.1551, 1.1553, 1.1556,  1.1559, 1.1562]
+
+    - name: "{{ recipe_name }}: Get term and timestamp from leader"
+      set_fact:
+        leader_term: "{{ list_of_leader_time | string | split('.') | first }}"
+        leader_time: "{{ list_of_leader_time | string | split('.') | last }}"
+
+    - name: "{{ recipe_name }}: Compare term and timestamp"
+      set_fact:
+        nisd_term: "{{ list_of_nisd_time[item] | string | split('.') | first }}"
+        nisd_time: "{{ list_of_nisd_time[item] | string | split('.') | last }}"
+      failed_when: >
+        (leader_term | int) != (nisd_term | int) or
+        (nisd_time | int) < (leader_time | int)
+      loop: "{{ range(0, list_of_nisd_time | length) | list }}"
+
+

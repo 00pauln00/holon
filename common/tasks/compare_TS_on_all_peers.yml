@@ -1,0 +1,17 @@
+---
+
+     #TODO Use actual key-value using json output
+     - set_fact:
+         get_TS_from_all: [1.1551, 1.1553, 1.1556,  1.1559, 1.1562]
+
+     - name: "{{ recipe_name}}: Verify TS same on all peers"
+      vars:
+        curr_itr_vals: "{{ get_TS_from_all[item] }}"
+        next_itr_vals: "{{ get_TS_from_all[item + 1] }}"
+      debug:
+        msg: "Verifying TS same on all peers"
+      failed_when: >
+         (curr_itr_vals['/0/term'] != next_itr_vals['/0/term'])
+      loop: "{{ range(0, NRunningPeers | length - 1)| list }}"
+
+
