@@ -57,28 +57,18 @@
         name: common
         tasks_from: get_lease
       vars:
-         ClientUUID: '{{ ClientUUIDS[idx] }}'
-         resourceUUID: '{{ resourceUUIDS[idx] }}'
-         outfilename: '{{ resourceUUIDS[idx] }}' 
-      loop: "{{ range(0, no_of_leases) | list }}"
-      loop_control: 
-         loop_var: idx
+         ClientUUID: "{{ ClientUUIDS }}"
+         resourceUUID: "{{ resourceUUIDS }}"
+         outfilename: "{{ resourceUUIDS }}"
+         no_of_lease_ops: "{{ no_of_leases }}"
 
-    - debug:
-        msg: "{{getLease}}"
- 
-    - name: "Perform multiple 'get_lease' operation"
+    - name: "Perform multiple 'lookup_lease' operation"
       include_role:
         name: common
         tasks_from: lookup_lease
       vars:
-         ClientUUID: '{{ ClientUUIDS[idx] }}'
-         resourceUUID: '{{ resourceUUIDS[idx] }}'
-         outfilename: '{{ resourceUUIDS[idx] }}'
-      loop: "{{ range(0, no_of_leases) | list }}"
-      loop_control:
-         loop_var: idx
-  
-    - debug:
-        msg: "{{ lookupLease }}"
+         ClientUUID: '{{ ClientUUIDS }}'
+         resourceUUID: '{{ resourceUUIDS }}'
+         outfilename: '{{ resourceUUIDS }}'
+         no_of_lease_ops: "{{ no_of_leases }}"
 

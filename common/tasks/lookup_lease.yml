@@ -3,15 +3,16 @@
     - name: "{{ recipe_name }}: Perform 'lookup_lease' operation."
       vars:
          input_param: {
-                'client': '{{ ClientUUID }}',
-                'resource': '{{ resourceUUID }}',
-                'outFileName': 'lookup_lease_{{ outfilename }}'
+                'client': '{{ ClientUUID[idx] }}',
+                'resource': '{{ resourceUUID[idx] }}',
+                'outFileName': 'lookup_lease_{{ outfilename[idx] }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
-      debug:
-         msg: "lookup lease operation"
-      with_items:
-          - "{{ leaseApp }}"
-      register: lookupLease
+      set_fact:
+        lookupLease: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
+      failed_when: >
+        (lookupLease['output_data']['Status'] != 1)
+      loop: "{{ range(0, no_of_lease_ops) | list }}"
+      loop_control:
+         loop_var: idx
 
 
