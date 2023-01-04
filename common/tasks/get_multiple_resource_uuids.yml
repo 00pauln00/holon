@@ -1,0 +1,12 @@
+---
+    - name: "Get unused resource uuid for starting the client."
+      include_role:
+        name: common
+        tasks_from: get_resource_uuid
+      register: resource_uuid
+
+    - name: "Add newly generated resource uuid in resource_uuids list."
+      vars:
+         resourceUUIDS: []
+      set_fact:
+         resourceUUIDS: "{{ resourceUUIDS + [resource_uuid.stdout] }}"

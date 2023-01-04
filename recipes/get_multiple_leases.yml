@@ -1,0 +1,79 @@
+- name: "get multiple leases"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "get_multiple_leases"
+     parent: None
+     no_of_leases: 10
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "Start 5 peers in the cluster"
+      include_role:
+        name: common
+        tasks_from: start_server
+      vars:
+        ServerUUID: "{{ NonRunningServers[item] }}"
+      loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get the running peers list."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "Get multiple client uuids."
+      include_role:
+        name: common
+        tasks_from: get_multiple_client_uuids
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "Get multiple resource uuids."
+      include_role:
+        name: common
+        tasks_from: get_multiple_resource_uuids
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - debug:
+        msg: "{{ resourceUUIDS }}"
+
+    - debug:
+        msg: "{{ ClientUUIDS }}"
+
+    - name: "{{ recipe_name }}: Perform 'get_lease' operation."
+      vars:
+         input_param: {
+                'client': '{{ ClientUUIDS[item] }}',
+                'resource': '{{ resourceUUIDS[item] }}',
+                'outFileName': 'get_lease_{{ resourceUUIDS[item] }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+      debug:
+         msg: "get lease operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: getLease
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Perform 'lookup_lease' operation."
+      vars:
+         input_param: {
+                'client': '{{ ClientUUIDS[item] }}',
+                'resource': '{{ resourceUUIDS[item] }}',
+                'outFileName': 'lookup_lease_{{ resourceUUIDS[item] }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
+      debug:
+         msg: "lookup lease operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: lookupLease
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+
+
+
