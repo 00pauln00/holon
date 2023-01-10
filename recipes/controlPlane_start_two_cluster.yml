@@ -97,6 +97,7 @@
              sync_mode: "{{ 0 }}"
              file_counter: 0
              prometheus_support: 0
+             nthreads:  "{{ nthreads | default(2) | int }}"
 
      - name: "{{ recipe_name }}: Prepare config for new cluster using same ports as already running cluster."
        set_fact:
