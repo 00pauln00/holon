@@ -64,7 +64,7 @@
         no_of_iter: 10
         sleep_time: 3
 
-    - name: "{{ recipe_name }}: Store term and leader-time for new Leader"
+    - name: "{{ recipe_name }}: Store leader-uuid for new Leader"
       vars:
          old_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
       debug:
