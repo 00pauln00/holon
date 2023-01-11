@@ -69,6 +69,23 @@
        msg: "{{lookup('niova_raftprocess', 'pause', orig_leader['results'][0]['item'], wantlist=True)}}"
       no_log: True
 
+    - name: "{{ recipe_name }}: Perform 'lookup_lease' operation."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
+      debug:
+         msg: "lookup lease operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: lookupLease
+
+    #TODO Get TS and store it into variable
+
+    #WIP
     #TODO Start niova-block-ctl and nisd process (This is NISD 1)
     #TODO Verify lease info from memory
     #TODO Allow mount request to expire
@@ -83,6 +100,44 @@
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
+    - name: "{{ recipe_name }}: Perform 'get_lease' operation."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'outFileName': 'get_lease_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+      debug:
+         msg: "get lease operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: getLease
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check write outfile status: {{ getLease['results'][0]['item']['outfile_status'] }}"
+       #no_log: true
+      failed_when: >
+         (getLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Perform 'lookup_lease' operation."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
+      debug:
+         msg: "lookup lease operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: lookupLease
+
+    #TODO Verify Term should increment and TS should be different
+
+    #WIP
     #TODO Start niova-block-ctl and NISD 2 process
     #TODO Get lease info from NISD 2
     #TODO Ensure that NISD 2 will be processed by a new leader i.e. Leader 2
