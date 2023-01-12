@@ -8,9 +8,14 @@
                 'outFileName': 'get_lease_{{ outfilename[idx] }}'
                  }
       set_fact:
-         lookupLease: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+        getLease:  " {{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
       failed_when: >
-         (lookupLease['output_data']['Status'] != 0)
+         (getLease['output_data']['Status']    != "0")
+         (getLease['output_data']['client']    != "{{ ClientUUID[idx] }}")
+         (getLease['output_data']['resource']  != "{{ resourceUUID[idx] }}")
       loop: "{{ range(0, no_of_lease_ops) | list }}"
       loop_control:
          loop_var: idx
+
+    - debug:
+         msg: "{{ getLease }}"

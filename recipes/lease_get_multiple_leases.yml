@@ -58,3 +58,8 @@
          outfilename: '{{ resourceUUIDS }}'
          no_of_lease_ops: "{{ no_of_leases }}"
 
+    - name: "{{ recipe_name }}: Verify TTL for lookup lease is less than TTL for get lease."
+      debug:
+        msg: "Verify TTL for lookup lease is less than TTL for get lease"
+      failed_when: >
+         (getLease['output_data']['Response']['TTL'] > LookupLease['output_data']['Response']['TTL'])

@@ -10,9 +10,12 @@
       set_fact:
         lookupLease: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
       failed_when: >
-        (lookupLease['output_data']['Status'] != 0)
+        (lookupLease['output_data']['Status']   != "0")
+        (lookupLease['output_data']['client']   != "{{ ClientUUID[idx] }}")
+        (lookupLease['output_data']['resource'] != "{{ resourceUUID[idx] }}")
       loop: "{{ range(0, no_of_lease_ops) | list }}"
       loop_control:
          loop_var: idx
 
-
+    - debug:
+         msg: "{{ LookupLease }}"
