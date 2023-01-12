@@ -7,6 +7,15 @@
 
   tasks:
   - block:
+    # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "lease")
+
     - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
       include_role:
         name: common
@@ -24,6 +33,36 @@
       include_role:
         name: common
         tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Wait until leader election happens."
+      vars:
+         stage: "wait_leader_election"
+      debug:
+        msg: "Waiting for leader election"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+      retries: 10
+      delay: 1
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get cluster information"
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
+
+    - name: "{{ recipe_name }}: Get the raft values for all running peers"
+      vars:
+         stage: "stage0_get_all"
+         raft_keys:
+            - "/raft_root_entry/0/leader-uuid"
+            - "/raft_root_entry/0/term"
+            - "/raft_root_entry/0/leader-time"
+         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Getting stats for all running peers: {{ peers_val }}"
+      #no_log: true
+      with_items:
+         - "{{ peers_val }}"
+      register: stage0_peers_vals
 
     - name: Generate new resource
       shell: "/usr/bin/uuid"
@@ -54,6 +93,29 @@
       failed_when: >
          (getLease['results'][0]['item']['outfile_status'] != 0)
 
+    - name: "{{ recipe_name }}: Check if write is successful."
+       vars:
+         wrstatus: "{{ getLease['results'][0]['item']['output_data']['Response']['Status'] }}"
+         operation: "{{ getLease['results'][0]['item']['output_data']['Request']['Operation'] }}"
+         client: "{{ getLease['results'][0]['item']['output_data']['Response']['client'] }}"
+         resource: "{{ getLease['results'][0]['item']['output_data']['Response']['resource'] }}"
+       debug:
+         msg: "Check if write is successful."
+       failed_when: >
+         (operation != "write_lease") or
+         (client != clientUUID.stdout) or
+         (resource != resourceUUID.stdout) or
+         (wrstatus != "Success")
+
+    - name: "{{ recipe_name }}: Compare TS after write_lease."
+      vars:
+        timestamp: "{{ getLease['results'][0]['item']['output_data']['Response']['timestamp'] }}"
+      debug:
+        msg: "compare TS with intitial values"
+      failed_when: >
+        ((timestamp | string | split('.') | first) != stage0_peers_vals['results'][0]['item']['/0/term']) or
+        ((timestamp | string | split('.') | last) != stage0_peers_vals['results'][0]['item']['/0/leader-time'])
+
     - name: "{{ recipe_name }}: Perform 'lookup_lease' operation."
       vars:
          input_param: {
@@ -75,6 +137,29 @@
       failed_when: >
          (lookupLease['results'][0]['item']['outfile_status'] != 0)
 
+    - name: "{{ recipe_name }}: Check if read is successful."
+       vars:
+         rdstatus: "{{ lookupLease['results'][0]['item']['output_data']['Response']['Status'] }}"
+         operation: "{{ lookupLease['results'][0]['item']['output_data']['Request']['Operation'] }}"
+         client: "{{ lookupLease['results'][0]['item']['output_data']['Response']['client'] }}"
+         resource: "{{ lookupLease['results'][0]['item']['output_data']['Response']['resource'] }}"
+       debug:
+         msg: "Check if read is successful."
+       failed_when: >
+         (operation != "read_lease") or
+         (client != clientUUID.stdout) or
+         (resource != resourceUUID.stdout) or
+         (rdstatus != "Success")
+
+    - name: "{{ recipe_name }}: Compare TTL"
+      vars:
+        wr_ttl: "{{ getLease['results'][0]['item']['output_data']['Response']['TTL'] }}"
+        rd_ttl: "{{ lookupLease['results'][0]['item']['output_data']['Response']['TTL'] }}"
+      debug:
+        msg: "Compare TTL"
+      failed_when: >
+        (rd_ttl >= wr_ttl)
+
     - name: "{{ recipe_name }}: Perform 'refresh_lease' operation."
       vars:
          input_param: {
@@ -87,7 +172,7 @@
          msg: "refresh lease"
       with_items:
           - "{{ leaseApp }}"
-      register: refreshLease 
+      register: refreshLease
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
@@ -95,48 +180,3 @@
        #no_log: true
       failed_when: >
          (refreshLease['results'][0]['item']['outfile_status'] != 0)
-
-    - name: "{{ recipe_name }}: Start niova-block-ctl process."
-      vars:
-          input_param: {
-             'nisd_dev_size': '68719476736',
-             'lookout_uuid': '',
-             'alt_name': 'nisd{{item}}'
-              }
-      set_fact:
-         get_nisd: "{{ lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True) }}"
-      loop: "{{ range(0, nnisds | int) }}"
-      #no_log: True
-
-    - name: "{{ recipe_name }}: Start nisd process."
-      vars:
-         input_param: {
-                  'nisd_uuid' : '{{ get_nisd }}',
-                  'uport' : '1053',
-                  'lookout_uuid': ''
-                  }
-      debug:
-         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
-      #no_log: True
-
-    - pause:
-        seconds: 2
-
-    - name: "{{ recipe_name }}: Perform some Writes to the NISD."
-      vars:
-         input_param: {
-                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
-                 'vdev' : '{{ resourceUUID.stdout }}',
-                 'read_operation_ratio_percentage' : '0',
-                 'random_seed' : '123',
-                 'client_uuid' : '{{ clientUUID.stdout }}',
-                 'request_size_in_bytes' : '32',
-                 'queue_depth' : '1',
-                 'num_ops' : '50',
-                 'integrity_check' : True,
-                 'sequential_writes' : False,
-                 'blocking_process' : False,
-                 'lookout_uuid': ''
-                 }
-      debug:
-         msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
