@@ -1,0 +1,100 @@
+- import_playbook: lease_basic_operations.yml
+
+- name: "lease_verify_refresh_functionality"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "lease_verify_refresh_functionality"
+    parent: "lease_basic_operations"
+
+
+  tasks:
+  - block:
+    # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "lease")
+
+    - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Perform 'lookup_lease' operation."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
+      debug:
+         msg: "lookup lease operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: lookupLease_before_refresh
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check write outfile status: {{ lookupLease_before_refresh['results'][0]['item']['outfile_status'] }}"
+       #no_log: true
+      failed_when: >
+         (lookupLease_before_refresh['results'][0]['item']['outfile_status'] != 0)
+
+    - pause:
+        seconds: 10
+
+    - name: "{{ recipe_name }}: Perform 'refresh_lease' operation."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'outFileName': 'refresh_lease_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'REFRESH', input_param, wantlist=True) }}"
+      debug:
+         msg: "refresh lease"
+      with_items:
+          - "{{ leaseApp }}"
+      register: refreshLease
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check write outfile status: {{ refreshLease['results'][0]['item']['outfile_status'] }}"
+       #no_log: true
+      failed_when: >
+         (refreshLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Perform 'lookup_lease' operation."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
+      debug:
+         msg: "lookup lease operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: lookupLease_after_refresh
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check write outfile status: {{ lookupLease_after_refresh['results'][0]['item']['outfile_status'] }}"
+       #no_log: true
+      failed_when: >
+         (lookupLease_after_refresh['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Value of TTL should be increased than the previous lookup as refresh operation is performed."
+      vars:
+        ttl_before: "{{ lookupLease_before_refresh['results'][0]['item']['output_data']['Response']['TTL'] }}"
+        ttl_after: "{{ lookupLease_after_refresh['results'][0]['item']['output_data']['Response']['TTL'] }}"
+      debug:
+        msg: "Check the value of TTL should be increased than the previous lookup as refresh operation is performed"
+       #no_log: true
+      failed_when: ttl_before < ttl_after
