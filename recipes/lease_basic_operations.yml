@@ -8,12 +8,12 @@
   tasks:
   - block:
     # check for the app_type
-     - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
-       vars:
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+      vars:
          app_type: "{{ app_type }}"
-       debug:
+      debug:
          msg: "app_type is: {{ app_type }}"
-       failed_when:
+      failed_when:
          (app_type != "lease")
 
     - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
@@ -94,27 +94,16 @@
          (getLease['results'][0]['item']['outfile_status'] != 0)
 
     - name: "{{ recipe_name }}: Check if write is successful."
-       vars:
-         wrstatus: "{{ getLease['results'][0]['item']['output_data']['Response']['Status'] }}"
-         operation: "{{ getLease['results'][0]['item']['output_data']['Request']['Operation'] }}"
-         client: "{{ getLease['results'][0]['item']['output_data']['Response']['client'] }}"
-         resource: "{{ getLease['results'][0]['item']['output_data']['Response']['resource'] }}"
-       debug:
-         msg: "Check if write is successful."
-       failed_when: >
-         (operation != "write_lease") or
-         (client != clientUUID.stdout) or
-         (resource != resourceUUID.stdout) or
-         (wrstatus != "Success")
-
-    - name: "{{ recipe_name }}: Compare TS after write_lease."
       vars:
-        timestamp: "{{ getLease['results'][0]['item']['output_data']['Response']['timestamp'] }}"
+         wr_response: "{{ getLease['results'][0]['item']['output_data']['Response'] }}"
+         operation: "{{ getLease['results'][0]['item']['output_data']['Request'] }}"
       debug:
-        msg: "compare TS with intitial values"
+         msg: "Check if write is successful: {{ wr_response }}, {{ operation }}"
       failed_when: >
-        ((timestamp | string | split('.') | first) != stage0_peers_vals['results'][0]['item']['/0/term']) or
-        ((timestamp | string | split('.') | last) != stage0_peers_vals['results'][0]['item']['/0/leader-time'])
+         (operation['Operation'] != "write_lease") or
+         (wr_response['Client'] != clientUUID.stdout|string) or
+         (wr_response['Resource'] != resourceUUID.stdout|string) or
+         (wr_response['Status'] != 0)
 
     - name: "{{ recipe_name }}: Perform 'lookup_lease' operation."
       vars:
@@ -138,18 +127,16 @@
          (lookupLease['results'][0]['item']['outfile_status'] != 0)
 
     - name: "{{ recipe_name }}: Check if read is successful."
-       vars:
-         rdstatus: "{{ lookupLease['results'][0]['item']['output_data']['Response']['Status'] }}"
-         operation: "{{ lookupLease['results'][0]['item']['output_data']['Request']['Operation'] }}"
-         client: "{{ lookupLease['results'][0]['item']['output_data']['Response']['client'] }}"
-         resource: "{{ lookupLease['results'][0]['item']['output_data']['Response']['resource'] }}"
-       debug:
+      vars:
+         rd_response: "{{ lookupLease['results'][0]['item']['output_data']['Response'] }}"
+         operation: "{{ lookupLease['results'][0]['item']['output_data']['Request'] }}"
+      debug:
          msg: "Check if read is successful."
-       failed_when: >
-         (operation != "read_lease") or
-         (client != clientUUID.stdout) or
-         (resource != resourceUUID.stdout) or
-         (rdstatus != "Success")
+      failed_when: >
+         (operation['Operation'] != "read_lease") or
+         (rd_response['Client'] != clientUUID.stdout) or
+         (rd_response['Resource'] != resourceUUID.stdout) or
+         (rd_response['Status'] != "Success")
 
     - name: "{{ recipe_name }}: Compare TTL"
       vars:
@@ -212,10 +199,10 @@
       debug:
         msg: "Compare TTL"
       failed_when: >
-        (rd_ttl['timestamp'] == wr_ttl['timestamp']) or
+        (rd_ttl['TimeStamp'] == wr_ttl['TimeStamp']) or
         (rd_ttl['TTL'] == wr_ttl['TTL'])
 
-   rescue:
+    rescue:
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
