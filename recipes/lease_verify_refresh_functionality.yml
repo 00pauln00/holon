@@ -29,7 +29,7 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
-                'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
+                'outFileName': 'lookup_lease_before_refresh_{{ resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
       debug:
@@ -74,7 +74,7 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
-                'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
+                'outFileName': 'lookup_lease_after_refresh_{{ resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
       debug:
