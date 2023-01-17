@@ -150,7 +150,7 @@
         msg: "compare TS with intitial values"
       failed_when: >
         ((wr_timestamp | string | split('.') | first) != (rd_timestamp | string | split('.') | first)) or
-        ((wr_timestamp | string | split('.') | last) <= (rd_timestamp | string | split('.') | first))
+        ((rd_timestamp | string | split('.') | last) <= (wr_timestamp | string | split('.') | last))
 
     - name: "{{ recipe_name }}: Compare TTL."
       vars:

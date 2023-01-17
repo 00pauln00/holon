@@ -7,6 +7,15 @@
 
   tasks:
   - block:
+    # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "lease")
+
     - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
       include_role:
         name: common
