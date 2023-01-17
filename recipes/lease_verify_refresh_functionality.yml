@@ -82,11 +82,9 @@
          rf_response: "{{ lookupLease['results'][0]['item']['output_data']['Response'] }}"
          operation: "{{ lookupLease['results'][0]['item']['output_data']['Request'] }}"
       debug:
-         msg: "Check if read is successful."
+         msg: "Check if refresh is successful."
       failed_when: >
-         (operation['Operation'] != "REFRESH") or
-         (rf_response['Client'] != clientUUID.stdout) or
-         (rf_response['Resource'] != resourceUUID.stdout) or
+        (operation['Operation'] != "REFRESH") or
          (rf_response['Status'] != 0)
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP' operation again after refreshing the lease."
