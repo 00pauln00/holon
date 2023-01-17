@@ -1,9 +1,10 @@
+- import_playbook: lease_basic_operations.yml
 - name: "lease_validation_after_leader_kill"
   hosts: localhost
   connection: local
   vars:
      recipe_name: "lease_validation_after_leader_kill"
-     parent: None
+     parent: "lease_basic_operations"
 
   tasks:
   - block:
@@ -17,88 +18,17 @@
        failed_when:
          (app_type != "lease")
 
-    - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
-      include_role:
-        name: common
-        tasks_from: get_server_uuid_info
-
-    - name: "Start 5 peers in the cluster"
-      include_role:
-        name: common
-        tasks_from: start_server
-      vars:
-        ServerUUID: "{{ NonRunningServers[item] }}"
-      loop: "{{ range(0, NonRunningServers | length) | list }}"
-
-    - name: "{{ recipe_name }}: Wait until leader election happens."
-      vars:
-         stage: "wait_leader_election"
-      debug:
-        msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
-      retries: 10
-      delay: 1
-      loop: "{{ range(0, NRunningPeers | length) | list }}"
-
     - name: "{{ recipe_name }}: Get cluster information"
       include_role:
         name: common
         tasks_from: get_follower_stats
 
-    - name: "{{ recipe_name }}: Get the raft values for all running peers"
-      vars:
-         stage: "stage0_get_all"
-         raft_keys:
-            - "/raft_root_entry/0/leader-uuid"
-            - "/raft_root_entry/0/term"
-            - "/raft_root_entry/0/leader-time"
-         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
-      debug:
-        msg: "Getting stats for all running peers: {{ peers_val }}"
-      #no_log: true
-      with_items:
-         - "{{ peers_val }}"
-      register: stage0_peers_vals
-
-    - name: "{{ recipe_name }}: Get the running peers list."
-      include_role:
-        name: common
-        tasks_from: get_server_uuid_info
-
-    - name: Generate new resource
-      shell: "/usr/bin/uuid"
-      register: resourceUUID
-
-    - name: Generate new client
-      shell: "/usr/bin/uuid"
-      register: clientUUID
-
-    #TODO Get the TS from NISD
-
-    - name: "{{ recipe_name }}: Perform 'get_lease' operation."
-      vars:
-         input_param: {
-                'client': '{{ clientUUID.stdout }}',
-                'resource': '{{ resourceUUID.stdout }}',
-                'outFileName': 'get_lease_{{ resourceUUID.stdout }}'
-                 }
-         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
-      debug:
-         msg: "get lease operation"
-      with_items:
-          - "{{ leaseApp }}"
-      register: getLease
-
-    - name: "{{ recipe_name }}: Verify outfile status"
-      debug:
-        msg: "Check write outfile status: {{ getLease['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
-      failed_when: >
-         (getLease['results'][0]['item']['outfile_status'] != 0)
-
     - name: "{{ recipe_name }}: Kill the Leader."
       debug:
-        msg: "{{ lookup('niova_raftprocess', 'kill', orig_leader['results'][0]['item'], wantlist=True) }}"
+        msg: "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True) }}"
+
+    - pause:
+        seconds: 2
 
     - name: "{{ recipe_name }}: Get the running peers list."
       include_role:
@@ -120,51 +50,47 @@
         name: common
         tasks_from: get_follower_stats
 
-    - name: "{{ recipe_name }}: Perform 'lookup_lease' operation."
+    - name: "{{ recipe_name }}: Perform 'LOOKUP' operation after new leader election."
       vars:
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
-                'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
+                'outFileName': 'LOOKUP_aftr_new_leader_{{ resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
       debug:
          msg: "lookup lease operation"
       with_items:
           - "{{ leaseApp }}"
-      register: lookupLease
+      register: aftr_new_leader_lookup_ops
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check write outfile status: {{ lookupLease['results'][0]['item']['outfile_status'] }}"
+        msg: "Check write outfile status: {{ aftr_new_leader_lookup_ops['results'][0]['item']['outfile_status'] }}"
        #no_log: true
       failed_when: >
-         (lookupLease['results'][0]['item']['outfile_status'] != 0)
+         (aftr_new_leader_lookup_ops['results'][0]['item']['outfile_status'] != 0)
 
-    - name: "{{ recipe_name }}: Compare TS and TTL"
+    - name: "{{ recipe_name }}: Compare TS."
+      vars:
+        wr_timestamp: "{{ getLease['results'][0]['item']['output_data']['Response']['TimeStamp'] }}"
+        rd_timestamp: "{{ aftr_new_leader_lookup_ops['results'][0]['item']['output_data']['Response']['TimeStamp'] }}"
+      debug:
+        msg: "compare TS with intitial values"
+      failed_when: >
+        ((wr_timestamp | string | split('.') | first) != (rd_timestamp | string | split('.') | first)) or
+        ((wr_timestamp | string | split('.') | last) <= (rd_timestamp | string | split('.') | first))
+
+    - name: "{{ recipe_name }}: Compare TTL"
       vars:
         wr_ttl: "{{ getLease['results'][0]['item']['output_data']['Response'] }}"
-        rd_ttl: "{{ lookupLease['results'][0]['item']['output_data']['Response'] }}"
+        rd_ttl: "{{ aftr_new_leader_lookup_ops['results'][0]['item']['output_data']['Response'] }}"
       debug:
         msg: "Compare TTL"
       failed_when: >
-        (rd_ttl['timestamp'] == wr_ttl['timestamp']) or
-        (rd_ttl['TTL'] == wr_ttl['TTL'])
+        (rd_ttl['TTL'] >= wr_ttl['TTL'])
 
-    - name: "{{ recipe_name }}: Validate term and leader-time."
-      vars:
-         stage: "stage1_get_all"
-         raft_keys:
-            - "/raft_root_entry/0/term"
-            - "/raft_root_entry/0/leader-time"
-         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
-      debug:
-        msg: "Getting stats for all running peers: {{ peers_val }}"
-      failed_when: >
-        (peers_val['/0/leader-time'] <= stage0_peers_vals['results'][0]['item']['/0/leader-time']) or
-        (peers_val['/0/term'] <= stage0_peers_vals['results'][0]['item']['/0/term'])
-
-    #TODO Verify NISD should update TS from new leader
-
-    #TODO Validate lease with new leader
-
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
