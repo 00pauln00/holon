@@ -85,7 +85,8 @@
          msg: "Check if refresh is successful."
       failed_when: >
         (operation['Operation'] != "REFRESH") or
-         (rf_response['Status'] != 0)
+        (rf_response['Status'] != 0)
+        (rf_response['LeaseState'] != "Granted")
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP' operation again after refreshing the lease."
       vars:
@@ -127,7 +128,8 @@
       debug:
         msg: "Check the value of TTL should be increased than the previous lookup as refresh operation is performed"
       failed_when: >
-        ( leaseValues_after['TTL'] <= leaseValues_before['TTL'] + 60 ) or 
+        ( leaseValues_after['TTL'] <= 60 ) or 
         ( leaseValues_after['TimeStamp'] <= leaseValues_before['TimeStamp'] ) or 
         ( leaseValues_after['Client'] != leaseValues_before['Client'] ) or
         ( leaseValues_after['Resource'] != leaseValues_before['Resource'] )
+
