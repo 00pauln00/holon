@@ -91,7 +91,7 @@
               }
       set_fact:
          get_nisd: "{{ lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True) }}"
-      loop: "{{ range(0, nnisds | int) }}"
+      loop: "{{ range(0, nnisds | int) }}"Already-in-use
       #no_log: True
 
     - name: "{{ recipe_name }}: Start nisd process."
