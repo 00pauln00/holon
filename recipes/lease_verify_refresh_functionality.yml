@@ -50,7 +50,8 @@
          (operation['Operation'] != "LOOKUP") or
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout) or
-         (rd_response['Status'] != 0)
+         (rd_response['Status'] != 0) or
+         (rd_response['LeaseState'] != "GRANTED")
 
     - name: "{{ recipe_name }}: Pause for 20 seconds so that TTL value gets changed."
       pause:
@@ -79,14 +80,17 @@
 
     - name: "{{ recipe_name }}: Check if REFRESH is successful."
       vars:
-         rf_response: "{{ lookupLease['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ lookupLease['results'][0]['item']['output_data']['Request'] }}"
+         rf_response: "{{ refreshLease['results'][0]['item']['output_data']['Response'] }}"
+         operation: "{{ refreshLease['results'][0]['item']['output_data']['Request'] }}"
       debug:
          msg: "Check if refresh is successful."
       failed_when: >
         (operation['Operation'] != "REFRESH") or
-        (rf_response['Status'] != 0)
-        (rf_response['LeaseState'] != "Granted")
+        (rf_response['Status'] != 0) or
+        (rf_response['LeaseState'] != "GRANTED") or
+        (rf_response['TTL'] != 60) or
+        (rf_response['Client'] != clientUUID.stdout) or
+        (rf_response['Resource'] != resourceUUID.stdout)
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP' operation again after refreshing the lease."
       vars:
@@ -111,8 +115,8 @@
 
     - name: "{{ recipe_name }}: Check if LOOKUP is successful."
       vars:
-         rd_response: "{{ lookupLease['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ lookupLease['results'][0]['item']['output_data']['Request'] }}"
+         rd_response: "{{ lookupLease_after_refresh['results'][0]['item']['output_data']['Response'] }}"
+         operation: "{{ lookupLease_after_refresh['results'][0]['item']['output_data']['Request'] }}"
       debug:
          msg: "Check if lookup is successful."
       failed_when: >
@@ -126,10 +130,10 @@
         leaseValues_before: "{{ lookupLease_before_refresh['results'][0]['item']['output_data']['Response'] }}"
         leaseValues_after: "{{ lookupLease_after_refresh['results'][0]['item']['output_data']['Response'] }}"
       debug:
-        msg: "Check the value of TTL should be increased than the previous lookup as refresh operation is performed"
+        msg: "Check the value of TTL should be increased than the previous lookup as refresh operation is performed {{leaseValues_before}} nad {{leaseValues_after}}"
       failed_when: >
-        ( leaseValues_after['TTL'] <= 60 ) or 
-        ( leaseValues_after['TimeStamp'] <= leaseValues_before['TimeStamp'] ) or 
+        ( leaseValues_after['TTL'] >= 60 ) or
+        ( leaseValues_after['TimeStamp']['LeaderTime'] <= leaseValues_before['TimeStamp']['LeaderTime'] ) or 
+        ( leaseValues_after['TimeStamp']['LeaderTerm'] != leaseValues_before['TimeStamp']['LeaderTerm'] ) or
         ( leaseValues_after['Client'] != leaseValues_before['Client'] ) or
         ( leaseValues_after['Resource'] != leaseValues_before['Resource'] )
-
