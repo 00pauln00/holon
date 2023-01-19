@@ -98,7 +98,7 @@
          wr_response: "{{ getLease['results'][0]['item']['output_data']['Response'] }}"
          operation: "{{ getLease['results'][0]['item']['output_data']['Request'] }}"
       debug:
-         msg: "Check if GET is successful: {{ wr_response }}, {{ operation }}"
+         msg: "Check if GET is successful"
       failed_when: >
          (operation['Operation'] != "GET") or
          (wr_response['Client'] != clientUUID.stdout|string) or
@@ -136,7 +136,7 @@
          rd_response: "{{ lookupLease['results'][0]['item']['output_data']['Response'] }}"
          operation: "{{ lookupLease['results'][0]['item']['output_data']['Request'] }}"
       debug:
-         msg: "Check if LOOKUP is successful."
+         msg: "Check if LOOKUP is successful"
       failed_when: >
          (operation['Operation'] != "LOOKUP") or
          (rd_response['Client'] != clientUUID.stdout) or
@@ -148,7 +148,7 @@
         wr_timestamp: "{{ getLease['results'][0]['item']['output_data']['Response']['TimeStamp'] }}"
         rd_timestamp: "{{ lookupLease['results'][0]['item']['output_data']['Response']['TimeStamp'] }}"
       debug:
-        msg: "compare TS with intitial values {{wr_timestamp}} nad {{rd_timestamp}}"
+        msg: "compare TS with intitial values"
       failed_when: >
         (wr_timestamp['LeaderTerm'] != rd_timestamp['LeaderTerm']) or
         (wr_timestamp['LeaderTime'] >= rd_timestamp['LeaderTime'])
@@ -193,7 +193,7 @@
          operation: "{{ lookupLease_after_lease_expired['results'][0]['item']['output_data']['Request'] }}"
          pervious_leaderTime: "{{ lookupLease['results'][0]['item']['output_data']['Response']['TimeStamp']['LeaderTime'] }}"
       debug:
-         msg: "Check if LOOKUP is successful. {{rd_response['TimeStamp']['LeaderTime']}} {{pervious_leaderTime}}"
+         msg: "Check if LOOKUP is successful"
       failed_when: >
          (rd_response['Status'] != 0) or
          (rd_response['TTL'] != 0) or 
