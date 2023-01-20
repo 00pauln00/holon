@@ -1,0 +1,189 @@
+- import_playbook: lease_basic_operations.yml
+
+- name: "lease_perform_operations_with_same_resorce"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "lease_perform_operations_with_same_resorce"
+     parent: lease_basic_operations
+
+  tasks:
+  - block:
+
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    # check for the app_type
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+      vars:
+         app_type: "{{ app_type }}"
+      debug:
+         msg: "app_type is: {{ app_type }}"
+      failed_when:
+         (app_type != "lease")
+
+    - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: Generate new resource
+      shell: "/usr/bin/uuid"
+      register: new_resourceUUID
+
+    - name: Generate new client
+      shell: "/usr/bin/uuid"
+      register: clientUUID1
+
+    - name: "{{ recipe_name }}: Perform 'GET' operation from client 1."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID1.stdout }}',
+                'resource': '{{ new_resourceUUID.stdout }}',
+                'outFileName': 'get_lease_cli1_{{ new_resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+      debug:
+         msg: "get lease operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: getLease_client1
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check write outfile status: {{ getLease_client1['results'][0]['item']['outfile_status'] }}"
+       #no_log: true
+      failed_when: >
+         (getLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check if 'GET' is successful with client-1."
+      vars:
+         wr_response: "{{ getLease_client1['results'][0]['item']['output_data']['Response'] }}"
+         operation: "{{ getLease_client1['results'][0]['item']['output_data']['Request'] }}"
+      debug:
+         msg: "Check if GET is successful: {{ wr_response }}, {{ operation }}"
+      failed_when: >
+         (operation['Operation'] != "GET") or
+         (wr_response['Client'] != clientUUID1.stdout|string) or
+         (wr_response['Resource'] != new_resourceUUID.stdout|string) or
+         (wr_response['Status'] != 0) or
+         (wr_response['TTL'] != 120) or
+         (wr_response['LeaseState'] != "GRANTED")
+
+    - name: Generate new client
+      shell: "/usr/bin/uuid"
+      register: clientUUID2
+
+    - name: "{{ recipe_name }}: Perform 'GET' operation from client 2"
+      vars:
+         input_param: {
+                'client': '{{ clientUUID2.stdout }}',
+                'resource': '{{ new_resourceUUID.stdout }}',
+                'outFileName': 'get_lease_cli2_{{ new_resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+      debug:
+         msg: "get lease operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: getLease_client2
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check write outfile status: {{ getLease_client2['results'][0]['item']['outfile_status'] }}"
+       #no_log: true
+      failed_when: >
+         (getLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check if 'GET' operation should fail with client-2."
+      vars:
+         wr_response: "{{ getLease_client2['results'][0]['item']['output_data']['Response'] }}"
+         operation: "{{ getLease_client2['results'][0]['item']['output_data']['Request'] }}"
+      debug:
+         msg: "Check if GET is successful: {{ wr_response }}, {{ operation }}"
+      failed_when: >
+         (operation['Operation'] != "GET") or
+         (wr_response['Client'] != clientUUID2.stdout|string) or
+         (wr_response['Resource'] != new_resourceUUID.stdout|string) or
+         (wr_response['LeaseState'] != "INVALID")
+
+    - pause:
+        seconds: 120
+
+    - name: "{{ recipe_name }}: Perform 'LOOKUP' operation for client-1."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID1.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'outFileName': 'lookup_lease_cli1_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
+      debug:
+         msg: "lookup lease operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: lookupLeaseCli1
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check write outfile status: {{ lookupLeaseCli1['results'][0]['item']['outfile_status'] }}"
+       #no_log: true
+      failed_when: >
+         (lookupLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check 'LOOKUP' for client-1 should expired."
+      vars:
+         rd_response: "{{ lookupLeaseCli1['results'][0]['item']['output_data']['Response'] }}"
+         operation: "{{ lookupLeaseCli1['results'][0]['item']['output_data']['Request'] }}"
+      debug:
+         msg: "Check if LOOKUP is successful."
+      failed_when: >
+         (operation['Operation'] != "LOOKUP") or
+         (rd_response['Client'] != clientUUID1.stdout) or
+         (rd_response['Resource'] != resourceUUID.stdout) or
+         (rd_response['Status'] != 0) or
+         (rd_response['LeaseState'] != "EXPIRED")
+
+    - name: "{{ recipe_name }}: Again Perform 'GET' operation from client 2"
+      vars:
+         input_param: {
+                'client': '{{ clientUUID2.stdout }}',
+                'resource': '{{ new_resourceUUID.stdout }}',
+                'outFileName': 'cli2_GET_{{ new_resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+      debug:
+         msg: "get lease operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: client2_GET
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check write outfile status: {{ client2_GET['results'][0]['item']['outfile_status'] }}"
+       #no_log: true
+      failed_when: >
+         (getLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Now check if 'GET' is successful with client-2."
+      vars:
+         wr_response: "{{ client2_GET['results'][0]['item']['output_data']['Response'] }}"
+         operation: "{{ client2_GET['results'][0]['item']['output_data']['Request'] }}"
+      debug:
+         msg: "Check if GET is successful: {{ wr_response }}, {{ operation }}"
+      failed_when: >
+         (operation['Operation'] != "GET") or
+         (wr_response['Client'] != clientUUID2.stdout|string) or
+         (wr_response['Resource'] != new_resourceUUID.stdout|string) or
+         (wr_response['LeaseState'] != "GRANTED")
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
+
+
+
+
+

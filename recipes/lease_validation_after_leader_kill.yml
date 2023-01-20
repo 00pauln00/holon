@@ -9,13 +9,17 @@
   tasks:
   - block:
 
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
     # check for the app_type
-     - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
-       vars:
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+      vars:
          app_type: "{{ app_type }}"
-       debug:
+      debug:
          msg: "app_type is: {{ app_type }}"
-       failed_when:
+      failed_when:
          (app_type != "lease")
 
     - name: "{{ recipe_name }}: Get cluster information"
@@ -27,9 +31,6 @@
       debug:
         msg: "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True) }}"
 
-    - pause:
-        seconds: 2
-
     - name: "{{ recipe_name }}: Get the running peers list."
       include_role:
         name: common
@@ -40,7 +41,7 @@
          stage: "wait_for_new_leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != LeaderUUID['/0/leader-uuid']
       retries: 10
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -73,22 +74,28 @@
 
     - name: "{{ recipe_name }}: Compare TS."
       vars:
-        wr_timestamp: "{{ getLease['results'][0]['item']['output_data']['Response']['TimeStamp'] }}"
+        prev_rd_timestamp: "{{ lookupLease['results'][0]['item']['output_data']['Response']['TimeStamp'] }}"
         rd_timestamp: "{{ aftr_new_leader_lookup_ops['results'][0]['item']['output_data']['Response']['TimeStamp'] }}"
       debug:
-        msg: "compare TS with intitial values"
+        msg:
+         - "compare TS with intitial values:"
+         - "{{ prev_rd_timestamp | string | split('.') | first }}"
+         - "{{ prev_rd_timestamp | string | split('.') | last }}"
+         - "{{ rd_timestamp | string | split('.') | first }}"
+         - "{{ rd_timestamp | string | split('.') | last }}"
       failed_when: >
-        ((wr_timestamp | string | split('.') | first) != (rd_timestamp | string | split('.') | first)) or
-        ((wr_timestamp | string | split('.') | last) <= (rd_timestamp | string | split('.') | first))
+        (aftr_new_leader_lookup_ops['results'][0]['item']['output_data']['Response']['LeaseState'] != "GRANTED") or
+        (rd_timestamp['LeaderTerm'] <= prev_rd_timestamp['LeaderTerm']) or
+        (rd_timestamp['LeaderTime'] >= prev_rd_timestamp['LeaderTime'])
 
     - name: "{{ recipe_name }}: Compare TTL"
       vars:
-        wr_ttl: "{{ getLease['results'][0]['item']['output_data']['Response'] }}"
+        prev_rd_ttl: "{{ lookupLease['results'][0]['item']['output_data']['Response'] }}"
         rd_ttl: "{{ aftr_new_leader_lookup_ops['results'][0]['item']['output_data']['Response'] }}"
       debug:
         msg: "Compare TTL"
       failed_when: >
-        (rd_ttl['TTL'] >= wr_ttl['TTL'])
+        (rd_ttl['TTL'] != 120)
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
