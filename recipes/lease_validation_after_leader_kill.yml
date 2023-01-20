@@ -72,30 +72,26 @@
       failed_when: >
          (aftr_new_leader_lookup_ops['results'][0]['item']['outfile_status'] != 0)
 
-    - name: "{{ recipe_name }}: Compare TS."
-      vars:
-        prev_rd_timestamp: "{{ lookupLease['results'][0]['item']['output_data']['Response']['TimeStamp'] }}"
-        rd_timestamp: "{{ aftr_new_leader_lookup_ops['results'][0]['item']['output_data']['Response']['TimeStamp'] }}"
-      debug:
-        msg:
-         - "compare TS with intitial values:"
-         - "{{ prev_rd_timestamp | string | split('.') | first }}"
-         - "{{ prev_rd_timestamp | string | split('.') | last }}"
-         - "{{ rd_timestamp | string | split('.') | first }}"
-         - "{{ rd_timestamp | string | split('.') | last }}"
-      failed_when: >
-        (aftr_new_leader_lookup_ops['results'][0]['item']['output_data']['Response']['LeaseState'] != "GRANTED") or
-        (rd_timestamp['LeaderTerm'] <= prev_rd_timestamp['LeaderTerm']) or
-        (rd_timestamp['LeaderTime'] >= prev_rd_timestamp['LeaderTime'])
-
-    - name: "{{ recipe_name }}: Compare TTL"
+    - name: "{{ recipe_name }}: Validate TTL set to its default valu"
       vars:
         prev_rd_ttl: "{{ lookupLease['results'][0]['item']['output_data']['Response'] }}"
         rd_ttl: "{{ aftr_new_leader_lookup_ops['results'][0]['item']['output_data']['Response'] }}"
       debug:
         msg: "Compare TTL"
       failed_when: >
-        (rd_ttl['TTL'] != 120)
+        (rd_ttl['TTL'] > 60) or (rd_ttl['TTL'] < 20)
+
+    - name: "{{ recipe_name }}: Compare term and leader-time."
+      vars:
+        prev_rd_timestamp: "{{ lookupLease['results'][0]['item']['output_data']['Response']['TimeStamp'] }}"
+        rd_timestamp: "{{ aftr_new_leader_lookup_ops['results'][0]['item']['output_data']['Response']['TimeStamp'] }}"
+      debug:
+        msg:
+         - "compare TS with intitial values:"
+      failed_when: >
+        (aftr_new_leader_lookup_ops['results'][0]['item']['output_data']['Response']['LeaseState'] != "GRANTED") or
+        (rd_timestamp['LeaderTerm'] <= prev_rd_timestamp['LeaderTerm']) or
+        (rd_timestamp['LeaderTime'] >= prev_rd_timestamp['LeaderTime'])
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

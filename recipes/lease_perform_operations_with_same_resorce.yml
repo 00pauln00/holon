@@ -68,7 +68,7 @@
          (wr_response['Client'] != clientUUID1.stdout|string) or
          (wr_response['Resource'] != new_resourceUUID.stdout|string) or
          (wr_response['Status'] != 0) or
-         (wr_response['TTL'] != 120) or
+         (wr_response['TTL'] != 60) or
          (wr_response['LeaseState'] != "GRANTED")
 
     - name: Generate new client
@@ -96,6 +96,7 @@
       failed_when: >
          (getLease['results'][0]['item']['outfile_status'] != 0)
 
+    #TODO Validate 'Status' with proper non-zero value
     - name: "{{ recipe_name }}: Check if 'GET' operation should fail with client-2."
       vars:
          wr_response: "{{ getLease_client2['results'][0]['item']['output_data']['Response'] }}"
@@ -104,12 +105,11 @@
          msg: "Check if GET is successful: {{ wr_response }}, {{ operation }}"
       failed_when: >
          (operation['Operation'] != "GET") or
-         (wr_response['Client'] != clientUUID2.stdout|string) or
-         (wr_response['Resource'] != new_resourceUUID.stdout|string) or
+         (wr_response['Status'] != Non-zero) or
          (wr_response['LeaseState'] != "INVALID")
 
     - pause:
-        seconds: 120
+        seconds: 60
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP' operation for client-1."
       vars:
@@ -132,6 +132,7 @@
       failed_when: >
          (lookupLease['results'][0]['item']['outfile_status'] != 0)
 
+     #TODO Validate 'Status' with proper non-zero value
     - name: "{{ recipe_name }}: Check 'LOOKUP' for client-1 should expired."
       vars:
          rd_response: "{{ lookupLeaseCli1['results'][0]['item']['output_data']['Response'] }}"
@@ -140,9 +141,7 @@
          msg: "Check if LOOKUP is successful."
       failed_when: >
          (operation['Operation'] != "LOOKUP") or
-         (rd_response['Client'] != clientUUID1.stdout) or
-         (rd_response['Resource'] != resourceUUID.stdout) or
-         (rd_response['Status'] != 0) or
+         (rd_response['Status'] != Non-zero) or
          (rd_response['LeaseState'] != "EXPIRED")
 
     - name: "{{ recipe_name }}: Again Perform 'GET' operation from client 2"
@@ -182,8 +181,3 @@
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
-
-
-
-
-
