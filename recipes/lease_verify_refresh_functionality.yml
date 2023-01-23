@@ -47,10 +47,10 @@
       debug:
          msg: "Check if GET is successful"
       failed_when: >
+         (wr_response['Status'] != 0) or
          (operation['Operation'] != "GET") or
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
-         (wr_response['Status'] != 0) or
          (wr_response['TTL'] != 60) or
          (wr_response['LeaseState'] != "GRANTED")
 
@@ -82,10 +82,10 @@
       debug:
          msg: "Check if lookup is successful."
       failed_when: >
+         (rd_response['Status'] != 0) or 
          (operation['Operation'] != "LOOKUP") or
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout) or
-         (rd_response['Status'] != 0) or
          (rd_response['LeaseState'] != "GRANTED")
 
     - name: "{{ recipe_name }}: Pause for 20 seconds so that TTL value gets changed."
@@ -120,8 +120,8 @@
       debug:
          msg: "Check if refresh is successful."
       failed_when: >
-        (operation['Operation'] != "REFRESH") or
         (rf_response['Status'] != 0) or
+        (operation['Operation'] != "REFRESH") or
         (rf_response['LeaseState'] != "GRANTED") or
         (rf_response['TTL'] != 60) or
         (rf_response['Client'] != clientUUID.stdout) or
@@ -155,10 +155,10 @@
       debug:
          msg: "Check if lookup is successful"
       failed_when: >
+         (rd_response['Status'] != 0) or 
          (operation['Operation'] != "LOOKUP") or
          (rd_response['Client'] != clientUUID.stdout) or
-         (rd_response['Resource'] != resourceUUID.stdout) or
-         (rd_response['Status'] != 0)
+         (rd_response['Resource'] != resourceUUID.stdout)
 
     - name: "{{ recipe_name }}: Compare values of lookup before performing refresh and after performing refresh."
       vars:
