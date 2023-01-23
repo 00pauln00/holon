@@ -24,7 +24,7 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
-                'outFileName': 'get_lease_refresh_{ resourceUUID.stdout }}'
+                'outFileName': 'get_lease_refresh_{{ resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
       debug:
