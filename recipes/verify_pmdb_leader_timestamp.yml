@@ -7,14 +7,6 @@
 
   tasks:
   - block:
-    # check for the app_type
-     - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
-       vars:
-         app_type: "{{ app_type }}"
-       debug:
-         msg: "app_type is: {{ app_type }}"
-       failed_when:
-         (app_type != "lease")
 
     - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
       include_role:
@@ -125,16 +117,29 @@
     - debug:
         msg: "Verify term should increase"
       failed_when: >
-        (stage1_vals['results'][0]['item']['/0/leader-time'] >= stage0_peers_vals['results'][0]['item']['/0/leader-time']) or
+        ((stage1_vals['results'][0]['item']['/0/leader-time']|float) >= (stage0_peers_vals['results'][0]['item']['/0/leader-time']|float)) or
         (stage1_vals['results'][0]['item']['/0/term'] <= stage0_peers_vals['results'][0]['item']['/0/term'])
 
     - name: "Safe Restart the Old Leader"
       debug:
         msg: "{{lookup('niova_raftprocess', 'start', orig_leader['results'][0]['item'], wantlist=True)}}"
 
-    - debug:
-        msg: "Verify leader-time should increase"
+    - name: "{{ recipe_name }}: Verify leader-time"
+      vars:
+         stage: "again_check_leader_time"
+         raft_keys:
+            - "/raft_root_entry/0/leader-uuid"
+            - "/raft_root_entry/0/term"
+            - "/raft_root_entry/0/leader-time"
+         stage2_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Verify leader-time is incremented"
       failed_when: >
-        (stage1_vals['results'][0]['item']['/0/leader-time'] >= stage0_peers_vals['results'][0]['item']['/0/leader-time']) or
-        (stage1_vals['results'][0]['item']['/0/term'] <= stage0_peers_vals['results'][0]['item']['/0/term'])
+        ((stage2_vals['/0/leader-time'] | float) <= (stage1_vals['results'][0]['item']['/0/leader-time'] | float)) or
+        (stage2_vals['/0/term'] != stage1_vals['results'][0]['item']['/0/term'])
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
 
