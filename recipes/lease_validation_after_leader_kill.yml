@@ -72,6 +72,13 @@
       failed_when: >
          (aftr_new_leader_lookup_ops['results'][0]['item']['outfile_status'] != 0)
 
+    - name: "{{ recipe_name }}: Verify lease status"
+      debug:
+        msg: "Check LOOKUP status"
+       #no_log: true
+      failed_when: >
+         (aftr_new_leader_lookup_ops['results'][0]['item']['output_data']['Response']['Status'] != 'Success')
+
     - name: "{{ recipe_name }}: Validate TTL set to its default valu"
       vars:
         prev_rd_ttl: "{{ lookupLease['results'][0]['item']['output_data']['Response'] }}"
