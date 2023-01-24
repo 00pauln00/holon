@@ -19,6 +19,14 @@
       failed_when:
          (app_type != "lease")
 
+    - name: Generate new resource
+      shell: "/usr/bin/uuid"
+      register: resourceUUID
+
+    - name: Generate new client
+      shell: "/usr/bin/uuid"
+      register: clientUUID
+
     - name: "{{ recipe_name }}: Perform 'GET' operation."
       vars:
          input_param: {
@@ -172,3 +180,9 @@
         ( leaseValues_after['TimeStamp']['LeaderTerm'] != leaseValues_before['TimeStamp']['LeaderTerm'] ) or
         ( leaseValues_after['Client'] != leaseValues_before['Client'] ) or
         ( leaseValues_after['Resource'] != leaseValues_before['Resource'] )
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
+
