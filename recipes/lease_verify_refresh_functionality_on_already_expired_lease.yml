@@ -1,0 +1,99 @@
+- import_playbook: lease_verify_refresh_functionality.yml
+
+- name: "lease_verify_refresh_functionality_on_already_expired_lease"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "lease_verify_refresh_functionality_on_already_expired_lease"
+    parent: "lease_verify_refresh_functionality"
+
+  tasks:
+  - block:
+    # check for the app_type
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+      vars:
+         app_type: "{{ app_type }}"
+      debug:
+         msg: "app_type is: {{ app_type }}"
+      failed_when:
+         (app_type != "lease")
+
+    - name: Generate new client
+      shell: "/usr/bin/uuid"
+      register: clientUUID1
+
+    - name: "{{ recipe_name }}: Perform 'REFRESH' operation from new client uuid and resource uuid form parent recipe."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID1.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'outFileName': 'refresh_lease_on_expired_lease_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'REFRESH', input_param, wantlist=True) }}"
+      debug:
+         msg: "refresh lease"
+      with_items:
+          - "{{ leaseApp }}"
+      register: refreshLease
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check write outfile status: {{ refreshLease['results'][0]['item']['outfile_status'] }}"
+       #no_log: true
+      failed_when: >
+         (refreshLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check if REFRESH is successful."
+      vars:
+         rf_response: "{{ refreshLease['results'][0]['item']['output_data']['Response'] }}"
+         operation: "{{ refreshLease['results'][0]['item']['output_data']['Request'] }}"
+      debug:
+         msg: "Check if refresh is successful."
+      failed_when: >
+        (rf_response['Status'] != "PmdbObjPut(): -1") or
+        (operation['Operation'] != "REFRESH") or
+        (rf_response['LeaseState'] != "INVALID") or
+        (rf_response['TTL'] != 0) or
+        (rf_response['Client'] != "00000000-0000-0000-0000-000000000000") or
+        (rf_response['Resource'] != "00000000-0000-0000-0000-000000000000")
+
+    - name: "{{ recipe_name }}: Perform 'REFRESH' operation from old client uuid and resource uuid form parent recipe."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'outFileName': 'refresh_lease_on_expired_lease_Old_client_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'REFRESH', input_param, wantlist=True) }}"
+      debug:
+         msg: "refresh lease"
+      with_items:
+          - "{{ leaseApp }}"
+      register: refreshLease_old_client
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check write outfile status: {{ refreshLease['results'][0]['item']['outfile_status'] }}"
+       #no_log: true
+      failed_when: >
+         (refreshLease_old_client['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check if REFRESH is successful."
+      vars:
+         rf_response: "{{ refreshLease_old_client['results'][0]['item']['output_data']['Response'] }}"
+         operation: "{{ refreshLease_old_client['results'][0]['item']['output_data']['Request'] }}"
+      debug:
+         msg: "Check if refresh is successful."
+      failed_when: >
+        (rf_response['Status'] != "Success") or
+        (operation['Operation'] != "REFRESH") or
+        (rf_response['LeaseState'] != "GRANTED") or
+        (rf_response['TTL'] != 60) or
+        (rf_response['Client'] != clientUUID.stdout) or
+        (rf_response['Resource'] != resourceUUID.stdout)
+      
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
+
