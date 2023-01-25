@@ -1,0 +1,63 @@
+- import_playbook: lease_basic_operations.yml
+
+- name: "lease_get_lease_on_already_expired_lease"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "lease_get_lease_on_already_expired_lease"
+    parent: "lease_basic_operations"
+
+  tasks:
+  - block:
+    # check for the app_type
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+      vars:
+         app_type: "{{ app_type }}"
+      debug:
+         msg: "app_type is: {{ app_type }}"
+      failed_when:
+         (app_type != "lease")
+
+    - name: Generate new client
+      shell: "/usr/bin/uuid"
+      register: clientUUID1
+
+    - name: "{{ recipe_name }}: Perform 'GET' operation on an already expired lease using new client uuid."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID1.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'outFileName': 'get_lease_already_expired_lease{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+      debug:
+         msg: "GET operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: getLease
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check write outfile status: {{ getLease['results'][0]['item']['outfile_status'] }}"
+       #no_log: true
+      failed_when: >
+         (getLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check if 'GET' is successful."
+      vars:
+         wr_response: "{{ getLease['results'][0]['item']['output_data']['Response'] }}"
+         operation: "{{ getLease['results'][0]['item']['output_data']['Request'] }}"
+      debug:
+         msg: "Check if GET is successful"
+      failed_when: >
+         (wr_response['Status'] != "Success") or
+         (operation['Operation'] != "GET") or
+         (wr_response['Client'] != clientUUID1.stdout|string) or
+         (wr_response['Resource'] != resourceUUID.stdout|string) or
+         (wr_response['TTL'] != 60) or
+         (wr_response['LeaseState'] != "GRANTED")
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
