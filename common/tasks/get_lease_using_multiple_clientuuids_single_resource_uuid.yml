@@ -1,0 +1,21 @@
+---
+
+      - name: "{{ recipe_name }}: Perform 'get_lease' operation."
+        vars:
+           input_param: {
+                'client': '{{ ClientUUID[item] }}',
+                'resource': '{{ resourceUUID }}',
+                'outFileName': 'get_lease_{{ outfilename[item] }}'
+                 }
+        set_fact:
+            getLeaseOps: "{{ getLeaseOps|default([]) + [lookup('lease_feature', 'GET', input_param, wantlist=True)] }}"
+        loop: "{{ range(0, no_of_lease_ops) | list }}"
+
+      - debug:
+           msg: "{{getLeaseOps}}"
+
+      - debug:
+           msg: "{{ getLeaseOps[item]['output_data']['Response']['Status'] }}"
+        when: getLeaseOps[item]['output_data']['Response']['Client']  == "00000000-0000-0000-0000-000000000000"
+        loop: "{{ range(0, no_of_lease_ops) | list }}"
+

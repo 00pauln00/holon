@@ -1,0 +1,36 @@
+- import_playbook: lease_basic_operations.yml
+
+- name: "get lease with multiple clients and single resource uuid"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "get_leases_with_multiple_clients_with_single_resource_uuid"
+     parent: lease_basic_operations.yml 
+     no_of_leases: 10
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "Get multiple client uuids."
+      include_role:
+        name: common
+        tasks_from: get_multiple_client_uuids
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: Generate new resource
+      shell: "/usr/bin/uuid"
+      register: resourceuuid
+
+    - name: "Perform multiple 'get_lease' operation"
+      include_role:
+        name: common
+        tasks_from: get_lease_using_multiple_clientuuids_single_resource_uuid
+      vars:
+         ClientUUID: "{{ ClientUUIDS }}"
+         resourceUUID: "{{ resourceuuid.stdout }}"
+         outfilename: "{{ ClientUUIDS }}"
+         no_of_lease_ops: "{{ no_of_leases }}"
