@@ -10,12 +10,14 @@
         set_fact:
             getLeaseOps: "{{ getLeaseOps|default([]) + [lookup('lease_feature', 'GET', input_param, wantlist=True)] }}"
         loop: "{{ range(0, no_of_lease_ops) | list }}"
-
-      - debug:
-           msg: "{{getLeaseOps}}"
-
-      - debug:
-           msg: "{{ getLeaseOps[item]['output_data']['Response']['Status'] }}"
+      
+      - name: "{{ recipe_name }}: get the leaseState of the client uuids who did not get the lease."
+        set_fact:
+            get_leaseState: "{{ get_leaseState|default([]) + [getLeaseOps[item]['output_data']['Response']['LeaseState']] }}"
         when: getLeaseOps[item]['output_data']['Response']['Client']  == "00000000-0000-0000-0000-000000000000"
         loop: "{{ range(0, no_of_lease_ops) | list }}"
-
+        
+      - debug:
+          msg: "verifying status of other client uuids which did not get the lease."
+        failed_when: get_leaseState[item] != "INVALID"
+        loop: "{{ range(0, get_leaseState | length) | list }}" 
