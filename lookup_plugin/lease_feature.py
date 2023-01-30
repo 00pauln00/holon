@@ -69,7 +69,6 @@ def lease_operation(cluster_params, operation, client, resource, outFileName):
     #uuid is added at end to generate unique json file.
     outfilePath = "%s/%s/%s_%s" % (base_dir, raft_uuid, outFileName, uuid.uuid1())
     ctl_interface_path = set_environment_variables(cluster_params)
-    print(ctl_interface_path)
 
     process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
                                             '-j', outfilePath], stdout = fp, stderr = fp)

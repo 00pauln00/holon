@@ -1,10 +1,10 @@
 - import_playbook: lease_basic_operations.yml
 
-- name: "lease_perform_operations_with_same_resorce"
+- name: "lease_perform_operations_with_same_resource"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "lease_perform_operations_with_same_resorce"
+     recipe_name: "lease_perform_operations_with_same_resource"
      parent: lease_basic_operations
 
   tasks:
@@ -52,15 +52,15 @@
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check write outfile status: {{ getLease_client1['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
+        msg: "Check outfile status: {{ getLease_client1['results'][0]['item']['outfile_status'] }}"
+      no_log: true
       failed_when: >
          (getLease['results'][0]['item']['outfile_status'] != 0)
 
     - name: "{{ recipe_name }}: Verify lease status"
       debug:
         msg: "Check GET status"
-       #no_log: true
+      no_log: true
       failed_when: >
          (getLease_client1['results'][0]['item']['output_data']['Response']['Status'] != 'Success')
 
@@ -97,8 +97,8 @@
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check write outfile status: {{ getLease_client2['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
+        msg: "Check outfile status: {{ getLease_client2['results'][0]['item']['outfile_status'] }}"
+      no_log: true
       failed_when: >
          (getLease['results'][0]['item']['outfile_status'] != 0)
 
@@ -138,15 +138,15 @@
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check write outfile status: {{ lookupLeaseCli1['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
+        msg: "Check outfile status: {{ lookupLeaseCli1['results'][0]['item']['outfile_status'] }}"
+      no_log: true
       failed_when: >
          (lookupLease['results'][0]['item']['outfile_status'] != 0)
 
     - name: "{{ recipe_name }}: Verify lease status"
       debug:
         msg: "Check LOOKUP status"
-       #no_log: true
+      no_log: true
       failed_when: >
          (lookupLeaseCli1['results'][0]['item']['output_data']['Response']['Status'] != 'Success')
 
@@ -176,15 +176,15 @@
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check write outfile status: {{ client2_GET['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
+        msg: "Check outfile status: {{ client2_GET['results'][0]['item']['outfile_status'] }}"
+      no_log: true
       failed_when: >
          (getLease['results'][0]['item']['outfile_status'] != 0)
 
     - name: "{{ recipe_name }}: Verify lease status"
       debug:
         msg: "Check GET status"
-       #no_log: true
+      no_log: true
       failed_when: >
          (client2_GET['results'][0]['item']['output_data']['Response']['Status'] != 'Success')
 

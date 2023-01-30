@@ -10,6 +10,11 @@
 
   tasks:
   - block:
+
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
     # check for the app_type
     - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
       vars:
@@ -43,8 +48,8 @@
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check write outfile status: {{ getLease['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
+        msg: "Check outfile status: {{ getLease['results'][0]['item']['outfile_status'] }}"
+      no_log: true
       failed_when: >
          (getLease['results'][0]['item']['outfile_status'] != 0)
 
@@ -78,8 +83,8 @@
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check write outfile status: {{ lookupLease_before_refresh['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
+        msg: "Check outfile status: {{ lookupLease_before_refresh['results'][0]['item']['outfile_status'] }}"
+      no_log: true
       failed_when: >
          (lookupLease_before_refresh['results'][0]['item']['outfile_status'] != 0)
 
@@ -116,8 +121,8 @@
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check write outfile status: {{ refreshLease['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
+        msg: "Check outfile status: {{ refreshLease['results'][0]['item']['outfile_status'] }}"
+      no_log: true
       failed_when: >
          (refreshLease['results'][0]['item']['outfile_status'] != 0)
 
@@ -151,8 +156,8 @@
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check write outfile status: {{ lookupLease_after_refresh['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
+        msg: "Check outfile status: {{ lookupLease_after_refresh['results'][0]['item']['outfile_status'] }}"
+      no_log: true
       failed_when: >
          (lookupLease_after_refresh['results'][0]['item']['outfile_status'] != 0)
 

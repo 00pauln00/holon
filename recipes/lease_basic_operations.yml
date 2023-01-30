@@ -59,7 +59,7 @@
          peers_val: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
       debug:
         msg: "Getting stats for all running peers: {{ peers_val }}"
-      #no_log: true
+      no_log: true
       with_items:
          - "{{ peers_val }}"
       register: stage0_peers_vals
@@ -88,8 +88,8 @@
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check write outfile status: {{ getLease['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
+        msg: "Check outfile status: {{ getLease['results'][0]['item']['outfile_status'] }}"
+      no_log: true
       failed_when: >
          (getLease['results'][0]['item']['outfile_status'] != 0)
 
@@ -126,8 +126,8 @@
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check write outfile status: {{ lookupLease['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
+        msg: "Check outfile status: {{ lookupLease['results'][0]['item']['outfile_status'] }}"
+      no_log: true
       failed_when: >
          (lookupLease['results'][0]['item']['outfile_status'] != 0)
 
@@ -182,8 +182,8 @@
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check write outfile status: {{ lookupLease_after_lease_expired['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
+        msg: "Check outfile status: {{ lookupLease_after_lease_expired['results'][0]['item']['outfile_status'] }}"
+      no_log: true
       failed_when: >
          (lookupLease_after_lease_expired['results'][0]['item']['outfile_status'] != 0)
 

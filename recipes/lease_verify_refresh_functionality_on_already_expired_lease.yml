@@ -9,6 +9,11 @@
 
   tasks:
   - block:
+
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
     # check for the app_type
     - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
       vars:
@@ -38,8 +43,8 @@
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check write outfile status: {{ refreshLease['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
+        msg: "Check outfile status: {{ refreshLease['results'][0]['item']['outfile_status'] }}"
+      no_log: true
       failed_when: >
          (refreshLease['results'][0]['item']['outfile_status'] != 0)
 
@@ -73,8 +78,8 @@
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check write outfile status: {{ refreshLease['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
+        msg: "Check outfile status: {{ refreshLease['results'][0]['item']['outfile_status'] }}"
+      no_log: true
       failed_when: >
          (refreshLease_old_client['results'][0]['item']['outfile_status'] != 0)
 
