@@ -1,35 +1,60 @@
-- import_playbook: basic_lease_operation_all.yml
+- import_playbook: lease_basic_operations.yml
+
 - name: "disable_leader_and_perform_lease_ops"
   hosts: localhost
   connection: local
   vars:
      recipe_name: "disable_leader_and_perform_lease_ops"
-     parent: basic_lease_operation_all
+     parent: lease_basic_operations.yml
+     no_of_leases: 4
 
   tasks:
   - block:
 
-    - name: Generate new resource
-      shell: "/usr/bin/uuid"
-      register: resourceUUID
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
 
-    - name: Generate new client
-      shell: "/usr/bin/uuid"
-      register: clientUUID
+    # check for the app_type
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+      vars:
+         app_type: "{{ app_type }}"
+      debug:
+         msg: "app_type is: {{ app_type }}"
+      failed_when:
+         (app_type != "lease")
 
-    - name: "{{ recipe_name }}: Perform 'get_lease' operation."
+    - name: "{{ recipe_name }}: Get cluster information"
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
+
+    - name: "Get multiple client uuids."
+      include_role:
+        name: common
+        tasks_from: get_multiple_client_uuids
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "Get multiple resource uuids."
+      include_role:
+        name: common
+        tasks_from: get_multiple_resource_uuids
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Perform 'GET' operation for {{ no_of_leases }} client-uuids and resource-uuids."
       vars:
          input_param: {
-                'client': '{{ clientUUID.stdout }}',
-                'resource': '{{ resourceUUID.stdout }}',
-                'outFileName': 'get_lease_{{ resourceUUID.stdout }}'
+                'client': '{{ ClientUUIDS[item] }}',
+                'resource': '{{ resourceUUIDS[item] }}',
+                'outFileName': 'get_lease_disable_leader_perform_ops_{{ resourceUUIDS[item] }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
-      debug:
-         msg: "get lease operation"
-      with_items:
-          - "{{ leaseApp }}"
-      register: getLease
+      set_fact:
+        getLeaseOps: "{{ getLeaseOps|default([]) + [lookup('lease_feature', 'GET', input_param, wantlist=True)] }}"
+      failed_when: >
+        (getLeaseOps[item]['outfile_status'] != 0) or
+        (getLeaseOps[item]['output_data']['Response']['Status'] != "Success") or
+        (getLeaseOps[item]['output_data']['Response']['LeaseState'] != "GRANTED")
+      loop: "{{ range(0, no_of_leases) | list }}"  
 
     - name: "{{ recipe_name }}: Get cluster information"
       include_role:
@@ -41,7 +66,7 @@
          leader1: "{{ LeaderUUID['/0/leader-uuid'] }}"
       debug:
         msg: "Leader-1: {{ leader1 }}"
-      #no_log: true
+      no_log: true
       with_items:
          - "{{ leader1 }}"
       register: orig_leader
@@ -69,85 +94,34 @@
        msg: "{{lookup('niova_raftprocess', 'pause', orig_leader['results'][0]['item'], wantlist=True)}}"
       no_log: True
 
-    - name: "{{ recipe_name }}: Perform 'lookup_lease' operation."
+    - name: "{{ recipe_name }}: Wait until leader election happens."
+      include_role:
+        name: common
+        tasks_from: wait_until_leader_election
+
+    - name: "{{ recipe_name }}: Verify already taken leases gets updated with new leader."
       vars:
          input_param: {
-                'client': '{{ clientUUID.stdout }}',
-                'resource': '{{ resourceUUID.stdout }}',
-                'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
+                'client': '{{ ClientUUIDS[item] }}',
+                'resource': '{{ resourceUUIDS[item] }}',
+                'outFileName': 'lookup_lease_after_new_leader_{{ item }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
-      debug:
-         msg: "lookup lease operation"
-      with_items:
-          - "{{ leaseApp }}"
-      register: lookupLease
-
-    #TODO Get TS and store it into variable
-
-    #WIP
-    #TODO Start niova-block-ctl and nisd process (This is NISD 1)
-    #TODO Verify lease info from memory
-    #TODO Allow mount request to expire
-
-    - name: "{{ recipe_name }}: Wait until new leader-2 election happens."
-      vars:
-         stage: "wait_leader_new_election"
-      debug:
-        msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != orig_leader['results'][0]['item']
-      retries: 10
-      delay: 1
-      loop: "{{ range(0, NRunningPeers | length) | list }}"
-
-    - name: "{{ recipe_name }}: Perform 'get_lease' operation."
-      vars:
-         input_param: {
-                'client': '{{ clientUUID.stdout }}',
-                'resource': '{{ resourceUUID.stdout }}',
-                'outFileName': 'get_lease_{{ resourceUUID.stdout }}'
-                 }
-         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
-      debug:
-         msg: "get lease operation"
-      with_items:
-          - "{{ leaseApp }}"
-      register: getLease
-
-    - name: "{{ recipe_name }}: Verify outfile status"
-      debug:
-        msg: "Check write outfile status: {{ getLease['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
+      set_fact:
+        lookup_aftr_new_leader: "{{ lookup_aftr_new_leader|default([]) + [lookup('lease_feature', 'LOOKUP', input_param, wantlist=True)] }}"
       failed_when: >
-         (getLease['results'][0]['item']['outfile_status'] != 0)
-
-    - name: "{{ recipe_name }}: Perform 'lookup_lease' operation."
-      vars:
-         input_param: {
-                'client': '{{ clientUUID.stdout }}',
-                'resource': '{{ resourceUUID.stdout }}',
-                'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
-                 }
-         leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
-      debug:
-         msg: "lookup lease operation"
-      with_items:
-          - "{{ leaseApp }}"
-      register: lookupLease
-
-    #TODO Verify Term should increment and TS should be different
-
-    #WIP
-    #TODO Start niova-block-ctl and NISD 2 process
-    #TODO Get lease info from NISD 2
-    #TODO Ensure that NISD 2 will be processed by a new leader i.e. Leader 2
+        (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
+        (lookup_aftr_new_leader[item]['output_data']['Response']['Status'] != "Success") or
+        (lookup_aftr_new_leader[item]['output_data']['Response']['TTL'] > 60) or
+        (lookup_aftr_new_leader[item]['output_data']['Response']['TTL'] < 20) or
+        (lookup_aftr_new_leader[item]['output_data']['Response']['LeaseState'] != "GRANTED") or
+        (lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTerm'] <= getLeaseOps[item]['output_data']['Response']['TimeStamp']['LeaderTerm']) or
+        (lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTime'] >= getLeaseOps[item]['output_data']['Response']['TimeStamp']['LeaderTime'])
+      loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Resume the Leader 1"
       debug:
        msg: "{{lookup('niova_raftprocess', 'resume', orig_leader['results'][0]['item'], wantlist=True)}}"
       no_log: True
-
-    #TODO Veirfy Leader-1 becomes "follower" now.
 
     - name: "{{ recipe_name }}: Enable send on all peers from the leader 1."
       vars:
@@ -167,4 +141,7 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
 
-    #TODO Verify Leader-1 shows the lease info from NISD 2.
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
