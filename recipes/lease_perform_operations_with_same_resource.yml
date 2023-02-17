@@ -127,7 +127,7 @@
          input_param: {
                 'client': '{{ clientUUID1.stdout }}',
                 'resource': '{{ new_resourceUUID.stdout }}',
-                'outFileName': 'lookup_lease_cli1_{{ resourceUUID.stdout }}'
+                'outFileName': 'lookup_lease_cli1_{{ new_resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
       debug:
