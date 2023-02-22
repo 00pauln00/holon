@@ -41,6 +41,8 @@
          input_param: {
                 'client': '{{ clientUUID1.stdout }}',
                 'resource': '{{ new_resourceUUID.stdout }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'get_lease_cli1_{{ new_resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
@@ -86,6 +88,8 @@
          input_param: {
                 'client': '{{ clientUUID2.stdout }}',
                 'resource': '{{ new_resourceUUID.stdout }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'get_lease_cli2_{{ new_resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
@@ -127,6 +131,8 @@
          input_param: {
                 'client': '{{ clientUUID1.stdout }}',
                 'resource': '{{ new_resourceUUID.stdout }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_cli1_{{ new_resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
@@ -165,6 +171,8 @@
          input_param: {
                 'client': '{{ clientUUID2.stdout }}',
                 'resource': '{{ new_resourceUUID.stdout }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'cli2_GET_{{ new_resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"

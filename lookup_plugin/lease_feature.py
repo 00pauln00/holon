@@ -40,7 +40,9 @@ def get_the_output(outfilePath):
     return json_data
 
 def set_environment_variables(cluster_params):
-    ctl_interface_path = "%s/%s/configs" % (cluster_params['base_dir'],
+    ctl_interface_path = "%s/%s/ctl-interface" % (cluster_params['base_dir'],
+                                                           cluster_params['raft_uuid'])
+    config_path = "%s/%s/configs" % (cluster_params['base_dir'],
                                                            cluster_params['raft_uuid'])
 
     if os.path.exists(ctl_interface_path):
@@ -50,11 +52,11 @@ def set_environment_variables(cluster_params):
 
     #set environment variables
     os.environ['NIOVA_INOTIFY_BASE_PATH'] = ctl_interface_path
-    os.environ['NIOVA_LOCAL_CTL_SVC_DIR'] = ctl_interface_path
+    os.environ['NIOVA_LOCAL_CTL_SVC_DIR'] = config_path
 
     return ctl_interface_path
 
-def lease_operation(cluster_params, operation, client, resource, outFileName):
+def lease_operation(cluster_params, operation, client, resource, numOfLeases, getLeaseOutfile, outFileName):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     app_name = cluster_params['app_type']
@@ -77,8 +79,15 @@ def lease_operation(cluster_params, operation, client, resource, outFileName):
     outfilePath = "%s/%s/%s_%s" % (base_dir, raft_uuid, outFileName, uuid.uuid1())
     ctl_interface_path = set_environment_variables(cluster_params)
 
-    process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
-                                            '-j', outfilePath], stdout = fp, stderr = fp)
+    if numOfLeases == '0' and getLeaseOutfile == '':
+         process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
+                                            '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath], stdout = fp, stderr = fp)
+    elif numOfLeases != '0' and getLeaseOutfile == '':
+         process_popen = subprocess.Popen([bin_path, '-o', operation, '-ru', raft_uuid,
+                                              '-n', numOfLeases, '-j', outfilePath], stdout = fp, stderr = fp)
+    elif numOfLeases != '0' and getLeaseOutfile != '':
+         process_popen = subprocess.Popen([bin_path, '-o', operation, '-ru', raft_uuid,
+                                              '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath], stdout = fp, stderr = fp)
 
     os.fsync(fp)
     return process_popen, outfilePath
@@ -86,24 +95,32 @@ def lease_operation(cluster_params, operation, client, resource, outFileName):
 def extracting_dictionary(cluster_params, operation, input_values):
     client = ""
     resource = ""
+    numOfLeases = ""
+    getLeaseOutfile = ""
 
     if operation == "GET":
 
-        get_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'], input_values['outFileName'])
+        get_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'],
+                                                            input_values['numOfLeases'], input_values['getLeaseOutfile'],
+                                                            input_values['outFileName'])
         output_data = get_the_output(outfile)
-
+        output_data['outfilePath'] = outfile
         return output_data
 
     if operation == "LOOKUP":
 
-        lookup_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'], input_values['outFileName'])
+        lookup_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'],
+                                                             input_values['numOfLeases'], input_values['getLeaseOutfile'],
+                                                             input_values['outFileName'])
         output_data = get_the_output(outfile)
 
         return output_data
 
     if operation == "REFRESH":
 
-        refresh_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'], input_values['outFileName'])
+        refresh_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'],
+                                                             input_values['numOfLeases'], input_values['getLeaseOutfile'],
+                                                             input_values['outFileName'])
         output_data = get_the_output(outfile)
 
         return output_data

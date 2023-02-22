@@ -46,6 +46,8 @@
          input_param: {
                 'client': '{{ ClientUUIDS[item] }}',
                 'resource': '{{ resourceUUIDS[item] }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'get_lease_{{ item }}'
                  }
       set_fact:
@@ -93,6 +95,8 @@
          input_param: {
                 'client': '{{ ClientUUIDS[item] }}',
                 'resource': '{{ resourceUUIDS[item] }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_after_new_leader_{{ item }}'
                  }
       set_fact:
@@ -121,6 +125,8 @@
          input_param: {
                 'client': '{{ Client[item] }}',
                 'resource': '{{ Resource[item] }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'get_lease_with_new_resource{{ item }}'
                  }
       set_fact:
@@ -213,6 +219,8 @@
          input_param: {
                 'client': '{{ Client[item] }}',
                 'resource': '{{ Resource[item] }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_after_leader_to_be_{{ item }}'
                  }
       set_fact:
@@ -232,6 +240,8 @@
          input_param: {
                 'client': '{{ ClientUUIDS[item] }}',
                 'resource': '{{ resourceUUIDS[item] }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_for_old_get_lease{{ item }}'
                  }
       set_fact:

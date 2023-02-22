@@ -37,6 +37,8 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'get_lease_refresh_{{ resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
@@ -72,6 +74,8 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_before_refresh_{{ resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
@@ -95,7 +99,7 @@
       debug:
          msg: "Check if lookup is successful."
       failed_when: >
-         (rd_response['Status'] != "Success") or 
+         (rd_response['Status'] != "Success") or
          (operation['Operation'] != "LOOKUP") or
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout) or
@@ -110,6 +114,8 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'refresh_lease_{{ resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'REFRESH', input_param, wantlist=True) }}"
@@ -145,6 +151,8 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_after_refresh_{{ resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
@@ -168,7 +176,7 @@
       debug:
          msg: "Check if lookup is successful"
       failed_when: >
-         (rd_response['Status'] != "Success") or 
+         (rd_response['Status'] != "Success") or
          (operation['Operation'] != "LOOKUP") or
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout)
@@ -181,7 +189,7 @@
         msg: "Check the value of TTL should be increased than the previous lookup as refresh operation is performed"
       failed_when: >
         ( leaseValues_after['TTL'] >= 60 ) or
-        ( leaseValues_after['TimeStamp']['LeaderTime'] <= leaseValues_before['TimeStamp']['LeaderTime'] ) or 
+        ( leaseValues_after['TimeStamp']['LeaderTime'] <= leaseValues_before['TimeStamp']['LeaderTime'] ) or
         ( leaseValues_after['TimeStamp']['LeaderTerm'] != leaseValues_before['TimeStamp']['LeaderTerm'] ) or
         ( leaseValues_after['Client'] != leaseValues_before['Client'] ) or
         ( leaseValues_after['Resource'] != leaseValues_before['Resource'] )

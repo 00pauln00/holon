@@ -46,6 +46,8 @@
          input_param: {
                 'client': '{{ ClientUUIDS[item] }}',
                 'resource': '{{ resourceUUIDS[item] }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'get_lease_disable_leader_perform_ops_{{ resourceUUIDS[item] }}'
                  }
       set_fact:
@@ -54,7 +56,7 @@
         (getLeaseOps[item]['outfile_status'] != 0) or
         (getLeaseOps[item]['output_data']['Response']['Status'] != "Success") or
         (getLeaseOps[item]['output_data']['Response']['LeaseState'] != "GRANTED")
-      loop: "{{ range(0, no_of_leases) | list }}"  
+      loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Get cluster information"
       include_role:
@@ -104,6 +106,8 @@
          input_param: {
                 'client': '{{ ClientUUIDS[item] }}',
                 'resource': '{{ resourceUUIDS[item] }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_after_new_leader_{{ item }}'
                  }
       set_fact:

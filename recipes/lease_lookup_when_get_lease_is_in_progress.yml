@@ -37,6 +37,8 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'get_lease_inprogress_{{ resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
@@ -71,6 +73,8 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_before_refresh_{{ resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"

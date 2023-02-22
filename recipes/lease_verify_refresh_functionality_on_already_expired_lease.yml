@@ -32,6 +32,8 @@
          input_param: {
                 'client': '{{ clientUUID1.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'refresh_lease_on_expired_lease_{{ resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'REFRESH', input_param, wantlist=True) }}"
@@ -67,6 +69,8 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'refresh_lease_on_expired_lease_Old_client_{{ resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'REFRESH', input_param, wantlist=True) }}"
@@ -96,7 +100,7 @@
         (rf_response['TTL'] != 60) or
         (rf_response['Client'] != clientUUID.stdout) or
         (rf_response['Resource'] != resourceUUID.stdout)
-      
+
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:

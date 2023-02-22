@@ -22,7 +22,7 @@
          msg: "app_type is: {{ app_type }}"
       failed_when:
          (app_type != "lease")
-    
+
     - name: Generate new resource
       shell: "/usr/bin/uuid"
       register: resourceUUID
@@ -36,6 +36,8 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '0',
+                'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
@@ -58,7 +60,7 @@
          operation: "{{ lookupLease['results'][0]['item']['output_data']['Request'] }}"
       debug:
          msg: "Check if LOOKUP is successful"
-      failed_when: > 
+      failed_when: >
          (rd_response['Status'] != "Key not found") or
          (operation['Operation'] != "LOOKUP") or
          (rd_response['Client'] != "00000000-0000-0000-0000-000000000000") or
