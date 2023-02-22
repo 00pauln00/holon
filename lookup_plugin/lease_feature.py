@@ -25,8 +25,15 @@ def get_the_output(outfilePath):
 
     output_data = {}
     json_data = {}
+    get_time = time.time()
+    req_time = {'Request_Time': time.ctime(get_time)}
+
     with open(outfile, "r+", encoding="utf-8") as json_file:
         output_data = json.load(json_file)
+        output_data['Request'].update(req_time)
+        json_file.seek(0)
+        json.dump(output_data, json_file, indent=4)
+
     json_data['outfile_status'] = 0
     json_data['output_data'] = output_data
 
@@ -53,7 +60,7 @@ def lease_operation(cluster_params, operation, client, resource, outFileName):
     app_name = cluster_params['app_type']
 
     genericcmdobj = GenericCmds()
-    
+
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
@@ -62,7 +69,7 @@ def lease_operation(cluster_params, operation, client, resource, outFileName):
 
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(log_file, "w")
-    
+
     #start leaseApp process
     bin_path = '%s/leaseClient' % binary_dir
 
@@ -72,7 +79,7 @@ def lease_operation(cluster_params, operation, client, resource, outFileName):
 
     process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
                                             '-j', outfilePath], stdout = fp, stderr = fp)
-    
+
     os.fsync(fp)
     return process_popen, outfilePath
 
@@ -88,17 +95,17 @@ def extracting_dictionary(cluster_params, operation, input_values):
         return output_data
 
     if operation == "LOOKUP":
-            
+
         lookup_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'], input_values['outFileName'])
         output_data = get_the_output(outfile)
-            
+
         return output_data
 
     if operation == "REFRESH":
-            
+
         refresh_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'], input_values['outFileName'])
         output_data = get_the_output(outfile)
-            
+
         return output_data
 
 

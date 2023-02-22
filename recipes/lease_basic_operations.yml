@@ -153,6 +153,18 @@
         (wr_timestamp['LeaderTerm'] != rd_timestamp['LeaderTerm']) or
         (wr_timestamp['LeaderTime'] >= rd_timestamp['LeaderTime'])
 
+    - name: "{{ recipe_name }}: Get time difference before lease expired."
+      vars:
+        get_req_time: "{{ getLease['results'][0]['item']['output_data']['Request']['Request_Time'] | to_datetime('%a %b %d %H:%M:%S %Y') }}"
+        lookup_req_time: "{{ lookupLease['results'][0]['item']['output_data']['Request']['Request_Time'] | to_datetime('%a %b %d %H:%M:%S %Y') }}"
+        time_diff: "{{ ((lookup_req_time | to_datetime) - (get_req_time | to_datetime)).total_seconds() | int }}"
+      debug:
+        msg:
+         - "Get request time difference between GET and LOOKUP lease"
+      with_items:
+         - "{{ time_diff }}"
+      register: time_before_lease_expired
+
     - name: "{{ recipe_name }}: Compare TTL."
       vars:
         wr_ttl: "{{ getLease['results'][0]['item']['output_data']['Response']['TTL'] }}"
