@@ -30,7 +30,12 @@ def get_the_output(outfilePath):
 
     with open(outfile, "r+", encoding="utf-8") as json_file:
         output_data = json.load(json_file)
-        output_data['Request'].update(req_time)
+        if len(output_data) > 2:
+            for i in range (len(output_data)):
+                output_data[i]['Request'].update(req_time)
+        else:
+            output_data['Request'].update(req_time)
+
         json_file.seek(0)
         json.dump(output_data, json_file, indent=4)
 
