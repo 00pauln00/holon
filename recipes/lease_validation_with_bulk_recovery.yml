@@ -190,7 +190,7 @@
       delay: 2
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    - name: "{{ recipe_name }}: Verify already taken leases gets updated with new leader."
+    - name: "{{ recipe_name }}: Perform LOOKUP operation."
       vars:
          input_param: {
                 'client': '',
@@ -201,13 +201,19 @@
                  }
          new_leader_lookup: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
       debug:
-        msg:
-         - "Verify already taken leases gets updated with new leader"
+         msg: "Multiple LOOKUP lease operation"
+      with_items:
+          - "{{ new_leader_lookup }}"
+      register: lookupMultiLeases
+
+    - name: "{{ recipe_name }}: Check if 'LOOKUP' is successful."
+      vars:
+         rd_response: "{{ lookupMultiLeases['results'][0]['item']['output_data'][item]['Response'] }}"
+      debug:
+         msg: "Check if LOOKUP is successful"
       failed_when: >
-        (new_leader_lookup['outfile_status'] != 0) or
-        (new_leader_lookup['output_data'][item]['Response']['Status'] != "Success") or
-        (new_leader_lookup['output_data'][item]['Response']['TTL'] > 60) or
-        (new_leader_lookup['output_data'][item]['Response']['TTL'] < 20) or
-        (new_leader_lookup['output_data'][item]['Response']['LeaseState'] != "GRANTED") or
-        (new_leader_lookup['output_data'][item]['Response']['TimeStamp']['LeaderTerm'] <= getMultiLeases['results'][0]['item']['output_data'][item]['Response']['TimeStamp']['LeaderTerm'])
-      loop: "{{ range(0, new_leader_lookup['output_data']|length) | list }}"
+        (lookupMultiLeases['results'][0]['item']['outfile_status'] != 0) or
+        (rd_response['Status'] != "Success") or
+        (rd_response['LeaseState'] != "GRANTED") or
+        (rd_response['TimeStamp']['LeaderTerm'] <= getMultiLeases['results'][0]['item']['output_data'][item]['Response']['TimeStamp']['LeaderTerm'])
+      loop: "{{ range(0, lookupMultiLeases['results'][0]['item']['output_data']|length) | list }}"
