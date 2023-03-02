@@ -91,7 +91,7 @@ def extracting_dictionary(cluster_params, operation, input_values):
     numOfLeases = ""
     getLeaseOutfile = ""
 
-    if operation == "GET":
+    if operation == "GET" or operation == "GET_VALIDATE":
 
         get_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'],
                                                             input_values['numOfLeases'], input_values['getLeaseOutfile'],
@@ -116,15 +116,6 @@ def extracting_dictionary(cluster_params, operation, input_values):
                                                              input_values['outFileName'])
         output_data = get_the_output(outfile)
 
-        return output_data
-
-    if operation == "GET_VALIDATE":
-
-        get_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'],
-                                                            input_values['numOfLeases'], input_values['getLeaseOutfile'],
-                                                            input_values['outFileName'])
-        output_data = get_the_output(outfile)
-        output_data['outfilePath'] = outfile
         return output_data
 
 class LookupModule(LookupBase):
