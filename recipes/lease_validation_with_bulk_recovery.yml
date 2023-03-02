@@ -195,7 +195,7 @@
                 'getLeaseOutfile': "{{ getMultiLeases['results'][0]['item']['outfilePath'] }}",
                 'outFileName': "lookup_lease_all"
                  }
-         new_leader_lookup: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
+         new_leader_lookup: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
       debug:
          msg: "Multiple LOOKUP lease operation"
       with_items:

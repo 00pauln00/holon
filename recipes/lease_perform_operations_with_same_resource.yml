@@ -135,7 +135,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_cli1_{{ new_resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
       debug:
          msg: "lookup lease operation"
       with_items:
@@ -163,7 +163,7 @@
       debug:
          msg: "Check if LOOKUP is successful."
       failed_when: >
-         (operation['Operation'] != "LOOKUP") or
+         (operation['Operation'] != "LOOKUP_VALIDATE") or
          (rd_response['LeaseState'] != "EXPIRED")
 
     - name: "{{ recipe_name }}: Again Perform 'GET' operation from client 2"

@@ -78,7 +78,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_before_refresh_{{ resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
       debug:
          msg: "lookup lease operation"
       with_items:
@@ -100,7 +100,7 @@
          msg: "Check if lookup is successful."
       failed_when: >
          (rd_response['Status'] != "Success") or
-         (operation['Operation'] != "LOOKUP") or
+         (operation['Operation'] != "LOOKUP_VALIDATE") or
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout) or
          (rd_response['LeaseState'] != "GRANTED")
@@ -155,7 +155,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_after_refresh_{{ resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'LOOKUP', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
       debug:
          msg: "lookup lease operation"
       with_items:
@@ -177,7 +177,7 @@
          msg: "Check if lookup is successful"
       failed_when: >
          (rd_response['Status'] != "Success") or
-         (operation['Operation'] != "LOOKUP") or
+         (operation['Operation'] != "LOOKUP_VALIDATE") or
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout)
 

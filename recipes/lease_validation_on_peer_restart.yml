@@ -101,7 +101,7 @@
                 'outFileName': 'lookup_lease_after_leader_to_be_{{ item }}'
                  }
       set_fact:
-        new_leader_lookup: "{{ new_leader_lookup|default([]) + [lookup('lease_feature', 'LOOKUP', input_param, wantlist=True)] }}"
+        new_leader_lookup: "{{ new_leader_lookup|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
       failed_when: >
         (new_leader_lookup[item]['outfile_status'] != 0) or
         (new_leader_lookup[item]['output_data']['Response']['Status'] != "Success") or

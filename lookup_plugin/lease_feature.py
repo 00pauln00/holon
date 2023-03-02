@@ -100,7 +100,7 @@ def extracting_dictionary(cluster_params, operation, input_values):
         output_data['outfilePath'] = outfile
         return output_data
 
-    if operation == "LOOKUP":
+    if operation == "LOOKUP" or operation == "LOOKUP_VALIDATE":
 
         lookup_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'],
                                                              input_values['numOfLeases'], input_values['getLeaseOutfile'],
