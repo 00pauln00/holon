@@ -12,7 +12,6 @@ def get_the_output(outfilePath):
     outfile = outfilePath + '.json'
     counter = 0
     timeout = 100
-
     # Wait till the output json file gets created.
     while True:
         if not os.path.exists(outfile):
@@ -24,25 +23,14 @@ def get_the_output(outfilePath):
             break
 
     output_data = {}
-    json_data = {}
-    get_time = time.time()
-    req_time = {'Request_Time': time.ctime(get_time)}
-
+    #json_data = {}
     with open(outfile, "r+", encoding="utf-8") as json_file:
-        output_data = json.load(json_file)
-        if len(output_data) > 2:
-            for i in range (len(output_data)):
-                output_data[i]['Request'].update(req_time)
-        else:
-            output_data['Request'].update(req_time)
+        json_data = json.load(json_file)
 
-        json_file.seek(0)
-        json.dump(output_data, json_file, indent=4)
+    output_data['outfile_status'] = 0
+    output_data['output_data'] = json_data
 
-    json_data['outfile_status'] = 0
-    json_data['output_data'] = output_data
-
-    return json_data
+    return output_data
 
 def set_environment_variables(cluster_params):
     ctl_interface_path = "%s/%s/ctl-interface" % (cluster_params['base_dir'],
@@ -89,7 +77,7 @@ def lease_operation(cluster_params, operation, client, resource, numOfLeases, ge
                                             '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath], stdout = fp, stderr = fp)
     elif numOfLeases != '0' and getLeaseOutfile == '':
          process_popen = subprocess.Popen([bin_path, '-o', operation, '-ru', raft_uuid,
-                                              '-n', numOfLeases, '-j', outfilePath], stdout = fp, stderr = fp)
+                                              '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath], stdout = fp, stderr = fp)
     elif numOfLeases != '0' and getLeaseOutfile != '':
          process_popen = subprocess.Popen([bin_path, '-o', operation, '-ru', raft_uuid,
                                               '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath], stdout = fp, stderr = fp)
@@ -130,6 +118,14 @@ def extracting_dictionary(cluster_params, operation, input_values):
 
         return output_data
 
+    if operation == "GET_VALIDATE":
+
+        get_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'],
+                                                            input_values['numOfLeases'], input_values['getLeaseOutfile'],
+                                                            input_values['outFileName'])
+        output_data = get_the_output(outfile)
+        output_data['outfilePath'] = outfile
+        return output_data
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):

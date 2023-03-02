@@ -104,17 +104,6 @@
          (wr_response['TTL'] != 60) or
          (wr_response['LeaseState'] != "GRANTED")
 
-    - name: "{{ recipe_name }}: Compare time which taken before lease expired and after lease expired."
-      vars:
-        get_req_time: "{{ new_getLease['results'][0]['item']['output_data']['Request']['Request_Time'] | to_datetime('%a %b %d %H:%M:%S %Y') }}"
-        lookup_req_time: "{{ new_lookupLease['results'][0]['item']['output_data']['Request']['Request_Time'] | to_datetime('%a %b %d %H:%M:%S %Y') }}"
-        curr_time_diff: "{{ ((lookup_req_time | to_datetime) - (get_req_time | to_datetime)).total_seconds() | int }}"
-      debug:
-        msg:
-         - "Get request time difference after lease expired"
-      failed_when: >
-        ((curr_time_diff | int) >= (time_before_lease_expired['results'][0]['item'] | int))
-
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
