@@ -89,7 +89,7 @@
 
     - name: "{{ recipe_name }}: Check if 'GET_VALIDATE' is successful."
       vars:
-         wr_response: "{{ getMultiLeases['results'][0]['item']['output_data'] }}"
+         wr_response: "{{ getMultiLeases['results'][0]['item']['output_data']['Response'] }}"
       debug:
          msg: "Check if GET_VALIDATE is successful"
       failed_when: >
@@ -186,7 +186,7 @@
       delay: 2
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    - name: "{{ recipe_name }}: Perform LOOKUP operation."
+    - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation."
       vars:
          input_param: {
                 'client': '',
@@ -202,14 +202,12 @@
           - "{{ new_leader_lookup }}"
       register: lookupMultiLeases
 
-    - name: "{{ recipe_name }}: Check if 'LOOKUP' is successful."
+    - name: "{{ recipe_name }}: Check if 'LOOKUP_VALIDATE' is successful."
       vars:
-         rd_response: "{{ lookupMultiLeases['results'][0]['item']['output_data'][item]['Response'] }}"
+         rd_response: "{{ lookupMultiLeases['results'][0]['item']['output_data'] }}"
       debug:
          msg: "Check if LOOKUP is successful"
       failed_when: >
         (lookupMultiLeases['results'][0]['item']['outfile_status'] != 0) or
-        (rd_response['Status'] != "Success") or
         (rd_response['LeaseState'] != "GRANTED") or
-        (rd_response['TimeStamp']['LeaderTerm'] <= getMultiLeases['results'][0]['item']['output_data'][item]['Response']['TimeStamp']['LeaderTerm'])
-      loop: "{{ range(0, lookupMultiLeases['results'][0]['item']['output_data']|length) | list }}"
+        (rd_response['LeaderTerm'] <= getMultiLeases['results'][0]['item']['output_data'][item]['Response']['TimeStamp']['LeaderTerm'])
