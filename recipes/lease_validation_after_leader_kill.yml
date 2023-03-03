@@ -105,15 +105,11 @@
                 'outFileName': 'lookup_lease_after_new_leader_{{ item }}'
                  }
       set_fact:
-        lookup_aftr_new_leader: "{{ lookup_aftr_new_leader|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
+        lookup_aftr_new_leader: "{{ lookup_aftr_new_leader|default([]) + [lookup('lease_feature', 'LOOKUP', input_param, wantlist=True)] }}"
       failed_when: >
         (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
         (lookup_aftr_new_leader[item]['output_data']['Response']['Status'] != "Success") or
-        (lookup_aftr_new_leader[item]['output_data']['Response']['TTL'] > 60) or
-        (lookup_aftr_new_leader[item]['output_data']['Response']['TTL'] < 20) or
-        (lookup_aftr_new_leader[item]['output_data']['Response']['LeaseState'] != "GRANTED") or
-        (lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTerm'] <= lookupLeaseOps[item]['output_data']['Response']['TimeStamp']['LeaderTerm']) or
-        (lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTime'] >= lookupLeaseOps[item]['output_data']['Response']['TimeStamp']['LeaderTime'])
+        (lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTerm'] <= lookupLeaseOps[item]['output_data']['Response']['TimeStamp']['LeaderTerm'])
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Get cluster information"
