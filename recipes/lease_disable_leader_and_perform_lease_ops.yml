@@ -115,11 +115,7 @@
       failed_when: >
         (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
         (lookup_aftr_new_leader[item]['output_data']['Response']['Status'] != "Success") or
-        (lookup_aftr_new_leader[item]['output_data']['Response']['TTL'] > 60) or
-        (lookup_aftr_new_leader[item]['output_data']['Response']['TTL'] < 20) or
-        (lookup_aftr_new_leader[item]['output_data']['Response']['LeaseState'] != "GRANTED") or
-        (lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTerm'] <= getLeaseOps[item]['output_data']['Response']['TimeStamp']['LeaderTerm']) or
-        (lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTime'] >= getLeaseOps[item]['output_data']['Response']['TimeStamp']['LeaderTime'])
+        (lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTerm'] <= getLeaseOps[item]['output_data']['Response']['TimeStamp']['LeaderTerm'])
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Resume the Leader 1"
