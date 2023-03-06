@@ -137,8 +137,8 @@
          (niorq_mgr_entry['/0/status'] != "running") or
          (niorq_mgr_entry['/0/dev-path'] != getDeviceFile) or
          (niorq_mgr_entry['/0/dev-rd-size']['512'] != 3) or
-         (niorq_mgr_entry['/0/dev-rd-size']['4096'] != (verifyNisd | int)) or
-         (niorq_mgr_entry['/0/dev-bytes-read'] != ((verifyNisd | int) * 4096) + (3 * 512))
+         (niorq_mgr_entry['/0/dev-rd-size']['8192'] != (verifyNisd | int)) or
+         (niorq_mgr_entry['/0/dev-bytes-read'] != ((verifyNisd | int) * 12288) + (3 * 512))
 
      - name: "Verify 'tasks' items are idle."
        include_role:
