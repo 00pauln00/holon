@@ -108,8 +108,7 @@
         (new_leader_lookup[item]['output_data']['Response']['TTL'] > 60) or
         (new_leader_lookup[item]['output_data']['Response']['TTL'] < 20) or
         (new_leader_lookup[item]['output_data']['Response']['LeaseState'] != "GRANTED") or
-        (new_leader_lookup[item]['output_data']['Response']['TimeStamp']['LeaderTerm'] <= lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTerm']) or
-        (new_leader_lookup[item]['output_data']['Response']['TimeStamp']['LeaderTime'] >= lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTime'])
+        (new_leader_lookup[item]['output_data']['Response']['TimeStamp']['LeaderTerm'] <= lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTerm'])
       loop: "{{ range(0, no_of_leases) | list }}"
 
     rescue:
