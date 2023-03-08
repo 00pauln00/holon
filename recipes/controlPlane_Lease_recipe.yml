@@ -167,6 +167,6 @@
          msg: "Check if LOOKUP is successful"
        failed_when: >
          (operation['Operation'] != "LOOKUP") or
+         (wr_response['Status'] != "Success") or
          (wr_response['Client'] != clientUUID.stdout|string) or
-         (wr_response['Resource'] != resourceUUID.stdout|string) or
-         (wr_response['LeaseState'] != "GRANTED")
+         (wr_response['Resource'] != resourceUUID.stdout|string) 
