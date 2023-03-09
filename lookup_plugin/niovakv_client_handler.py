@@ -26,7 +26,7 @@ def start_niovakv_subprocess(cluster_params, Operation, Key, Value, OutfileName,
     logfile = "%s/%s/niovakvclientlogfile.log" % (base_dir, raft_uuid)
 
     # Prepare config file path for niovakv_client
-    config_path = "%s/%s/niovakv.config" % (base_dir, raft_uuid)
+    config_path = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
 
     outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
 
@@ -34,21 +34,21 @@ def start_niovakv_subprocess(cluster_params, Operation, Key, Value, OutfileName,
         if Operation == "write":
             process_popen = subprocess.Popen([bin_path,'-c', config_path,
                                              '-l', logfile, '-o', Operation, '-k', Key,
-                                             '-v', Value, '-r', outfilePath , '-n', NumRequest ],
+                                             '-v', Value, '-r', outfilePath , '-n', NumRequest, '-ru', raft_uuid],
                                              stdout = fp, stderr = fp)
         elif Operation == "read":
             process_popen = subprocess.Popen([bin_path,'-c', config_path, '-o', Operation,
                                               '-l', logfile, '-k', Key, '-v', Value,
-                                              '-r', outfilePath, '-n', NumRequest],
+                                              '-r', outfilePath, '-n', NumRequest, '-ru', raft_uuid],
                                               stdout = fp, stderr = fp)
 
         elif Operation == "leader":         # operation for get leader
             process_popen = subprocess.Popen([bin_path,'-c', config_path, '-o', Operation,
-                                              '-r', outfilePath],
+                                              '-r', outfilePath, '-ru', raft_uuid],
                                               stdout = fp, stderr = fp)
         elif Operation == "membership":
             process_popen = subprocess.Popen([bin_path,'-c', config_path, '-o', Operation,
-                                              '-r', outfilePath],
+                                              '-r', outfilePath, '-ru', raft_uuid],
                                               stdout = fp, stderr = fp)
         else:
            logging.error("Invalid Operation passed to start niovakv_client: %s", Operation)
@@ -61,14 +61,14 @@ def start_niovakv_subprocess(cluster_params, Operation, Key, Value, OutfileName,
         outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
         process_popen = subprocess.Popen([bin_path,'-c', config_path, '-l' , logfile,
                                           '-s', "y", '-n', NumRequest, '-k', Key,
-                                          '-v', Value, '-r', outfilePath],
+                                          '-v', Value, '-r', outfilePath, '-ru', raft_uuid],
                                           stdout = fp, stderr = fp)
     else:
         logfile = "%s/%s/niovakvclientlogfile_multi_concurrent.log" % (base_dir, raft_uuid)
         outfilePath = "%s/%s/%s" % (base_dir, raft_uuid , OutfileName)
         process_popen = subprocess.Popen([bin_path,'-c', config_path, '-l', logfile,
                                           '-n', NumRequest, '-k', Key, '-v', Value,
-                                          '-r' , outfilePath],
+                                          '-r' , outfilePath, '-ru', raft_uuid],
                                           stdout = fp, stderr = fp)
 
     # Sync the log file so all the logs from niovakv client gets written to log file.
@@ -95,7 +95,7 @@ def start_lkvt_subprocess(cluster_params, database_type, size_of_key,
     logfile = "%s/%s/lkvtclientlogfile.log" % (base_dir, raft_uuid)
 
     # Prepare config file path for niovakv_client
-    config_path = "%s/%s/niovakv.config" % (base_dir, raft_uuid)
+    config_path = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
 
     outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, outfileName)
 
@@ -104,7 +104,8 @@ def start_lkvt_subprocess(cluster_params, database_type, size_of_key,
                                          '-vs', size_of_value, '-n', no_of_operations,
                                          '-pp', precent_put_get, '-c', no_of_concurrent_req,
                                          '-jp', outfilePath ,'-cp', config_path,
-                                         '-ca', choose_algorithm, '-ss', specific_server_name],
+                                         '-ca', choose_algorithm, '-ss', specific_server_name,
+                                         '-ru', raft_uuid],
                                          stdout = fp, stderr = fp)
 
     # Sync the log file so all the logs from niovakv client gets written to log file.
@@ -125,7 +126,7 @@ def get_the_output(outfilePath, client_type):
                 return {'outfile_status':-1}
         else:
             break
-    
+
     output_data = {}
 
     if client_type == "lkvt":
@@ -199,6 +200,10 @@ class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
         cluster_params = kwargs['variables']['ClusterParams']
+
+        #export NIOVA_THREAD_COUNT
+        os.environ['NIOVA_THREAD_COUNT'] = cluster_params['nthreads']
+
         client_type = terms[0]
         input_values = terms[1]
 

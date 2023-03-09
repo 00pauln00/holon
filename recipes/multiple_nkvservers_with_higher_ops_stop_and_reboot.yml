@@ -19,7 +19,7 @@
      - name: "{{ recipe_name }}: Start pmdb and proxy servers."
        include_role:
           name: common
-          tasks_from: pmdb_cluster_init.yml
+          tasks_from: niovaKV_cluster_init
        vars:
          number_of_clients: 5
          number_of_PMDBServers: 5
@@ -65,23 +65,9 @@
        vars:
          ClientUUID: "{{ ClientUUIDS[0] }}"
 
-     - name: "{{ recipe_name }}: prepare path to read recipe JSON file."
-       shell: cat "{{base_dir}}"/"{{raft_uuid}}".json
-       register: result
-       no_log: true
-
-     - name: "{{ recipe_name}}: Convert output to JSON format."
+     - name: "{{ recipe_name}}: Get the serf nodes from recipe."
        vars:
-         getNodeDetails: "{{ result.stdout | from_json }}"
-       debug: var="{{ getNodeDetails }}"
-       with_items:
-          - "{{ getNodeDetails }}"
-       register: NodeDetails
-       no_log: true
-
-     - name: "{{ recipe_name}}: Get the serf nodes from recipe JSON."
-       vars:
-          getNodeName: "{{ NodeDetails['results'][0]['item']['serf_nodes'][ClientUUIDS[0]] }}"
+          getNodeName: "{{ ClientUUIDS[0] }}"
        debug: 
         msg: "get the node name"
        with_items:
@@ -319,7 +305,7 @@
                 no_of_concurrent_req: 20,
                 wait_for_outfile: false,
                 choose_algorithm: 2,
-                specific_server_name: "Node1",
+                specific_server_name: "{{ ClientUUIDS[0] }}",
                 outfileName: "writeres_specific_server"
                }
          nkvclires: "{{ lookup('niovakv_client_handler', 'lkvt', parameters, wantlist=True) }}"
@@ -366,7 +352,7 @@
                 no_of_concurrent_req: 20,
                 wait_for_outfile: false,
                 choose_algorithm: 0,
-                specific_server_name: "Node1",
+                specific_server_name: "{{ ClientUUIDS[0] }}",
                 outfileName: "readres_specific_server"
 
                }

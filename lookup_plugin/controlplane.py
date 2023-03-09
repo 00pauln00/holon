@@ -10,6 +10,7 @@ import subprocess
 from genericcmd import *
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
+from inotifypath import *
 
 def start_ncpc(cluster_params, Key, Value, Operation,
                                      OutfileName, IP_addr, Port, NumWrites, seqNo, lookout_uuid, nisd_uuid, cmd):
@@ -27,7 +28,7 @@ def start_ncpc(cluster_params, Key, Value, Operation,
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(log_file, "w")
     logfile = "%s/%s/ncpclogfile.log" % (base_dir, raft_uuid)
-    
+
     serviceRetry = "3"
 
     # Prepare config file path for ncpc
@@ -39,36 +40,38 @@ def start_ncpc(cluster_params, Key, Value, Operation,
         if seqNo != "" and NumWrites != "":
             process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-k', Key, '-n', NumWrites, '-S', seqNo, '-sr', serviceRetry], stdout = fp, stderr = fp)
+                                             '-k', Key, '-n', NumWrites, '-S', seqNo,'-sr', serviceRetry, '-ru', raft_uuid],
+                                             stdout = fp, stderr = fp)
         elif NumWrites != "":
             process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-k', Key, '-n', NumWrites, '-sr', serviceRetry], stdout = fp, stderr = fp)
+                                             '-k', Key, '-n', NumWrites, '-sr', serviceRetry, '-ru', raft_uuid],
+                                             stdout = fp, stderr = fp)
         else:
             process_popen = subprocess.Popen([bin_path, '-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-k', Key, '-sr', serviceRetry], stdout = fp, stderr = fp)
-
+                                             '-k', Key, '-sr', serviceRetry, '-ru', raft_uuid],
+                                             stdout = fp, stderr = fp)
     elif Operation == "write":
         if NumWrites == "":
             process_popen = subprocess.Popen([bin_path, '-k', Key, '-v', Value,'-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-a' , IP_addr, '-p', Port, '-sr', serviceRetry],
+                                             '-a' , IP_addr, '-p', Port, '-sr', serviceRetry, '-ru', raft_uuid],
                                              stdout = fp, stderr = fp)
         else:
             process_popen = subprocess.Popen([bin_path, '-k', Key, '-v', Value,'-c', ConfigPath,
                                              '-l', logfile, '-o', Operation, '-j', outfilePath,
-                                             '-a' , IP_addr, '-p', Port, '-n', NumWrites, '-sr', serviceRetry],
+                                             '-a' , IP_addr, '-p', Port, '-n', NumWrites, '-sr', serviceRetry, '-ru', raft_uuid],
                                              stdout = fp, stderr = fp)
     elif Operation == "LookoutInfo":
         process_popen = subprocess.Popen([bin_path, '-c', ConfigPath, '-o', Operation, '-u',
                                             lookout_uuid, '-k', nisd_uuid, '-v', cmd,
-                                            '-l', logfile, '-j', outfilePath],
+                                            '-l', logfile, '-j', outfilePath, '-ru', raft_uuid],
                                             stdout = fp, stderr = fp)
     else:
         process_popen = subprocess.Popen([bin_path, '-k', Key,
                                              '-v', Value, '-c', ConfigPath,
-                                             '-l', logfile, '-o', Operation, '-j', outfilePath],
+                                             '-l', logfile, '-o', Operation, '-j', outfilePath, '-ru', raft_uuid],
                                              stdout = fp, stderr = fp)
     # Sync the log file so all the logs from ncpc gets written to log file.
     os.fsync(fp)
@@ -203,7 +206,7 @@ def set_environment_variables(cluster_params,lookout_uuid):
 
     return niova_lookout_ctl_interface_path
 
-def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
+def start_niova_lookout_process(cluster_params, uport):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     app_name = cluster_params['app_type']
@@ -221,44 +224,23 @@ def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(log_file, "w")
     gossipNodes = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
-    data = open(gossipNodes, 'a')
-    data.write("%s %s %s %s %s\n" % ( lookout_uuid, aport, hport, rport, uport ))
-    data.close()
-
-    # Set the target ports in the targets.json file for prometheus exporter
-    if cluster_params['prometheus_support'] == "1":
-        prom_targets_path = os.environ['PROMETHEUS_PATH'] + '/' + "targets.json"
-        prom_targets = []
-        with open(prom_targets_path, "r") as f:
-            prom_targets = json.load(f)
-            prom_targets.append({'targets':['localhost:'+str(hport)]})
-        with open(prom_targets_path, "w") as f:
-            json.dump(prom_targets, f)
-
+    
     #start niova block test process
     bin_path = '%s/nisdLookout' % binary_dir
 
-    ports = { 'aport' : 0, 'hport' : 0, 'rport' : 0 ,'uport' : 0}
-
-    ports['aport'] = aport
-    ports['hport'] = hport
-    ports['rport'] = rport
-    ports['uport'] = uport
-
-    #writing the information of lookout uuids dict into raft_uuid.json
+      #writing the information of lookout uuids dict into raft_uuid.json
     recipe_conf = load_recipe_op_config(cluster_params)
 
     if not "lookout_uuid_dict" in recipe_conf:
         recipe_conf['lookout_uuid_dict'] = {}
 
     recipe_conf['lookout_uuid_dict'][lookout_uuid] = {}
-    recipe_conf['lookout_uuid_dict'][lookout_uuid] = ports
 
     genericcmdobj.recipe_json_dump(recipe_conf)
-
     logging.info("starting niova-lookout process")
-    process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes, '-n', lookout_uuid,
-                                            '-p', aport, '-port', hport, '-r', rport, '-u', uport], stdout = fp, stderr = fp)
+    process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes,
+                                            '-n', lookout_uuid, '-r', raft_uuid,
+                                            '-u', uport], stdout = fp, stderr = fp)
 
     #Check if niova-lookout process exited with error
     if process_popen.poll() is None:
@@ -266,6 +248,10 @@ def start_niova_lookout_process(cluster_params, aport, hport, rport, uport):
     else:
         logging.info("niova-lookout failed to start")
         raise subprocess.SubprocessError(process_popen.returncode)
+
+    
+    #writing the information of lookout uuids dict into raft_uuid.json
+    recipe_conf = load_recipe_op_config(cluster_params)
 
     #writing the information of lookout uuid in raft_process into raft_uuid.json
     pid = process_popen.pid
@@ -302,6 +288,31 @@ def load_recipe_op_config(cluster_params):
 
     return recipe_conf
 
+def start_testApp(cluster_params, input_values):
+    base_dir = cluster_params['base_dir']
+    port = int(cluster_params['srv_port'])
+
+    #Prepare path for executables.
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/testApp' % binary_dir
+    start_range = port
+    end_range = port+50
+    Port_range = str(start_range)+"-"+str(end_range)
+    process_popen = subprocess.Popen([bin_path, '-p' , Port_range])
+
+    #writing the information of testApp in raft_process into raft_uuid.json
+    recipe_conf = load_recipe_op_config(cluster_params)
+    pid = process_popen.pid
+    ps = psutil.Process(pid)
+
+    if not "testApp" in recipe_conf:
+        recipe_conf['testApp'] = {}
+
+    recipe_conf['testApp']['process_pid'] = pid
+
+    genericcmdobj = GenericCmds()
+    genericcmdobj.recipe_json_dump(recipe_conf)
+
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
@@ -309,6 +320,9 @@ class LookupModule(LookupBase):
         input_values = terms[1]
 
         cluster_params = kwargs['variables']['ClusterParams']
+
+        #export NIOVA_THREAD_COUNT
+        os.environ['NIOVA_THREAD_COUNT'] = cluster_params['nthreads']
 
         if process_type == "ncpc":
 
@@ -324,7 +338,25 @@ class LookupModule(LookupBase):
                 print("file already exist")
             else:
                 os.mkdir(niova_lookout_path)
-
-            niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['aport'], input_values['hport'],
-                                                                 input_values['rport'], input_values['uport'])
+             
+            niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['uport'])
+            print("niova_lookout_process", niova_lookout_process)
             return niova_lookout_process
+
+        elif process_type == "testApp":
+            start_test_application = start_testApp(cluster_params, input_values)
+
+            return start_test_application
+
+        elif process_type == "prometheus":
+            #hport = input_values['Hport']
+            # Set the target ports in the targets.json file for prometheus exporter
+            if cluster_params['prometheus_support'] == "1":
+                prom_targets_path = os.environ['PROMETHEUS_PATH'] + '/' + "targets.json"
+                prom_targets = []
+                with open(prom_targets_path, "r") as f:
+                    prom_targets = json.load(f)
+                    prom_targets.append({'targets':['localhost:'+str(hport)]})
+                with open(prom_targets_path, "w") as f:
+                    json.dump(prom_targets, f)
+

@@ -16,39 +16,29 @@
        failed_when:
          (app_type != "controlplane")
 
-     - name: "{{ recipe_name }}: get the list of non-running servers."
+     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
        include_role:
           name: common
-          tasks_from: get_server_uuid_info
-
-     - name: "Prepare gossip node configs"
-       set_fact: gossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", wantlist=True)}}"
-
-     - name: "{{ recipe_name }}: Start all pmdb servers in the cluster."
-       include_role:
-         name: common
-         tasks_from: start_server_golang
+          tasks_from: pmdb_cluster_init.yml
        vars:
-         ServerUUID: "{{ NonRunningServers[item] }}"
-       loop: "{{ range(0, NonRunningServers | length) | list }}"
-       loop_control:
-          pause: 1
+         number_of_clients: 1
+         number_of_PMDBServers: 4
 
      - name: "{{ recipe_name }}: Start niova-lookout process."
        vars:
          input_param: {
-                 'aport' : '{{ (srv_port | int) + 200 + item }}',
-                 'hport' : '{{ (srv_port | int) + 400 + item }}',
-                 'rport' : '{{ (srv_port | int) + 600 + item }}',
-                 'uport' : '{{ (srv_port | int) + 800 + item }}'
+                 'uport' : '{{ (srv_port | int) + 10 + item }}'
                  }
        set_fact:
-         lookoutUUID: "{{ lookoutUUID | default([]) + [lookup('controlplane', 'niova-lookout', input_param, wantlist=true)] }}"
+         get_lookout: "{{ get_lookout | default([]) + [lookup('controlplane', 'niova-lookout', input_param, wantlist=true)] }}"
        loop: "{{ range(0, nlookouts | int) }}"
+
+     - debug:
+         msg: "{{ get_lookout[0] }}"
 
      - name: "{{ recipe_name }}: Wait until lookout's status gets changed."
        vars:
-         getLookoutUUID: "{{ lookoutUUID[0] }}"
+         getLookoutUUID: "{{ get_lookout[0] }}"
          input_param: {
                   'Operation': 'membership',
                   'OutfileName': 'lookoutMembership'
@@ -63,7 +53,7 @@
        vars:
           input_param: {
              'nisd_dev_size': '21474836480',
-             'lookout_uuid' :  '{{ lookoutUUID[0] }}',
+             'lookout_uuid' :  '{{ get_lookout[0] }}',
              'alt_name': 'nisd{{item}}'
               }
        set_fact:
@@ -75,7 +65,7 @@
          input_param: {
                   'nisd_uuid' : '{{ nisdUUID[0] }}',
                   'uport' : '1053',
-                  'lookout_uuid' :  '{{ lookoutUUID[0] }}'
+                  'lookout_uuid' :  '{{ get_lookout[0] }}'
                   }
        debug:
          msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
@@ -100,7 +90,7 @@
        vars:
          input_param: {
                 'Operation': 'LookoutInfo',
-                'lookout_uuid' : '{{ lookoutUUID[0] }}',
+                'lookout_uuid' : '{{ get_lookout[0] }}',
                 'nisd_uuid' : '{{ nisdUUID[0] }}',
                 'cmd' : 'GET /.*/.*/.*/.*',
                 'OutfileName': 'lookoutInfo',
@@ -120,7 +110,7 @@
          nisd_keys:
               - "/nisd_root_entry/0/uuid"
               - "/nisd_root_entry/0/status"
-         lookout_uuid: "{{ lookoutUUID[0] }}"
+         lookout_uuid: "{{ get_lookout[0] }}"
          nisd_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID[0], nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Verify nisd_root_entry info"
