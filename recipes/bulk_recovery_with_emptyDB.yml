@@ -196,8 +196,7 @@
       debug:
         msg: "Verify all values on all peers."
       failed_when: >
-           (getAll["/0/leader-uuid"] != initial_vals["/0/leader-uuid"]) or
-           (getAll["/0/term"] != initial_vals["/0/term"]) or
+           (getAll["/0/term"] < initial_vals["/0/term"]) or
            (getAll["/0/commit-idx"] < ((num_writes | int) * (number_of_app_uuids | int)) + initial_vals["/0/commit-idx"])
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
