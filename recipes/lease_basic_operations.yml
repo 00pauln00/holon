@@ -72,12 +72,17 @@
       shell: "/usr/bin/uuid"
       register: clientUUID
 
+    - debug:
+        msg:
+         - "client: {{ clientUUID.stdout }}"
+         - "resource: {{ resourceUUID.stdout }}"
+
     - name: "{{ recipe_name }}: Perform 'GET' operation."
       vars:
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'get_lease_{{ resourceUUID.stdout }}'
                  }
@@ -117,7 +122,7 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
                  }
@@ -135,22 +140,19 @@
       failed_when: >
          (lookupLease['results'][0]['item']['outfile_status'] != 0)
 
-    - name: "{{ recipe_name }}: Check if 'LOOKUP' is successful."
+    - name: "{{ recipe_name }}: Check if 'LOOKUP_VALIDATE' is successful."
       vars:
-         rd_response: "{{ lookupLease['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ lookupLease['results'][0]['item']['output_data']['Request'] }}"
+         rd_response: "{{ lookupLease['results'][0]['item']['output_data'] }}"
       debug:
          msg: "Check if LOOKUP is successful"
       failed_when: >
          (rd_response['Status'] != 'Success') or
-         (operation['Operation'] != "LOOKUP_VALIDATE") or
-         (rd_response['Client'] != clientUUID.stdout) or
-         (rd_response['Resource'] != resourceUUID.stdout)
+         (rd_response['LeaseState'] != "GRANTED")
 
     - name: "{{ recipe_name }}: Compare TS of GET and Lookup operation."
       vars:
         wr_timestamp: "{{ getLease['results'][0]['item']['output_data']['Response']['TimeStamp'] }}"
-        rd_timestamp: "{{ lookupLease['results'][0]['item']['output_data']['Response']['TimeStamp'] }}"
+        rd_timestamp: "{{ lookupLease['results'][0]['item']['output_data'] }}"
       debug:
         msg: "compare TS with intitial values"
       failed_when: >
@@ -160,7 +162,7 @@
     - name: "{{ recipe_name }}: Compare TTL."
       vars:
         wr_ttl: "{{ getLease['results'][0]['item']['output_data']['Response']['TTL'] }}"
-        rd_ttl: "{{ lookupLease['results'][0]['item']['output_data']['Response']['TTL'] }}"
+        rd_ttl: "{{ lookupLease['results'][0]['item']['output_data']['TTL'] }}"
       debug:
         msg: "Compare TTL"
       failed_when: >

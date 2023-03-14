@@ -72,13 +72,10 @@ def lease_operation(cluster_params, operation, client, resource, numOfLeases, ge
     outfilePath = "%s/%s/%s_%s" % (base_dir, raft_uuid, outFileName, uuid.uuid1())
     ctl_interface_path = set_environment_variables(cluster_params)
 
-    if numOfLeases == '0' and getLeaseOutfile == '':
+    if getLeaseOutfile == '':
          process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
                                             '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath], stdout = fp, stderr = fp)
-    elif numOfLeases != '0' and getLeaseOutfile == '':
-         process_popen = subprocess.Popen([bin_path, '-o', operation, '-ru', raft_uuid,
-                                              '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath], stdout = fp, stderr = fp)
-    elif numOfLeases != '0' and getLeaseOutfile != '':
+    elif getLeaseOutfile != '':
          process_popen = subprocess.Popen([bin_path, '-o', operation, '-ru', raft_uuid,
                                               '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath], stdout = fp, stderr = fp)
 
