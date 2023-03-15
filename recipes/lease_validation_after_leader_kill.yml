@@ -46,7 +46,7 @@
          input_param: {
                 'client': '{{ ClientUUIDS[item] }}',
                 'resource': '{{ resourceUUIDS[item] }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'get_lease_{{ item }}'
                  }
@@ -63,7 +63,7 @@
          input_param: {
                 'client': '{{ ClientUUIDS[item] }}',
                 'resource': '{{ resourceUUIDS[item] }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_{{ item }}'
                  }
@@ -71,9 +71,9 @@
         lookupLeaseOps: "{{ lookupLeaseOps|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
       failed_when: >
         (lookupLeaseOps[item]['outfile_status'] != 0) or
-        (lookupLeaseOps[item]['output_data']['Response']['Status'] != "Success") or
-        (lookupLeaseOps[item]['output_data']['Response']['LeaseState'] != "GRANTED") or
-        (lookupLeaseOps[item]['output_data']['Response']['TTL'] >= getLeaseOps[item]['output_data']['Response']['TTL'])
+        (lookupLeaseOps[item]['output_data']['Status'] != "Success") or
+        (lookupLeaseOps[item]['output_data']['LeaseState'] != "GRANTED") or
+        (lookupLeaseOps[item]['output_data']['TTL'] >= getLeaseOps[item]['output_data']['Response']['TTL'])
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Kill the Leader."
@@ -100,7 +100,7 @@
          input_param: {
                 'client': '{{ ClientUUIDS[item] }}',
                 'resource': '{{ resourceUUIDS[item] }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_after_new_leader_{{ item }}'
                  }
@@ -109,7 +109,7 @@
       failed_when: >
         (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
         (lookup_aftr_new_leader[item]['output_data']['Response']['Status'] != "Success") or
-        (lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTerm'] <= lookupLeaseOps[item]['output_data']['Response']['TimeStamp']['LeaderTerm'])
+        (lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTerm'] <= lookupLeaseOps[item]['output_data']['LeaderTerm'])
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Get cluster information"

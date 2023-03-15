@@ -96,7 +96,7 @@
          input_param: {
                 'client': '{{ ClientUUIDS[item] }}',
                 'resource': '{{ resourceUUIDS[item] }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_after_leader_to_be_{{ item }}'
                  }
@@ -104,11 +104,11 @@
         new_leader_lookup: "{{ new_leader_lookup|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
       failed_when: >
         (new_leader_lookup[item]['outfile_status'] != 0) or
-        (new_leader_lookup[item]['output_data']['Response']['Status'] != "Success") or
-        (new_leader_lookup[item]['output_data']['Response']['TTL'] > 60) or
-        (new_leader_lookup[item]['output_data']['Response']['TTL'] < 20) or
-        (new_leader_lookup[item]['output_data']['Response']['LeaseState'] != "GRANTED") or
-        (new_leader_lookup[item]['output_data']['Response']['TimeStamp']['LeaderTerm'] <= lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTerm'])
+        (new_leader_lookup[item]['output_data']['Status'] != "Success") or
+        (new_leader_lookup[item]['output_data']['TTL'] > 60) or
+        (new_leader_lookup[item]['output_data']['TTL'] < 20) or
+        (new_leader_lookup[item]['output_data']['LeaseState'] != "GRANTED") or
+        (new_leader_lookup[item]['output_data']['LeaderTerm'] <= lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTerm'])
       loop: "{{ range(0, no_of_leases) | list }}"
 
     rescue:

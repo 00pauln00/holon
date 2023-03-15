@@ -37,7 +37,7 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'get_lease_refresh_{{ resourceUUID.stdout }}'
                  }
@@ -69,12 +69,12 @@
          (wr_response['TTL'] != 60) or
          (wr_response['LeaseState'] != "GRANTED")
 
-    - name: "{{ recipe_name }}: Perform 'LOOKUP' operation."
+    - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation."
       vars:
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_before_refresh_{{ resourceUUID.stdout }}'
                  }
@@ -94,13 +94,11 @@
 
     - name: "{{ recipe_name }}: Check if LOOKUP before REFRESH operation is successful."
       vars:
-         rd_response: "{{ lookupLease_before_refresh['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ lookupLease_before_refresh['results'][0]['item']['output_data']['Request'] }}"
+         rd_response: "{{ lookupLease_before_refresh['results'][0]['item']['output_data'] }}"
       debug:
          msg: "Check if lookup is successful."
       failed_when: >
          (rd_response['Status'] != "Success") or
-         (operation['Operation'] != "LOOKUP_VALIDATE") or
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout) or
          (rd_response['LeaseState'] != "GRANTED")
@@ -114,7 +112,7 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'refresh_lease_{{ resourceUUID.stdout }}'
                  }
@@ -146,12 +144,12 @@
         (rf_response['Client'] != clientUUID.stdout) or
         (rf_response['Resource'] != resourceUUID.stdout)
 
-    - name: "{{ recipe_name }}: Perform 'LOOKUP' operation again after refreshing the lease."
+    - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation again after refreshing the lease."
       vars:
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_after_refresh_{{ resourceUUID.stdout }}'
                  }
@@ -169,30 +167,28 @@
       failed_when: >
          (lookupLease_after_refresh['results'][0]['item']['outfile_status'] != 0)
 
-    - name: "{{ recipe_name }}: Check if LOOKUP is successful."
+    - name: "{{ recipe_name }}: Check if LOOKUP_VALIDATE is successful."
       vars:
-         rd_response: "{{ lookupLease_after_refresh['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ lookupLease_after_refresh['results'][0]['item']['output_data']['Request'] }}"
+         rd_response: "{{ lookupLease_after_refresh['results'][0]['item']['output_data'] }}"
       debug:
          msg: "Check if lookup is successful"
       failed_when: >
          (rd_response['Status'] != "Success") or
-         (operation['Operation'] != "LOOKUP_VALIDATE") or
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout)
 
     - name: "{{ recipe_name }}: Compare values of lookup before performing refresh and after performing refresh."
       vars:
-        leaseValues_before: "{{ lookupLease_before_refresh['results'][0]['item']['output_data']['Response'] }}"
-        leaseValues_after: "{{ lookupLease_after_refresh['results'][0]['item']['output_data']['Response'] }}"
+        leaseValues_before: "{{ lookupLease_before_refresh['results'][0]['item']['output_data'] }}"
+        leaseValues_after: "{{ lookupLease_after_refresh['results'][0]['item']['output_data'] }}"
       debug:
         msg: "Check the value of TTL should be increased than the previous lookup as refresh operation is performed"
       failed_when: >
-        ( leaseValues_after['TTL'] >= 60 ) or
-        ( leaseValues_after['TimeStamp']['LeaderTime'] <= leaseValues_before['TimeStamp']['LeaderTime'] ) or
-        ( leaseValues_after['TimeStamp']['LeaderTerm'] != leaseValues_before['TimeStamp']['LeaderTerm'] ) or
-        ( leaseValues_after['Client'] != leaseValues_before['Client'] ) or
-        ( leaseValues_after['Resource'] != leaseValues_before['Resource'] )
+        (leaseValues_after['TTL'] >= 60) or
+        (leaseValues_after['LeaderTime'] <= leaseValues_before['LeaderTime']) or
+        (leaseValues_after['LeaderTerm'] != leaseValues_before['LeaderTerm']) or
+        (leaseValues_after['Client'] != leaseValues_before['Client']) or
+        (leaseValues_after['Resource'] != leaseValues_before['Resource'])
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
