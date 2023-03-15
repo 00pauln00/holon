@@ -27,12 +27,12 @@
       pause:
         seconds: 60
 
-    - name: "{{ recipe_name }}: Perform 'LOOKUP' operation after lease getting expired."
+    - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation after lease getting expired."
       vars:
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_after_lease_expired_{{ resourceUUID.stdout }}'
                  }
@@ -52,16 +52,15 @@
 
     - name: "{{ recipe_name }}: Check if 'LOOKUP' after lease expired is successful and should return Expired."
       vars:
-         rd_response: "{{ lookupLease_after_lease_expired['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ lookupLease_after_lease_expired['results'][0]['item']['output_data']['Request'] }}"
-         pervious_leaderTime: "{{ lookupLease['results'][0]['item']['output_data']['Response']['TimeStamp']['LeaderTime'] }}"
+         rd_response: "{{ lookupLease_after_lease_expired['results'][0]['item']['output_data'] }}"
+         pervious_leaderTime: "{{ lookupLease['results'][0]['item']['output_data']['LeaderTime'] }}"
       debug:
          msg: "Check if LOOKUP is successful"
       failed_when: >
          (rd_response['Status'] != 'Success') or
          (rd_response['TTL'] != 0) or
          (rd_response['LeaseState'] != "EXPIRED") or
-         (rd_response['TimeStamp']['LeaderTime'] == pervious_leaderTime)
+         (rd_response['LeaderTime'] == pervious_leaderTime)
 
     - name: Generate new client
       shell: "/usr/bin/uuid"
@@ -72,7 +71,7 @@
          input_param: {
                 'client': '{{ clientUUID1.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'get_lease_already_expired_lease{{ resourceUUID.stdout }}'
                  }

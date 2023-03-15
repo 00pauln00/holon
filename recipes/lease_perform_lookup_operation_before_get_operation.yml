@@ -31,12 +31,12 @@
       shell: "/usr/bin/uuid"
       register: clientUUID
 
-    - name: "{{ recipe_name }}: Perform 'LOOKUP' operation."
+    - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation."
       vars:
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
                  }
@@ -54,21 +54,19 @@
       failed_when: >
          (lookupLease['results'][0]['item']['outfile_status'] != 0)
 
-    - name: "{{ recipe_name }}: Check if 'LOOKUP' response gives 'key not found'."
+    - name: "{{ recipe_name }}: Check if 'LOOKUP_VALIDATE' response gives 'key not found'."
       vars:
-         rd_response: "{{ lookupLease['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ lookupLease['results'][0]['item']['output_data']['Request'] }}"
+         rd_response: "{{ lookupLease['results'][0]['item']['output_data'] }}"
       debug:
          msg: "Check if LOOKUP is successful"
       failed_when: >
          (rd_response['Status'] != "Key not found") or
-         (operation['Operation'] != "LOOKUP_VALIDATE") or
          (rd_response['Client'] != "00000000-0000-0000-0000-000000000000") or
          (rd_response['Resource'] != "00000000-0000-0000-0000-000000000000") or
          (rd_response['LeaseState'] != "INVALID") or
          (rd_response['TTL'] != 0) or
-         (rd_response['TimeStamp']['LeaderTerm'] != 0) or
-         (rd_response['TimeStamp']['LeaderTime'] != 0)
+         (rd_response['LeaderTerm'] != 0) or
+         (rd_response['LeaderTime'] != 0)
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

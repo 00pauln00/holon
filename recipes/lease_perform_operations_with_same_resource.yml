@@ -41,7 +41,7 @@
          input_param: {
                 'client': '{{ clientUUID1.stdout }}',
                 'resource': '{{ new_resourceUUID.stdout }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'get_lease_cli1_{{ new_resourceUUID.stdout }}'
                  }
@@ -88,7 +88,7 @@
          input_param: {
                 'client': '{{ clientUUID2.stdout }}',
                 'resource': '{{ new_resourceUUID.stdout }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'get_lease_cli2_{{ new_resourceUUID.stdout }}'
                  }
@@ -118,7 +118,7 @@
          wr_response: "{{ getLease_client2['results'][0]['item']['output_data']['Response'] }}"
          operation: "{{ getLease_client2['results'][0]['item']['output_data']['Request'] }}"
       debug:
-         msg: "Check if GET is successful: {{ wr_response }}, {{ operation }}"
+         msg: "Check if GET is successful"
       failed_when: >
          (operation['Operation'] != "GET") or
          (wr_response['LeaseState'] != "INVALID")
@@ -126,12 +126,12 @@
     - pause:
         seconds: 60
 
-    - name: "{{ recipe_name }}: Perform 'LOOKUP' operation for client-1."
+    - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation for client-1."
       vars:
          input_param: {
                 'client': '{{ clientUUID1.stdout }}',
                 'resource': '{{ new_resourceUUID.stdout }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_cli1_{{ new_resourceUUID.stdout }}'
                  }
@@ -154,16 +154,14 @@
         msg: "Check LOOKUP status"
       no_log: true
       failed_when: >
-         (lookupLeaseCli1['results'][0]['item']['output_data']['Response']['Status'] != 'Success')
+         (lookupLeaseCli1['results'][0]['item']['output_data']['Status'] != 'Success')
 
     - name: "{{ recipe_name }}: Check 'LOOKUP' for client-1 should expired."
       vars:
-         rd_response: "{{ lookupLeaseCli1['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ lookupLeaseCli1['results'][0]['item']['output_data']['Request'] }}"
+         rd_response: "{{ lookupLeaseCli1['results'][0]['item']['output_data'] }}"
       debug:
          msg: "Check if LOOKUP is successful."
       failed_when: >
-         (operation['Operation'] != "LOOKUP_VALIDATE") or
          (rd_response['LeaseState'] != "EXPIRED")
 
     - name: "{{ recipe_name }}: Again Perform 'GET' operation from client 2"
@@ -171,7 +169,7 @@
          input_param: {
                 'client': '{{ clientUUID2.stdout }}',
                 'resource': '{{ new_resourceUUID.stdout }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'cli2_GET_{{ new_resourceUUID.stdout }}'
                  }
