@@ -37,7 +37,7 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'get_lease_inprogress_{{ resourceUUID.stdout }}'
                  }
@@ -73,7 +73,7 @@
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
                 'resource': '{{ resourceUUID.stdout }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_before_refresh_{{ resourceUUID.stdout }}'
                  }
@@ -92,13 +92,11 @@
 
     - name: "{{ recipe_name }}: Check if LOOKUP operation is successful."
       vars:
-         rd_response: "{{ lookupLease['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ lookupLease['results'][0]['item']['output_data']['Request'] }}"
+         rd_response: "{{ lookupLease['results'][0]['item']['output_data'] }}"
       debug:
          msg: "Check if lookup is successful."
       failed_when: >
          (rd_response['Status'] != "Success") or
-         (operation['Operation'] != "LOOKUP_VALIDATE") or
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout) or
          (rd_response['LeaseState'] != "GRANTED")

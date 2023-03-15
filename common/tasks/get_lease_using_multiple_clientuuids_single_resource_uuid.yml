@@ -5,7 +5,7 @@
            input_param: {
                 'client': '{{ ClientUUID[item] }}',
                 'resource': '{{ resourceUUID }}',
-                'numOfLeases': '0',
+                'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'get_lease_{{ outfilename[item] }}'
                  }
