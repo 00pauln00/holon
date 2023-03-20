@@ -161,12 +161,13 @@
 
      - name: "{{ recipe_name }}: Check if 'LOOKUP' is successful."
        vars:
-         wr_response: "{{ lookupLease['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ lookupLease['results'][0]['item']['output_data']['Request'] }}"
+         rd_response: "{{ lookupLease['results'][0]['item']['output_data']['Response'] }}"
+         rd_operation: "{{ lookupLease['results'][0]['item']['output_data']['Request'] }}"
+         rd_request: "{{ lookupLease['results'][0]['item']['output_data']['Request'] }}"
        debug:
          msg: "Check if LOOKUP is successful"
        failed_when: >
-         (operation['Operation'] != "LOOKUP") or
-         (wr_response['Status'] != "Success") or
-         (wr_response['Client'] != clientUUID.stdout|string) or
-         (wr_response['Resource'] != resourceUUID.stdout|string) 
+         (rd_operation['Operation'] != "LOOKUP") or
+         (rd_response['Status'] != "Success") or
+         (rd_response['Client'] != rd_request['Client']) or
+         (rd_response['Resource'] != rd_request['Resource'])
