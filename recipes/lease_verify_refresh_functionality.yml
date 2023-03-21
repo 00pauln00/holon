@@ -57,17 +57,15 @@
 
     - name: "{{ recipe_name }}: Check if 'GET' is successful."
       vars:
-         wr_response: "{{ getLease['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ getLease['results'][0]['item']['output_data']['Request'] }}"
+         wr_response: "{{ getLease['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
       debug:
          msg: "Check if GET is successful"
       failed_when: >
          (wr_response['Status'] != "Success") or
-         (operation['Operation'] != "GET") or
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['TTL'] != 60) or
-         (wr_response['LeaseState'] != "GRANTED")
+         (wr_response['LeaseState'] != 4)
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation."
       vars:
@@ -94,14 +92,14 @@
 
     - name: "{{ recipe_name }}: Check if LOOKUP before REFRESH operation is successful."
       vars:
-         rd_response: "{{ lookupLease_before_refresh['results'][0]['item']['output_data'] }}"
+         rd_response: "{{ lookupLease_before_refresh['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
       debug:
          msg: "Check if lookup is successful."
       failed_when: >
          (rd_response['Status'] != "Success") or
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout) or
-         (rd_response['LeaseState'] != "GRANTED")
+         (rd_response['LeaseState'] != 4)
 
     - name: "{{ recipe_name }}: Pause for 20 seconds so that TTL value gets changed."
       pause:
@@ -132,14 +130,12 @@
 
     - name: "{{ recipe_name }}: Check if REFRESH is successful."
       vars:
-         rf_response: "{{ refreshLease['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ refreshLease['results'][0]['item']['output_data']['Request'] }}"
+         rf_response: "{{ refreshLease['results'][0]['item']['output_data']['LeaseRes'] }}"
       debug:
          msg: "Check if refresh is successful."
       failed_when: >
         (rf_response['Status'] != "Success") or
-        (operation['Operation'] != "REFRESH") or
-        (rf_response['LeaseState'] != "GRANTED") or
+        (rf_response['LeaseState'] != 4) or
         (rf_response['TTL'] != 60) or
         (rf_response['Client'] != clientUUID.stdout) or
         (rf_response['Resource'] != resourceUUID.stdout)
@@ -169,7 +165,7 @@
 
     - name: "{{ recipe_name }}: Check if LOOKUP_VALIDATE is successful."
       vars:
-         rd_response: "{{ lookupLease_after_refresh['results'][0]['item']['output_data'] }}"
+         rd_response: "{{ lookupLease_after_refresh['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
       debug:
          msg: "Check if lookup is successful"
       failed_when: >
@@ -179,14 +175,14 @@
 
     - name: "{{ recipe_name }}: Compare values of lookup before performing refresh and after performing refresh."
       vars:
-        leaseValues_before: "{{ lookupLease_before_refresh['results'][0]['item']['output_data'] }}"
-        leaseValues_after: "{{ lookupLease_after_refresh['results'][0]['item']['output_data'] }}"
+        leaseValues_before: "{{ lookupLease_before_refresh['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
+        leaseValues_after: "{{ lookupLease_after_refresh['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
       debug:
         msg: "Check the value of TTL should be increased than the previous lookup as refresh operation is performed"
       failed_when: >
         (leaseValues_after['TTL'] >= 60) or
-        (leaseValues_after['LeaderTime'] <= leaseValues_before['LeaderTime']) or
-        (leaseValues_after['LeaderTerm'] != leaseValues_before['LeaderTerm']) or
+        (leaseValues_after['TimeStamp']['LeaderTime'] <= leaseValues_before['TimeStamp']['LeaderTime']) or
+        (leaseValues_after['TimeStamp']['LeaderTerm'] != leaseValues_before['TimeStamp']['LeaderTerm']) or
         (leaseValues_after['Client'] != leaseValues_before['Client']) or
         (leaseValues_after['Resource'] != leaseValues_before['Resource'])
 

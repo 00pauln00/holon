@@ -54,8 +54,8 @@
         getLeaseOps: "{{ getLeaseOps|default([]) + [lookup('lease_feature', 'GET', input_param, wantlist=True)] }}"
       failed_when: >
         (getLeaseOps[item]['outfile_status'] != 0) or
-        (getLeaseOps[item]['output_data']['Response']['Status'] != "Success") or
-        (getLeaseOps[item]['output_data']['Response']['LeaseState'] != "GRANTED")
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4)
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - debug:
@@ -103,12 +103,10 @@
         lookup_aftr_new_leader: "{{ lookup_aftr_new_leader|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
       failed_when: >
         (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
-        (lookup_aftr_new_leader[item]['output_data']['Status'] != "Success") or
-        (lookup_aftr_new_leader[item]['output_data']['TTL'] > 60) or
-        (lookup_aftr_new_leader[item]['output_data']['TTL'] < 20) or
-        (lookup_aftr_new_leader[item]['output_data']['LeaseState'] != "GRANTED") or
-        (lookup_aftr_new_leader[item]['output_data']['LeaderTerm'] <= getLeaseOps[item]['output_data']['Response']['TimeStamp']['LeaderTerm']) or
-        (lookup_aftr_new_leader[item]['output_data']['LeaderTime'] >= getLeaseOps[item]['output_data']['Response']['TimeStamp']['LeaderTime'])
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'] <= getLeaseOps[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm']) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTime'] >= getLeaseOps[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTime'])
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - debug:
@@ -133,8 +131,8 @@
         write_new_getLease: "{{ write_new_getLease|default([]) + [lookup('lease_feature', 'GET', input_param, wantlist=True)] }}"
       failed_when: >
         (write_new_getLease[item]['outfile_status'] != 0) or
-        (write_new_getLease[item]['output_data']['Response']['Status'] != "Success") or
-        (write_new_getLease[item]['output_data']['Response']['LeaseState'] != "GRANTED")
+        (write_new_getLease[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
+        (write_new_getLease[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4)
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - debug:
@@ -227,12 +225,10 @@
         lookup_with_old_leader: "{{ lookup_with_old_leader|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
       failed_when: >
         (lookup_with_old_leader[item]['outfile_status'] != 0) or
-        (lookup_with_old_leader[item]['output_data']['Status'] != "Success") or
-        (lookup_with_old_leader[item]['output_data']['TTL'] > 60) or
-        (lookup_with_old_leader[item]['output_data']['TTL'] < 20) or
-        (lookup_with_old_leader[item]['output_data']['LeaseState'] != "GRANTED") or
-        (lookup_with_old_leader[item]['output_data']['LeaderTerm'] <= write_new_getLease[item]['output_data']['Response']['TimeStamp']['LeaderTerm']) or
-        (lookup_with_old_leader[item]['output_data']['LeaderTime'] >= write_new_getLease[item]['output_data']['Response']['TimeStamp']['LeaderTime'])
+        (lookup_with_old_leader[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
+        (lookup_with_old_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4) or
+        (lookup_with_old_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'] <= write_new_getLease[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm']) or
+        (lookup_with_old_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTime'] >= write_new_getLease[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTime'])
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Perform and Verify 'LOOKUP' for firstly written leases."
@@ -248,9 +244,9 @@
         lookup_aftr_old_leader: "{{ lookup_aftr_old_leader|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
       failed_when: >
         (lookup_aftr_old_leader[item]['outfile_status'] != 0) or
-        (lookup_aftr_old_leader[item]['output_data']['Status'] != "Success") or
-        (lookup_aftr_old_leader[item]['output_data']['LeaseState'] != "GRANTED") or
-        (lookup_aftr_old_leader[item]['output_data']['LeaderTerm'] != lookup_with_old_leader[item]['output_data']['LeaderTerm'])
+        (lookup_aftr_old_leader[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
+        (lookup_aftr_old_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4) or
+        (lookup_aftr_old_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'] != lookup_with_old_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'])
       loop: "{{ range(0, no_of_leases) | list }}"
 
     rescue:

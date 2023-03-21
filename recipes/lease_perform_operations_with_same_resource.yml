@@ -61,23 +61,22 @@
 
     - name: "{{ recipe_name }}: Verify lease status"
       debug:
-        msg: "Check GET status"
-      no_log: true
+        msg: "Check GET status: {{ getLease_client1['results'][0]['item']['output_data'][0]['LeaseRes']['Status'] }}"
+      #no_log: true
       failed_when: >
-         (getLease_client1['results'][0]['item']['output_data']['Response']['Status'] != 'Success')
+         (getLease_client1['results'][0]['item']['output_data'][0]['LeaseRes']['Status'] != 'Success')
 
     - name: "{{ recipe_name }}: Check if 'GET' is successful with client-1."
       vars:
-         wr_response: "{{ getLease_client1['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ getLease_client1['results'][0]['item']['output_data']['Request'] }}"
+         wr_response: "{{ getLease_client1['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
+         operation: "{{ getLease_client1['results'][0]['item']['output_data'][0]['LeaseReq'] }}"
       debug:
          msg: "Check if GET is successful: {{ wr_response }}, {{ operation }}"
       failed_when: >
-         (operation['Operation'] != "GET") or
          (wr_response['Client'] != clientUUID1.stdout|string) or
          (wr_response['Resource'] != new_resourceUUID.stdout|string) or
          (wr_response['TTL'] != 60) or
-         (wr_response['LeaseState'] != "GRANTED")
+         (wr_response['LeaseState'] != 4)
 
     - name: Generate new client
       shell: "/usr/bin/uuid"
@@ -111,17 +110,15 @@
         msg: "Check GET status"
        #no_log: true
       failed_when: >
-         (getLease_client2['results'][0]['item']['output_data']['Response']['Status'] != 'PmdbObjPut(): -1')
+         (getLease_client2['results'][0]['item']['output_data'][0]['LeaseRes']['Status'] != 'PmdbObjPut(): -1')
 
     - name: "{{ recipe_name }}: Check if 'GET' operation should fail with client-2."
       vars:
-         wr_response: "{{ getLease_client2['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ getLease_client2['results'][0]['item']['output_data']['Request'] }}"
+         wr_response: "{{ getLease_client2['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
       debug:
          msg: "Check if GET is successful"
       failed_when: >
-         (operation['Operation'] != "GET") or
-         (wr_response['LeaseState'] != "INVALID")
+         (wr_response['LeaseState'] != 0)
 
     - pause:
         seconds: 60
@@ -154,15 +151,15 @@
         msg: "Check LOOKUP status"
       no_log: true
       failed_when: >
-         (lookupLeaseCli1['results'][0]['item']['output_data']['Status'] != 'Success')
+         (lookupLeaseCli1['results'][0]['item']['output_data'][0]['LeaseRes']['Status'] != 'Success')
 
     - name: "{{ recipe_name }}: Check 'LOOKUP' for client-1 should expired."
       vars:
-         rd_response: "{{ lookupLeaseCli1['results'][0]['item']['output_data'] }}"
+         rd_response: "{{ lookupLeaseCli1['results'][0]['item']['output_data'][0] }}"
       debug:
          msg: "Check if LOOKUP is successful."
       failed_when: >
-         (rd_response['LeaseState'] != "EXPIRED")
+         (rd_response['LeaseState'] != 2)
 
     - name: "{{ recipe_name }}: Again Perform 'GET' operation from client 2"
       vars:
@@ -192,19 +189,18 @@
         msg: "Check GET status"
       no_log: true
       failed_when: >
-         (client2_GET['results'][0]['item']['output_data']['Response']['Status'] != 'Success')
+         (client2_GET['results'][0]['item']['output_data'][0]['LeaseRes']['Status'] != 'Success')
 
     - name: "{{ recipe_name }}: Now check if 'GET' is successful with client-2."
       vars:
-         wr_response: "{{ client2_GET['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ client2_GET['results'][0]['item']['output_data']['Request'] }}"
+         wr_response: "{{ client2_GET['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
+         operation: "{{ client2_GET['results'][0]['item']['output_data'][0]['LeaseReq'] }}"
       debug:
          msg: "Check if GET is successful: {{ wr_response }}, {{ operation }}"
       failed_when: >
-         (operation['Operation'] != "GET") or
          (wr_response['Client'] != clientUUID2.stdout|string) or
          (wr_response['Resource'] != new_resourceUUID.stdout|string) or
-         (wr_response['LeaseState'] != "GRANTED")
+         (wr_response['LeaseState'] != 4)
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

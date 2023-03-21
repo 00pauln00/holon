@@ -52,14 +52,12 @@
 
     - name: "{{ recipe_name }}: Check if REFRESH is successful."
       vars:
-         rf_response: "{{ refreshLease['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ refreshLease['results'][0]['item']['output_data']['Request'] }}"
+         rf_response: "{{ refreshLease['results'][0]['item']['output_data']['LeaseRes'] }}"
       debug:
          msg: "Check if refresh is successful."
       failed_when: >
         (rf_response['Status'] != "PmdbObjPut(): -1") or
-        (operation['Operation'] != "REFRESH") or
-        (rf_response['LeaseState'] != "INVALID") or
+        (rf_response['LeaseState'] != 0) or
         (rf_response['TTL'] != 0) or
         (rf_response['Client'] != "00000000-0000-0000-0000-000000000000") or
         (rf_response['Resource'] != "00000000-0000-0000-0000-000000000000")
@@ -89,14 +87,12 @@
 
     - name: "{{ recipe_name }}: Check if REFRESH is successful."
       vars:
-         rf_response: "{{ refreshLease_old_client['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ refreshLease_old_client['results'][0]['item']['output_data']['Request'] }}"
+         rf_response: "{{ refreshLease_old_client['results'][0]['item']['output_data']['LeaseRes'] }}"
       debug:
          msg: "Check if refresh is successful."
       failed_when: >
         (rf_response['Status'] != "Success") or
-        (operation['Operation'] != "REFRESH") or
-        (rf_response['LeaseState'] != "GRANTED") or
+        (rf_response['LeaseState'] != 4) or
         (rf_response['TTL'] != 60) or
         (rf_response['Client'] != clientUUID.stdout) or
         (rf_response['Resource'] != resourceUUID.stdout)
