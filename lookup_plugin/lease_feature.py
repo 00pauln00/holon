@@ -72,15 +72,25 @@ def lease_operation(cluster_params, operation, client, resource, numOfLeases, ge
     outfilePath = "%s/%s/%s_%s" % (base_dir, raft_uuid, outFileName, uuid.uuid1())
     ctl_interface_path = set_environment_variables(cluster_params)
 
-    if getLeaseOutfile == '':
+    if getLeaseOutfile == '' and resource != '':
          process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
                                             '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath], stdout = fp, stderr = fp)
-    elif getLeaseOutfile != '':
+    elif getLeaseOutfile == '' and resource == '':
+         process_popen = subprocess.Popen([bin_path, '-o', operation, '-ru', raft_uuid,
+                                            '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath], stdout = fp, stderr = fp)
+    elif getLeaseOutfile != '' and resource == '':
          process_popen = subprocess.Popen([bin_path, '-o', operation, '-ru', raft_uuid,
                                               '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath], stdout = fp, stderr = fp)
-
     os.fsync(fp)
     return process_popen, outfilePath
+
+def add_outfile_path_to_dict(jsonOutfile):
+    output_data = get_the_output(jsonOutfile)
+    output_data['detailedJsonPath'] = jsonOutfile
+    singleResponseJson = "%s_single_response" % jsonOutfile
+    output_data['singleResponseJson'] = singleResponseJson
+
+    return output_data
 
 def extracting_dictionary(cluster_params, operation, input_values):
     client = ""
@@ -93,8 +103,7 @@ def extracting_dictionary(cluster_params, operation, input_values):
         get_lease, outfile = lease_operation(cluster_params, operation, input_values['client'], input_values['resource'],
                                                             input_values['numOfLeases'], input_values['getLeaseOutfile'],
                                                             input_values['outFileName'])
-        output_data = get_the_output(outfile)
-        output_data['outfilePath'] = outfile
+        output_data = add_outfile_path_to_dict(outfile)
         return output_data
 
     if operation == "LOOKUP" or operation == "LOOKUP_VALIDATE":

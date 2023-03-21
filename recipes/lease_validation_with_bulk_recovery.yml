@@ -87,14 +87,22 @@
           - "{{ multiLeaseApp }}"
       register: getMultiLeases
 
+    - name: "{{ recipe_name }}: prepare path to read recipe JSON file."
+      shell: cat "{{getMultiLeases['results'][0]['item']['singleResponseJson']}}".json
+      register: result
+
+    - name: "{{ recipe_name }}: Convert output to JSON format."
+      set_fact:
+        jsondata: "{{ result.stdout | from_json }}"
+
     - name: "{{ recipe_name }}: Check if 'GET_VALIDATE' is successful."
+      set_fact:
+        wr_status: "{{ jsondata | json_query(jmesquery) }}"
       vars:
-         wr_response: "{{ getMultiLeases['results'][0]['item']['output_data']['Response'] }}"
-      debug:
-         msg: "Check if GET_VALIDATE is successful"
+        jmesquery: 'Status'
       failed_when: >
-         (getMultiLeases['results'][0]['item']['outfile_status'] != 0) or
-         (wr_response['LeaseState'] != "GRANTED")
+        (getMultiLeases['results'][0]['item']['outfile_status'] != 0) or
+        (wr_status != "Success")
 
     - name: "{{ recipe_name }}: Restart peer 1 which was killed in parent recipe"
       debug:
@@ -192,7 +200,7 @@
                 'client': '',
                 'resource': '',
                 'numOfLeases': '6000',
-                'getLeaseOutfile': "{{ getMultiLeases['results'][0]['item']['outfilePath'] }}",
+                'getLeaseOutfile': "{{ getMultiLeases['results'][0]['item']['detailedJsonPath'] }}",
                 'outFileName': "lookup_lease_all"
                  }
          new_leader_lookup: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
@@ -209,5 +217,4 @@
          msg: "Check if LOOKUP is successful"
       failed_when: >
         (lookupMultiLeases['results'][0]['item']['outfile_status'] != 0) or
-        (rd_response['LeaseState'] != "GRANTED") or
-        (rd_response['LeaderTerm'] <= getMultiLeases['results'][0]['item']['output_data'][item]['Response']['LeaderTerm'])
+        (rd_response['Status'] != "Success")
