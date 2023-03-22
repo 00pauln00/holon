@@ -52,15 +52,15 @@
 
     - name: "{{ recipe_name }}: Check if 'LOOKUP' after lease expired is successful and should return Expired."
       vars:
-         rd_response: "{{ lookupLease_after_lease_expired['results'][0]['item']['output_data'] }}"
-         pervious_leaderTime: "{{ lookupLease['results'][0]['item']['output_data']['LeaderTime'] }}"
+         rd_response: "{{ lookupLease_after_lease_expired['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
+         pervious_leaderTime: "{{ lookupLease['results'][0]['item']['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTime'] }}"
       debug:
          msg: "Check if LOOKUP is successful"
       failed_when: >
          (rd_response['Status'] != 'Success') or
          (rd_response['TTL'] != 0) or
-         (rd_response['LeaseState'] != "EXPIRED") or
-         (rd_response['LeaderTime'] == pervious_leaderTime)
+         (rd_response['LeaseState'] != 2) or
+         (rd_response['TimeStamp']['LeaderTime'] == pervious_leaderTime)
 
     - name: Generate new client
       shell: "/usr/bin/uuid"
@@ -91,17 +91,15 @@
 
     - name: "{{ recipe_name }}: Check if 'GET' is successful."
       vars:
-         wr_response: "{{ getLease['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ getLease['results'][0]['item']['output_data']['Request'] }}"
+         wr_response: "{{ getLease['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
       debug:
          msg: "Check if GET is successful"
       failed_when: >
          (wr_response['Status'] != "Success") or
-         (operation['Operation'] != "GET") or
          (wr_response['Client'] != clientUUID1.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['TTL'] != 60) or
-         (wr_response['LeaseState'] != "GRANTED")
+         (wr_response['LeaseState'] != 4)
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

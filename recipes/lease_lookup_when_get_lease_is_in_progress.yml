@@ -56,17 +56,15 @@
 
     - name: "{{ recipe_name }}: Check if 'GET' is successful."
       vars:
-         wr_response: "{{ getLease['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ getLease['results'][0]['item']['output_data']['Request'] }}"
+         wr_response: "{{ getLease['results'][0]['item']['output_data']['LeaseRes'] }}"
       debug:
          msg: "Check if GET is successful"
       failed_when: >
-         (wr_response['Status'] != "") or
-         (operation['Operation'] != "") or
+         (wr_response['Status'] != "Success") or
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['TTL'] != 60) or
-         (wr_response['LeaseState'] != "")
+         (wr_response['LeaseState'] != 4)
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP' operation."
       vars:
@@ -99,4 +97,4 @@
          (rd_response['Status'] != "Success") or
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout) or
-         (rd_response['LeaseState'] != "GRANTED")
+         (rd_response['LeaseState'] != 4)

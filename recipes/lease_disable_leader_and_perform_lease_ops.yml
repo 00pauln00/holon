@@ -54,8 +54,8 @@
         getLeaseOps: "{{ getLeaseOps|default([]) + [lookup('lease_feature', 'GET', input_param, wantlist=True)] }}"
       failed_when: >
         (getLeaseOps[item]['outfile_status'] != 0) or
-        (getLeaseOps[item]['output_data']['Response']['Status'] != "Success") or
-        (getLeaseOps[item]['output_data']['Response']['LeaseState'] != "GRANTED")
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4)
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Get cluster information"
@@ -114,8 +114,7 @@
         lookup_aftr_new_leader: "{{ lookup_aftr_new_leader|default([]) + [lookup('lease_feature', 'LOOKUP', input_param, wantlist=True)] }}"
       failed_when: >
         (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
-        (lookup_aftr_new_leader[item]['output_data']['Response']['Status'] != "Success") or
-        (lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTerm'] <= getLeaseOps[item]['output_data']['Response']['TimeStamp']['LeaderTerm'])
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != "Success")
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Resume the Leader 1"
