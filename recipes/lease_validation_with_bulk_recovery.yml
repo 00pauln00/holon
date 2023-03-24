@@ -218,3 +218,9 @@
       failed_when: >
         (lookupMultiLeases['results'][0]['item']['outfile_status'] != 0) or
         (rd_response['Status'] != "Success")
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
+
