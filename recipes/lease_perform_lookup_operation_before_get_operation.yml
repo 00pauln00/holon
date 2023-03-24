@@ -65,8 +65,8 @@
          (rd_response['Resource'] != "00000000-0000-0000-0000-000000000000") or
          (rd_response['LeaseState'] != 0) or
          (rd_response['TTL'] != 0) or
-         (rd_response['LeaderTerm'] != 0) or
-         (rd_response['LeaderTime'] != 0)
+         (rd_response['TimeStamp']['LeaderTerm'] != 0) or
+         (rd_response['TimeStamp']['LeaderTime'] != 0)
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
