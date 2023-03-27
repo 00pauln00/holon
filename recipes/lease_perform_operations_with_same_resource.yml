@@ -155,7 +155,7 @@
 
     - name: "{{ recipe_name }}: Check 'LOOKUP' for client-1 should expired."
       vars:
-         rd_response: "{{ lookupLeaseCli1['results'][0]['item']['output_data'][0] }}"
+         rd_response: "{{ lookupLeaseCli1['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
       debug:
          msg: "Check if LOOKUP is successful."
       failed_when: >
