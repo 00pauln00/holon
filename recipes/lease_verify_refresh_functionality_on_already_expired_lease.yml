@@ -1,11 +1,11 @@
-- import_playbook: lease_verify_refresh_functionality.yml
+- import_playbook: lease_basic_refresh_operation_on_valid_lease.yml
 
 - name: "lease_verify_refresh_functionality_on_already_expired_lease"
   hosts: localhost
   connection: local
   vars:
     recipe_name: "lease_verify_refresh_functionality_on_already_expired_lease"
-    parent: "lease_verify_refresh_functionality"
+    parent: "lease_basic_refresh_operation_on_valid_lease"
 
   tasks:
   - block:
