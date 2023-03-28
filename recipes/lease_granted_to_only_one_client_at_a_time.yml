@@ -1,10 +1,10 @@
 - import_playbook: lease_basic_operations.yml
 
-- name: "lease_perform_operations_with_same_resource"
+- name: "lease_granted_to_only_one_client_at_a_time"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "lease_perform_operations_with_same_resource"
+     recipe_name: "lease_granted_to_only_one_client_at_a_time"
      parent: lease_basic_operations
 
   tasks:
