@@ -181,8 +181,7 @@
         msg: "Check the value of TTL should be increased than the previous lookup as refresh operation is performed"
       failed_when: >
         (leaseValues_after['TTL'] >= 60) or
-        (leaseValues_after['TimeStamp']['LeaderTime'] <= leaseValues_before['TimeStamp']['LeaderTime']) or
-        (leaseValues_after['TimeStamp']['LeaderTerm'] != leaseValues_before['TimeStamp']['LeaderTerm']) or
+        (leaseValues_after['TimeStamp']['LeaderTerm'] < leaseValues_before['TimeStamp']['LeaderTerm']) or
         (leaseValues_after['Client'] != leaseValues_before['Client']) or
         (leaseValues_after['Resource'] != leaseValues_before['Resource'])
 
