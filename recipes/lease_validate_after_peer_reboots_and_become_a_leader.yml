@@ -1,10 +1,10 @@
 - import_playbook: lease_basic_operations.yml
 
-- name: "lease_validation_on_new_leader"
+- name: "Lease_validate_after_peer_reboots_and_become_a_leader"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "lease_validation_on_new_leader"
+     recipe_name: "Lease_validate_after_peer_reboots_and_become_a_leader"
      parent: "lease_basic_operations"
      no_of_leases: 4
 

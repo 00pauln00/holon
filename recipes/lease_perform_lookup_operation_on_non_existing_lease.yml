@@ -1,10 +1,10 @@
 - import_playbook: lease_basic_operations.yml
 
-- name: "lease_perform_lookup_operation_before_get_operation"
+- name: "lease_perform_lookup_operation_on_non_existing_lease"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "lease_perform_lookup_operation_before_get_operation"
+     recipe_name: "lease_perform_lookup_operation_on_non_existing_lease"
      parent: "lease_basic_operations"
 
   tasks:

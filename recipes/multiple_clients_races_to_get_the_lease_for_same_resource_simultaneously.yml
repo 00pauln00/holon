@@ -1,10 +1,10 @@
 - import_playbook: lease_basic_operations.yml
 
-- name: "get lease with multiple clients and single resource uuid"
+- name: "Multiple clients Races to get the lease for same resource simultaneously"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "get_leases_with_multiple_clients_with_single_resource_uuid"
+     recipe_name: "multiple_clients_races_to_get_the_lease_for_same_resource_simultaneously"
      parent: lease_basic_operations.yml 
      no_of_leases: 10
 

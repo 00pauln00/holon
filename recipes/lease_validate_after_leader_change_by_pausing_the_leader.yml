@@ -1,10 +1,10 @@
 - import_playbook: lease_basic_operations.yml
 
-- name: "disable_leader_and_perform_lease_ops"
+- name: "lease_validate_after_leader_change_by_pausing_the_leader"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "disable_leader_and_perform_lease_ops"
+     recipe_name: "lease_validate_after_leader_change_by_pausing_the_leader"
      parent: lease_basic_operations.yml
      no_of_leases: 4
 

@@ -1,9 +1,10 @@
 - import_playbook: lease_validation_after_leader_kill.yml
-- name: "lease_validation_on_peer_restart"
+
+- name: "Lease_validate_after_follower_reboots_and_become_a_leader"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "lease_validation_on_peer_restart"
+     recipe_name: "Lease_validate_after_follower_reboots_and_become_a_leader"
      parent: "lease_validation_after_leader_kill"
      no_of_leases: 4
 
