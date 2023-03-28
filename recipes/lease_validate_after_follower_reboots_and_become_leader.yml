@@ -1,11 +1,10 @@
-- import_playbook: lease_validation_after_leader_kill.yml
-
-- name: "Lease_validate_after_follower_reboots_and_become_a_leader"
+- import_playbook: lease_validate_after_leader_kill.yml
+- name: "lease_validate_after_follower_reboots_and_become_leader"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "Lease_validate_after_follower_reboots_and_become_a_leader"
-     parent: "lease_validation_after_leader_kill"
+     recipe_name: "lease_validate_aftr_follower_reboots_and_become_leader"
+     parent: "lease_validate_after_leader_kill"
      no_of_leases: 4
 
   tasks:
@@ -22,6 +21,15 @@
          msg: "app_type is: {{ app_type }}"
       failed_when:
          (app_type != "lease")
+
+    - name: "{{ recipe_name }}: Get cluster information"
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
+
+    - name: "{{ recipe_name }}: Kill the Peer 1 i.e. any 1 follower."
+      debug:
+        msg: "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[0], wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Restart peer 1 which was killed in parent recipe"
       debug:

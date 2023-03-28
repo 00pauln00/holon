@@ -1,10 +1,10 @@
 - import_playbook: lease_basic_operations.yml
 
-- name: "Lease_validate_after_peer_reboots_and_become_a_leader"
+- name: "lease_validate_after_leader_reboots_and_become_leader_again"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "Lease_validate_after_peer_reboots_and_become_a_leader"
+     recipe_name: "lease_validate_after_leader_reboots_and_become_leader_again"
      parent: "lease_basic_operations"
      no_of_leases: 4
 
@@ -55,6 +55,8 @@
       failed_when: >
         (getLeaseOps[item]['outfile_status'] != 0) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item]) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4)
       loop: "{{ range(0, no_of_leases) | list }}"
 
@@ -105,6 +107,8 @@
         (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource']) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'] <= getLeaseOps[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm']) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTime'] >= getLeaseOps[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTime'])
       loop: "{{ range(0, no_of_leases) | list }}"
@@ -132,6 +136,8 @@
       failed_when: >
         (write_new_getLease[item]['outfile_status'] != 0) or
         (write_new_getLease[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
+        (write_new_getLease[item]['output_data'][0]['LeaseRes']['Client'] != Client[item]) or
+        (write_new_getLease[item]['output_data'][0]['LeaseRes']['Resource'] != Resource[item]) or
         (write_new_getLease[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4)
       loop: "{{ range(0, no_of_leases) | list }}"
 
@@ -227,6 +233,8 @@
         (lookup_with_old_leader[item]['outfile_status'] != 0) or
         (lookup_with_old_leader[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
         (lookup_with_old_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4) or
+        (lookup_with_old_leader[item]['output_data'][0]['LeaseRes']['Client'] != write_new_getLease[item]['output_data'][0]['LeaseRes']['Client']) or
+        (lookup_with_old_leader[item]['output_data'][0]['LeaseRes']['Resource'] != write_new_getLease[item]['output_data'][0]['LeaseRes']['Resource']) or
         (lookup_with_old_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'] <= write_new_getLease[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm']) or
         (lookup_with_old_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTime'] >= write_new_getLease[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTime'])
       loop: "{{ range(0, no_of_leases) | list }}"
@@ -246,6 +254,8 @@
         (lookup_aftr_old_leader[item]['outfile_status'] != 0) or
         (lookup_aftr_old_leader[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
         (lookup_aftr_old_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4) or
+        (lookup_aftr_old_leader[item]['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
+        (lookup_aftr_old_leader[item]['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource']) or
         (lookup_aftr_old_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'] != lookup_with_old_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'])
       loop: "{{ range(0, no_of_leases) | list }}"
 

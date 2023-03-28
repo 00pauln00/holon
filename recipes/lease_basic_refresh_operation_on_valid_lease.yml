@@ -1,10 +1,10 @@
 - import_playbook: lease_basic_operations.yml
 
-- name: "lease_verify_refresh_functionality"
+- name: "lease_basic_refresh_operation_on_valid_lease"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "lease_verify_refresh_functionality"
+    recipe_name: "lease_basic_refresh_operation_on_valid_lease"
     parent: "lease_basic_operations"
 
 

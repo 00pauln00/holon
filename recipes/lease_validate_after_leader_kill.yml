@@ -1,10 +1,10 @@
 - import_playbook: lease_basic_operations.yml
 
-- name: "lease_validation_after_leader_kill"
+- name: "lease_validate_after_leader_kill"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "lease_validation_after_leader_kill"
+     recipe_name: "lease_validate_after_leader_kill"
      parent: "lease_basic_operations"
      no_of_leases: 4
 
@@ -55,6 +55,8 @@
       failed_when: >
         (getLeaseOps[item]['outfile_status'] != 0) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item]) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4)
       loop: "{{ range(0, no_of_leases) | list }}"
 
@@ -72,6 +74,8 @@
       failed_when: >
         (lookupLeaseOps[item]['outfile_status'] != 0) or
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
+        (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
+        (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource']) or
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4) or
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['TTL'] >= getLeaseOps[item]['output_data'][0]['LeaseRes']['TTL'])
       loop: "{{ range(0, no_of_leases) | list }}"
@@ -111,15 +115,6 @@
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'] <= lookupLeaseOps[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'])
       loop: "{{ range(0, no_of_leases) | list }}"
-
-    - name: "{{ recipe_name }}: Get cluster information"
-      include_role:
-        name: common
-        tasks_from: get_follower_stats
-
-    - name: "{{ recipe_name }}: Kill the Peer 1 to restart it in child recipe."
-      debug:
-        msg: "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[0], wantlist=True) }}"
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
