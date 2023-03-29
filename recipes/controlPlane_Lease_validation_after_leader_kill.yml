@@ -48,8 +48,8 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to getLease and verify it."
        vars:
          input_param: {
-                'Key': '{{ ClientUUIDS[item] }}',
-                'Value': '{{ resourceUUIDS[item] }}',
+                'Key': '{{ resourceUUIDS[item] }}',
+                'Value': '{{ ClientUUIDS[item] }}',
                 'Operation': 'GetLease',
                 'Port': '3000',
                 'OutfileName': 'ncpc_getLease_{{ resourceUUIDS[item] }}',
@@ -65,8 +65,8 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to lookupLease."
        vars:
          input_param: {
-                'Key': '{{ ClientUUIDS[item] }}',
-                'Value': '{{ resourceUUIDS[item] }}',
+                'Key': '{{ resourceUUIDS[item] }}',
+                'Value': '{{ ClientUUIDS[item] }}',
                 'Operation': 'LookupLease',
                 'Port': '3000',
                 'OutfileName': 'ncpc_lookupLease_{{ resourceUUIDS[item] }}',
@@ -100,8 +100,8 @@
      - name: "{{ recipe_name }}: Verify already taken leases gets updated with new leader."
        vars:
          input_param: {
-                'Key': '{{ ClientUUIDS[item] }}',
-                'Value': '{{ resourceUUIDS[item] }}',
+                'Key': '{{ resourceUUIDS[item] }}',
+                'Value': '{{ ClientUUIDS[item] }}',
                 'Operation': 'LookupLease',
                 'Port': '3000',
                 'OutfileName': 'ncpc_lookupLease_aftr_new_leader_{{ resourceUUIDS[item] }}',

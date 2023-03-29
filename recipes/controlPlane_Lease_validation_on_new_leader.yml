@@ -40,8 +40,8 @@
     - name: "{{ recipe_name }}: Starting controlplane_client to getLease."
       vars:
          input_param: {
-                'Key': '{{ clientUUID.stdout }}',
-                'Value': '{{ resourceUUID.stdout }}',
+                'Key': '{{ resourceUUID.stdout }}',
+                'Value': '{{ clientUUID.stdout }}',
                 'Operation': 'GetLease',
                 'Port': '5000',
                 'OutfileName': 'getLease_{{ resourceUUID.stdout }}',
@@ -100,8 +100,8 @@
     - name: "{{ recipe_name }}: Starting controlplane_client to lookupLease."
       vars:
          input_param: {
-                'Key': '{{ clientUUID.stdout }}',
-                'Value': '{{ resourceUUID.stdout }}',
+                'Key': '{{ resourceUUID.stdout }}',
+                'Value': '{{ clientUUID.stdout }}',
                 'Operation': 'LookupLease',
                 'Port': '5000',
                 'OutfileName': 'lookupLease_{{ resourceUUID.stdout }}',
@@ -137,8 +137,8 @@
     - name: "{{ recipe_name }}: Starting controlplane_client to getLease."
       vars:
          input_param: {
-                'Key': '{{ clientUUID1.stdout }}',
-                'Value': '{{ resourceUUID1.stdout }}',
+                'Key': '{{ resourceUUID1.stdout }}',
+                'Value': '{{ clientUUID1.stdout }}',
                 'Operation': 'GetLease',
                 'Port': '5000',
                 'OutfileName': 'getLease_{{ resourceUUID1.stdout }}',
@@ -242,8 +242,8 @@
     - name: "{{ recipe_name }}: Starting controlplane_client to lookupLease for the first lease."
       vars:
          input_param: {
-                'Key': '{{ clientUUID.stdout }}',
-                'Value': '{{ resourceUUID.stdout }}',
+                'Key': '{{ resourceUUID.stdout }}',
+                'Value': '{{ clientUUID.stdout }}',
                 'Operation': 'LookupLease',
                 'Port': '5000',
                 'OutfileName': 'lookupLease_{{ resourceUUID.stdout }}',
@@ -271,8 +271,8 @@
     - name: "{{ recipe_name }}: Starting controlplane_client to lookupLease for the second lease."
       vars:
          input_param: {
-                'Key': '{{ clientUUID1.stdout }}',
-                'Value': '{{ resourceUUID1.stdout }}',
+                'Key': '{{ resourceUUID1.stdout }}',
+                'Value': '{{ clientUUID1.stdout }}',
                 'Operation': 'LookupLease',
                 'Port': '5000',
                 'OutfileName': 'lookupLease_{{ resourceUUID1.stdout }}',

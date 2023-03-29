@@ -79,12 +79,15 @@
      - name: Generate new client
        shell: "/usr/bin/uuid"
        register: clientUUID
+ 
+     - debug:
+         msg: "{{ resourceUUID}},    and     {{ clientUUID }}"
 
      - name: "{{ recipe_name }}: Starting controlplane_client to getLease."
        vars:
          input_param: {
-                'Key': '{{ clientUUID.stdout }}',
-                'Value': '{{ resourceUUID.stdout }}',
+                'Key': '{{ resourceUUID.stdout }}',
+                'Value': '{{ clientUUID.stdout }}',
                 'Operation': 'GetLease',
                 'Port': '5000',
                 'OutfileName': 'getLease_{{ resourceUUID.stdout }}',
@@ -114,8 +117,8 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to refreshLease."
        vars:
          input_param: {
-                'Key': '{{ clientUUID.stdout }}',
-                'Value': '{{ resourceUUID.stdout }}',
+                'Key': '{{ resourceUUID.stdout }}',
+                'Value': '{{ clientUUID.stdout }}',
                 'Operation': 'RefreshLease',
                 'Port': '5000',
                 'OutfileName': 'refreshLease_{{ resourceUUID.stdout }}',
@@ -145,8 +148,8 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to lookupLease."
        vars:
          input_param: {
-                'Key': '{{ clientUUID.stdout }}',
-                'Value': '{{ resourceUUID.stdout }}',
+                'Key': '{{ resourceUUID.stdout }}',
+                'Value': '{{ clientUUID.stdout }}',
                 'Operation': 'LookupLease',
                 'Port': '5000',
                 'OutfileName': 'lookupLease_{{ resourceUUID.stdout }}',

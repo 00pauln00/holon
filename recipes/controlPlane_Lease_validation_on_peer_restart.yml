@@ -1,4 +1,5 @@
-- import_playbook: controlPlane_lease_validation_after_leader_kill.yml
+- import_playbook: controlPlane_Lease_validation_after_leader_kill.yml
+
 - name: "controlPlane_lease_validation_on_peer_restart"
   hosts: localhost
   connection: local
@@ -94,8 +95,8 @@
     - name: "{{ recipe_name }}: Verify already taken leases gets updated with new leader."
       vars:
          input_param: {
-                'Key': '{{ ClientUUIDS[item] }}',
-                'Value': '{{ resourceUUIDS[item] }}',
+                'Key': '{{ resourceUUIDS[item] }}',
+                'Value': '{{ ClientUUIDS[item] }}',
                 'Operation': 'LookupLease',
                 'Port': '3000',
                 'OutfileName': 'ncpc_lookupLease_aftr_new_leader_to_be{{ resourceUUIDS[item] }}',
