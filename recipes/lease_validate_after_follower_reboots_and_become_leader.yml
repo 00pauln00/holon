@@ -31,7 +31,7 @@
       debug:
         msg: "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[0], wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: Restart peer 1 which was killed in parent recipe"
+    - name: "{{ recipe_name }}: Reboot Peer 1."
       debug:
         msg: "{{ lookup('niova_raftprocess', 'start', FollowerUUIDs[0], wantlist=True) }}"
 

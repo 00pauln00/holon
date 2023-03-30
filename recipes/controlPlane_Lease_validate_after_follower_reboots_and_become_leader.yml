@@ -1,11 +1,11 @@
-- import_playbook: controlPlane_Lease_validation_after_leader_kill.yml
+- import_playbook: controlPlane_Lease_validate_after_leader_kill.yml
 
-- name: "controlPlane_lease_validation_on_peer_restart"
+- name: "controlPlane_lease_validate_after_follower_reboots_and_become_leader"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "controlPlane_lease_validation_on_peer_restart"
-     parent: "controlPlane_lease_validation_after_leader_kill"
+     recipe_name: "controlPlane_lease_validate_after_follower_reboots_and_become_leader"
+     parent: "controlPlane_lease_validate_after_leader_kill"
      no_of_leases: 4
 
   tasks:
@@ -23,7 +23,16 @@
       failed_when:
          (app_type != "controlplane")
 
-    - name: "{{ recipe_name }}: Restart peer 1 which was killed in parent recipe"
+    - name: "{{ recipe_name }}: Get cluster information"
+      include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+    - name: "{{ recipe_name }}: Kill the Peer 1 i.e. any 1 follower."
+      debug:
+         msg: "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[0], wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Reboot Peer 1."
       debug:
         msg: "{{ lookup('niova_raftprocess', 'start', FollowerUUIDs[0], wantlist=True) }}"
 
@@ -106,8 +115,8 @@
          lookup_aftr_new_leader_to_be: "{{ lookup_aftr_new_leader_to_be|default([]) + [lookup('controlplane', 'lease', input_param, wantlist=True)] }}"
       failed_when: >
         (lookup_aftr_new_leader_to_be[item]['outfile_status'] != 0) or
-        (lookup_aftr_new_leader_to_be[item]['output_data']['Response']['Status'] != "Success") or
-        (lookup_aftr_new_leader_to_be[item]['output_data']['Response']['TimeStamp']['LeaderTerm'] <= lookup_aftr_new_leader[item]['output_data']['Response']['TimeStamp']['LeaderTerm'])
+        (lookup_aftr_new_leader_to_be[item]['output_data']['LeaseRes']['Status'] != "Success") or
+        (lookup_aftr_new_leader_to_be[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm'] <= lookup_aftr_new_leader[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm'])
       loop: "{{ range(0, no_of_leases) | list }}"
 
     rescue:
