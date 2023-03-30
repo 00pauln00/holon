@@ -97,9 +97,6 @@
           - "{{ ncpc_get }}"
        register: getLease
 
-     - debug:
-         msg: "{{ getLease['results'][0]['item']['output_data']['LeaseRes'] }}"
-
      - name: "{{ recipe_name }}: Check if 'GET' is successful."
        vars:
           wr_response: "{{ getLease['results'][0]['item']['output_data']['LeaseRes'] }}"
