@@ -80,9 +80,6 @@
        shell: "/usr/bin/uuid"
        register: clientUUID
  
-     - debug:
-         msg: "{{ resourceUUID}},    and     {{ clientUUID }}"
-
      - name: "{{ recipe_name }}: Starting controlplane_client to getLease."
        vars:
          input_param: {
@@ -100,19 +97,20 @@
           - "{{ ncpc_get }}"
        register: getLease
 
+     - debug:
+         msg: "{{ getLease['results'][0]['item']['output_data']['LeaseRes'] }}"
+
      - name: "{{ recipe_name }}: Check if 'GET' is successful."
        vars:
-          wr_response: "{{ getLease['results'][0]['item']['output_data']['Response'] }}"
-          operation: "{{ getLease['results'][0]['item']['output_data']['Request'] }}"
+          wr_response: "{{ getLease['results'][0]['item']['output_data']['LeaseRes'] }}"
        debug:
          msg: "Check if GET is successful"
        failed_when: >
            (wr_response['Status'] != 'Success') or
-           (operation['Operation'] != "GET") or
-           (wr_response['Client'] != clientUUID.stdout|string) or
-           (wr_response['Resource'] != resourceUUID.stdout|string) or
+           (wr_response['Client'] != clientUUID.stdout | string) or
+           (wr_response['Resource'] != resourceUUID.stdout | string) or
            (wr_response['TTL'] != 60) or
-           (wr_response['LeaseState'] != "GRANTED")
+           (wr_response['LeaseState'] != 4)
 
      - name: "{{ recipe_name }}: Starting controlplane_client to refreshLease."
        vars:
@@ -133,17 +131,15 @@
 
      - name: "{{ recipe_name }}: Check if 'REFRESH' is successful."
        vars:
-         wr_response: "{{ refreshLease['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ refreshLease['results'][0]['item']['output_data']['Request'] }}"
+         wr_response: "{{ refreshLease['results'][0]['item']['output_data']['LeaseRes'] }}"
        debug:
          msg: "Check if REFRESH is successful"
        failed_when: >
          (wr_response['Status'] != 'Success') or
-         (operation['Operation'] != "REFRESH") or
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['TTL'] != 60) or
-         (wr_response['LeaseState'] != "GRANTED")
+         (wr_response['LeaseState'] != 4)
      
      - name: "{{ recipe_name }}: Starting controlplane_client to lookupLease."
        vars:
@@ -164,12 +160,16 @@
 
      - name: "{{ recipe_name }}: Check if 'LOOKUP' is successful."
        vars:
-         wr_response: "{{ lookupLease['results'][0]['item']['output_data']['Response'] }}"
-         operation: "{{ lookupLease['results'][0]['item']['output_data']['Request'] }}"
+         wr_response: "{{ lookupLease['results'][0]['item']['output_data']['LeaseRes'] }}"
        debug:
          msg: "Check if LOOKUP is successful"
        failed_when: >
-         (operation['Operation'] != "LOOKUP") or
          (wr_response['Status'] != "Success") or
          (wr_response['Client'] != clientUUID.stdout|string) or
-         (wr_response['Resource'] != resourceUUID.stdout|string) 
+         (wr_response['Resource'] != resourceUUID.stdout|string)
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
+ 
