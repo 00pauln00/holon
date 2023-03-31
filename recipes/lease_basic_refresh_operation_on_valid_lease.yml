@@ -61,7 +61,7 @@
       debug:
          msg: "Check if GET is successful"
       failed_when: >
-         (wr_response['Status'] != "Success") or
+         (wr_response['Status'] != 0) or
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['TTL'] != 60) or
@@ -96,7 +96,7 @@
       debug:
          msg: "Check if lookup is successful."
       failed_when: >
-         (rd_response['Status'] != "Success") or
+         (rd_response['Status'] != 0) or
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout) or
          (rd_response['LeaseState'] != 4)
@@ -134,7 +134,7 @@
       debug:
          msg: "Check if refresh is successful."
       failed_when: >
-        (rf_response['Status'] != "Success") or
+        (rf_response['Status'] != 0) or
         (rf_response['LeaseState'] != 4) or
         (rf_response['TTL'] != 60) or
         (rf_response['Client'] != clientUUID.stdout) or
@@ -169,7 +169,7 @@
       debug:
          msg: "Check if lookup is successful"
       failed_when: >
-         (rd_response['Status'] != "Success") or
+         (rd_response['Status'] != 0) or
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout)
 

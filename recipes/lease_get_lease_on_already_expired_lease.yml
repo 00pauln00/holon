@@ -57,7 +57,7 @@
       debug:
          msg: "Check if LOOKUP is successful"
       failed_when: >
-         (rd_response['Status'] != 'Success') or
+         (rd_response['Status'] != 0) or
          (rd_response['TTL'] != 0) or
          (rd_response['LeaseState'] != 2) or
          (rd_response['TimeStamp']['LeaderTime'] == pervious_leaderTime)
@@ -91,7 +91,7 @@
       debug:
          msg: "Check if GET is successful"
       failed_when: >
-         (wr_response['Status'] != "Success") or
+         (wr_response['Status'] != 0) or
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['TTL'] != 60) or
@@ -134,7 +134,7 @@
       debug:
          msg: "Check if GET is successful"
       failed_when: >
-         (wr_response['Status'] != "Success") or
+         (wr_response['Status'] != 0) or
          (wr_response['Client'] != clientUUID1.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['TTL'] != 60) or

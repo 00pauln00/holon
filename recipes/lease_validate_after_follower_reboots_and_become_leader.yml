@@ -113,7 +113,7 @@
         new_leader_lookup: "{{ new_leader_lookup|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
       failed_when: >
         (new_leader_lookup[item]['outfile_status'] != 0) or
-        (new_leader_lookup[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
+        (new_leader_lookup[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
         (new_leader_lookup[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'] <= lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'])
       loop: "{{ range(0, no_of_leases) | list }}"
 

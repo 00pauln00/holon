@@ -64,7 +64,7 @@
         msg: "Check GET status: {{ getLease_client1['results'][0]['item']['output_data'][0]['LeaseRes']['Status'] }}"
       #no_log: true
       failed_when: >
-         (getLease_client1['results'][0]['item']['output_data'][0]['LeaseRes']['Status'] != 'Success')
+         (getLease_client1['results'][0]['item']['output_data'][0]['LeaseRes']['Status'] != 0)
 
     - name: "{{ recipe_name }}: Check if 'GET' is successful with client-1."
       vars:
@@ -110,7 +110,7 @@
         msg: "Check GET status"
        #no_log: true
       failed_when: >
-         (getLease_client2['results'][0]['item']['output_data'][0]['LeaseRes']['Status'] != 'PmdbObjPut(): -1')
+         (getLease_client2['results'][0]['item']['output_data'][0]['LeaseRes']['Status'] != -1)
 
     - name: "{{ recipe_name }}: Check if 'GET' operation should fail with client-2."
       vars:
@@ -151,7 +151,7 @@
         msg: "Check LOOKUP status"
       no_log: true
       failed_when: >
-         (lookupLeaseCli1['results'][0]['item']['output_data'][0]['LeaseRes']['Status'] != 'Success')
+         (lookupLeaseCli1['results'][0]['item']['output_data'][0]['LeaseRes']['Status'] != 0)
 
     - name: "{{ recipe_name }}: Check 'LOOKUP' for client-1 should expired."
       vars:
@@ -189,7 +189,7 @@
         msg: "Check GET status"
       no_log: true
       failed_when: >
-         (client2_GET['results'][0]['item']['output_data'][0]['LeaseRes']['Status'] != 'Success')
+         (client2_GET['results'][0]['item']['output_data'][0]['LeaseRes']['Status'] != 0)
 
     - name: "{{ recipe_name }}: Now check if 'GET' is successful with client-2."
       vars:
