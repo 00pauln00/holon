@@ -1,0 +1,216 @@
+- import_playbook: lease_basic_operations.yml
+
+- name: "lease_validate_with_bulk_recovery"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "lease_validate_with_bulk_recovery"
+     parent: "lease_basic_operations"
+     raft_root_entry_keys:
+              - "/raft_net_info/max-scan-entries"
+              - "/raft_net_info/log-reap-factor"
+
+  tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    # check for the app_type
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+      vars:
+         app_type: "{{ app_type }}"
+      debug:
+         msg: "app_type is: {{ app_type }}"
+      failed_when:
+         (app_type != "lease")
+
+    - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Apply fault injection on all peers i.e. 1, 2 and 3."
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ NRunningPeers[item] }}"
+        fault_injection_name: "raft_force_set_max_scan_entries"
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Set max scan entries to 1000 and log reap factor to 2 "
+      include_role:
+        name: common
+        tasks_from: set_maxScan_logReap_factor_andVerify
+      vars:
+          Peers: "{{ NRunningPeers[item] }}"
+      loop: "{{ range(0, NRunningPeers | length) |list }}"
+
+    - name: "{{ recipe_name }}: Get cluster information"
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
+
+    - name: "{{ recipe_name }}: Kill the Leader."
+      debug:
+        msg: "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[0], wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Get the running peers list."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Perform 'GET_VALIDATE' operation."
+      vars:
+         input_param: {
+                'client': '',
+                'resource': '',
+                'numOfLeases': '6000',
+                'getLeaseOutfile': '',
+                'outFileName': 'get_lease_all'
+                 }
+         multiLeaseApp: "{{ lookup('lease_feature', 'GET_VALIDATE', input_param, wantlist=True) }}"
+      debug:
+         msg: "Perform GET_VALIDATE operation"
+      with_items:
+          - "{{ multiLeaseApp }}"
+      register: getMultiLeases
+
+    - name: "{{ recipe_name }}: prepare path to read recipe JSON file."
+      shell: cat "{{getMultiLeases['results'][0]['item']['singleResponseJson']}}".json
+      register: result
+
+    - name: "{{ recipe_name }}: Convert output to JSON format."
+      set_fact:
+        jsondata: "{{ result.stdout | from_json }}"
+
+    - name: "{{ recipe_name }}: Check if 'GET_VALIDATE' is successful."
+      set_fact:
+        wr_status: "{{ jsondata | json_query(jmesquery) }}"
+      vars:
+        jmesquery: 'Status'
+      failed_when: >
+        (getMultiLeases['results'][0]['item']['outfile_status'] != 0) or
+        (wr_status != "Success")
+
+    - name: "{{ recipe_name }}: Restart peer 1 which was killed."
+      debug:
+        msg: "{{ lookup('niova_raftprocess', 'start', FollowerUUIDs[0], wantlist=True) }}"
+
+    - name: "Wait for Peer 1 to bootup completely"
+      debug:
+        msg: "Wait till bootup completes for Peer {{ LeaderUUID['/0/leader-uuid'] }}."
+      vars:
+        stage: "restart_peer1"
+      until: (lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], '/raft_root_entry', wantlist=True)| dict2items | map(attribute='value') | list | first != "null") and (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry/0/state', wantlist=True)| dict2items | map(attribute='value') | list | first != "booting")
+      retries: 60
+      delay: 1
+
+    - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Disable message receive on all peers for leader overthrow"
+      vars:
+         stage: "stage1_rcv_false"
+         cmd: "net_recv_enabled@false"
+         where: "/ctl_svc_nodes/net_recv_enabled@true"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "Wait for Disable message receive on all peers"
+      debug:
+        msg: "Wait for disabling net_rcv_enabled."
+      vars:
+        stage: "verify_disable_msg"
+        disable_key:
+             - "/ctl_svc_nodes/*/net_recv_enabled"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], disable_key, wantlist=True)| dict2items | map(attribute='value') | list | first == False
+      retries: 60
+      delay: 1
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Selected leader-to-be"
+      set_fact:
+        Peer1: "{{ FollowerUUIDs[0] }}"
+
+    - debug:
+        msg: "Leader to be: {{ Peer1 }}"
+
+    - name: "{{ recipe_name }}: Enable receive on all peers from the leader-to-be."
+      vars:
+         stage: "stage2_set_leader"
+         cmd: "net_recv_enabled@true"
+         where: "/ctl_svc_nodes/uuid@{{ Peer1 }}"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - pause: seconds=3
+
+    - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
+      vars:
+         stage: "stage3_rcv_true"
+         cmd: "net_recv_enabled@true"
+         where: "/ctl_svc_nodes/net_recv_enabled@false"
+      debug:
+       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', Peer1, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "Wait for Enable message receive on all peers"
+      debug:
+        msg: "Wait for Enabling net_rcv_enabled."
+      vars:
+        stage: "verify_enable_msg"
+        enable_key:
+             - "/ctl_svc_nodes/*/net_recv_enabled"
+      until: lookup('niova_ctlrequest', 'lookup', Peer1, enable_key, wantlist=True)| dict2items | map(attribute='value') | list | first == True
+      retries: 60
+      delay: 1
+
+    - name: "{{ recipe_name }}: Verify new leader is elected successfully"
+      vars:
+         stage: "get_all_for_new_leader"
+         leader_key:
+            - '/raft_root_entry/0/leader-uuid'
+      debug:
+        msg:
+         - "Waiting for new leader election"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], leader_key, wantlist=True) | dict2items | map(attribute='value') | list | first == Peer1
+      retries: 20
+      delay: 2
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation."
+      vars:
+         input_param: {
+                'client': '',
+                'resource': '',
+                'numOfLeases': '6000',
+                'getLeaseOutfile': "{{ getMultiLeases['results'][0]['item']['detailedJsonPath'] }}",
+                'outFileName': "lookup_lease_all"
+                 }
+         new_leader_lookup: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
+      debug:
+         msg: "Multiple LOOKUP lease operation"
+      with_items:
+          - "{{ new_leader_lookup }}"
+      register: lookupMultiLeases
+
+    - name: "{{ recipe_name }}: Check if 'LOOKUP_VALIDATE' is successful."
+      vars:
+         rd_response: "{{ lookupMultiLeases['results'][0]['item']['output_data'] }}"
+      debug:
+         msg: "Check if LOOKUP is successful"
+      failed_when: >
+        (lookupMultiLeases['results'][0]['item']['outfile_status'] != 0) or
+        (rd_response['Status'] != "Success")
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
+

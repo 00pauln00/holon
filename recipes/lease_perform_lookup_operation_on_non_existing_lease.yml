@@ -1,0 +1,74 @@
+- import_playbook: lease_basic_operations.yml
+
+- name: "lease_perform_lookup_operation_on_non_existing_lease"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "lease_perform_lookup_operation_on_non_existing_lease"
+     parent: "lease_basic_operations"
+
+  tasks:
+  - block:
+
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    # check for the app_type
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+      vars:
+         app_type: "{{ app_type }}"
+      debug:
+         msg: "app_type is: {{ app_type }}"
+      failed_when:
+         (app_type != "lease")
+
+    - name: Generate new resource
+      shell: "/usr/bin/uuid"
+      register: resourceUUID
+
+    - name: Generate new client
+      shell: "/usr/bin/uuid"
+      register: clientUUID
+
+    - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
+      debug:
+         msg: "lookup lease operation"
+      with_items:
+        - "{{ leaseApp }}"
+      register: lookupLease
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check outfile status: {{ lookupLease['results'][0]['item']['outfile_status'] }}"
+      no_log: true
+      failed_when: >
+         (lookupLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check if 'LOOKUP_VALIDATE' response gives 'key not found'."
+      vars:
+         rd_response: "{{ lookupLease['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
+      debug:
+         msg: "Check if LOOKUP is successful"
+      failed_when: >
+         (rd_response['Status'] != -1) or
+         (rd_response['Client'] != "00000000-0000-0000-0000-000000000000") or
+         (rd_response['Resource'] != "00000000-0000-0000-0000-000000000000") or
+         (rd_response['LeaseState'] != 0) or
+         (rd_response['TTL'] != 0) or
+         (rd_response['TimeStamp']['LeaderTerm'] != 0) or
+         (rd_response['TimeStamp']['LeaderTime'] != 0)
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true

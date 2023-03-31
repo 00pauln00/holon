@@ -1,0 +1,126 @@
+- import_playbook: controlPlane_Lease_validate_after_leader_kill.yml
+
+- name: "controlPlane_lease_validate_after_follower_reboots_and_become_leader"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "controlPlane_lease_validate_after_follower_reboots_and_become_leader"
+     parent: "controlPlane_lease_validate_after_leader_kill"
+     no_of_leases: 4
+
+  tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    # check for the app_type
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+      vars:
+         app_type: "{{ app_type }}"
+      debug:
+         msg: "app_type is: {{ app_type }}"
+      failed_when:
+         (app_type != "controlplane")
+
+    - name: "{{ recipe_name }}: Get cluster information"
+      include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+    - name: "{{ recipe_name }}: Kill the Peer 1 i.e. any 1 follower."
+      debug:
+         msg: "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[0], wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Reboot Peer 1."
+      debug:
+        msg: "{{ lookup('niova_raftprocess', 'start', FollowerUUIDs[0], wantlist=True) }}"
+
+    - name: "Wait for Peer 1 to bootup completely"
+      debug:
+        msg: "Wait till bootup completes for Peer {{ FollowerUUIDs[0] }}."
+      vars:
+        stage: "restart_peer1"
+      until: (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry', wantlist=True)| dict2items | map(attribute='value') | list | first != "null") and (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry/0/state', wantlist=True)| dict2items | map(attribute='value') | list | first != "booting")
+      retries: 60
+      delay: 1
+
+    - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Disable message receive on all peers for leader overthrow"
+      vars:
+         stage: "stage1_rcv_false"
+         cmd: "net_recv_enabled@false"
+         where: "/ctl_svc_nodes/net_recv_enabled@true"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Lets sleep for sometime before checking the values"
+      wait_for:
+        timeout: 5
+
+    - name: "{{ recipe_name }}: Selected leader-to-be"
+      set_fact:
+        Peer1: "{{ FollowerUUIDs[0] }}"
+
+    - debug:
+        msg: "Leader to be: {{ Peer1 }}"
+
+    - name: "{{ recipe_name }}: Enable receive on all peers from the leader-to-be."
+      vars:
+         stage: "stage2_set_leader"
+         cmd: "net_recv_enabled@true"
+         where: "/ctl_svc_nodes/uuid@{{ Peer1 }}"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - pause: seconds=3
+
+    - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
+      vars:
+         stage: "stage3_rcv_true"
+         cmd: "net_recv_enabled@true"
+         where: "/ctl_svc_nodes/net_recv_enabled@false"
+      debug:
+       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', Peer1, cmd, where, wantlist=True) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Verify new leader is elected successfully"
+      vars:
+         stage: "get_all_for_new_leader"
+      debug:
+        msg:
+         - "Waiting for new leader election"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first == Peer1
+      retries: 10
+      delay: 2
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Verify already taken leases gets updated with new leader."
+      vars:
+         input_param: {
+                'Key': '{{ resourceUUIDS[item] }}',
+                'Value': '{{ ClientUUIDS[item] }}',
+                'Operation': 'LookupLease',
+                'Port': '3000',
+                'OutfileName': 'ncpc_lookupLease_aftr_new_leader_to_be{{ resourceUUIDS[item] }}',
+                'wait_for_outfile': True
+                 }
+      set_fact:
+         lookup_aftr_new_leader_to_be: "{{ lookup_aftr_new_leader_to_be|default([]) + [lookup('controlplane', 'lease', input_param, wantlist=True)] }}"
+      failed_when: >
+        (lookup_aftr_new_leader_to_be[item]['outfile_status'] != 0) or
+        (lookup_aftr_new_leader_to_be[item]['output_data']['LeaseRes']['Status'] != 0) or
+        (lookup_aftr_new_leader_to_be[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm'] <= lookup_aftr_new_leader[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm'])
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
+

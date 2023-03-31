@@ -313,6 +313,47 @@ def start_testApp(cluster_params, input_values):
     genericcmdobj = GenericCmds()
     genericcmdobj.recipe_json_dump(recipe_conf)
 
+def lease(cluster_params, Key, Value, Operation, OutfileName, Port):
+    base_dir = cluster_params['base_dir']
+    app_name = cluster_params['app_type']
+    raft_uuid = cluster_params['raft_uuid']
+
+    # Prepare path for executables.
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/ncpc' % binary_dir
+
+    # Prepare path for log file.
+    log_file = "%s/%s/%s_ncpc_lease_log.txt" % (base_dir, raft_uuid, app_name)
+
+    # Open the log file to pass the fp to subprocess.Popen
+    fp = open(log_file, "w")
+    logfile = "%s/%s/ncpclogfile.log" % (base_dir, raft_uuid)
+
+    serviceRetry = "3"
+
+    # Prepare config file path for ncpc
+    ConfigPath = "%s/%s/gossipNodes" % (base_dir, raft_uuid)
+
+    outfilePath = "%s/%s/%s" % (base_dir, raft_uuid, OutfileName)
+
+    process_popen = subprocess.Popen([bin_path, '-c', ConfigPath, '-o', Operation, '-k', Key, '-v', Value,
+                                            '-l', logfile, '-j', outfilePath, '-ru', raft_uuid, '-p', Port],
+                                            stdout = fp, stderr = fp)
+
+    os.fsync(fp)
+    return process_popen, outfilePath
+
+def extracting_dictionary_for_lease(cluster_params, input_values):
+    process,outfile = lease(cluster_params, input_values['Key'], input_values['Value'],
+                                           input_values['Operation'], input_values['OutfileName'],
+                                           input_values['Port'])
+
+    if input_values['wait_for_outfile']:
+        output_data = get_the_output(outfile)
+        return output_data
+    else:
+        return outfile
+
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
@@ -325,13 +366,17 @@ class LookupModule(LookupBase):
         os.environ['NIOVA_THREAD_COUNT'] = cluster_params['nthreads']
 
         if process_type == "ncpc":
-
             data = extracting_dictionary(cluster_params, input_values)
 
             return data
 
-        elif process_type == "niova-lookout":
+        if process_type == "lease":            
+            data = extracting_dictionary_for_lease(cluster_params, input_values)
 
+            return data
+
+
+        elif process_type == "niova-lookout":
             niova_lookout_path = "%s/%s/niova_lookout" % (cluster_params['base_dir'],
                                                            cluster_params['raft_uuid'])
             if os.path.exists(niova_lookout_path):
@@ -340,7 +385,7 @@ class LookupModule(LookupBase):
                 os.mkdir(niova_lookout_path)
              
             niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['uport'])
-            print("niova_lookout_process", niova_lookout_process)
+            
             return niova_lookout_process
 
         elif process_type == "testApp":
