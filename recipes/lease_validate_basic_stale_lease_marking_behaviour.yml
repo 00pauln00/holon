@@ -49,7 +49,7 @@
         getLeaseOps: "{{ getLeaseOps|default([]) + [lookup('lease_feature', 'GET', input_param, wantlist=True)] }}"
       failed_when: >
         (getLeaseOps[item]['outfile_status'] != 0) or
-        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item]) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4)
@@ -72,7 +72,7 @@
         lookupLeaseOps: "{{ lookupLeaseOps|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
       failed_when: >
         (lookupLeaseOps[item]['outfile_status'] != 0) or
-        (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
+        (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
       (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource']) or
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4) or

@@ -126,7 +126,7 @@
         lookup_aftr_Peer1_become_leader: "{{ lookup_aftr_Peer1_become_leader|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
       failed_when: >
         (lookup_aftr_Peer1_become_leader[item]['outfile_status'] != 0) or
-        (lookup_aftr_Peer1_become_leader[item]['output_data'][0]['LeaseRes']['Status'] != "Success") or
+        (lookup_aftr_Peer1_become_leader[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
         (lookup_aftr_Peer1_become_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'] <= lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'])
       loop: "{{ range(0, no_of_leases) | list }}"
 

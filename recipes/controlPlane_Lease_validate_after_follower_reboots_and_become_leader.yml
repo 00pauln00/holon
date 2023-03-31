@@ -115,7 +115,7 @@
          lookup_aftr_new_leader_to_be: "{{ lookup_aftr_new_leader_to_be|default([]) + [lookup('controlplane', 'lease', input_param, wantlist=True)] }}"
       failed_when: >
         (lookup_aftr_new_leader_to_be[item]['outfile_status'] != 0) or
-        (lookup_aftr_new_leader_to_be[item]['output_data']['LeaseRes']['Status'] != "Success") or
+        (lookup_aftr_new_leader_to_be[item]['output_data']['LeaseRes']['Status'] != 0) or
         (lookup_aftr_new_leader_to_be[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm'] <= lookup_aftr_new_leader[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm'])
       loop: "{{ range(0, no_of_leases) | list }}"
 

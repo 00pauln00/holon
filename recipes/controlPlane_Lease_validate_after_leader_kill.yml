@@ -58,7 +58,7 @@
        set_fact:
          ncpc_getLease: "{{ ncpc_getLease|default([]) + [lookup('controlplane', 'lease', input_param, wantlist=True)] }}"
        failed_when: >
-         (ncpc_getLease[item]['output_data']['LeaseRes']['Status'] != "Success") or
+         (ncpc_getLease[item]['output_data']['LeaseRes']['Status'] != 0) or
          (ncpc_getLease[item]['output_data']['LeaseRes']['Client'] != ClientUUIDS[item]) or
          (ncpc_getLease[item]['output_data']['LeaseRes']['Resource'] != resourceUUIDS[item]) or
          (ncpc_getLease[item]['output_data']['LeaseRes']['LeaseState'] != 4)
@@ -77,7 +77,7 @@
        set_fact:
          ncpc_lookupLease: "{{ ncpc_lookupLease|default([]) + [lookup('controlplane', 'lease', input_param, wantlist=True)] }}"
        failed_when: >
-         (ncpc_lookupLease[item]['output_data']['LeaseRes']['Status'] != "Success") or
+         (ncpc_lookupLease[item]['output_data']['LeaseRes']['Status'] != 0) or
          (ncpc_lookupLease[item]['output_data']['LeaseRes']['Client'] != ncpc_getLease[item]['output_data']['LeaseRes']['Client']) or
          (ncpc_lookupLease[item]['output_data']['LeaseRes']['Resource'] != ncpc_getLease[item]['output_data']['LeaseRes']['Resource'])
        loop: "{{ range(0, no_of_leases) | list }}"
@@ -115,7 +115,7 @@
          lookup_aftr_new_leader: "{{ lookup_aftr_new_leader|default([]) + [lookup('controlplane', 'lease', input_param, wantlist=True)] }}"
        failed_when: >
         (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
-        (lookup_aftr_new_leader[item]['output_data']['LeaseRes']['Status'] != "Success") or
+        (lookup_aftr_new_leader[item]['output_data']['LeaseRes']['Status'] != 0) or
         (lookup_aftr_new_leader[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm'] <= ncpc_lookupLease[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm'])
        loop: "{{ range(0, no_of_leases) | list }}"
 

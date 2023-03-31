@@ -56,7 +56,7 @@
       debug:
          msg: "Check if refresh is successful."
       failed_when: >
-        (rf_response['Status'] != "PmdbObjPut(): -1") or
+        (rf_response['Status'] != -1) or
         (rf_response['LeaseState'] != 0) or
         (rf_response['TTL'] != 0) or
         (rf_response['Client'] != "00000000-0000-0000-0000-000000000000") or
@@ -91,7 +91,7 @@
       debug:
          msg: "Check if refresh is successful."
       failed_when: >
-        (rf_response['Status'] != "Success") or
+        (rf_response['Status'] != 0) or
         (rf_response['LeaseState'] != 4) or
         (rf_response['TTL'] != 60) or
         (rf_response['Client'] != clientUUID.stdout) or
