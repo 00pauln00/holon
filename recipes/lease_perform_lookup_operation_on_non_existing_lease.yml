@@ -60,7 +60,7 @@
       debug:
          msg: "Check if LOOKUP is successful"
       failed_when: >
-         (rd_response['Status'] != "Key not found") or
+         (rd_response['Status'] != -1) or
          (rd_response['Client'] != "00000000-0000-0000-0000-000000000000") or
          (rd_response['Resource'] != "00000000-0000-0000-0000-000000000000") or
          (rd_response['LeaseState'] != 0) or

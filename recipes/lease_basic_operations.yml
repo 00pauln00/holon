@@ -106,7 +106,7 @@
       debug:
          msg: "Check if GET is successful"
       failed_when: >
-         (wr_response['Status'] != 'Success') or
+         (wr_response['Status'] != 0) or
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['TTL'] != 60) or
@@ -144,7 +144,7 @@
       debug:
          msg: "Check if LOOKUP is successful"
       failed_when: >
-         (rd_response['Status'] != 'Success') or
+         (rd_response['Status'] != 0) or
          (rd_response['LeaseState'] != 4)
 
     - name: "{{ recipe_name }}: Compare TS of GET and Lookup operation."
