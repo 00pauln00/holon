@@ -1,10 +1,10 @@
 - import_playbook: lease_basic_operations.yml
 
-- name: "lease_validate_basic_stale_marking_behaviour"
+- name: "lease_validate_after_expiry_after_cluster_reboot"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "lease_validate_basic_stale_marking_behaviour"
+    recipe_name: "lease_validate_after_expiry_after_cluster_reboot"
     parent: "lease_basic_operations"
     no_of_leases: 5
 
@@ -59,6 +59,25 @@
       pause:
         seconds: 90
 
+    - name: "{{ recipe_name }}: get the list of non-running servers."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Kill all the peers of the cluster."
+      debug:
+         msg:  "{{ lookup('niova_raftprocess', 'kill', NRunningPeers[item], wantlist=True) }}"
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Pause for 10 seconds."
+      pause:
+        seconds: 10
+
+     - name: "{{ recipe_name }}: Start again all the peers of the killed cluster."
+       debug:
+         msg:  "{{ lookup('niova_raftprocess', 'start', NRunningPeers[item], wantlist=True) }}"
+       loop: "{{ range(0, NRunningPeers | length) | list }}"
+
     - name: "{{ recipe_name }}: Perform 'LOOKUP' operation for {{ no_of_leases }} client-uuids and resource-uuids and validate that all the lease have status as stale."
       vars:
          input_param: {
@@ -73,8 +92,8 @@
       failed_when: >
         (lookupLeaseOps[item]['outfile_status'] != 0) or
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
-      (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
+        (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource']) or
-        (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4) or
+        (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4)
       loop: "{{ range(0, no_of_leases) | list }}"
 
