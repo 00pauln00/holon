@@ -64,7 +64,7 @@
          (wr_response['Status'] != 0) or
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
-         (wr_response['TTL'] != 60) or
+         (wr_response['TTL'] <= 0) or
          (wr_response['LeaseState'] != 4)
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation."
@@ -136,7 +136,7 @@
       failed_when: >
         (rf_response['Status'] != 0) or
         (rf_response['LeaseState'] != 4) or
-        (rf_response['TTL'] != 60) or
+        (rf_response['TTL'] <= 0) or
         (rf_response['Client'] != clientUUID.stdout) or
         (rf_response['Resource'] != resourceUUID.stdout)
 

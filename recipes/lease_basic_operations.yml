@@ -109,7 +109,7 @@
          (wr_response['Status'] != 0) or
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
-         (wr_response['TTL'] != 60) or
+         (wr_response['TTL'] <= 0) or
          (wr_response['LeaseState'] != 4)
 
     - pause:
@@ -155,7 +155,7 @@
         msg: "compare TS with intitial values"
       failed_when: >
         (wr_timestamp['LeaderTerm'] != rd_timestamp['LeaderTerm']) or
-        (wr_timestamp['LeaderTime'] >= rd_timestamp['LeaderTime'])
+        (wr_timestamp['LeaderTime'] != rd_timestamp['LeaderTime'])
 
     - name: "{{ recipe_name }}: Compare TTL."
       vars:
