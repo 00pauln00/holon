@@ -75,6 +75,6 @@
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource']) or
-        (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != )
+        (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 2)
       loop: "{{ range(0, no_of_leases) | list }}"
 

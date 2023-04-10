@@ -73,10 +73,10 @@
       pause:
         seconds: 10
 
-     - name: "{{ recipe_name }}: Start again all the peers of the killed cluster."
-       debug:
+    - name: "{{ recipe_name }}: Start again all the peers of the killed cluster."
+      debug:
          msg:  "{{ lookup('niova_raftprocess', 'start', NRunningPeers[item], wantlist=True) }}"
-       loop: "{{ range(0, NRunningPeers | length) | list }}"
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP' operation for {{ no_of_leases }} client-uuids and resource-uuids and validate that all the lease have status as stale."
       vars:
@@ -94,6 +94,6 @@
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource']) or
-        (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4)
+        (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 2)
       loop: "{{ range(0, no_of_leases) | list }}"
 
