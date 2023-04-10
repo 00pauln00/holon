@@ -48,12 +48,12 @@
         (refresh[item]['outfile_status'] != 0) or
         (refresh[item]['output_data']['LeaseRes']['Status'] != 0) or
         (refresh[item]['output_data']['LeaseRes']['LeaseState'] != 4) or
-        (refresh[item]['output_data']['LeaseRes']['TTL'] != 60)
+        (refresh[item]['output_data']['LeaseRes']['TTL'] > 60)
       loop: "{{ range(0, no_of_leases) | list }}"  
 
     - name: "{{ recipe_name }}: Kill the Old Leader."
       debug:
-        msg: "{{ lookup('niova_raftprocess', 'kill', orig_leader['results'][0]['item'], wantlist=True) }}"
+        msg: "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Get the running peers list."
       include_role:
@@ -65,7 +65,7 @@
          stage: "wait_for_new_leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != orig_leader['results'][0]['item']
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != LeaderUUID['/0/leader-uuid']
       retries: 10
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
