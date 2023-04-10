@@ -57,14 +57,19 @@
        no_log: true
        failed_when: >
          (writeres5keys['results'][0]['item']['outfile_status'] != 0)
+     
+     - debug:
+         msg: 
+            - "{{writeres5keys['results'][0]['item']['output_data'][item]['Value']}}"
+       with_items: "{{ writeres5keys['results'][0]['item']['output_data'][0] }}"
 
      - name: "{{ recipe_name }}: Verify that if no proxy is alive it should return Server not available."
        vars:
-         Writeres: "{{writeres5keys['results'][0]['item']['output_data'][item]['Value']}}"
+         Writeres: "{{writeres5keys['results'][0]['item']['output_data'][0][item]['Value']}}"
        debug:
          msg: "if no proxy is alive it should return Server not available"
        failed_when: Writeres != "(Service discovery) Server not available"
-       with_items: "{{ writeres5keys['results'][0]['item']['output_data'] | dict2items |  map(attribute='key')| list }}"
+       with_items: "{{ writeres5keys['results'][0]['item']['output_data'][0] | dict2items |  map(attribute='key')| list }}"
 
      - name: "{{ recipe_name }}: get the list of non-running servers."
        include_role:
@@ -119,7 +124,7 @@
        no_log: true
        failed_when: >
          (item.value['Status'] != 0)
-       with_dict: "{{ writeres_afterStartingProxy['results'][0]['item']['output_data'] }}"
+       with_dict: "{{ writeres_afterStartingProxy['results'][0]['item']['output_data'][0] }}"
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with n as 5."
        vars:
@@ -143,19 +148,19 @@
        debug:
         msg:
          - "Check read outfile status: {{ readres_afterStartingProxy['results'][0]['item']['outfile_status'] }}"
-         - "Check read response status: {{ readres_afterStartingProxy['results'][0]['item']['output_data']['Response']['Status'] }}"
+         - "Check read response status: {{ readres_afterStartingProxy['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
        no_log: true
        failed_when:
          (readres_afterStartingProxy['results'][0]['item']['outfile_status'] != 0) or
-         (readres_afterStartingProxy['results'][0]['item']['output_data']['Response']['Status'] != 0)
+         (readres_afterStartingProxy['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: Compare write and read output with all the keys passed."
        vars:
-         readall: "{{readres_afterStartingProxy['results'][0]['item']['output_data']['Response']['Response']}}"
+         readall: "{{readres_afterStartingProxy['results'][0]['item']['output_data'][0]['Response']['Response']}}"
        debug:
          msg: "compare read and write output with all the keys passed"
        failed_when: item.value['Value'] != readall[item.key]
-       with_dict: "{{ writeres_afterStartingProxy['results'][0]['item']['output_data'] }}"
+       with_dict: "{{ writeres_afterStartingProxy['results'][0]['item']['output_data'][0] }}"
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
