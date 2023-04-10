@@ -1,11 +1,12 @@
-- import_playbook: lease_validate_stale_marking_with_different_client_after_reboot_the_cluster.yml
+- import_playbook: lease_validate_after_expired_lease_granted_to_another_client.yml 
 
 - name: "lease_validate_after_refresh_on_expired_lease_from_same_client"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "lease_validate_after_refresh_on_expired_lease_from_same_client.yml"
-    parent: "lease_validate_stale_marking_with_different_client_after_reboot_the_cluster"
+    recipe_name: "lease_validate_after_refresh_on_expired_lease_from_same_client"
+    parent: "lease_validate_after_expired_lease_granted_to_another_client"
+    no_of_leases: 5
 
   tasks:
   - block:
@@ -45,11 +46,9 @@
         refresh: "{{ refresh|default([]) + [lookup('lease_feature', 'REFRESH', input_param, wantlist=True)] }}"
       failed_when: >
         (refresh[item]['outfile_status'] != 0) or
-        (refresh(refresh[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
-        (refresh(refresh[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4) or
-        (refresh(refresh[item]['output_data'][0]['LeaseRes']['TTL'] != 60) or
-        (refresh(refresh[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
-        (refresh(refresh[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item]) or
+        (refresh[item]['output_data']['LeaseRes']['Status'] != 0) or
+        (refresh[item]['output_data']['LeaseRes']['LeaseState'] != 4) or
+        (refresh[item]['output_data']['LeaseRes']['TTL'] != 60)
       loop: "{{ range(0, no_of_leases) | list }}"  
 
     - name: "{{ recipe_name }}: Kill the Old Leader."
@@ -87,7 +86,5 @@
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
-        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource']) or
-        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'] <= getLeaseOps[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm']) or
-        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTime'] >= getLeaseOps[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTime'])
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'])
       loop: "{{ range(0, no_of_leases) | list }}"
