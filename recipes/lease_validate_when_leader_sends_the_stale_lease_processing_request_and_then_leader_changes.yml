@@ -1,10 +1,10 @@
 - import_playbook: lease_basic_operations.yml
 
-- name: "lease_validate_basic_stale_marking_behaviour"
+- name: "lease_validate_when_leader_sends_the_stale_lease_processing_request_and_then_leader_changes"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "lease_validate_basic_stale_marking_behaviour"
+    recipe_name: "lease_validate_when_leader_sends_the_stale_lease_processing_request_and_then_leader_changes"
     parent: "lease_basic_operations"
     no_of_leases: 5
 
@@ -61,7 +61,7 @@
         tasks_from: set_fault_injection_and_verify
       vars:
         ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
-        fault_injection_name: ""
+        fault_injection_name: "raft_leader_disable_direct_req"
 
     - name: "{{ recipe_name }}: Pause for 90 seconds so that all the leases gets expired."
       pause:
@@ -119,7 +119,9 @@
       failed_when: >
         (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
-        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'] <= getLeaseOps[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'])
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item])
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Enable send on all peers from the leader 1."
@@ -140,4 +142,33 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
 
+    - name: "{{ recipe_name }}: Verify previous leader is elected successfully again."
+      vars:
+         stage: "get_all_for_new_leader"
+      debug:
+        msg:
+         - "Waiting for new leader election"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first == orig_leader
+      retries: 10
+      delay: 2
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Verify already taken leases gets updated with new leader."
+      vars:
+         input_param: {
+                'client': '{{ ClientUUIDS[item] }}',
+                'resource': '{{ resourceUUIDS[item] }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'lookup_lease_after_leader_to_be_{{ item }}'
+                 }
+      set_fact:
+        new_leader_lookup: "{{ new_leader_lookup|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
+      failed_when: >
+        (new_leader_lookup[item]['outfile_status'] != 0) or
+        (new_leader_lookup[item]['output_data'][0]['LeaseRes']['Status'] != 0)
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item])
+      loop: "{{ range(0, no_of_leases) | list }}"
   
