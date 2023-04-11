@@ -1,6 +1,4 @@
 ---
-     - debug:
-         msg: "{{ rdRes }}"
 
      - name: "{{ recipe_name }}: Compare read output with the v.UUID.prefix passed."
        vars:
@@ -12,15 +10,10 @@
        loop: "{{ wrRes['results'][0]['item']['output_data'] }}"
        loop_control:
           loop_var: idx
+       no_log:  True
 
      - debug:
-         msg: "wrValue: {{ wrValue }}"
-
-     - debug:
-         msg: "rdValue: {{ rdValue }}"
-
-     - debug:
-         msg: "{{ wrValue[itr] }}"
+         msg: "Compare write-read values"
        failed_when: >
           wrValue[itr] != rdValue[itr]
        loop: "{{ range(0, wrValue | length) | list }}"
