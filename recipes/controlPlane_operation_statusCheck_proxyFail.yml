@@ -57,19 +57,13 @@
        no_log: true
        failed_when: >
          (writeres5keys['results'][0]['item']['outfile_status'] != 0)
-     
-     - debug:
-         msg: 
-            - "{{writeres5keys['results'][0]['item']['output_data'][item]['Value']}}"
-       with_items: "{{ writeres5keys['results'][0]['item']['output_data'][0] }}"
 
      - name: "{{ recipe_name }}: Verify that if no proxy is alive it should return Server not available."
-       vars:
-         Writeres: "{{writeres5keys['results'][0]['item']['output_data'][0][item]['Value']}}"
        debug:
          msg: "if no proxy is alive it should return Server not available"
-       failed_when: Writeres != "(Service discovery) Server not available"
-       with_items: "{{ writeres5keys['results'][0]['item']['output_data'][0] | dict2items |  map(attribute='key')| list }}"
+       failed_when: >
+         (item['Response']['Response'] != "(Service discovery) Server not available")
+       loop: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
 
      - name: "{{ recipe_name }}: get the list of non-running servers."
        include_role:
@@ -120,11 +114,11 @@
 
      - name: "{{ recipe_name }}: Verify write status"
        debug:
-         msg: "Check write response status: {{ item.value['Status'] }}"
+         msg: "Check write response status"
        no_log: true
        failed_when: >
-         (item.value['Status'] != 0)
-       with_dict: "{{ writeres_afterStartingProxy['results'][0]['item']['output_data'][0] }}"
+         (item['Response']['Status'] != 0)
+       loop: "{{ writeres_afterStartingProxy['results'][0]['item']['output_data'] }}"
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with n as 5."
        vars:
@@ -156,11 +150,11 @@
 
      - name: "{{ recipe_name }}: Compare write and read output with all the keys passed."
        vars:
-         readall: "{{readres_afterStartingProxy['results'][0]['item']['output_data'][0]['Response']['Response']}}"
+         readall: "{{ readres_afterStartingProxy['results'][0]['item']['output_data'][0]['Response']['Response']}}"
        debug:
          msg: "compare read and write output with all the keys passed"
-       failed_when: item.value['Value'] != readall[item.key]
-       with_dict: "{{ writeres_afterStartingProxy['results'][0]['item']['output_data'][0] }}"
+       failed_when:  item['Request']['Value'] != readall[item['Request']['Key']]
+       loop: "{{ writeres_afterStartingProxy['results'][0]['item']['output_data'] }}"
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
