@@ -52,11 +52,11 @@
 
      - name: "{{ recipe_name }}: Verify write status"
        debug:
-         msg: "Check write response status: {{ item.value['Status'] }}"
+         msg: "Check write response status: {{ item['Response']['Status'] }}"
        no_log: true
        failed_when: >
-         (item.value['Status'] != 0)
-       with_dict: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
+          (item['Response']['Status'] != 0)
+       loop: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
 
      - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
        include_role:
@@ -96,15 +96,15 @@
        debug:
         msg:
          - "Check read outfile status: {{ readres5keys['results'][0]['item']['outfile_status'] }}"
-         - "Check read response status: {{readres5keys['results'][0]['item']['output_data']['Response']['Status'] }}"
+         - "Check read response status: {{readres5keys['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
        no_log: true
        failed_when:
          (readres5keys['results'][0]['item']['outfile_status'] != 0) or
-         (readres5keys['results'][0]['item']['output_data']['Response']['Status'] != 0)
+         (readres5keys['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
        vars:
-          seq_no: "{{ readres5keys['results'][0]['item']['output_data']['Response']['Sequence_number'] }}"
+          seq_no: "{{ readres5keys['results'][0]['item']['output_data'][0]['Response']['Sequence_number'] }}"
        debug:
          msg: "Get the seq no"
        with_items:
@@ -193,14 +193,14 @@
           jsondata: "{{ result.stdout | from_json }}"
 
      - debug:
-         msg: "{{ jsondata['Response']['Status'] }}"
+         msg: "{{ jsondata[0]['Response']['Status'] }}"
 
        # check if read is successful
      - name: "{{ recipe_name }}: Check if read is successful"
        debug:
          msg: "Check if read is successful"
        failed_when: >
-         (jsondata['Response']['Status'] != 0)
+         (jsondata[0]['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead."
        vars:
@@ -224,14 +224,14 @@
        debug:
         msg:
          - "Check read outfile status: {{ seqno_rangereadres['results'][0]['item']['outfile_status'] }}"
-         - "Check read response status: {{ seqno_rangereadres['results'][0]['item']['output_data']['Response']['Status'] }}"
+         - "Check read response status: {{ seqno_rangereadres['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
        failed_when:
          (seqno_rangereadres['results'][0]['item']['outfile_status'] != 0) or
-         (seqno_rangereadres['results'][0]['item']['output_data']['Response']['Status'] != 0)
+         (seqno_rangereadres['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: Get the sequence no from the read result after removing fault injection."
        vars:
-          seq_no: "{{ seqno_rangereadres['results'][0]['item']['output_data']['Response']['Sequence_number'] }}"
+          seq_no: "{{ seqno_rangereadres['results'][0]['item']['output_data'][0]['Response']['Sequence_number'] }}"
        debug:
          msg: "Get the seq no"
        with_items:

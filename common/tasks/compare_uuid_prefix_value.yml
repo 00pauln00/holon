@@ -1,0 +1,30 @@
+---
+     - debug:
+         msg: "{{ rdRes }}"
+
+     - name: "{{ recipe_name }}: Compare read output with the v.UUID.prefix passed."
+       vars:
+         readprefix: "{{ rdRes }}"
+       set_fact:
+          wrValue: "{{ wrValue|default([]) + [idx['Request']['Value']] }}"
+          rdValue: "{{ rdValue|default([]) + [readprefix] }}"
+       when: idx['Request']['Value'] == readprefix
+       loop: "{{ wrRes['results'][0]['item']['output_data'] }}"
+       loop_control:
+          loop_var: idx
+
+     - debug:
+         msg: "wrValue: {{ wrValue }}"
+
+     - debug:
+         msg: "rdValue: {{ rdValue }}"
+
+     - debug:
+         msg: "{{ wrValue[itr] }}"
+       failed_when: >
+          wrValue[itr] != rdValue[itr]
+       loop: "{{ range(0, wrValue | length) | list }}"
+       loop_control:
+          loop_var: itr
+
+
