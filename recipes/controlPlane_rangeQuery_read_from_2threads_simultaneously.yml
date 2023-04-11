@@ -51,7 +51,7 @@
      - name: "{{ recipe_name }}: Verify write status"
        debug:
          msg: "Check write response status"
-       #no_log: true
+       no_log: true
        failed_when: >
          (item['Response']['Status'] != 0)
        loop: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
@@ -154,14 +154,8 @@
      - name: save the Json data to a Variable as a Fact
        set_fact:
           jsondata_thread1: "{{ result_thread1.stdout | from_json }}"
-
-     - debug:
-         msg: "{{ jsondata_thread1 }}"
-
-     - debug:
-         msg: "{{ jsondata_thread1[0]['Response']['Status'] }}"
-
-       # check if read is successful
+       
+      # check if read is successful
      - name: "{{ recipe_name }}: Check if read is successful for thread 1."
        vars: 
          jsondata1: "{{ jsondata_thread1[0]['Response']['Status'] }}"

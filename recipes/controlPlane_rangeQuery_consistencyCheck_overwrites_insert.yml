@@ -105,9 +105,6 @@
      - set_fact:
          key: "{{ firstwriteres5keys['results'][0]['item']['output_data'][-1]['Request']['Key'] }}"
 
-     - debug:
-         msg: "First Key: {{ key }}"
-
      - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
        vars:
           seq_no: "{{ firstreadres5keys['results'][0]['item']['output_data'][0]['Response']['Sequence_number'] }}"
@@ -241,7 +238,6 @@
        vars:
          ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
          fault_injection_name: "pmdb_range_read_keep_snapshot"
-
 
      - name: "{{ recipe_name }}: Pause for 60 seconds so that snapshot gets deleted successfully."
        pause:

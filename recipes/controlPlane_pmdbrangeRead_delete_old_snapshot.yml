@@ -90,14 +90,14 @@
        with_items:
          - "{{ ncpclird }}"
        register: readres5keys
-         # no_log: true
+       no_log: true
 
      - name: "{{ recipe_name }}: Verify outfile status and read status"
        debug:
         msg:
          - "Check read outfile status: {{ readres5keys['results'][0]['item']['outfile_status'] }}"
          - "Check read response status: {{ readres5keys['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
-           #  no_log: true
+       no_log: true
        failed_when:
          (readres5keys['results'][0]['item']['outfile_status'] != 0) or
          (readres5keys['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
