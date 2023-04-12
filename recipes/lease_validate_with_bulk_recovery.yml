@@ -17,7 +17,7 @@
       failed_when: terminate_recipe == true
 
     # check for the app_type
-    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'."
       vars:
          app_type: "{{ app_type }}"
       debug:
@@ -136,9 +136,6 @@
     - name: "{{ recipe_name }}: Selected leader-to-be"
       set_fact:
         Peer1: "{{ FollowerUUIDs[0] }}"
-
-    - debug:
-        msg: "Leader to be: {{ Peer1 }}"
 
     - name: "{{ recipe_name }}: Enable receive on all peers from the leader-to-be."
       vars:

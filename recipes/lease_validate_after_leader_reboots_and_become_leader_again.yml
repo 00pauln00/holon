@@ -16,7 +16,7 @@
       failed_when: terminate_recipe == true
 
     # check for the app_type
-    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'."
       vars:
          app_type: "{{ app_type }}"
       debug:
@@ -52,6 +52,7 @@
                  }
       set_fact:
         getLeaseOps: "{{ getLeaseOps|default([]) + [lookup('lease_feature', 'GET', input_param, wantlist=True)] }}"
+      no_log: true
       failed_when: >
         (getLeaseOps[item]['outfile_status'] != 0) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
@@ -59,9 +60,6 @@
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item]) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4)
       loop: "{{ range(0, no_of_leases) | list }}"
-
-    - debug:
-        msg: "old get lease: {{ getLeaseOps }}"
 
     - name: "{{ recipe_name }}: Store old leader-uuid"
       vars:
@@ -103,6 +101,7 @@
                  }
       set_fact:
         lookup_aftr_new_leader: "{{ lookup_aftr_new_leader|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
+      no_log: true
       failed_when: >
         (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
@@ -112,9 +111,6 @@
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'] <= getLeaseOps[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm']) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTime'] >= getLeaseOps[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTime'])
       loop: "{{ range(0, no_of_leases) | list }}"
-
-    - debug:
-        msg: "original lookup: {{ lookup_aftr_new_leader }}"
 
     - name: "Get multiple resource uuids."
       include_role:
@@ -133,6 +129,7 @@
                  }
       set_fact:
         write_new_getLease: "{{ write_new_getLease|default([]) + [lookup('lease_feature', 'GET', input_param, wantlist=True)] }}"
+      no_log: true
       failed_when: >
         (write_new_getLease[item]['outfile_status'] != 0) or
         (write_new_getLease[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
@@ -140,9 +137,6 @@
         (write_new_getLease[item]['output_data'][0]['LeaseRes']['Resource'] != Resource[item]) or
         (write_new_getLease[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4)
       loop: "{{ range(0, no_of_leases) | list }}"
-
-    - debug:
-        msg: "GET after killing leader: {{ write_new_getLease }}"
 
     - name: "{{ recipe_name }}: Restart the Old Leader."
       debug:
@@ -183,9 +177,6 @@
     - name: "{{ recipe_name }}: Store old leader-uuid for leader-to-be again"
       set_fact:
         OLD_LEADER: "{{ orig_leader['results'][0]['item'] }}"
-
-    - debug:
-        msg: "Leader to be: {{ OLD_LEADER }}"
 
     - name: "{{ recipe_name }}: Enable receive on all peers from the leader-to-be."
       vars:
@@ -229,6 +220,7 @@
                  }
       set_fact:
         lookup_with_old_leader: "{{ lookup_with_old_leader|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
+      no_log: true
       failed_when: >
         (lookup_with_old_leader[item]['outfile_status'] != 0) or
         (lookup_with_old_leader[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
@@ -250,6 +242,7 @@
                  }
       set_fact:
         lookup_aftr_old_leader: "{{ lookup_aftr_old_leader|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
+      no_log: true
       failed_when: >
         (lookup_aftr_old_leader[item]['outfile_status'] != 0) or
         (lookup_aftr_old_leader[item]['output_data'][0]['LeaseRes']['Status'] != 0) or

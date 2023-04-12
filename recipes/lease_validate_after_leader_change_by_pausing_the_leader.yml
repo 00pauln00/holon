@@ -5,7 +5,7 @@
   connection: local
   vars:
      recipe_name: "lease_validate_after_leader_change_by_pausing_the_leader"
-     parent: lease_basic_operations.yml
+     parent: "lease_basic_operations"
      no_of_leases: 4
 
   tasks:
@@ -16,7 +16,7 @@
       failed_when: terminate_recipe == true
 
     # check for the app_type
-    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'."
       vars:
          app_type: "{{ app_type }}"
       debug:
@@ -52,6 +52,7 @@
                  }
       set_fact:
         getLeaseOps: "{{ getLeaseOps|default([]) + [lookup('lease_feature', 'GET', input_param, wantlist=True)] }}"
+      no_log: true
       failed_when: >
         (getLeaseOps[item]['outfile_status'] != 0) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
@@ -112,6 +113,7 @@
                  }
       set_fact:
         lookup_aftr_new_leader: "{{ lookup_aftr_new_leader|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
+      no_log: true
       failed_when: >
         (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
