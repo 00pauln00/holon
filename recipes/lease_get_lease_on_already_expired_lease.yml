@@ -25,9 +25,9 @@
       failed_when:
          (app_type != "lease")
 
-    - name: "Pause for 60 seconds so the TTL gets expierd"
+    - name: "Pause for 80 seconds so the TTL gets expired"
       pause:
-        seconds: 60
+        seconds: 80
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation after lease getting expired."
       vars:
@@ -99,9 +99,9 @@
          (wr_response['TTL'] <= 0) or
          (wr_response['LeaseState'] != GRANTED)
 
-    - name: "Pause for 60 seconds so the TTL gets expierd"
+    - name: "Pause for 80 seconds so the TTL gets expierd"
       pause:
-        seconds: 60
+        seconds: 80
 
     - name: Generate new client
       shell: "/usr/bin/uuid"
