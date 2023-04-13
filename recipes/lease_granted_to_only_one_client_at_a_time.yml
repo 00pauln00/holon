@@ -123,7 +123,7 @@
          (wr_response['LeaseState'] != INVALID)
 
     - pause:
-        seconds: 60
+        seconds: 90
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation for client-1."
       vars:
