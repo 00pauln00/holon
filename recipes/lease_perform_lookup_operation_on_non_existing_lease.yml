@@ -6,6 +6,8 @@
   vars:
      recipe_name: "lease_perform_lookup_operation_on_non_existing_lease"
      parent: "lease_basic_operations"
+  vars_files:
+    - ../leaseStateValue.yml
 
   tasks:
   - block:
@@ -63,7 +65,7 @@
          (rd_response['Status'] != -1) or
          (rd_response['Client'] != "00000000-0000-0000-0000-000000000000") or
          (rd_response['Resource'] != "00000000-0000-0000-0000-000000000000") or
-         (rd_response['LeaseState'] != 0) or
+         (rd_response['LeaseState'] != INVALID) or
          (rd_response['TTL'] != 0) or
          (rd_response['TimeStamp']['LeaderTerm'] != 0) or
          (rd_response['TimeStamp']['LeaderTime'] != 0)

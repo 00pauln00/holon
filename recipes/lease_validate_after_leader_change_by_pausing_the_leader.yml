@@ -7,6 +7,8 @@
      recipe_name: "lease_validate_after_leader_change_by_pausing_the_leader"
      parent: "lease_basic_operations"
      no_of_leases: 4
+  vars_files:
+    - ../leaseStateValue.yml
 
   tasks:
   - block:
@@ -56,7 +58,7 @@
       failed_when: >
         (getLeaseOps[item]['outfile_status'] != 0) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
-        (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4)
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Get cluster information"

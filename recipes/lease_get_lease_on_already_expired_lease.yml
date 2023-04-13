@@ -6,6 +6,8 @@
   vars:
     recipe_name: "lease_get_lease_on_already_expired_lease"
     parent: "lease_basic_operations"
+  vars_files:
+    - ../leaseStateValue.yml
 
   tasks:
   - block:
@@ -59,7 +61,7 @@
       failed_when: >
          (rd_response['Status'] != 0) or
          (rd_response['TTL'] != 0) or
-         (rd_response['LeaseState'] != 2) or
+         (rd_response['LeaseState'] != EXPIRED) or
          (rd_response['TimeStamp']['LeaderTime'] == pervious_leaderTime)
 
     - name: "{{ recipe_name }}: Perform 'GET' operation on an already expired lease using same client uuid and resource uuid from the parent recipe."
@@ -95,7 +97,7 @@
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['TTL'] <= 0) or
-         (wr_response['LeaseState'] != 4)
+         (wr_response['LeaseState'] != GRANTED)
 
     - name: "Pause for 60 seconds so the TTL gets expierd"
       pause:
@@ -138,7 +140,7 @@
          (wr_response['Client'] != clientUUID1.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['TTL'] <= 0) or
-         (wr_response['LeaseState'] != 4)
+         (wr_response['LeaseState'] != GRANTED)
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

@@ -6,7 +6,8 @@
   vars:
     recipe_name: "lease_basic_refresh_operation_on_valid_lease"
     parent: "lease_basic_operations"
-
+  vars_files:
+    - ../leaseStateValue.yml
 
   tasks:
   - block:
@@ -65,7 +66,7 @@
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['TTL'] <= 0) or
-         (wr_response['LeaseState'] != 4)
+         (wr_response['LeaseState'] != GRANTED)
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation."
       vars:
@@ -99,7 +100,7 @@
          (rd_response['Status'] != 0) or
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout) or
-         (rd_response['LeaseState'] != 4)
+         (rd_response['LeaseState'] != GRANTED)
 
     - name: "{{ recipe_name }}: Pause for 20 seconds so that TTL value gets changed."
       pause:
@@ -135,7 +136,7 @@
          msg: "Check if refresh is successful."
       failed_when: >
         (rf_response['Status'] != 0) or
-        (rf_response['LeaseState'] != 4) or
+        (rf_response['LeaseState'] != GRANTED) or
         (rf_response['TTL'] <= 0) or
         (rf_response['Client'] != clientUUID.stdout) or
         (rf_response['Resource'] != resourceUUID.stdout)
