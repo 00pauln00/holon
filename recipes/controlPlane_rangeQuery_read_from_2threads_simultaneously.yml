@@ -43,18 +43,18 @@
      - name: "{{ recipe_name }}: Verify outfile status"
        debug:
          msg:
-           - "Check write outfile status: {{ writeres5keys['results'][0]['item']['outfile_status'] }}"
+           - "Check write outfile status"
        no_log: true
        failed_when: >
          (writeres5keys['results'][0]['item']['outfile_status'] != 0)
 
      - name: "{{ recipe_name }}: Verify write status"
        debug:
-         msg: "Check write response status: {{ item.value['Status'] }}"
-       #no_log: true
+         msg: "Check write response status"
+       no_log: true
        failed_when: >
-         (item.value['Status'] != 0)
-       with_dict: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
+         (item['Response']['Status'] != 0)
+       loop: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with n as 5."
        vars:
@@ -78,15 +78,14 @@
        debug:
         msg:
          - "Check read outfile status: {{ readres5keys['results'][0]['item']['outfile_status'] }}"
-         - "Check read response status: {{readres5keys['results'][0]['item']['output_data']['Response']['Status'] }}"
        no_log: true
        failed_when:
          (readres5keys['results'][0]['item']['outfile_status'] != 0) or
-         (readres5keys['results'][0]['item']['output_data']['Response']['Status'] != 0)
+         (readres5keys['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
        vars:
-          seq_no: "{{ readres5keys['results'][0]['item']['output_data']['Response']['Sequence_number'] }}"
+          seq_no: "{{ readres5keys['results'][0]['item']['output_data'][0]['Response']['Sequence_number'] }}"
        debug:
          msg: "Get the seq no"
        with_items:
@@ -155,13 +154,14 @@
      - name: save the Json data to a Variable as a Fact
        set_fact:
           jsondata_thread1: "{{ result_thread1.stdout | from_json }}"
-
-       # check if read is successful
-     - name: "{{ recipe_name }}: Check if read is successful"
+       
+      # check if read is successful
+     - name: "{{ recipe_name }}: Check if read is successful for thread 1."
+       vars: 
+         jsondata1: "{{ jsondata_thread1[0]['Response']['Status'] }}"
        debug:
          msg: "Check if read is successful"
-       failed_when: >
-         ( jsondata_thread1['Response']['Status'] != 0)
+       failed_when: jsondata1 != "0"
 
      - name: Display the JSON file content
        shell: cat {{rangereadres_thread1['results'][0]['item'] + '.json'}}
@@ -173,19 +173,21 @@
 
        # check if read is successful
      - name: "{{ recipe_name }}: Check if read is successful"
+       vars:
+         jsondata2: "{{ jsondata_thread2[0]['Response']['Status'] }}"
        debug:
          msg: "Check if read is successful"
        failed_when: >
-         ( jsondata_thread2['Response']['Status'] != 0)
+         ( jsondata2 != "0")
 
      - name: "{{ recipe_name }}: Compare read output of thread1 and thread2  with all the keys passed."
        vars:
-         read_thread1: "{{ jsondata_thread1['Response']['Response'] }}"
-         read_thread2: "{{ jsondata_thread2['Response']['Response'] }}"
+         read_thread1: "{{ jsondata_thread1[0]['Response']['Response'] }}"
+         read_thread2: "{{ jsondata_thread2[0]['Response']['Response'] }}"
        debug:
-         msg: "compare read and write output with all the keys passed"
-       failed_when: read_thread2[item.key] != read_thread1[item.key]
-       with_dict: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
+         msg: "compare keys and values of both threads"
+       failed_when: read_thread2 != read_thread1
+       loop: "{{ range(0, writeres5keys['results'][0]['item']['output_data'] | length) | list }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
