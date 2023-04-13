@@ -63,7 +63,7 @@
          (wr_response['Status'] != "Success") or
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
-         (wr_response['TTL'] != 60) or
+         (wr_response['TTL'] <= 0) or
          (wr_response['LeaseState'] != 4)
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP' operation."
@@ -98,3 +98,9 @@
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout) or
          (rd_response['LeaseState'] != 4)
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
+

@@ -60,11 +60,9 @@ def lease_operation(cluster_params, operation, client, resource, numOfLeases, ge
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
     # Prepare path for log file.
-    log_file = "%s/%s/%s_log.txt" % (base_dir, raft_uuid, operation)
-
+    leaseLogFile = "%s/%s/leaseClient_%s.log" % (base_dir, raft_uuid, operation)
     # Open the log file to pass the fp to subprocess.Popen
-    fp = open(log_file, "w")
-
+    fp = open(leaseLogFile, "a+")
     #start leaseApp process
     bin_path = '%s/leaseClient' % binary_dir
 
@@ -74,13 +72,13 @@ def lease_operation(cluster_params, operation, client, resource, numOfLeases, ge
 
     if getLeaseOutfile == '' and resource != '':
          process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
-                                            '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath], stdout = fp, stderr = fp)
+                                            '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath, '-l', leaseLogFile], stdout = fp, stderr = fp)
     elif getLeaseOutfile == '' and resource == '':
          process_popen = subprocess.Popen([bin_path, '-o', operation, '-ru', raft_uuid,
-                                            '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath], stdout = fp, stderr = fp)
+                                            '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath, '-l', leaseLogFile], stdout = fp, stderr = fp)
     elif getLeaseOutfile != '' and resource == '':
          process_popen = subprocess.Popen([bin_path, '-o', operation, '-ru', raft_uuid,
-                                              '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath], stdout = fp, stderr = fp)
+                                              '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath, '-l', leaseLogFile], stdout = fp, stderr = fp)
     os.fsync(fp)
     return process_popen, outfilePath
 
