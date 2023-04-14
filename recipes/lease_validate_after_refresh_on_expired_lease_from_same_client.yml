@@ -24,7 +24,7 @@
       failed_when:
          (app_type != "lease")
     
-    - name: "{{ recipe_name }}: Pause for 60 seconds so that all the leases gets expired."
+    - name: "{{ recipe_name }}: Pause for 90 seconds so that all the leases gets expired."
       pause:
         seconds: 90
 
@@ -88,3 +88,9 @@
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'])
       loop: "{{ range(0, no_of_leases) | list }}"
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
+

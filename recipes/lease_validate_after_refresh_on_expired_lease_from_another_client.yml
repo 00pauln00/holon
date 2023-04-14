@@ -1,10 +1,10 @@
 - import_playbook: lease_basic_operations.yml
 
-- name: "lease_validate_basic_stale_marking_behaviour"
+- name: "lease_validate_after_refresh_on_expired_lease_from_another_client"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "lease_validate_basic_stale_marking_behaviour"
+    recipe_name: "lease_validate_after_refresh_on_expired_lease_from_another_client"
     parent: "lease_basic_operations"
     no_of_leases: 5
 
@@ -112,4 +112,9 @@
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item]) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4)
       loop: "{{ range(0, no_of_leases) | list }}"
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
 
