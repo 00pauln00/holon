@@ -23,9 +23,9 @@
       failed_when:
          (app_type != "lease")
 
-    - name: "Pause for 80 seconds so the TTL gets expired"
+    - name: "Pause for 60 seconds so the TTL gets expired."
       pause:
-        seconds: 80
+        seconds: 60
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation after lease getting expired."
       vars:
@@ -43,12 +43,20 @@
           - "{{ leaseApp }}"
       register: lookupLease_after_lease_expired
 
-    - name: "{{ recipe_name }}: Verify outfile status"
+    - name: "{{ recipe_name }}: Verify outfile status."
       debug:
         msg: "Check outfile status: {{ lookupLease_after_lease_expired['results'][0]['item']['outfile_status'] }}"
       no_log: true
       failed_when: >
          (lookupLease_after_lease_expired['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Wait untill leaseState is expired."
+      include_role:
+        name: common
+        tasks_from: wait_untill_leaseState_is_expired
+      vars:
+         clientuuid: "{{ clientUUID.stdout }}"
+         resourceuuid: "{{ resourceUUID.stdout }}"
 
     - name: "{{ recipe_name }}: Check if 'LOOKUP' after lease expired is successful and should return Expired."
       vars:
@@ -97,9 +105,9 @@
          (wr_response['TTL'] <= 0) or
          (wr_response['LeaseState'] != 4)
 
-    - name: "Pause for 80 seconds so the TTL gets expierd"
+    - name: "Pause for 60 seconds so the TTL gets expierd"
       pause:
-        seconds: 80
+        seconds: 60
 
     - name: Generate new client
       shell: "/usr/bin/uuid"
