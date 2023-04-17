@@ -7,6 +7,8 @@
     recipe_name: "lease_validate_after expiry"
     parent: "lease_basic_operations"
     no_of_leases: 5
+  vars_files:
+    - ../leaseStateValue.yml
 
   tasks:
   - block:
@@ -52,12 +54,22 @@
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item]) or
-        (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4)
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
       loop: "{{ range(0, no_of_leases) | list }}"
 
-    - name: "{{ recipe_name }}: Pause for 90 seconds so that all the leases gets expired."
+    - name: "{{ recipe_name }}: Pause for 60 seconds so that all the leases gets expired."
       pause:
-        seconds: 90
+        seconds: 60
+
+    - name: "{{ recipe_name }}: Wait untill leaseState of all leases is expired."
+      include_role:
+        name: common
+        tasks_from: wait_untill_leaseState_is_expired
+      vars:
+         clientuuid: "{{ ClientUUIDS[item] }}"
+         resourceuuid: "{{ resourceUUIDS[item] }}"
+         leaseState: "{{ EXPIRED }}"
+      loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP' operation for {{ no_of_leases }} client-uuids and resource-uuids and validate that all the lease have status as stale."
       vars:
@@ -75,7 +87,7 @@
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource']) or
-        (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 2)
+        (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != EXPIRED)
       loop: "{{ range(0, no_of_leases) | list }}"
 
     rescue:
