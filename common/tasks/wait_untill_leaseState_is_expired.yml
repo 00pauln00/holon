@@ -1,16 +1,13 @@
 ---
 
-    - debug:
-        msg: "{{ leaseState }}"
-
-    - name: "{{ recipe_name }}: Wait Untill LeaseState is expired."
+    - name: "{{ recipe_name }}: Wait Untill LeaseState is {{ leaseState }}."
       vars:
         input_param: {
           'client': "{{ clientuuid }}",
           'resource': "{{ resourceuuid }}",
           'numOfLeases': "1",
           'getLeaseOutfile': "",
-          'outFileName': "waitUntill_leaseSate_expired_{{ resourceuuid }}"
+          'outFileName': "waitUntill_leaseSate_{{ leaseState}}_{{ resourceuuid }}"
           }
       debug:
          msg: "wait untill lease state is expired."
