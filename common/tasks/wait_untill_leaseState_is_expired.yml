@@ -1,5 +1,8 @@
 ---
 
+    - debug:
+        msg: "{{ leaseState }}"
+
     - name: "{{ recipe_name }}: Wait Untill LeaseState is expired."
       vars:
         input_param: {
@@ -11,6 +14,6 @@
           }
       debug:
          msg: "wait untill lease state is expired."
-      until: lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) | dict2items | map(attribute='value') | list | last | map(attribute='LeaseRes') | map(attribute='LeaseState') | list | first == 2
+      until: lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) | dict2items | map(attribute='value') | list | last | map(attribute='LeaseRes') | map(attribute='LeaseState') | list | first == leaseState
       retries: 100
       delay: 1
