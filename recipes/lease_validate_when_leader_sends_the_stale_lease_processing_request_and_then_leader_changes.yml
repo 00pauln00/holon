@@ -7,6 +7,8 @@
     recipe_name: "lease_validate_when_leader_sends_the_stale_lease_processing_request_and_then_leader_changes"
     parent: "lease_basic_operations"
     no_of_leases: 5
+  vars_files:
+    - ../leaseStateValue.yml
 
   tasks:
   - block:
@@ -52,7 +54,7 @@
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item]) or
-        (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4)
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
@@ -63,9 +65,19 @@
         ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
         fault_injection_name: "raft_leader_disable_direct_req"
 
-    - name: "{{ recipe_name }}: Pause for 90 seconds so that all the leases gets expired."
+    - name: "{{ recipe_name }}: Pause for 60 seconds so that all the leases gets expired."
       pause:
-        seconds: 90
+        seconds: 60
+
+    - name: "{{ recipe_name }}: Wait untill leaseState of all leases is expired."
+      include_role:
+        name: common
+        tasks_from: wait_untill_leaseState_is_expired
+      vars:
+         clientuuid: "{{ ClientUUIDS[item] }}"
+         resourceuuid: "{{ resourceUUIDS[item] }}"
+         leaseState: "{{ EXPIRED }}"
+      loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Get cluster information"
       include_role:
@@ -119,7 +131,7 @@
       failed_when: >
         (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
-        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item])
       loop: "{{ range(0, no_of_leases) | list }}"
@@ -153,6 +165,16 @@
       delay: 2
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
+    - name: "{{ recipe_name }}: Wait untill leaseState of all leases is granted."
+      include_role:
+        name: common
+        tasks_from: wait_untill_leaseState_is_expired
+      vars:
+         clientuuid: "{{ ClientUUIDS[item] }}"
+         resourceuuid: "{{ resourceUUIDS[item] }}"
+         leaseState: "{{ GRANTED }}"
+      loop: "{{ range(0, no_of_leases) | list }}"
+
     - name: "{{ recipe_name }}: Verify already taken leases gets updated with new leader."
       vars:
          input_param: {
@@ -167,8 +189,12 @@
       failed_when: >
         (new_leader_lookup[item]['outfile_status'] != 0) or
         (new_leader_lookup[item]['output_data'][0]['LeaseRes']['Status'] != 0)
-        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != 4) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item])
       loop: "{{ range(0, no_of_leases) | list }}"
-  
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
