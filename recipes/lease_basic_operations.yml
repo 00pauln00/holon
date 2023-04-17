@@ -4,6 +4,8 @@
   vars:
      recipe_name: "lease_basic_operations"
      parent: None
+  vars_files:
+    - ../leaseStateValue.yml
 
   tasks:
   - block:
@@ -110,7 +112,7 @@
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['TTL'] <= 0) or
-         (wr_response['LeaseState'] != 4)
+         (wr_response['LeaseState'] != GRANTED)
 
     - pause:
         seconds: 10
@@ -145,7 +147,7 @@
          msg: "Check if LOOKUP is successful"
       failed_when: >
          (rd_response['Status'] != 0) or
-         (rd_response['LeaseState'] != 4)
+         (rd_response['LeaseState'] != GRANTED)
 
     - name: "{{ recipe_name }}: Compare TS of GET and Lookup operation."
       vars:

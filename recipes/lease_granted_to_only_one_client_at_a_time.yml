@@ -6,6 +6,8 @@
   vars:
      recipe_name: "lease_granted_to_only_one_client_at_a_time"
      parent: lease_basic_operations
+  vars_files:
+    - ../leaseStateValue.yml
 
   tasks:
   - block:
@@ -76,7 +78,7 @@
          (wr_response['Client'] != clientUUID1.stdout|string) or
          (wr_response['Resource'] != new_resourceUUID.stdout|string) or
          (wr_response['TTL'] <= 0) or
-         (wr_response['LeaseState'] != 4)
+         (wr_response['LeaseState'] != GRANTED)
 
     - name: Generate new client
       shell: "/usr/bin/uuid"
@@ -118,7 +120,7 @@
       debug:
          msg: "Check if GET is successful"
       failed_when: >
-         (wr_response['LeaseState'] != 0)
+         (wr_response['LeaseState'] != INVALID)
 
     - pause:
         seconds: 90
@@ -159,7 +161,7 @@
       debug:
          msg: "Check if LOOKUP is successful."
       failed_when: >
-         (rd_response['LeaseState'] != 2)
+         (rd_response['LeaseState'] != EXPIRED)
 
     - name: "{{ recipe_name }}: Again Perform 'GET' operation from client 2"
       vars:
@@ -200,7 +202,7 @@
       failed_when: >
          (wr_response['Client'] != clientUUID2.stdout|string) or
          (wr_response['Resource'] != new_resourceUUID.stdout|string) or
-         (wr_response['LeaseState'] != 4)
+         (wr_response['LeaseState'] != GRANTED)
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

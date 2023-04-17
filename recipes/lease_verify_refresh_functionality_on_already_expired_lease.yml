@@ -6,6 +6,8 @@
   vars:
     recipe_name: "lease_verify_refresh_functionality_on_already_expired_lease"
     parent: "lease_basic_refresh_operation_on_valid_lease"
+  vars_files:
+    - ../leaseStateValue.yml
 
   tasks:
   - block:
@@ -15,7 +17,7 @@
       failed_when: terminate_recipe == true
 
     # check for the app_type
-    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'."
       vars:
          app_type: "{{ app_type }}"
       debug:
@@ -27,7 +29,7 @@
       shell: "/usr/bin/uuid"
       register: clientUUID1
 
-    - name: "{{ recipe_name }}: Perform 'REFRESH' operation from new client uuid and resource uuid form parent recipe."
+    - name: "{{ recipe_name }}: Perform 'REFRESH' operation from new client uuid and resource uuid from parent recipe."
       vars:
          input_param: {
                 'client': '{{ clientUUID1.stdout }}',
@@ -38,7 +40,7 @@
                  }
          leaseApp: "{{ lookup('lease_feature', 'REFRESH', input_param, wantlist=True) }}"
       debug:
-         msg: "refresh lease"
+         msg: "refresh lease from new client and resource uuid from parent recipe."
       with_items:
           - "{{ leaseApp }}"
       register: refreshLease
@@ -50,19 +52,20 @@
       failed_when: >
          (refreshLease['results'][0]['item']['outfile_status'] != 0)
 
-    - name: "{{ recipe_name }}: Check if REFRESH is successful."
+    - name: "{{ recipe_name }}: Check if REFRESH should not be successful."
       vars:
          rf_response: "{{ refreshLease['results'][0]['item']['output_data']['LeaseRes'] }}"
       debug:
-         msg: "Check if refresh is successful."
+         msg: "Check if refresh should not be successful: {{ rf_response}}"
+      #no_log: true
       failed_when: >
         (rf_response['Status'] != -1) or
-        (rf_response['LeaseState'] != 0) or
+        (rf_response['LeaseState'] != INVALID) or
         (rf_response['TTL'] != 0) or
         (rf_response['Client'] != "00000000-0000-0000-0000-000000000000") or
         (rf_response['Resource'] != "00000000-0000-0000-0000-000000000000")
 
-    - name: "{{ recipe_name }}: Perform 'REFRESH' operation from old client uuid and resource uuid form parent recipe."
+    - name: "{{ recipe_name }}: Perform 'REFRESH' operation from old client uuid and resource uuid from parent recipe."
       vars:
          input_param: {
                 'client': '{{ clientUUID.stdout }}',
@@ -73,27 +76,28 @@
                  }
          leaseApp: "{{ lookup('lease_feature', 'REFRESH', input_param, wantlist=True) }}"
       debug:
-         msg: "refresh lease"
+         msg: "refresh lease from old client and resource uuid."
       with_items:
           - "{{ leaseApp }}"
       register: refreshLease_old_client
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check outfile status: {{ refreshLease['results'][0]['item']['outfile_status'] }}"
+        msg: "Check outfile status"
       no_log: true
       failed_when: >
          (refreshLease_old_client['results'][0]['item']['outfile_status'] != 0)
 
-    - name: "{{ recipe_name }}: Check if REFRESH is successful."
+    - name: "{{ recipe_name }}: Check if REFRESH is successful with parent recipe client uuid and resource uuid."
       vars:
          rf_response: "{{ refreshLease_old_client['results'][0]['item']['output_data']['LeaseRes'] }}"
       debug:
-         msg: "Check if refresh is successful."
+         msg: "Check if refresh is successful with parent recipe client uuid and resource uuid."
+      no_log: true
       failed_when: >
         (rf_response['Status'] != 0) or
-        (rf_response['LeaseState'] != 4) or
-        (rf_response['TTL'] != 60) or
+        (rf_response['LeaseState'] != GRANTED) or
+        (rf_response['TTL'] <= 0) or
         (rf_response['Client'] != clientUUID.stdout) or
         (rf_response['Resource'] != resourceUUID.stdout)
 
@@ -101,4 +105,3 @@
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
-

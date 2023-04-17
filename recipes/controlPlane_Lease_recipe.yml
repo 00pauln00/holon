@@ -66,11 +66,11 @@
 
      - name: "{{ recipe_name }}: Verify write status"
        debug:
-         msg: "Check write response status: {{ item.value['Status'] }}"
+         msg: "Check write response status"
        no_log: true
        failed_when: >
-         (item.value['Status'] != 0)
-       with_dict: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
+         (item['Response']['Status'] != 0)
+       loop: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
      
      - name: Generate new resource
        shell: "/usr/bin/uuid"

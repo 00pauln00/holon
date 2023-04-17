@@ -6,7 +6,8 @@
   vars:
     recipe_name: "lease_verify_refresh_functionality"
     parent: "lease_basic_operations"
-
+  vars_files:
+    - ../leaseStateValue.yml
 
   tasks:
   - block:
@@ -64,7 +65,7 @@
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['TTL'] <= 0) or
-         (wr_response['LeaseState'] != 4)
+         (wr_response['LeaseState'] != GRANTED)
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP' operation."
       vars:
@@ -97,4 +98,10 @@
          (rd_response['Status'] != "Success") or
          (rd_response['Client'] != clientUUID.stdout) or
          (rd_response['Resource'] != resourceUUID.stdout) or
-         (rd_response['LeaseState'] != 4)
+         (rd_response['LeaseState'] != GRANTED)
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
+
