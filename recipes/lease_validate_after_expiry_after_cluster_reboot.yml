@@ -57,10 +57,6 @@
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
       loop: "{{ range(0, no_of_leases) | list }}"
 
-    - name: "{{ recipe_name }}: Pause for 60 seconds so that all the leases gets expired."
-      pause:
-        seconds: 60
-
     - name: "{{ recipe_name }}: get the list of non-running servers."
       include_role:
         name: common
@@ -113,4 +109,3 @@
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
-

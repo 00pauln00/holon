@@ -57,9 +57,15 @@
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
       loop: "{{ range(0, no_of_leases) | list }}"
 
-    - name: "{{ recipe_name }}: Pause for 60 seconds so that all the leases gets expired."
-      pause:
-        seconds: 60
+    - name: "{{ recipe_name }}: Wait untill leaseState of all leases is expired."
+      include_role:
+        name: common
+        tasks_from: wait_untill_leaseState_is_expired
+      vars:
+         clientuuid: "{{ ClientUUIDS[item] }}"
+         resourceuuid: "{{ resourceUUIDS[item] }}"
+         leaseState: "{{ EXPIRED }}"
+      loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: get the list of non-running servers."
       include_role:
