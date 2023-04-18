@@ -1,11 +1,11 @@
-- import_playbook: lease_basic_operations.yml
+- import_playbook: lease_validate_after_expiry.yml
 
 - name: "lease_validate_after_expiry_after_cluster_reboot"
   hosts: localhost
   connection: local
   vars:
     recipe_name: "lease_validate_after_expiry_after_cluster_reboot"
-    parent: "lease_basic_operations"
+    parent: "lease_validate_after_expiry"
     no_of_leases: 5
   vars_files:
     - ../leaseStateValue.yml
