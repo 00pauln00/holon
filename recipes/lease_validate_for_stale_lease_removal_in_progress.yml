@@ -1,0 +1,190 @@
+- import_playbook: lease_basic_operations.yml
+
+- name: "lease_validate_for_stale_lease_removal_in_progress"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "lease_validate_for_stale_lease_removal_in_progress"
+    parent: "lease_basic_operations"
+    no_of_leases: 5
+  vars_files:
+    - ../leaseStateValue.yml
+
+  tasks:
+  - block:
+
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    # check for the app_type
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+      vars:
+         app_type: "{{ app_type }}"
+      debug:
+         msg: "app_type is: {{ app_type }}"
+      failed_when:
+         (app_type != "lease")
+
+    - name: "Get multiple client uuids."
+      include_role:
+        name: common
+        tasks_from: get_multiple_client_uuids
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "Get multiple resource uuids."
+      include_role:
+        name: common
+        tasks_from: get_multiple_resource_uuids
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Perform 'GET' operation for {{ no_of_leases }} client-uuids and resource-uuids."
+      vars:
+         input_param: {
+                'client': '{{ ClientUUIDS[item] }}',
+                'resource': '{{ resourceUUIDS[item] }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'get_lease_{{ item }}'
+                 }
+      set_fact:
+        getLeaseOps: "{{ getLeaseOps|default([]) + [lookup('lease_feature', 'GET', input_param, wantlist=True)] }}"
+      failed_when: >
+        (getLeaseOps[item]['outfile_status'] != 0) or
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item]) or
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        fault_injection_name: "raft_leader_disable_direct_req"
+
+    - name: "{{ recipe_name }}: Wait until leaseState of all leases is expired."
+      include_role:
+        name: common
+        tasks_from: wait_untill_leaseState_is_expired
+      vars:
+         clientuuid: "{{ ClientUUIDS[item] }}"
+         resourceuuid: "{{ resourceUUIDS[item] }}"
+         leaseState: "{{ EXPIRED }}"
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Perform 'LOOKUP' and validate lease state is still in progress."
+      vars:
+         input_param: {
+                'client': '{{ ClientUUIDS[item] }}',
+                'resource': '{{ resourceUUIDS[item] }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'lookup_and_verfiy_lease_state_in_progress_{{ item }}'
+                 }
+      set_fact:
+        lookup_aftr_new_leader: "{{ lookup_aftr_new_leader|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
+      failed_when: >
+        (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != STALE_INPROGRESS) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item])
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    #TODO Validate REFRESH operation should fail here, as the lease state is Stale leases processing in progress.
+    - name: "{{ recipe_name }}: Perform 'REFRESH' operation from same client."
+      vars:
+         input_param: {
+                'client': '{{ ClientUUIDS[item] }}',
+                'resource': '{{ resourceUUIDS[item] }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'refresh_lease_{{ resourceUUIDS[item] }}'
+                 }
+      set_fact:
+        refresh: "{{ refresh|default([]) + [lookup('lease_feature', 'REFRESH', input_param, wantlist=True)] }}"
+      failed_when: >
+        (refresh[item]['outfile_status'] != 0) or
+        (refresh[item]['output_data']['LeaseRes']['Status'] != 0) or
+        (refresh[item]['output_data']['LeaseRes']['LeaseState'] != STALE_INPROGRESS) or
+        (refresh[item]['output_data']['LeaseRes']['Client'] != ClientUUIDS[item]) or
+        (refresh[item]['output_data']['LeaseRes']['Resource'] != resourceUUIDS[item])
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    #TODO Remove Faault injection
+
+    - name: "{{ recipe_name }}: Wait until leaseState of all leases should complete."
+      include_role:
+        name: common
+        tasks_from: wait_untill_leaseState_is_expired
+      vars:
+         clientuuid: "{{ ClientUUIDS[item] }}"
+         resourceuuid: "{{ resourceUUIDS[item] }}"
+         leaseState: "{{ EXPIRED }}"
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Perform 'LOOKUP' and validate lease state should expired."
+      vars:
+         input_param: {
+                'client': '{{ ClientUUIDS[item] }}',
+                'resource': '{{ resourceUUIDS[item] }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'lookup_and_verfiy_lease_state_in_progress_{{ item }}'
+                 }
+      set_fact:
+        lookup_aftr_new_leader: "{{ lookup_aftr_new_leader|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
+      failed_when: >
+        (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != EXPIRED) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item])
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Perform 'REFRESH' operation from same clients."
+      vars:
+         input_param: {
+                'client': '{{ ClientUUIDS[item] }}',
+                'resource': '{{ resourceUUIDS[item] }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'refresh_lease_{{ resourceUUIDS[item] }}'
+                 }
+      set_fact:
+        refresh: "{{ refresh|default([]) + [lookup('lease_feature', 'REFRESH', input_param, wantlist=True)] }}"
+      failed_when: >
+        (refresh[item]['outfile_status'] != 0) or
+        (refresh[item]['output_data']['LeaseRes']['Status'] != 0) or
+        (refresh[item]['output_data']['LeaseRes']['LeaseState'] != GRANTED) or
+        (refresh[item]['output_data']['LeaseRes']['Client'] != ClientUUIDS[item]) or
+        (refresh[item]['output_data']['LeaseRes']['Resource'] != resourceUUIDS[item])
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Perform 'LOOKUP' and validate lease state should valid now."
+      vars:
+         input_param: {
+                'client': '{{ ClientUUIDS[item] }}',
+                'resource': '{{ resourceUUIDS[item] }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'lookup_and_verfiy_lease_state_in_progress_{{ item }}'
+                 }
+      set_fact:
+        lookup_aftr_new_leader: "{{ lookup_aftr_new_leader|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
+      failed_when: >
+        (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item])
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
+
