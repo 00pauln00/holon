@@ -57,28 +57,28 @@
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
       loop: "{{ range(0, no_of_leases) | list }}"
 
+    - name: "{{ recipe_name }}: Get cluster information"
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
+
     - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
       include_role:
         name: common
         tasks_from: set_fault_injection_and_verify
       vars:
         ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
-        fault_injection_name: "raft_leader_disable_direct_req"
+        fault_injection_name: "raft_leader_ignore_direct_req"
 
-    - name: "{{ recipe_name }}: Wait untill leaseState of all leases is expired."
+    - name: "{{ recipe_name }}: Wait untill leaseState of all leases is stale in progress."
       include_role:
         name: common
         tasks_from: wait_untill_leaseState_is_expired
       vars:
          clientuuid: "{{ ClientUUIDS[item] }}"
          resourceuuid: "{{ resourceUUIDS[item] }}"
-         leaseState: "{{ EXPIRED }}"
+         leaseState: "{{ STALE_INPROGRESS }}"
       loop: "{{ range(0, no_of_leases) | list }}"
-
-    - name: "{{ recipe_name }}: Get cluster information"
-      include_role:
-        name: common
-        tasks_from: get_follower_stats
 
     - name: "{{ recipe_name }}: Store leader-1"
       vars:
@@ -97,7 +97,7 @@
          where: "/ctl_svc_nodes/uuid@{{ orig_leader['results'][0]['item'] }}"
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
-      no_log: true
+          #no_log: true
 
     - name: "{{ recipe_name }}: Disable receive on all peers from the leader 1."
       vars:
@@ -108,10 +108,30 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
 
-    - name: "{{ recipe_name }}: Wait until leader election happens."
+    - name: "{{ recipe_name }}: Get the list of peer UUIDs."
       include_role:
         name: common
-        tasks_from: wait_until_leader_election
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Wait until leader election happens."
+      vars:
+         stage: "wait_leader_election"
+      debug:
+        msg: "Waiting for leader election"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != orig_leader['results'][0]['item']
+      retries: 5
+      delay: 1
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Wait untill leaseState of all leases is granted."
+      include_role:
+        name: common
+        tasks_from: wait_untill_leaseState_is_expired
+      vars:
+         clientuuid: "{{ ClientUUIDS[item] }}"
+         resourceuuid: "{{ resourceUUIDS[item] }}"
+         leaseState: "{{ GRANTED }}"
+      loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Verify new leader has the state as valid for all the leases."
       vars:
@@ -123,13 +143,13 @@
                 'outFileName': 'lookup_lease_after_new_leader_{{ item }}'
                  }
       set_fact:
-        lookup_aftr_new_leader: "{{ lookup_aftr_new_leader|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
+        lookup_after_leaseState_valid: "{{ lookup_after_leaseState_valid|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
       failed_when: >
-        (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
-        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
-        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED) or
-        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
-        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item])
+        (lookup_after_leaseState_valid[item]['outfile_status'] != 0) or
+        (lookup_after_leaseState_valid[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
+        (lookup_after_leaseState_valid[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED) or
+        (lookup_after_leaseState_valid[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
+        (lookup_after_leaseState_valid[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item])
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Enable send on all peers from the leader 1."
@@ -156,7 +176,7 @@
       debug:
         msg:
          - "Waiting for new leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first == orig_leader
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first == orig_leader['results'][0]['item']
       retries: 10
       delay: 2
       loop: "{{ range(0, NRunningPeers | length) | list }}"
