@@ -122,8 +122,14 @@
       failed_when: >
          (wr_response['LeaseState'] != INVALID)
 
-    - pause:
-        seconds: 90
+    - name: "{{ recipe_name }}: Wait untill leaseState is expired for clientUUID 1."
+      include_role:
+        name: common
+        tasks_from: wait_untill_leaseState_is_expired
+      vars:
+         clientuuid: "{{ clientUUID1.stdout }}"
+         resourceuuid: "{{ new_resourceUUID.stdout }}"
+         leaseState: "{{ EXPIRED }}"
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation for client-1."
       vars:

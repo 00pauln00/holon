@@ -102,9 +102,9 @@
          (rd_response['Resource'] != resourceUUID.stdout) or
          (rd_response['LeaseState'] != GRANTED)
 
-    - name: "{{ recipe_name }}: Pause for 20 seconds so that TTL value gets changed."
+    - name: "{{ recipe_name }}: Pause for 10 seconds so that TTL value gets changed."
       pause:
-        seconds: 20
+        seconds: 10
 
     - name: "{{ recipe_name }}: Perform 'REFRESH' operation."
       vars:

@@ -57,9 +57,9 @@
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
       loop: "{{ range(0, no_of_leases) | list }}"
 
-    - name: "{{ recipe_name }}: Pause for 30 seconds."
+    - name: "{{ recipe_name }}: Pause for 10 seconds."
       pause:
-        seconds: 30
+        seconds: 10
     
     - name: "Get multiple client uuids."
       include_role:
@@ -122,6 +122,16 @@
          leaseState: "{{ EXPIRED }}"
       loop: "{{ range(0, no_of_leases) | list }}"
 
+    - name: "{{ recipe_name }}: Wait untill leaseState of all leases of clientuuid of first set is expired."
+      include_role:
+        name: common
+        tasks_from: wait_untill_leaseState_is_expired
+      vars:
+         clientuuid: "{{ ClientUUIDS[item] }}"
+         resourceuuid: "{{ resourceUUIDS[item] }}"
+         leaseState: "{{ EXPIRED }}"
+      loop: "{{ range(0, no_of_leases) | list }}"
+
     - name: "{{ recipe_name }}: Perform 'LOOKUP' operation for {{ no_of_leases }} client-uuids and resource-uuids and validate that 1st set of uuids should be expired."
       vars:
          input_param: {
@@ -145,4 +155,3 @@
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
-
