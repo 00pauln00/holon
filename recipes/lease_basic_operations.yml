@@ -73,12 +73,7 @@
     - name: Generate new client
       shell: "/usr/bin/uuid"
       register: clientUUID
-
-    - debug:
-        msg:
-         - "client: {{ clientUUID.stdout }}"
-         - "resource: {{ resourceUUID.stdout }}"
-
+    
     - name: "{{ recipe_name }}: Perform 'GET' operation."
       vars:
          input_param: {
@@ -115,7 +110,7 @@
          (wr_response['LeaseState'] != GRANTED)
 
     - pause:
-        seconds: 10
+        seconds: 3
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation."
       vars:
@@ -172,4 +167,3 @@
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
-
