@@ -1,11 +1,9 @@
-- import_playbook: lease_basic_operations.yml
-
 - name: "lease_validate_when_leader_sends_the_stale_lease_processing_request_and_then_leader_changes"
   hosts: localhost
   connection: local
   vars:
     recipe_name: "lease_validate_when_leader_sends_the_stale_lease_processing_request_and_then_leader_changes"
-    parent: "lease_basic_operations"
+    parent: none
     no_of_leases: 5
   vars_files:
     - ../leaseStateValue.yml
@@ -25,6 +23,19 @@
          msg: "app_type is: {{ app_type }}"
       failed_when:
          (app_type != "lease")
+
+    - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "Start 5 peers in the cluster"
+      include_role:
+        name: common
+        tasks_from: start_server
+      vars:
+        ServerUUID: "{{ NonRunningServers[item] }}"
+      loop: "{{ range(0, NonRunningServers | length) | list }}"
 
     - name: "Get multiple client uuids."
       include_role:
@@ -90,6 +101,11 @@
          - "{{ leader1 }}"
       register: orig_leader
 
+    - name: "{{ recipe_name }}: Get the list of peer UUIDs."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
     - name: "{{ recipe_name }}: Disable send on all peers from the leader 1."
       vars:
          stage: "stage1_disable_net_send"
@@ -107,12 +123,7 @@
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
-
-    - name: "{{ recipe_name }}: Get the list of peer UUIDs."
-      include_role:
-        name: common
-        tasks_from: get_server_uuid_info
-
+    
     - name: "{{ recipe_name }}: Wait until leader election happens."
       vars:
          stage: "wait_leader_election"
@@ -122,16 +133,6 @@
       retries: 5
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
-
-    - name: "{{ recipe_name }}: Wait untill leaseState of all leases is granted."
-      include_role:
-        name: common
-        tasks_from: wait_untill_leaseState_is_expired
-      vars:
-         clientuuid: "{{ ClientUUIDS[item] }}"
-         resourceuuid: "{{ resourceUUIDS[item] }}"
-         leaseState: "{{ GRANTED }}"
-      loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Verify new leader has the state as valid for all the leases."
       vars:
