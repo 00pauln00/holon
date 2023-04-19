@@ -163,6 +163,45 @@
       failed_when: >
         (rd_ttl >= wr_ttl)
 
+    - name: Generate new client
+      shell: "/usr/bin/uuid"
+      register: clientUUID1
+
+    - name: "{{ recipe_name }}: Perform 'GET' operation from new client uuid, even if lease is still valid for old client uuid."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID1.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'get_lease_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+      debug:
+         msg: "GET operation with new client uuid"
+      with_items:
+          - "{{ leaseApp }}"
+      register: getLease
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check outfile status: {{ getLease['results'][0]['item']['outfile_status'] }}"
+      no_log: true
+      failed_when: >
+         (getLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check if 'GET' should not be successful ad lease is taken by old clinet uuid."
+      vars:
+         wr_response: "{{ getLease['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
+      debug:
+         msg: "Check if GET is successful"
+      failed_when: >
+         (wr_response['Status'] != -1) or
+         (wr_response['Client'] != "00000000-0000-0000-0000-000000000000") or
+         (wr_response['Resource'] != "00000000-0000-0000-0000-000000000000") or
+         (wr_response['TTL'] < 0) or
+         (wr_response['LeaseState'] != INVALID)
+
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
