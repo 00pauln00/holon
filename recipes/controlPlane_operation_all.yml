@@ -110,7 +110,7 @@
          msg: "Verifying parameter after read operation"
        failed_when: >
          (rdval['Status'] != 0) or
-         (rdval['Response'] != "India")
+         ((rdval['ResultMap'][writeres['results'][0]['item']['output_data'][0]['Request']['Key']] | b64decode) != (writeres['results'][0]['item']['output_data'][0]['Request']['Value'] | b64decode))
 
      - name: "{{ recipe_name }}: Starting controlplane_client to get the config values."
        vars:

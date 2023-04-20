@@ -150,10 +150,10 @@
 
      - name: "{{ recipe_name }}: Compare write and read output with all the keys passed."
        vars:
-         readall: "{{ readres_afterStartingProxy['results'][0]['item']['output_data'][0]['Response']['Response']}}"
+         readall: "{{ readres_afterStartingProxy['results'][0]['item']['output_data'][0]['Response']['ResultMap']}}"
        debug:
          msg: "compare read and write output with all the keys passed"
-       failed_when:  item['Request']['Value'] != readall[item['Request']['Key']]
+       failed_when:  (item['Request']['Value'] | b64decode) != (readall[item['Request']['Key']] | b64decode)
        loop: "{{ writeres_afterStartingProxy['results'][0]['item']['output_data'] }}"
 
     rescue:

@@ -15,7 +15,7 @@
      - debug:
          msg: "Compare write-read values"
        failed_when: >
-          wrValue[itr] != rdValue[itr]
+          (wrValue[itr] | b64decode) != (rdValue[itr] | b64decode)
        loop: "{{ range(0, wrValue | length) | list }}"
        loop_control:
           loop_var: itr

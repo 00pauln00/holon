@@ -107,13 +107,13 @@
 
      - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
        vars:
-          seq_no: "{{ firstreadres5keys['results'][0]['item']['output_data'][0]['Response']['Sequence_number'] }}"
+          seq_no: "{{ firstreadres5keys['results'][0]['item']['output_data'][0]['Response']['SeqNum'] }}"
        debug:
          msg: "Get the seq no"
        with_items:
            - "{{ seq_no }}"
        register: seqNo
-       no_log: true
+      #no_log: true
 
      - name: "{{ recipe_name }}: Starting controlplane_client to over write the value."
        vars:
@@ -217,8 +217,8 @@
 
      - name: "{{ recipe_name }}: Validate that we should not see the new value written with existing key."
        vars:
-          read_earlier: "{{ consistencyCheck_rangereadres['results'][0]['item']['output_data'][0]['Response']['Response'][key] }}"
-          write_res: "{{ writeres_overwrite['results'][0]['item']['output_data'][0]['Response']['Response'] }}"
+          read_earlier: "{{ consistencyCheck_rangereadres['results'][0]['item']['output_data'][0]['Response']['ResultMap'][key]  | b64decode }}"
+          write_res: "{{ writeres_overwrite['results'][0]['item']['output_data'][0]['Request']['Value'] | b64decode }}"
        debug:
          msg: "compare earlier read and read after new write with same sequence no"
        failed_when: read_earlier == write_res
@@ -273,7 +273,7 @@
 
      - name: "{{ recipe_name }}: Get the sequence no from the read result after removing fault injection."
        vars:
-          seq_no: "{{ rangerd_aftr_rm_fi['results'][0]['item']['output_data'][0]['Response']['Sequence_number'] }}"
+          seq_no: "{{ rangerd_aftr_rm_fi['results'][0]['item']['output_data'][0]['Response']['SeqNum'] }}"
        debug:
          msg: "Get the seq no"
        with_items:
@@ -291,18 +291,18 @@
 
      - name: "{{ recipe_name }}: Validate that we should see the updated value for the over-written key after removing the fault injection."
        vars:
-          Value_earlier: "{{ consistencyCheck_rangereadres['results'][0]['item']['output_data'][0]['Response']['Response'][key] }}"
-          Value_new: "{{ rangerd_aftr_rm_fi['results'][0]['item']['output_data'][0]['Response']['Response'][key] }}"
+          Value_earlier: "{{ consistencyCheck_rangereadres['results'][0]['item']['output_data'][0]['Response']['ResultMap'][key] }}"
+          Value_new: "{{ rangerd_aftr_rm_fi['results'][0]['item']['output_data'][0]['Response']['ResultMap'][key] }}"
        debug:
          msg: "compare earlier seqno with old seq no."
        failed_when: Value_earlier == Value_new
 
      - name: "{{ recipe_name }}: Validate that we should see the Inserted new value for the key after removing the fault injection."
        vars:
-          Write: "{{ writeres_Insert['results'][0]['item']['output_data'][0]['Response']['Response'] }}"
-          Read: "{{ rangerd_aftr_rm_fi['results'][0]['item']['output_data'][0]['Response']['Response'][writeres_Insert['results'][0]['item']['output_data'][0]['Request']['Key']] }}"
+          Write: "{{ writeres_Insert['results'][0]['item']['output_data'][0]['Request']['Value'] | b64decode }}"
+          Read: "{{ rangerd_aftr_rm_fi['results'][0]['item']['output_data'][0]['Response']['ResultMap'][writeres_Insert['results'][0]['item']['output_data'][0]['Request']['Key']]  | b64decode }}"
        debug:
-         msg: "should see the new key written{{Read}}"
+         msg: "should see the new key written"
        failed_when: Write != Read
 
     rescue:
