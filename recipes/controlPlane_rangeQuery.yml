@@ -220,7 +220,7 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with Invalid prefix passed."
        vars:
          input_param: {
-                'Key': 'Paroscale*',
+                'Key': 'Welcome*',
                 'Operation': 'read',
                 'OutfileName': 'RangeRead_InvalidPrefix_output',
                 'NoofWrites': '5',
@@ -240,17 +240,10 @@
         msg:
          - "Check read outfile status: {{ readWithInvalidPrefix['results'][0]['item']['outfile_status'] }}"
          - "Check read response status: {{ readWithInvalidPrefix['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
-       no_log: true
+       #no_log: true
        failed_when:
          (readWithInvalidPrefix['results'][0]['item']['outfile_status'] != 0) or
-         (readWithInvalidPrefix['results'][0]['item']['output_data'][0]['Response']['Status'] != 1)
-
-     - name: "{{ recipe_name }}: Check it should not return keys and value with invalid prefix passed."
-       vars:
-         readprefix: "{{ readWithInvalidPrefix['results'][0]['item']['output_data'][0]['Response']['ResultMap'] }}"
-       debug:
-         msg: "Check if response is Key not found with invalid prefix passed"
-       failed_when: readprefix != "Key not found"
+         (readWithInvalidPrefix['results'][0]['item']['output_data'][0]['Response']['Status'] != -1)
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

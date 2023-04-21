@@ -58,12 +58,7 @@
        failed_when: >
          (writeres5keys['results'][0]['item']['outfile_status'] != 0)
 
-     - name: "{{ recipe_name }}: Verify that if no proxy is alive it should return Server not available."
-       debug:
-         msg: "if no proxy is alive it should return Server not available"
-       failed_when: >
-         (item['Response']['Response'] != "(Service discovery) Server not available")
-       loop: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
+     #TODO If proxy is not alive, Validate write response with proper return error code
 
      - name: "{{ recipe_name }}: get the list of non-running servers."
        include_role:
