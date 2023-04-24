@@ -47,14 +47,14 @@
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check outfile status: {{ refreshLease['results'][0]['item'][0]['outfile_status'] }}"
+        msg: "Check outfile status: {{ refreshLease['results'][0]['item']['outfile_status'] }}"
       no_log: true
       failed_when: >
          (refreshLease['results'][0]['item']['outfile_status'] != 0)
 
     - name: "{{ recipe_name }}: Check if REFRESH should not be successful."
       vars:
-         rf_response: "{{ refreshLease['results'][0]['item']['output_data']['LeaseRes'] }}"
+         rf_response: "{{ refreshLease['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
       debug:
          msg: "Check if refresh should not be successful: {{ rf_response}}"
       #no_log: true
