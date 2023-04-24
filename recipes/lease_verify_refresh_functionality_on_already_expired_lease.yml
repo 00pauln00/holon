@@ -47,7 +47,7 @@
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
-        msg: "Check outfile status: {{ refreshLease['results'][0]['item']['outfile_status'] }}"
+        msg: "Check outfile status: {{ refreshLease['results'][0]['item'][0]['outfile_status'] }}"
       no_log: true
       failed_when: >
          (refreshLease['results'][0]['item']['outfile_status'] != 0)
@@ -90,7 +90,7 @@
 
     - name: "{{ recipe_name }}: Check if REFRESH is successful with parent recipe client uuid and resource uuid."
       vars:
-         rf_response: "{{ refreshLease_old_client['results'][0]['item']['output_data']['LeaseRes'] }}"
+         rf_response: "{{ refreshLease_old_client['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
       debug:
          msg: "Check if refresh is successful with parent recipe client uuid and resource uuid."
       no_log: true
