@@ -54,7 +54,7 @@
 
     - name: "{{ recipe_name }}: Check if REFRESH should not be successful."
       vars:
-         rf_response: "{{ refreshLease['results'][0]['item']['output_data']['LeaseRes'] }}"
+         rf_response: "{{ refreshLease['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
       debug:
          msg: "Check if refresh should not be successful: {{ rf_response}}"
       #no_log: true
@@ -90,7 +90,7 @@
 
     - name: "{{ recipe_name }}: Check if REFRESH is successful with parent recipe client uuid and resource uuid."
       vars:
-         rf_response: "{{ refreshLease_old_client['results'][0]['item']['output_data']['LeaseRes'] }}"
+         rf_response: "{{ refreshLease_old_client['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
       debug:
          msg: "Check if refresh is successful with parent recipe client uuid and resource uuid."
       no_log: true
