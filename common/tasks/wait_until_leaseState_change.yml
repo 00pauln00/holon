@@ -10,7 +10,7 @@
           'outFileName': "wait_Until_leaseState_{{ resourceuuid }}_{{ leaseState }}"
           }
       debug:
-         msg:
+         msg: "Wait Until for LeaseState"
       until: lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) | dict2items | map(attribute='value') | list | last | map(attribute='LeaseRes') | map(attribute='LeaseState') | list | first == leaseState
       retries: 60
       delay: 1
