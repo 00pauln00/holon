@@ -85,7 +85,7 @@ def lease_operation(cluster_params, operation, client, resource, numOfLeases, ge
 def add_outfile_path_to_dict(jsonOutfile):
     output_data = get_the_output(jsonOutfile)
     output_data['detailedJsonPath'] = jsonOutfile
-    singleResponseJson = "%s_single_response" % jsonOutfile
+    singleResponseJson = "%s_summary" % jsonOutfile
     output_data['singleResponseJson'] = singleResponseJson
 
     return output_data
