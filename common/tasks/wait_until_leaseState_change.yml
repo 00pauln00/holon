@@ -1,16 +1,16 @@
 ---
 
-    - name: "{{ recipe_name }}: Wait Untill LeaseState is {{ leaseState }}."
+    - name: "{{ recipe_name }}: Wait Until LeaseState set to: {{ leaseState }}."
       vars:
         input_param: {
           'client': "{{ clientuuid }}",
           'resource': "{{ resourceuuid }}",
           'numOfLeases': "1",
           'getLeaseOutfile': "",
-          'outFileName': "waitUntill_leaseSate_{{ leaseState}}_{{ resourceuuid }}"
+          'outFileName': "wait_Until_leaseState_{{ resourceuuid }}_{{ leaseState }}"
           }
       debug:
-         msg: "wait untill lease state is expired."
+         msg:
       until: lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) | dict2items | map(attribute='value') | list | last | map(attribute='LeaseRes') | map(attribute='LeaseState') | list | first == leaseState
-      retries: 100
+      retries: 60
       delay: 1
