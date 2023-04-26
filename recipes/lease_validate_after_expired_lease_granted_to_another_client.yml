@@ -113,9 +113,9 @@
          msg:  "{{ lookup('niova_raftprocess', 'kill', NRunningPeers[item], wantlist=True) }}"
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    - name: "{{ recipe_name }}: Pause for 10 seconds."
+    - name: "{{ recipe_name }}: Pause for 2 seconds."
       pause:
-        seconds: 10
+        seconds: 2
 
     - name: "{{ recipe_name }}: Reboot the cluster."
       debug:

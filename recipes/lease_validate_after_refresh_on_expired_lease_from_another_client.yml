@@ -123,7 +123,7 @@
         (refresh[item]['output_data']['LeaseRes']['TTL'] != 0)
       loop: "{{ range(0, no_of_leases) | list }}"
 
-    - name: "{{ recipe_name }}: Perform 'GET' operation for {{ no_of_leases }} client-uuids and resource-uuids."
+    - name: "{{ recipe_name }}: Perform 'GET' operation for {{ no_of_leases }} old client-uuids and old resource-uuids."
       vars:
          input_param: {
                 'client': '{{ newClientUUIDS[item] }}',
