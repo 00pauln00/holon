@@ -71,7 +71,7 @@
     - name: "{{ recipe_name }}: Wait untill leaseState of all leases is expired."
       include_role:
         name: common
-        tasks_from: wait_untill_leaseState_is_expired
+        tasks_from: wait_until_leaseState_change
       vars:
          clientuuid: "{{ ClientUUIDS[item] }}"
          resourceuuid: "{{ resourceUUIDS[item] }}"
