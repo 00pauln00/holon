@@ -57,10 +57,6 @@
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
       loop: "{{ range(0, no_of_leases) | list }}"
 
-    - name: "{{ recipe_name }}: Pause for 10 seconds."
-      pause:
-        seconds: 10
-    
     - name: "Get multiple client uuids."
       include_role:
         name: common
