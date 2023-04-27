@@ -73,12 +73,19 @@
         name: common
         tasks_from: get_follower_stats
 
+    - set_fact:
+        oldLeader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+
+    - debug:
+        msg:
+         - "Old leader: {{ oldLeader }}"
+
     - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
       include_role:
         name: common
         tasks_from: set_fault_injection_and_verify
       vars:
-        ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        ServerUUID: "{{ oldLeader }}"
         fault_injection_name: "raft_leader_ignore_direct_req"
 
     - pause:
@@ -94,40 +101,6 @@
          leaseState: "{{ STALE_INPROGRESS }}"
       loop: "{{ range(0, no_of_leases) | list }}"
 
-    - set_fact:
-        oldLeader: "{{ LeaderUUID['/0/leader-uuid'] }}"
-
-    - debug:
-        msg:
-         - "Old leader: {{ oldLeader }}"
-
-    - name: "{{ recipe_name }}: Disable Msg(Recv) net_recv_enabled from leader to the cluster."
-      vars:
-         stage: "disable_peers_mode"
-         cmd: "net_recv_enabled@false"
-         where: "/ctl_svc_nodes/uuid@{{ oldLeader }}"
-         disable_net_rcv: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where, wantlist=True) }}"
-      debug:
-         msg: "{{ disable_net_rcv }}"
-      loop: "{{ range(0, FollowerUUIDs | length) | list }}"
-      loop_control:
-         pause: 1
-      no_log: True
-
-    - name: "{{ recipe_name }}: Disable Msg(Send) net_send_enabled from leader to the cluster."
-      vars:
-         stage: "disable_peers_mode"
-         cmd: "net_send_enabled@false"
-         where: "/ctl_svc_nodes/uuid@{{ oldLeader }}"
-         disable_send: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where, wantlist=True) }}"
-      debug:
-         msg: "{{ disable_send }}"
-      loop: "{{ range(0, FollowerUUIDs | length) | list }}"
-      loop_control:
-         pause: 1
-      no_log: True
-
-
     - name: "{{ recipe_name }}: Get the list of peer UUIDs."
       include_role:
         name: common
@@ -135,6 +108,12 @@
 
     - set_fact:
         newList: "{{ NRunningPeers  | difference(oldLeader) }}"
+
+     #Pause old leader
+    - name: "{{ recipe_name }}: Pause old leader"
+      debug:
+       msg: "{{lookup('niova_raftprocess', 'pause',  oldLeader, wantlist=True)}}"
+      no_log: True
 
     - name: "{{ recipe_name }}: Wait until leader election happens."
       vars:
@@ -166,29 +145,11 @@
          leaseState: "{{ GRANTED }}"
       loop: "{{ range(0, no_of_leases) | list }}"
 
-    - name: "{{ recipe_name }}: Enable send on all peers from the leader 1."
-      vars:
-         stage: "stage1_disable_net_send"
-         cmd: "net_send_enabled@true"
-         where: "/ctl_svc_nodes/uuid@{{ oldLeader }}"
+    #Resume old leader
+    - name: "{{ recipe_name }}: Unpause old leader"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where, wantlist=True) }}"
-      loop: "{{ range(0, FollowerUUIDs | length) | list }}"
-      loop_control:
-         pause: 1
+       msg: "{{lookup('niova_raftprocess', 'resume',  oldLeader, wantlist=True)}}"
       no_log: True
-
-    - name: "{{ recipe_name }}: Enable receive on all peers from the leader 1."
-      vars:
-         stage: "stage1_disable_net_recv"
-         cmd: "net_recv_enabled@true"
-         where: "/ctl_svc_nodes/uuid@{{ oldLeader }}"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where, wantlist=True) }}"
-      loop: "{{ range(0, FollowerUUIDs | length) | list }}"
-      loop_control:
-         pause: 1
-      no_log: true
 
     - name: "{{ recipe_name }}: Disable message receive on all peers for leader overthrow"
       vars:
