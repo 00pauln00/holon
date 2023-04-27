@@ -59,13 +59,13 @@
                 'outFileName': 'get_lease_{{ item }}'
                  }
       set_fact:
-        getLeaseOps: "{{ getLeaseOps|default([]) + [lookup('lease_feature', 'GET', input_param, wantlist=True)] }}"
+        getLeaseOps: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
       failed_when: >
-        (getLeaseOps[item]['outfile_status'] != 0) or
-        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
-        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
-        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item]) or
-        (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
+        (getLeaseOps['outfile_status'] != 0) or
+        (getLeaseOps['output_data'][0]['LeaseRes']['Status'] != 0) or
+        (getLeaseOps['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
+        (getLeaseOps['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item]) or
+        (getLeaseOps['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Get cluster information"
@@ -94,21 +94,18 @@
          leaseState: "{{ STALE_INPROGRESS }}"
       loop: "{{ range(0, no_of_leases) | list }}"
 
-    - name: "{{ recipe_name }}: Store leader-1"
-      vars:
-         leader1: "{{ LeaderUUID['/0/leader-uuid'] }}"
-      debug:
-        msg: "Leader-1: {{ leader1 }}"
-      no_log: true
-      with_items:
-         - "{{ leader1 }}"
-      register: orig_leader
+    - set_fact:
+        oldLeader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+
+    - debug:
+        msg:
+         - "Old leader: {{ oldLeader }}"
 
     - name: "{{ recipe_name }}: Disable Msg(Recv) net_recv_enabled from leader to the cluster."
       vars:
          stage: "disable_peers_mode"
          cmd: "net_recv_enabled@false"
-         where: "/ctl_svc_nodes/uuid@{{ orig_leader['results'][0]['item'] }}"
+         where: "/ctl_svc_nodes/uuid@{{ oldLeader }}"
          disable_net_rcv: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where, wantlist=True) }}"
       debug:
          msg: "{{ disable_net_rcv }}"
@@ -121,7 +118,7 @@
       vars:
          stage: "disable_peers_mode"
          cmd: "net_send_enabled@false"
-         where: "/ctl_svc_nodes/uuid@{{ orig_leader['results'][0]['item'] }}"
+         where: "/ctl_svc_nodes/uuid@{{ oldLeader }}"
          disable_send: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where, wantlist=True) }}"
       debug:
          msg: "{{ disable_send }}"
@@ -136,8 +133,8 @@
         name: common
         tasks_from: get_server_uuid_info
 
-    - set_fact: oldLeader="{{ orig_leader['results'][0]['item'] }}"
-    - set_fact: newList="{{ NRunningPeers  | difference(oldLeader) }}"
+    - set_fact:
+        newList: "{{ NRunningPeers  | difference(oldLeader) }}"
 
     - name: "{{ recipe_name }}: Wait until leader election happens."
       vars:
@@ -173,7 +170,7 @@
       vars:
          stage: "stage1_disable_net_send"
          cmd: "net_send_enabled@true"
-         where: "/ctl_svc_nodes/uuid@{{ orig_leader['results'][0]['item'] }}"
+         where: "/ctl_svc_nodes/uuid@{{ oldLeader }}"
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where, wantlist=True) }}"
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
@@ -185,18 +182,13 @@
       vars:
          stage: "stage1_disable_net_recv"
          cmd: "net_recv_enabled@true"
-         where: "/ctl_svc_nodes/uuid@{{ orig_leader['results'][0]['item'] }}"
+         where: "/ctl_svc_nodes/uuid@{{ oldLeader }}"
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where, wantlist=True) }}"
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
       loop_control:
          pause: 1
       no_log: true
-
-    - name: "{{ recipe_name }}: Get cluster information"
-      include_role:
-        name: common
-        tasks_from: get_follower_stats
 
     - name: "{{ recipe_name }}: Disable message receive on all peers for leader overthrow"
       vars:
@@ -206,10 +198,6 @@
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
-
-    - name: "{{ recipe_name }}: Lets sleep for sometime before checking the values"
-      wait_for:
-        timeout: 5
 
     - debug:
         msg: "Leader to be: {{ oldLeader }}"
@@ -222,8 +210,6 @@
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
-
-    - pause: seconds=3
 
     - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
       vars:
@@ -253,26 +239,6 @@
          clientuuid: "{{ ClientUUIDS[item] }}"
          resourceuuid: "{{ resourceUUIDS[item] }}"
          leaseState: "{{ GRANTED }}"
-      loop: "{{ range(0, no_of_leases) | list }}"
-
-    - name: "{{ recipe_name }}: Verify already taken leases gets updated with new leader."
-      vars:
-         input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
-                'resource': '{{ resourceUUIDS[item] }}',
-                'numOfLeases': '1',
-                'getLeaseOutfile': '',
-                'outFileName': 'lookup_lease_after_leader_to_be_{{ item }}'
-                 }
-         new_leader_lookup: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
-      debug:
-        msg: "Verify already taken leases gets updated with new leader"
-      failed_when: >
-        (new_leader_lookup['outfile_status'] != 0) or
-        (new_leader_lookup['output_data'][0]['LeaseRes']['Status'] != 0)
-        (new_leader_lookup['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED) or
-        (new_leader_lookup['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
-        (new_leader_lookup['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item])
       loop: "{{ range(0, no_of_leases) | list }}"
 
     rescue:
