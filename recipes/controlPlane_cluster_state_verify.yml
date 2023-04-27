@@ -50,8 +50,8 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value and verify its status."
        vars:
          input_param: {
-                'Key': 'Paro',
-                'Value': 'Scale',
+                'Key': 'Wel',
+                'Value': 'Come',
                 'Operation': 'write',
                 'IP_addr': '',
                 'Port': '',
@@ -141,7 +141,7 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to read the value and verify its status."
        vars:
          input_param: {
-                  'Key': 'Paro',
+                  'Key': 'Wel',
                   'Operation': 'read',
                   'OutfileName': 'read_outputControlplane_recipe',
                   'NoofWrites': '',
@@ -173,7 +173,7 @@
          msg: "Verifying parameter after read operation"
        failed_when: >
          (rdval['Status'] != 0) or
-         (rdval['Response'] != "Scale")
+         ((rdval['ResultMap'][writeresult['results'][0]['item']['output_data'][0]['Request']['Key']] | b64decode) != (writeresult['results'][0]['item']['output_data'][0]['Request']['Value'] | b64decode))
 
      - name: "{{ recipe_name }}: Kill one of the pmdb server."
        debug:

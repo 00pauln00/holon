@@ -109,7 +109,7 @@
 
      - name: "{{ recipe_name }}: Compare write and read output with all the keys passed."
        vars:
-         readall: "{{ readres5keys['results'][0]['item']['output_data'][0]['Response']['Response']}}"
+         readall: "{{ readres5keys['results'][0]['item']['output_data'][0]['Response']['ResultMap']}}"
        debug:
          msg: "compare read and write output with all the keys passed"
        failed_when:  item['Request']['Value'] != readall[item['Request']['Key']]
@@ -117,7 +117,7 @@
 
      - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
        vars:
-          seq_no: "{{ readres5keys['results'][0]['item']['output_data'][0]['Response']['Sequence_number'] }}"
+          seq_no: "{{ readres5keys['results'][0]['item']['output_data'][0]['Response']['SeqNum'] }}"
        debug:
          msg: "Get the seq no"
        with_items:
@@ -300,7 +300,7 @@
 
      - name: "{{ recipe_name }}: Get the sequence no from the read result after removing fault injection."
        vars:
-          seq_no: "{{ seqno_rangereadres['results'][0]['item']['output_data'][0]['Response']['Sequence_number'] }}"
+          seq_no: "{{ seqno_rangereadres['results'][0]['item']['output_data'][0]['Response']['SeqNum'] }}"
        debug:
          msg: "Get the seq no"
        with_items:

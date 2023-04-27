@@ -85,7 +85,7 @@
 
      - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
        vars:
-          seq_no: "{{ readres5keys['results'][0]['item']['output_data'][0]['Response']['Sequence_number'] }}"
+          seq_no: "{{ readres5keys['results'][0]['item']['output_data'][0]['Response']['SeqNum'] }}"
        debug:
          msg: "Get the seq no"
        with_items:
@@ -154,10 +154,10 @@
      - name: save the Json data to a Variable as a Fact
        set_fact:
           jsondata_thread1: "{{ result_thread1.stdout | from_json }}"
-       
+
       # check if read is successful
      - name: "{{ recipe_name }}: Check if read is successful for thread 1."
-       vars: 
+       vars:
          jsondata1: "{{ jsondata_thread1[0]['Response']['Status'] }}"
        debug:
          msg: "Check if read is successful"
@@ -182,8 +182,8 @@
 
      - name: "{{ recipe_name }}: Compare read output of thread1 and thread2  with all the keys passed."
        vars:
-         read_thread1: "{{ jsondata_thread1[0]['Response']['Response'] }}"
-         read_thread2: "{{ jsondata_thread2[0]['Response']['Response'] }}"
+         read_thread1: "{{ jsondata_thread1[0]['Response']['ResultMap'] }}"
+         read_thread2: "{{ jsondata_thread2[0]['Response']['ResultMap'] }}"
        debug:
          msg: "compare keys and values of both threads"
        failed_when: read_thread2 != read_thread1

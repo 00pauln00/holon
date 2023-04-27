@@ -131,7 +131,7 @@
 
     - name: "{{ recipe_name }}: Check if REFRESH is successful."
       vars:
-         rf_response: "{{ refreshLease['results'][0]['item']['output_data']['LeaseRes'] }}"
+         rf_response: "{{ refreshLease['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
       debug:
          msg: "Check if refresh is successful."
       failed_when: >
