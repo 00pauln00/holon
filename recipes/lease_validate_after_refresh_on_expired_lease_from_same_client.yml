@@ -1,4 +1,4 @@
-- import_playbook: lease_validate_after_expired_lease_granted_to_another_client.yml 
+- import_playbook: lease_validate_after_expired_lease_granted_to_another_client.yml
 
 - name: "lease_validate_after_refresh_on_expired_lease_from_same_client"
   hosts: localhost
@@ -25,7 +25,7 @@
          msg: "app_type is: {{ app_type }}"
       failed_when:
          (app_type != "lease")
-    
+
     - name: "{{ recipe_name }}: get the list of non-running servers."
       include_role:
         name: common
@@ -55,16 +55,17 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'refresh_lease_{{ resourceUUIDS[item] }}'
                  }
-      set_fact:
-        refresh: "{{ refresh|default([]) + [lookup('lease_feature', 'REFRESH', input_param, wantlist=True)] }}"
+         refresh: "{{ lookup('lease_feature', 'REFRESH', input_param, wantlist=True) }}"
+      debug:
+        msg: "Perform 'REFRESH' operation and validate it: {{ refresh }}"
       failed_when: >
-        (refresh[item]['outfile_status'] != 0) or
-        (refresh[item]['output_data']['LeaseRes']['Status'] != 0) or
-        (refresh[item]['output_data']['LeaseRes']['LeaseState'] != GRANTED) or
-        (refresh[item]['output_data']['LeaseRes']['TTL'] > 60) or
-        (refresh[item]['output_data']['LeaseRes']['Client'] != ClientUUIDS[item]) or
-        (refresh[item]['output_data']['LeaseRes']['Resource'] != resourceUUIDS[item]) 
-      loop: "{{ range(0, no_of_leases) | list }}"  
+        (refresh['outfile_status'] != 0) or
+        (refresh['output_data'][0]['LeaseRes']['Status'] != 0) or
+        (refresh['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED) or
+        (refresh['output_data'][0]['LeaseRes']['TTL'] > 60) or
+        (refresh['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
+        (refresh['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item])
+      loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Kill the Old Leader."
       debug:
@@ -94,14 +95,15 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_after_new_leader_{{ item }}'
                  }
-      set_fact:
-        lookup_aftr_new_leader: "{{ lookup_aftr_new_leader|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
+         lookup_aftr_new_leader: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
+      debug:
+        msg: "Verify already taken leases gets updated with new leader"
       failed_when: >
-        (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
-        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
-        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED) or
-        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
-        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'])
+        (lookup_aftr_new_leader['outfile_status'] != 0) or
+        (lookup_aftr_new_leader['output_data'][0]['LeaseRes']['Status'] != 0) or
+        (lookup_aftr_new_leader['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED) or
+        (lookup_aftr_new_leader['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
+        (lookup_aftr_new_leader['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'])
       loop: "{{ range(0, no_of_leases) | list }}"
 
     rescue:
