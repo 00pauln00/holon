@@ -157,7 +157,7 @@
         msg: "compare TS with intitial values"
       failed_when: >
         (wr_timestamp['LeaderTerm'] != rd_timestamp['LeaderTerm']) or
-        (wr_timestamp['LeaderTime'] >= rd_timestamp['LeaderTime'])
+        (wr_timestamp['LeaderTime'] != rd_timestamp['LeaderTime'])
 
     - name: "{{ recipe_name }}: Compare TTL."
       vars:
