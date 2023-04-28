@@ -116,11 +116,11 @@
         refresh: "{{ refresh|default([]) + [lookup('lease_feature', 'REFRESH', input_param, wantlist=True)] }}"
       failed_when: >
         (refresh[item]['outfile_status'] != 0) or
-        (refresh[item]['output_data']['LeaseRes']['Status'] != -1) or
-        (refresh[item]['output_data']['LeaseRes']['Client'] != "00000000-0000-0000-0000-000000000000") or
-        (refresh[item]['output_data']['LeaseRes']['Resource'] != "00000000-0000-0000-0000-000000000000") or
-        (refresh[item]['output_data']['LeaseRes']['LeaseState'] != INVALID) or
-        (refresh[item]['output_data']['LeaseRes']['TTL'] != 0)
+        (refresh[item]['output_data'][0]['LeaseRes']['Status'] != -1) or
+        (refresh[item]['output_data'][0]['LeaseRes']['Client'] != "00000000-0000-0000-0000-000000000000") or
+        (refresh[item]['output_data'][0]['LeaseRes']['Resource'] != "00000000-0000-0000-0000-000000000000") or
+        (refresh[item]['output_data'][0]['LeaseRes']['LeaseState'] != INVALID) or
+        (refresh[item]['output_data'][0]['LeaseRes']['TTL'] != 0)
       loop: "{{ range(0, no_of_leases) | list }}"
 
     - name: "{{ recipe_name }}: Perform 'GET' operation for {{ no_of_leases }} old client-uuids and old resource-uuids."
