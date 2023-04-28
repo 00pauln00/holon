@@ -57,7 +57,7 @@
                  }
          refresh: "{{ lookup('lease_feature', 'REFRESH', input_param, wantlist=True) }}"
       debug:
-        msg: "Perform 'REFRESH' operation and validate it: {{ refresh }}"
+        msg: "Perform 'REFRESH' operation and validate it"
       failed_when: >
         (refresh['outfile_status'] != 0) or
         (refresh['output_data'][0]['LeaseRes']['Status'] != 0) or
