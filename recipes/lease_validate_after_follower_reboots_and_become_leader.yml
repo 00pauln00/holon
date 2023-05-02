@@ -1,4 +1,5 @@
 - import_playbook: lease_validate_after_leader_kill.yml
+
 - name: "lease_validate_after_follower_reboots_and_become_leader"
   hosts: localhost
   connection: local

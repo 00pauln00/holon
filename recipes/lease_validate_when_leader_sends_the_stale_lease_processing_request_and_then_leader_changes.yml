@@ -88,9 +88,6 @@
         ServerUUID: "{{ oldLeader }}"
         fault_injection_name: "raft_leader_ignore_direct_req"
 
-    - pause:
-        seconds: 60
-
     - name: "{{ recipe_name }}: Wait untill leaseState of all leases is stale in progress."
       include_role:
         name: common

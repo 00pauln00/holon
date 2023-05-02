@@ -109,8 +109,9 @@
          (wr_response['TTL'] <= 0) or
          (wr_response['LeaseState'] != GRANTED)
 
-    - pause:
-        seconds: 3
+    - name: "{{ recipe_name }}: Pause for 2 seconds so that TTL gets changed."
+      pause:
+        seconds: 2
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation."
       vars:
