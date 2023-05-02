@@ -52,7 +52,7 @@
 
      - name: "{{ recipe_name }}: Verify write status"
        debug:
-         msg: "Check write response status: {{ item['Response']['Status'] }}"
+         msg: "Check write response status"
        no_log: true
        failed_when: >
           (item['Response']['Status'] != 0)
@@ -94,9 +94,7 @@
 
      - name: "{{ recipe_name }}: Verify outfile status and read status"
        debug:
-        msg:
-         - "Check read outfile status: {{ readres5keys['results'][0]['item']['outfile_status'] }}"
-         - "Check read response status: {{readres5keys['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
+        msg: "check status and read status"
        no_log: true
        failed_when:
          (readres5keys['results'][0]['item']['outfile_status'] != 0) or
@@ -192,9 +190,6 @@
        set_fact:
           jsondata: "{{ result.stdout | from_json }}"
 
-     - debug:
-         msg: "{{ jsondata[0]['Response']['Status'] }}"
-
        # check if read is successful
      - name: "{{ recipe_name }}: Check if read is successful"
        debug:
@@ -222,9 +217,7 @@
 
      - name: "{{ recipe_name }}: Verify outfile status and read status"
        debug:
-        msg:
-         - "Check read outfile status: {{ seqno_rangereadres['results'][0]['item']['outfile_status'] }}"
-         - "Check read response status: {{ seqno_rangereadres['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
+        msg: "check status and read status"
        failed_when:
          (seqno_rangereadres['results'][0]['item']['outfile_status'] != 0) or
          (seqno_rangereadres['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)

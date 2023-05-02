@@ -58,8 +58,6 @@
        failed_when: >
          (writeres5keys['results'][0]['item']['outfile_status'] != 0)
 
-     #TODO If proxy is not alive, Validate write response with proper return error code
-
      - name: "{{ recipe_name }}: get the list of non-running servers."
        include_role:
           name: common

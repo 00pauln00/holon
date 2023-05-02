@@ -7,6 +7,8 @@
     recipe_name: "controlPlane_lease_validate_after_leader_kill"
     parent: "controlPlane_operation_all"
     no_of_leases: 4
+  vars_files:
+    - ../leaseStateValue.yml
 
   tasks:
   - block:
@@ -61,7 +63,7 @@
          (ncpc_getLease[item]['output_data']['LeaseRes']['Status'] != 0) or
          (ncpc_getLease[item]['output_data']['LeaseRes']['Client'] != ClientUUIDS[item]) or
          (ncpc_getLease[item]['output_data']['LeaseRes']['Resource'] != resourceUUIDS[item]) or
-         (ncpc_getLease[item]['output_data']['LeaseRes']['LeaseState'] != 4)
+         (ncpc_getLease[item]['output_data']['LeaseRes']['LeaseState'] != GRANTED)
        loop: "{{ range(0, no_of_leases) | list }}"
 
      - name: "{{ recipe_name }}: Starting controlplane_client to lookupLease."
@@ -79,7 +81,8 @@
        failed_when: >
          (ncpc_lookupLease[item]['output_data']['LeaseRes']['Status'] != 0) or
          (ncpc_lookupLease[item]['output_data']['LeaseRes']['Client'] != ncpc_getLease[item]['output_data']['LeaseRes']['Client']) or
-         (ncpc_lookupLease[item]['output_data']['LeaseRes']['Resource'] != ncpc_getLease[item]['output_data']['LeaseRes']['Resource'])
+         (ncpc_lookupLease[item]['output_data']['LeaseRes']['Resource'] != ncpc_getLease[item]['output_data']['LeaseRes']['Resource']) or
+         (ncpc_lookupLease[item]['output_data']['LeaseRes']['LeaseState'] != GRANTED)
        loop: "{{ range(0, no_of_leases) | list }}"
 
      - name: "{{ recipe_name }}: Kill the Leader."
@@ -116,11 +119,11 @@
        failed_when: >
         (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
         (lookup_aftr_new_leader[item]['output_data']['LeaseRes']['Status'] != 0) or
-        (lookup_aftr_new_leader[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm'] <= ncpc_lookupLease[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm'])
+        (lookup_aftr_new_leader[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm'] <= ncpc_lookupLease[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm']) or
+        (lookup_aftr_new_leader[item]['output_data']['LeaseRes']['LeaseState'] != GRANTED)
        loop: "{{ range(0, no_of_leases) | list }}"
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
-
