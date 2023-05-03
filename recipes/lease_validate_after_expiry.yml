@@ -77,7 +77,7 @@
                 'outFileName': 'lookup_lease_{{ item }}'
                  }
       set_fact:
-        lookupLeaseOps: "{{ lookupLeaseOps|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
+        lookupLeaseOps: "{{ lookupLeaseOps|default([]) + [lookup('lease_feature', 'LOOKUP', input_param, wantlist=True)] }}"
       failed_when: >
         (lookupLeaseOps[item]['outfile_status'] != 0) or
         (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
