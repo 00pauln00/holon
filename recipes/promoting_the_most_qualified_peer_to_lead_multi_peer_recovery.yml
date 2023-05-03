@@ -1,4 +1,5 @@
 - import_playbook: basic_server_recovery_with_client_activity.yml
+
 - name: "Promoting the Most Qualified Peer to Lead Multi-Peer Recovery"
   hosts: localhost
   connection: local
@@ -148,10 +149,6 @@
     - name: "{{ recipe_name }}: Create app uuid."
       shell: "/usr/bin/uuid"
       register: pmqp_app_uuid
-
-    - debug:
-        msg:
-          - "client uuid: {{ client_uuid.stdout }}"
 
     - name: "{{ recipe_name }}: Start the client."
       include_role:

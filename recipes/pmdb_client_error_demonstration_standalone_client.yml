@@ -30,11 +30,6 @@
       shell: "/usr/bin/uuid"
       register: client_uuid
 
-    - debug:
-        msg:
-          - "{{ pmdb_standalone_raft_uuid }}"
-          - "{{ client_uuid.stdout }}"
-
     - name: "Starting the Raft client with wrong Raft UUID and Client UUID."
       vars:
         truncate_ruuid: "{{ pmdb_standalone_raft_uuid[:-1] }}"

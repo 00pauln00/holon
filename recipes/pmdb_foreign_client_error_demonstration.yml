@@ -1,4 +1,5 @@
 - import_playbook: basic_raft_operation_with_client_activity.yml
+
 - name: "PMDB Foreign Client Error Demonstration"
   hosts: localhost
   connection: local
@@ -8,6 +9,7 @@
      requirement: "pumicedb"
      client_obj: {}
      set_timeout: 3
+
   tasks:
   - block:
     - name: "Check if parent recipe failed"
@@ -49,11 +51,6 @@
     - name: "{{ recipe_name }}: Create app uuid"
       shell: "/usr/bin/uuid"
       register: fc_app_uuid
-
-    - debug:
-        msg:
-          - "client uuid: {{ fc_client_uuid.stdout }}"
-          - "app uuid: {{ fc_app_uuid.stdout }}"
 
     - name: "Client port should be different than already running client."
       set_fact:

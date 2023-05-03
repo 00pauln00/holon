@@ -1,4 +1,5 @@
 - import_playbook: basic_leader_election2.yml
+
 - name: "prevote_corner_case1"
   hosts: localhost
   connection: local

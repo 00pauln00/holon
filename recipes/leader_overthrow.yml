@@ -1,4 +1,5 @@
 - import_playbook: basic_leader_election2.yml
+
 - name: "leader_overthrow"
   hosts: localhost
   connection: local
@@ -54,9 +55,6 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
 
-    # TODO do we need this?
-    - pause: seconds=3
-
     - name: "{{ recipe_name }}: Verify that message received is disabled successfully on all peers"
       vars:
          initial_vals: "{{ stage0_peers_vals['results'][item]['item']}}"
@@ -90,9 +88,6 @@
       set_fact:
         overthrow_leader_to_be: "{{ FollowerUUIDs[0] }}"
 
-    - debug:
-        msg: "Leader to be: {{ overthrow_leader_to_be }}"
-
     - name: "{{ recipe_name }}: Enable receive on all peers from the leader-to-be."
       vars:
          stage: "stage2_set_leader"
@@ -101,8 +96,6 @@
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
-
-    - pause: seconds=3
 
     - name: "{{ recipe_name }}: Get the values to verify leader-to-be is not elected yet"
       vars:

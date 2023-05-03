@@ -1,4 +1,5 @@
 - import_playbook: healthy_raftserver_cluster_type1.yml
+
 - name: "partition_split_and_rejoin"
   hosts: localhost
   connection: local
@@ -93,18 +94,12 @@
         bigger_cluster: "{{ bigger_cluster + [FollowerUUIDs[item]] }}"
       loop: "{{ range(0,  Quorum_for_Partition | int) | list }}"
 
-    - debug:
-        msg: "Bigger Cluster: {{ bigger_cluster }}"
-
     #Smaller Cluster.The existing leader should be part of Smaller Cluster.
     - name: "Set Smaller Cluster."
       vars:
         remaining_uuids: "{{ FollowerUUIDs | difference(bigger_cluster) }}"
       set_fact:
         smaller_cluster: "{{ [] + [LeaderUUID['/0/leader-uuid']] + remaining_uuids }}"
-
-    - debug:
-        msg: "Smaller Cluster: {{ smaller_cluster }}"
 
     #Increase election timeout to 500ms.
     - name: "{{ recipe_name }}: Set election timeout to 500 ms for all servers."
@@ -113,9 +108,6 @@
         tasks_from: set_max_election_timeout
       vars:
         set_election_timeout: 500
-
-    - debug:
-        msg: "{{ ClientUUIDS }}"
 
     - name: "{{ recipe_name }}: Verify leader is viable."
       include_role:
@@ -318,4 +310,3 @@
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
            terminate_recipe: true
-

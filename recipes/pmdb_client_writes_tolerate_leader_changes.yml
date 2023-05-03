@@ -1,4 +1,5 @@
 - import_playbook: healthy_raftserver_cluster_type1.yml
+
 - name: "pmdb_client_writes_tolerate_leader_changes"
   hosts: localhost
   connection: local
@@ -71,16 +72,10 @@
       set_fact:
         bigger_cluster: "{{ FollowerUUIDs }}"
 
-    - debug:
-        msg: "bigger_cluster: {{ bigger_cluster }}"
-
     #Partiotion:2 i.e. smaller_cluster which has only leader-uuid.
     - name: "Set Smaller Cluster."
       set_fact:
         smaller_cluster: "{{ LeaderUUID['/0/leader-uuid'] }}"
-
-    - debug:
-        msg: "smaller_cluster: {{ smaller_cluster }}"
 
     - name: "{{ recipe_name }}: Verify leader is viable."
       include_role:
@@ -293,4 +288,3 @@
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
            terminate_recipe: true
-
