@@ -23,11 +23,6 @@
        failed_when:
          (app_type != "controlplane")
 
-     - name: "{{ recipe_name }}: get the list of non-running servers."
-       include_role:
-          name: common
-          tasks_from: get_server_uuid_info
-
      - name: "{{ recipe_name }}: Kill the Proxy server."
        debug:
         msg: "{{lookup('niova_raftprocess', 'kill', ClientUUIDS[item], wantlist=True)}}"

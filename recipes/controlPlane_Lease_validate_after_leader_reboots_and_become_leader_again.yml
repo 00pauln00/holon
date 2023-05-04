@@ -1,4 +1,4 @@
-- import_playbook: controlPlane_Lease_recipe.yml 
+- import_playbook: controlPlane_Lease_recipe.yml
 
 - name: "controlPlane_lease_validation_on_new_leader"
   hosts: localhost
@@ -124,7 +124,7 @@
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['LeaseState'] != GRANTED)
-    
+
     - name: Generate new resource
       shell: "/usr/bin/uuid"
       register: resourceUUID1
@@ -179,11 +179,6 @@
       include_role:
         name: common
         tasks_from: get_server_uuid_info
-
-    - name: "{{ recipe_name }}: Get cluster information"
-      include_role:
-        name: common
-        tasks_from: get_follower_stats
 
     - name: "{{ recipe_name }}: Disable message receive on all peers for leader overthrow"
       vars:
