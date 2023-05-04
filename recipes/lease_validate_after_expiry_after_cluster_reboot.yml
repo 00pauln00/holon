@@ -71,6 +71,10 @@
          msg:  "{{ lookup('niova_raftprocess', 'start', NRunningPeers[item], wantlist=True) }}"
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
+    - name: "{{ recipe_name }}: Pause for 60 sec so that lease gets expired."
+      pause:
+         seconds: 60
+
     - name: "{{ recipe_name }}: Wait untill leaseState of all leases is expired."
       include_role:
         name: common

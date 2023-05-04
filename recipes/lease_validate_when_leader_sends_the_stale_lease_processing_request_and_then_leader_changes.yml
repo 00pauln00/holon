@@ -76,10 +76,6 @@
     - set_fact:
         oldLeader: "{{ LeaderUUID['/0/leader-uuid'] }}"
 
-    - debug:
-        msg:
-         - "Old leader: {{ oldLeader }}"
-
     - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
       include_role:
         name: common
@@ -128,9 +124,6 @@
         stage: "getNewLeader"
       set_fact:
         newLeaderUUID: "{{ lookup('niova_ctlrequest', 'lookup', newList[0], '/raft_root_entry/0/leader-uuid', wantlist=True) }}"
-
-    - debug:
-        msg: "new leader uuid: {{ newLeaderUUID['/0/leader-uuid'] }}"
 
     - name: "{{ recipe_name }}: Wait untill leaseState of all leases is granted."
       include_role:
