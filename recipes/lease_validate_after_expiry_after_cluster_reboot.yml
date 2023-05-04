@@ -57,11 +57,6 @@
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
       loop: "{{ range(0, no_of_leases) | list }}"
 
-    - name: "{{ recipe_name }}: get the list of non-running servers."
-      include_role:
-        name: common
-        tasks_from: get_server_uuid_info
-
     - name: "{{ recipe_name }}: Kill all the peers of the cluster."
       debug:
          msg:  "{{ lookup('niova_raftprocess', 'kill', NRunningPeers[item], wantlist=True) }}"

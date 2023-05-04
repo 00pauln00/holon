@@ -15,11 +15,6 @@
       debug: msg="Check if parent recipe {{ parent }} failed"
       failed_when: terminate_recipe == true
 
-    - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
-      include_role:
-        name: common
-        tasks_from: get_server_uuid_info
-
     - name: "Get multiple client uuids."
       include_role:
         name: common
