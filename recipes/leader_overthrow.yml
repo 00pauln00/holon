@@ -55,6 +55,8 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
 
+    - pause: seconds=3
+
     - name: "{{ recipe_name }}: Verify that message received is disabled successfully on all peers"
       vars:
          initial_vals: "{{ stage0_peers_vals['results'][item]['item']}}"
@@ -96,6 +98,8 @@
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
+
+    - pause: seconds=3
 
     - name: "{{ recipe_name }}: Get the values to verify leader-to-be is not elected yet"
       vars:
