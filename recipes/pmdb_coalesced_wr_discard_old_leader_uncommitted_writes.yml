@@ -60,9 +60,6 @@
         ServerUUID: "{{ stage1_value['results'][0]['item']['/0/leader-uuid'] }}"
         fault_injection_name: "coalesced_writes"
 
-    - pause:
-        seconds: 2
-
     - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
       include_role:
         name: common
@@ -144,9 +141,6 @@
     - name: "{{ recipe_name }}: Pause the leader."
       debug:
         msg: "{{ lookup('niova_raftprocess', 'pause', stage1_value['results'][0]['item']['/0/leader-uuid'], wantlist=True) }}"
-
-    - pause:
-        seconds: 3
 
     - name: "{{ recipe_name }}: Verify client write request is timeout."
       vars:
