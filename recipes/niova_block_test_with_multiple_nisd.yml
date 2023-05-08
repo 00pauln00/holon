@@ -37,9 +37,6 @@
           nisd_uuids: "{{ nisd_uuids | default([]) + [unique_nisd_uuids['results'][item]['stdout']] }}"
        loop: "{{ range(0, unique_nisd_uuids['results'] | length) | list }}"
 
-     - debug:
-         msg: "nisd uuid list: {{ nisd_uuids }}"
-
      - name: "{{ recipe_name }}: Starting controlplane_client to write config information of nisd."
        vars:
          input_param: {
@@ -86,9 +83,6 @@
           lookout_uuids: "{{ lookout_uuids | default([]) + [unique_lookout_uuids['results'][item]['stdout']] }}"
        loop: "{{ range(0, unique_lookout_uuids['results'] | length) | list }}"
 
-     - debug:
-         msg: "lookout uuids: {{ lookout_uuids }}"
-
      - name: "{{ recipe_name }}: Start niova-lookout process."
        vars:
          input_param: {
@@ -104,20 +98,6 @@
        loop: "{{ range(0, lookout_uuids | length) | list }}"
        loop_control:
           pause: 2
-
-            #     - name: "{{ recipe_name }}: Wait until lookout's status gets changed."
-            #    vars:
-            # getLookoutUUID: "{{ lookout_uuids[item] }}"
-            #input_param: {
-            #      'Operation': 'membership',
-            #      'OutfileName': 'wait_for_lookoutMembership{{ item }}'
-            #       }
-            # debug:
-            #  msg: "Verifying lookout's Status"
-            # until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getLookoutUUID) | map(attribute='Status') | list | first == "alive"
-            # retries: 10
-            #    delay: 1
-            #   loop: "{{ range(0, lookout_uuids | length) | list }}"
 
      - name: "{{ recipe_name }}: Get niova-lookout gossip details."
        vars:
@@ -259,9 +239,6 @@
           nblock_test_uuids_list: "{{ nblock_test_uuids_list | default([]) + [unique_nblock_test_uuids['results'][item]['stdout']] }}"
        loop: "{{ range(0, unique_nblock_test_uuids['results'] | length) | list }}"
 
-     - debug:
-         msg: "niova_block_test UUIDS: {{ nblock_test_uuids_list }}"
-
      - name: "Generate client-uuids for niova-block-test"
        shell: "/usr/bin/uuid"
        loop: "{{ range(0, no_of_nblock_client_uuids) | list }}"
@@ -271,9 +248,6 @@
        set_fact:
           nblock_client_uuids_list: "{{ nblock_client_uuids_list | default([]) + [unique_nblock_client_uuids['results'][item]['stdout']] }}"
        loop: "{{ range(0, unique_nblock_client_uuids['results'] | length) | list }}"
-
-     - debug:
-         msg: "niova_block_test Client UUIDS: {{ nblock_client_uuids_list }}"
 
      - name: "{{ recipe_name }}: Do write operation through niova-block-test."
        include_role:
@@ -310,6 +284,3 @@
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
-
-
-

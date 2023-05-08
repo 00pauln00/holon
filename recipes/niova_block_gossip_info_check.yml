@@ -1,4 +1,5 @@
 - import_playbook: niova_block_test_with_multiple_nisd.yml
+
 - name: "niova_block_gossip_info_check"
   hosts: localhost
   connection: local
@@ -20,19 +21,6 @@
          msg: "app_type is: {{ app_type }}"
        failed_when:
          (app_type != "controlplane")
-
-     - debug:
-         msg: "lookout--uuids: {{ lookout_uuids }}"
-
-     #- name: "{{ recipe_name }}: get the list of non-running servers."
-     #  include_role:
-     #     name: common
-     #     tasks_from: get_server_uuid_info
-
-     #- name: "{{ recipe_name }}: Get the leader and follower uuids."
-     #  include_role:
-     #    name: common
-     #    tasks_from: get_follower_stats
 
      - name: "{{ recipe_name }}: Kill one of the lookout-process."
        debug:
@@ -76,9 +64,6 @@
           -  "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
        no_log: True
 
-     - pause:
-         seconds: 2
-
      - name: "{{ recipe_name }}: Wait until restarted niova-lookout process's status gets changed."
        vars:
          getLookoutUUID: "{{ lookout_uuids[0] }}"
@@ -107,9 +92,6 @@
        shell: uuidgen
        register: newNisdUuid
 
-     - debug:
-         msg: "New nisd-uuid: {{ newNisdUuid['stdout_lines'][0] }}"
-
      - name: "{{ recipe_name }}: Start niova-block-ctl process."
        vars:
          input_param: {
@@ -121,9 +103,6 @@
          msg: "{{ lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True) }}"
        no_log: True
 
-     - pause:
-         seconds: 1
-
      - name: "{{ recipe_name }}: Start new nisd process."
        vars:
          input_param: {
@@ -134,9 +113,6 @@
        debug:
          msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
        no_log: True
-
-     - pause:
-         seconds: 2
 
      - name: "{{ recipe_name }}: Wait until Nisd's status gets updated."
        vars:
@@ -166,9 +142,6 @@
        debug:
          msg:  "{{ lookup('niova_raftprocess', 'kill', nisd_uuids[0], wantlist=True) }}"
        no_log: True
-
-     - pause:
-        seconds: 2
 
      - name: "{{ recipe_name }}: Wait until killed nisd's status gets changed."
        vars:
@@ -203,9 +176,6 @@
                   }
        debug:
          msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
-
-     - pause:
-         seconds: 2
 
      - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
        vars:
