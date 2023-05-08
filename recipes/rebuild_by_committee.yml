@@ -62,6 +62,11 @@
     - set_fact:
          rebuild_unpaused_followers: "{{ FollowerUUIDs | difference(reb_inactive_followers) }}"
 
+    - name: "{{ recipe_name }}: Get the list of peer UUIDs after pausing followers."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
     #Create set of required number of app_uuids.
     - name: "{{ recipe_name }}: Get set of required number of app_uuids."
       include_role:
@@ -113,6 +118,11 @@
         ServerUUID: "{{ rebuild_unpaused_followers[item] }}"
         fault_injection_name: "raft_follower_ignores_non_hb_AE_request"
       loop: "{{ range(0, rebuild_unpaused_followers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get the list of peer UUIDs after unpausing followers."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
 
     - name: "{{ recipe_name }}: Get commit-idx values of unpaused followers after applying fault injection."
       vars:

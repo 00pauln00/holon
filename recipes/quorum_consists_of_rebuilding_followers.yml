@@ -98,6 +98,11 @@
       vars:
         Client_UUID: "{{ client_uuid.stdout }}"
 
+    - name: "{{ recipe_name }}: Get the list of peer UUIDs before resuming paused followers."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
     - name: "{{ recipe_name }}: Resume inactive followers."
       set_fact:
          quorum_rebuild_resume_peers: "{{ lookup('niova_raftprocess', 'resume', inactive_followers[item], wantlist=True) }}"
@@ -127,7 +132,11 @@
         name: common
         tasks_from: get_server_uuid_info
 
+<<<<<<< HEAD
    #Create set of 2 app_uuids.
+=======
+    #Create set of 2 app_uuids.
+>>>>>>> parent of 5d45b64 (Recipe CleanUp)
     - name: "{{ recipe_name }}: Get set of required number of app_uuids."
       include_role:
         name: common

@@ -192,6 +192,11 @@
       retries: 65
       delay: 1
 
+    - name: "{{ recipe_name }}: Get the updated list of runing peers."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
     - name: "{{ recipe_name }}: Wait until leader-viable == false."
       vars:
          stage: "wait_leader_viableFalse"
