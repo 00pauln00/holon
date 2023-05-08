@@ -1,5 +1,4 @@
 - import_playbook: nisd_initialization_and_startup.yml
-
 - name: "nisd_merge_yields_to_read_operation"
   hosts: localhost
   connection: local
@@ -106,6 +105,9 @@
          LookoutUUID: ""
          fault_injection_name: "read_preempts_merge"
 
+     - pause:
+         seconds: 2
+
      #3 -  Launch Reads (num_remaining - 1)
      - name: "{{ recipe_name }}: Launch Reads (num_remaining - 1)."
        vars:
@@ -125,6 +127,9 @@
                  }
        debug:
          msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
+
+     - pause:
+         seconds: 2
 
      - name: "{{ recipe_name}}: Wait until 'conns' gets updated"
        vars:
@@ -309,6 +314,9 @@
                  }
        debug:
          msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
+
+     - pause:
+         seconds: 2
 
      - name: "{{ recipe_name }}: Verify nisd_chunks Checks"
        vars:

@@ -33,6 +33,8 @@
         - "{{ pre_restart }}"
       register: pre_restart_vals
 
+    - debug:
+        msg: "{{ pre_restart_vals }}"
     - name: "{{ recipe_name }}: Get start_time of all peers before restarting the cluster"
       vars:
         stage: "pre_restart_start_time"

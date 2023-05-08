@@ -1,5 +1,4 @@
 - import_playbook: pmdb_client_error_demonstration2.yml
-
 - name: "PMDB Client Request Timeout Modification and Retry"
   hosts: localhost
   connection: local
@@ -39,6 +38,10 @@
         name: common
         tasks_from: get_new_client_uuid
       register: client_uuid
+
+    - debug:
+        msg:
+          - "client uuid: {{ client_uuid.stdout }}"
 
     - name: "{{ recipe_name }}: Start the client"
       include_role:

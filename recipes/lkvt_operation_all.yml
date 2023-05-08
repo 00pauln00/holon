@@ -67,9 +67,13 @@
        debug:
          msg:
            - "Check write outfile status: {{ write_op['results'][0]['item']['outfile_status'] }}"
-       no_log: true
+       #no_log: true
        failed_when: >
          (write_op['results'][0]['item']['outfile_status'] != 0)
+
+     - debug:
+         msg: "{{ write_op['results'][0]['item']['output_data'] }}"
+
       #Check if write is successful.
      - name: "{{ recipe_name }}: Check if Put is successful"
        debug:
@@ -125,7 +129,7 @@
        debug:
          msg:
            - "Check write outfile status: {{ read_op['results'][0]['item']['outfile_status'] }}"
-       no_log: true
+       #no_log: true
        failed_when: >
          (read_op['results'][0]['item']['outfile_status'] != 0)
 

@@ -1,5 +1,4 @@
 - import_playbook: nisd_initialization_and_startup.yml
-
 - name: "nisd_dpblk_tracking_with_overwrites_and_chunk_merging_version2"
   hosts: localhost
   connection: local
@@ -53,9 +52,15 @@
        shell: "/usr/bin/uuid"
        register: vdev
 
+     - debug:
+         msg: "{{ vdev.stdout }}"
+
      - name: Generate new client-uuid for niova-block-test
        shell: "/usr/bin/uuid"
        register: client_uuid
+
+     - debug:
+         msg: "{{ client_uuid.stdout }}"
 
      #2 - Perform a Number of Single Block Writes to the NISD
      - name: "{{ recipe_name }}: Perform some Writes to the NISD."
@@ -322,3 +327,4 @@
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
+

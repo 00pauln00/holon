@@ -1,5 +1,4 @@
 - import_playbook: basic_process_ctl.yml
-
 - name: "term_ticker"
   hosts: localhost
   connection: local
@@ -36,6 +35,8 @@
       debug:
          msg: "Get different raft values for peer0: peer0_raft_values"
 
+    - debug:
+       msg: "{{ peer0_stats }}"
     - name: "{{ recipe_name }}: Verify stage0"
       vars:
         curr_itr_vals: "{{ peer0_stats['results'][item]['item'] }}"
@@ -99,6 +100,9 @@
       with_items:
         - "{{ after_reboot }}"
       register: term_after_reboot
+
+    - debug:
+        msg: "{{ term_after_reboot }}"
 
     - name: "{{ recipe_name }}: Verify stage1, term value should increment after reboot"
       vars:

@@ -63,6 +63,9 @@
       shell: "/usr/bin/uuid"
       register: client_uuid1
 
+    - debug:
+        msg: "Client UUID: {{ client_uuid1.stdout }}"
+
     - name: "{{ recipe_name }}: Start 1st client process"
       include_role:
         name: common
@@ -156,6 +159,9 @@
       shell: "/usr/bin/uuid"
       register: client_uuid2
 
+    - debug:
+        msg: "Client UUID: {{ client_uuid2.stdout }}"
+
     - name: "{{ recipe_name }}: Start 2nd client process"
       include_role:
         name: common
@@ -228,3 +234,9 @@
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
            terminate_recipe: true
+
+
+
+
+
+
