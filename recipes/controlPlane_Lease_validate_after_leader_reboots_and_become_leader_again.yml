@@ -122,7 +122,6 @@
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['LeaseState'] != GRANTED)
-         (wr_response['Resource'] != resourceUUID.stdout|string)
 
     - name: Generate new resource
       shell: "/usr/bin/uuid"
