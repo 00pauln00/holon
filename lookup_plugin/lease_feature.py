@@ -70,15 +70,25 @@ def lease_operation(cluster_params, operation, client, resource, numOfLeases, ge
     outfilePath = "%s/%s/%s_%s" % (base_dir, raft_uuid, outFileName, uuid.uuid1())
     ctl_interface_path = set_environment_variables(cluster_params)
 
-    if getLeaseOutfile == '' and resource != '':
-         process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
+    if operation == "GET" or operation == "GET_VALIDATE":
+        #If resource-uuid and client-uuid passed by user.
+        if getLeaseOutfile == '' and resource != '':
+            process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
                                             '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath, '-l', leaseLogFile], stdout = fp, stderr = fp)
-    elif getLeaseOutfile == '' and resource == '':
-         process_popen = subprocess.Popen([bin_path, '-o', operation, '-ru', raft_uuid,
+        else:
+            #If 'numOfLeases' passed by user, then user should not pass client-uuid and resource-uuid.
+            process_popen = subprocess.Popen([bin_path, '-o', operation, '-ru', raft_uuid,
                                             '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath, '-l', leaseLogFile], stdout = fp, stderr = fp)
-    elif getLeaseOutfile != '' and resource == '':
-         process_popen = subprocess.Popen([bin_path, '-o', operation, '-ru', raft_uuid,
+    else:
+        #if resource-uuid passed by user to perform LOOKUP/LOOKUP_VALIDATE operation
+        if getLeaseOutfile == '' and resource != '':
+            process_popen = subprocess.Popen([bin_path, '-o', operation, '-v', resource, '-ru', raft_uuid,
+                                            '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath, '-l', leaseLogFile], stdout = fp, stderr = fp)
+        else:
+            #if resource-uuid not passed by user, then read json outfile which is created by GET_VALIDATE operation and take resource-uuid from it.
+            process_popen = subprocess.Popen([bin_path, '-o', operation, '-ru', raft_uuid,
                                               '-n', numOfLeases, '-f', getLeaseOutfile, '-j', outfilePath, '-l', leaseLogFile], stdout = fp, stderr = fp)
+
     os.fsync(fp)
     return process_popen, outfilePath
 
