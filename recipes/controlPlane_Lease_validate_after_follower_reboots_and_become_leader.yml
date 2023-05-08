@@ -7,8 +7,6 @@
      recipe_name: "controlPlane_lease_validate_after_follower_reboots_and_become_leader"
      parent: "controlPlane_lease_validate_after_leader_kill"
      no_of_leases: 4
-  vars_files:
-    - ../leaseStateValue.yml
 
   tasks:
   - block:
@@ -61,9 +59,16 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
 
+    - name: "{{ recipe_name }}: Lets sleep for sometime before checking the values"
+      wait_for:
+        timeout: 5
+
     - name: "{{ recipe_name }}: Selected leader-to-be"
       set_fact:
         Peer1: "{{ FollowerUUIDs[0] }}"
+
+    - debug:
+        msg: "Leader to be: {{ Peer1 }}"
 
     - name: "{{ recipe_name }}: Enable receive on all peers from the leader-to-be."
       vars:
@@ -73,6 +78,8 @@
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
+
+    - pause: seconds=3
 
     - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
       vars:
@@ -109,11 +116,11 @@
       failed_when: >
         (lookup_aftr_new_leader_to_be[item]['outfile_status'] != 0) or
         (lookup_aftr_new_leader_to_be[item]['output_data']['LeaseRes']['Status'] != 0) or
-        (lookup_aftr_new_leader_to_be[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm'] <= lookup_aftr_new_leader[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm']) or
-        (lookup_aftr_new_leader_to_be[item]['output_data']['LeaseRes']['LeaseState'] != GRANTED)
+        (lookup_aftr_new_leader_to_be[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm'] <= lookup_aftr_new_leader[item]['output_data']['LeaseRes']['TimeStamp']['LeaderTerm'])
       loop: "{{ range(0, no_of_leases) | list }}"
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
+

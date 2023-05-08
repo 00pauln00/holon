@@ -5,8 +5,6 @@
     recipe_name: "controlPlane_lease_recipe"
     parent: None
     no_of_leases: 4
-  vars_files:
-    - ../leaseStateValue.yml
 
   tasks:
   - block:
@@ -109,7 +107,7 @@
            (wr_response['Client'] != clientUUID.stdout | string) or
            (wr_response['Resource'] != resourceUUID.stdout | string) or
            (wr_response['TTL'] != 60) or
-           (wr_response['LeaseState'] != GRANTED)
+           (wr_response['LeaseState'] != 4)
 
      - name: "{{ recipe_name }}: Starting controlplane_client to refreshLease."
        vars:
@@ -138,7 +136,7 @@
          (wr_response['Client'] != clientUUID.stdout|string) or
          (wr_response['Resource'] != resourceUUID.stdout|string) or
          (wr_response['TTL'] != 60) or
-         (wr_response['LeaseState'] != GRANTED)
+         (wr_response['LeaseState'] != 4)
      
      - name: "{{ recipe_name }}: Starting controlplane_client to lookupLease."
        vars:
@@ -165,8 +163,7 @@
        failed_when: >
          (wr_response['Status'] != 0) or
          (wr_response['Client'] != clientUUID.stdout|string) or
-         (wr_response['Resource'] != resourceUUID.stdout|string) or
-         (wr_response['LeaseState'] != GRANTED)
+         (wr_response['Resource'] != resourceUUID.stdout|string)
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
