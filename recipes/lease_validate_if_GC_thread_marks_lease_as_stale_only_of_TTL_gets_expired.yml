@@ -91,7 +91,7 @@
     - name: "{{ recipe_name }}: Perform 'LOOKUP' operation for {{ no_of_leases }} client-uuids and resource-uuids and validate that 2nd set of uuids should be valid."
       vars:
          input_param: {
-                'client': '{{ newClientUUIDS[item] }}',
+                'client': '',
                 'resource': '{{ newResourceUUIDS[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
@@ -131,7 +131,7 @@
     - name: "{{ recipe_name }}: Perform 'LOOKUP' operation for {{ no_of_leases }} client-uuids and resource-uuids and validate that 1st set of uuids should be expired."
       vars:
          input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
+                'client': '',
                 'resource': '{{ resourceUUIDS[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',

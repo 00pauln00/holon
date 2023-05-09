@@ -82,10 +82,10 @@
          leaseState: "{{ EXPIRED }}"
       loop: "{{ range(0, no_of_leases) | list }}"
 
-    - name: "{{ recipe_name }}: Perform 'LOOKUP' operation for {{ no_of_leases }} client-uuids and resource-uuids and validate that all the lease have status as stale."
+    - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation for {{ no_of_leases }} client-uuids and resource-uuids and validate that all the lease have status as stale."
       vars:
          input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
+                'client': '',
                 'resource': '{{ resourceUUIDS[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',

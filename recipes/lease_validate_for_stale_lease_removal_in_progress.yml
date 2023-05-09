@@ -95,7 +95,7 @@
     - name: "{{ recipe_name }}: Perform 'LOOKUP' and validate lease state is still in progress."
       vars:
          input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
+                'client': '',
                 'resource': '{{ resourceUUIDS[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
@@ -157,7 +157,7 @@
     - name: "{{ recipe_name }}: Perform 'LOOKUP' and validate lease state should expired."
       vars:
          input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
+                'client': '',
                 'resource': '{{ resourceUUIDS[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
@@ -197,7 +197,7 @@
     - name: "{{ recipe_name }}: Perform 'LOOKUP' and validate lease state should valid now."
       vars:
          input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
+                'client': '{',
                 'resource': '{{ resourceUUIDS[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
