@@ -71,24 +71,6 @@
          - "{{ leader1 }}"
       register: orig_leader
 
-    - name: "{{ recipe_name }}: Disable send on all peers from the leader 1."
-      vars:
-         stage: "stage1_disable_net_send"
-         cmd: "net_send_enabled@false"
-         where: "/ctl_svc_nodes/uuid@{{ orig_leader['results'][0]['item'] }}"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
-      no_log: true
-
-    - name: "{{ recipe_name }}: Disable receive on all peers from the leader 1."
-      vars:
-         stage: "stage1_disable_net_recv"
-         cmd: "net_recv_enabled@false"
-         where: "/ctl_svc_nodes/uuid@{{ orig_leader['results'][0]['item'] }}"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
-      no_log: true
-
     - name: "{{ recipe_name }}: Pause the Leader 1"
       debug:
        msg: "{{lookup('niova_raftprocess', 'pause', orig_leader['results'][0]['item'], wantlist=True)}}"

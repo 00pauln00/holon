@@ -35,7 +35,6 @@
         name: common
         tasks_from: wait_until_leaseState_change
       vars:
-         clientuuid: "{{ ClientUUIDS[item] }}"
          resourceuuid: "{{ resourceUUIDS[item] }}"
          leaseState: "{{ EXPIRED }}"
       loop: "{{ range(0, no_of_leases) | list }}"
