@@ -86,10 +86,6 @@
         msg: "{{ idleoff }}"
       no_log: True
 
-    - name: "{{ recipe_name }}: wait for 5 sec"
-      wait_for:
-        timeout: 5
-
     - name: "{{ recipe_name }}: Get the term value after reboot"
       vars:
          stage: "stage1_after_reboot"

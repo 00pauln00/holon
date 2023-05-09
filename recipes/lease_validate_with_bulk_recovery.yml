@@ -1,11 +1,9 @@
-- import_playbook: lease_basic_operations.yml
-
 - name: "lease_validate_with_bulk_recovery"
   hosts: localhost
   connection: local
   vars:
      recipe_name: "lease_validate_with_bulk_recovery"
-     parent: "lease_basic_operations"
+     parent: none
      raft_root_entry_keys:
               - "/raft_net_info/max-scan-entries"
               - "/raft_net_info/log-reap-factor"
@@ -25,12 +23,20 @@
       failed_when:
          (app_type != "lease")
 
-    - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
+    - name: "{{ recipe_name }}: Get the latest list of non-running peer UUIDs"
       include_role:
          name: common
          tasks_from: get_server_uuid_info
 
-    - name: "{{ recipe_name }}: Apply fault injection on all peers i.e. 1, 2 and 3."
+    - name: "Start 5 peers in the cluster"
+      include_role:
+        name: common
+        tasks_from: start_server
+      vars:
+        ServerUUID: "{{ NonRunningServers[item] }}"
+      loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Apply fault injection on all peers."
       include_role:
         name: common
         tasks_from: set_fault_injection_and_verify
@@ -52,7 +58,7 @@
         name: common
         tasks_from: get_follower_stats
 
-    - name: "{{ recipe_name }}: Kill the Leader."
+    - name: "{{ recipe_name }}: Kill the Peer 1."
       debug:
         msg: "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[0], wantlist=True) }}"
 
@@ -100,10 +106,10 @@
 
     - name: "Wait for Peer 1 to bootup completely"
       debug:
-        msg: "Wait till bootup completes for Peer {{ LeaderUUID['/0/leader-uuid'] }}."
+        msg: "Wait till bootup completes for Peer {{ FollowerUUIDs[0] }}."
       vars:
         stage: "restart_peer1"
-      until: (lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], '/raft_root_entry', wantlist=True)| dict2items | map(attribute='value') | list | first != "null") and (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry/0/state', wantlist=True)| dict2items | map(attribute='value') | list | first != "booting")
+      until: (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry', wantlist=True)| dict2items | map(attribute='value') | list | first != "null") and (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry/0/state', wantlist=True)| dict2items | map(attribute='value') | list | first != "booting")
       retries: 60
       delay: 1
 

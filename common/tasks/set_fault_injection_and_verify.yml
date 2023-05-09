@@ -1,5 +1,5 @@
 ---
-    - name: "{{ recipe_name }}: Set fault injection {{ fault_injection_name }} on all followers."
+    - name: "{{ recipe_name }}: Set fault injection {{ fault_injecition_name }} on leader."
       vars:
         stage: "fault_injection"
         cmd: "enabled@true"
@@ -15,7 +15,7 @@
       set_fact:
          fault_injection_points: "{{ lookup('niova_ctlrequest', 'lookup', ServerUUID, raft_keys, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: Verify fault injected on followers properly."
+    - name: "{{ recipe_name }}: Verify fault injected on leader properly."
       set_fact:
          fault_injection_point_enabled : "{{ fault_injection_points['//fault_injection_points'][index]['enabled'] }}"
       when: (fault_injection_points['//fault_injection_points'][index]['name'] == fault_injection_name)

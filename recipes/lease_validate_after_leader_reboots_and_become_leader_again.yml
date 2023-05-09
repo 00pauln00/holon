@@ -146,10 +146,10 @@
 
     - name: "Wait for Old Leader to bootup completely"
       debug:
-        msg: "Wait till bootup completes for Peer {{ FollowerUUIDs[0] }}."
+        msg: "Wait till bootup completes for Peer {{ orig_leader['results'][0]['item'] }}."
       vars:
-        stage: "restart_peer1"
-      until: (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry', wantlist=True)| dict2items | map(attribute='value') | list | first != "null") and (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry/0/state', wantlist=True)| dict2items | map(attribute='value') | list | first != "booting")
+        stage: "bootup_old_leader"
+      until: (lookup('niova_ctlrequest', 'lookup', orig_leader['results'][0]['item'], '/raft_root_entry', wantlist=True)| dict2items | map(attribute='value') | list | first != "null") and (lookup('niova_ctlrequest', 'lookup', orig_leader['results'][0]['item'], '/raft_root_entry/0/state', wantlist=True)| dict2items | map(attribute='value') | list | first != "booting")
       retries: 60
       delay: 1
 
@@ -157,11 +157,6 @@
       include_role:
         name: common
         tasks_from: get_server_uuid_info
-
-    - name: "{{ recipe_name }}: Get cluster information"
-      include_role:
-        name: common
-        tasks_from: get_follower_stats
 
     - name: "{{ recipe_name }}: Disable message receive on all peers for leader overthrow"
       vars:
