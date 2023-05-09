@@ -1,4 +1,5 @@
 - import_playbook: lease_validate_after_leader_kill.yml
+
 - name: "lease_validate_after_follower_reboots_and_become_leader"
   hosts: localhost
   connection: local
@@ -103,7 +104,7 @@
     - name: "{{ recipe_name }}: Verify already taken leases gets updated with new leader."
       vars:
          input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
+                'client': '',
                 'resource': '{{ resourceUUIDS[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
