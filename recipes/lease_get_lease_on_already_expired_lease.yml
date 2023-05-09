@@ -32,7 +32,7 @@
     - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation after lease getting expired."
       vars:
          input_param: {
-                'client': '{{ clientUUID.stdout }}',
+                'client': '',
                 'resource': '{{ resourceUUID.stdout }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',

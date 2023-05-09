@@ -107,7 +107,7 @@
     - name: "{{ recipe_name }}: Verify already taken leases gets updated with new leader."
       vars:
          input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
+                'client': '',
                 'resource': '{{ resourceUUIDS[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',

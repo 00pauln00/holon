@@ -70,7 +70,7 @@
     - name: "{{ recipe_name }}: Perform 'LOOKUP' operation."
       vars:
          input_param: {
-                'client': '{{ clientUUID.stdout }}',
+                'client': '',
                 'resource': '{{ resourceUUID.stdout }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',

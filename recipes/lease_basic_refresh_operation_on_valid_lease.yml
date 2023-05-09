@@ -71,7 +71,7 @@
     - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation."
       vars:
          input_param: {
-                'client': '{{ clientUUID.stdout }}',
+                'client': '',
                 'resource': '{{ resourceUUID.stdout }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
@@ -144,7 +144,7 @@
     - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation again after refreshing the lease."
       vars:
          input_param: {
-                'client': '{{ clientUUID.stdout }}',
+                'client': '',
                 'resource': '{{ resourceUUID.stdout }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
@@ -182,7 +182,7 @@
         msg: "Check the value of TTL should be increased than the previous lookup as refresh operation is performed"
       failed_when: >
         (leaseValues_after['TTL'] <= 0) or
-        (leaseValues_after['TimeStamp']['LeaderTerm'] < leaseValues_before['TimeStamp']['LeaderTerm']) or
+        (leaseValues_after['TimeStamp']['LeaderTerm'] != leaseValues_before['TimeStamp']['LeaderTerm']) or
         (leaseValues_after['Client'] != leaseValues_before['Client']) or
         (leaseValues_after['Resource'] != leaseValues_before['Resource'])
 
