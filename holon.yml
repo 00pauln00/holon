@@ -33,6 +33,7 @@
       ClientIndex: 0
       app_type: "{{ app_name | default('pumicedb') }}"
       prometheus_support: "{{ prometheus | default(0) }}"
+      coverdir: "{{ cover | default('') | string }}"
       nlookouts: "{{ nlookouts | default(5) | int }}"
       nnisds: "{{ nnisds | default(50) | int }}"
       blocktest_input_file_path: "{{ blocktest_file_path | default(false) | bool }}"
@@ -80,6 +81,7 @@
            sync_mode: "{{ sync }}"
            file_counter: 0
            prometheus_support: "{{ prometheus_support }}"
+           coverdir: "{{ coverdir }}"
            nlookouts: "{{ nlookouts | default(5) }}"
            nnisds: "{{ nnisds | default(5) }}"
            niovaBlockTest_input_file_path: "{{ blocktest_input_file_path }}"
