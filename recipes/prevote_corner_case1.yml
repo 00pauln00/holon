@@ -1,4 +1,5 @@
 - import_playbook: basic_leader_election2.yml
+
 - name: "prevote_corner_case1"
   hosts: localhost
   connection: local
@@ -23,11 +24,6 @@
     - name: "{{ recipe_name }}: Check if parent recipe failed"
       debug: msg="Check if parent recipe {{ parent }} failed"
       failed_when: terminate_recipe == true
-
-    - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
-      include_role:
-         name: common
-         tasks_from: get_server_uuid_info
 
     #Steps 1 to 4.
     - name: "{{ recipe_name }}: Disable net-send recv, apply fault injection, check for term value."

@@ -38,10 +38,6 @@
        vars:
          ClientUUID: "{{ client_uuid.stdout }}"
 
-     - name: "{{ recipe_name }}: Pause for 5 seconds to start proxy server properly."
-       pause:
-        seconds: 5
-
      #Start niovakv_client by sending multiple requested key-value.
      - name: "{{ recipe_name }}: Start niovakv client to multi-key write/read concurrently."
        vars:

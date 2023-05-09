@@ -1,4 +1,4 @@
-- import_playbook: controlPlane_Lease_recipe.yml 
+- import_playbook: controlPlane_Lease_recipe.yml
 
 - name: "controlPlane_lease_validation_on_new_leader"
   hosts: localhost
@@ -7,6 +7,8 @@
      recipe_name: "controlPlane_lease_validation_on_new_leader"
      parent: "controlPlane_Lease_recipe"
      no_of_leases: 4
+  vars_files:
+    - ../leaseStateValue.yml
 
   tasks:
   - block:
@@ -64,7 +66,7 @@
            (wr_response['Client'] != clientUUID.stdout|string) or
            (wr_response['Resource'] != resourceUUID.stdout|string) or
            (wr_response['TTL'] != 60) or
-           (wr_response['LeaseState'] != 4)
+           (wr_response['LeaseState'] != GRANTED)
 
     - name: "{{ recipe_name }}: Store old leader-uuid"
       vars:
@@ -120,8 +122,9 @@
       failed_when: >
          (wr_response['Status'] != 0) or
          (wr_response['Client'] != clientUUID.stdout|string) or
-         (wr_response['Resource'] != resourceUUID.stdout|string) 
-    
+         (wr_response['Resource'] != resourceUUID.stdout|string) or
+         (wr_response['LeaseState'] != GRANTED)
+
     - name: Generate new resource
       shell: "/usr/bin/uuid"
       register: resourceUUID1
@@ -157,7 +160,7 @@
            (wr_response['Client'] != clientUUID1.stdout|string) or
            (wr_response['Resource'] != resourceUUID1.stdout|string) or
            (wr_response['TTL'] != 60) or
-           (wr_response['LeaseState'] != 4)
+           (wr_response['LeaseState'] != GRANTED)
 
     - name: "{{ recipe_name }}: Restart the Old Leader."
       debug:
@@ -176,11 +179,6 @@
       include_role:
         name: common
         tasks_from: get_server_uuid_info
-
-    - name: "{{ recipe_name }}: Get cluster information"
-      include_role:
-        name: common
-        tasks_from: get_follower_stats
 
     - name: "{{ recipe_name }}: Disable message receive on all peers for leader overthrow"
       vars:
@@ -210,8 +208,6 @@
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
       no_log: true
-
-    - pause: seconds=3
 
     - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
       vars:
@@ -258,7 +254,8 @@
       failed_when: >
          (wr_response['Status'] != 0) or
          (wr_response['Client'] != clientUUID.stdout|string) or
-         (wr_response['Resource'] != resourceUUID.stdout|string)
+         (wr_response['Resource'] != resourceUUID.stdout|string) or
+         (wr_response['LeaseState'] != GRANTED)
 
     - name: "{{ recipe_name }}: Starting controlplane_client to lookupLease for the second lease."
       vars:
@@ -285,7 +282,8 @@
       failed_when: >
          (wr_response['Status'] != 0) or
          (wr_response['Client'] != clientUUID1.stdout|string) or
-         (wr_response['Resource'] != resourceUUID1.stdout|string)
+         (wr_response['Resource'] != resourceUUID1.stdout|string) or
+         (wr_response['LeaseState'] != GRANTED)
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

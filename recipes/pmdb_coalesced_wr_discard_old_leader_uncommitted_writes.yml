@@ -69,9 +69,6 @@
         tasks_from: get_new_client_uuid
       register: client_uuid
 
-    - debug:
-        msg: "Client UUID: {{ client_uuid }}"
-
     - name: "{{ recipe_name }}: Generate App UUID"
       shell: "/usr/bin/uuid"
       register: app_uuid1
@@ -272,9 +269,3 @@
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
-
-
-
-
-
-

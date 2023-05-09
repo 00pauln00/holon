@@ -40,5 +40,5 @@
 
      - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
        pause:
-        seconds: 5
+        seconds: 1
 
