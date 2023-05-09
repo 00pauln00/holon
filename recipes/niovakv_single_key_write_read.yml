@@ -39,10 +39,6 @@
        vars:
          ClientUUID: "{{ client_uuid.stdout }}"
 
-     - name: "{{ recipe_name }}: Pause for 5 seconds to start proxy server properly."
-       pause:
-        seconds: 5
-
      - name: "{{ recipe_name }}: Starting niovakv_client to write the value."
        vars:
          input_param: {
@@ -60,9 +56,6 @@
        with_items:
           - "{{ nkvclires }}"
        register: writeres
-
-     - debug:
-         msg: "{{ writeres }}"
 
        # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"

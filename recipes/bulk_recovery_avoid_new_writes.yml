@@ -71,9 +71,6 @@
         - "{{ peer4 }}"
       register: newlyStartedPeer4
 
-    - debug:
-        msg: "{{ newlyStartedPeer4['results'][0]['item'] }}"
-
     - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
       include_role:
         name: common

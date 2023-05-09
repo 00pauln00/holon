@@ -48,9 +48,6 @@
         fault_injection_name: "raft_server_bypass_sm_apply"
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    - debug:
-        msg: "Leader UUID: {{ LeaderUUID['/0/leader-uuid'] }}"
-
     - name: "{{ recipe_name }}: Kill the Leader."
       debug:
        msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
