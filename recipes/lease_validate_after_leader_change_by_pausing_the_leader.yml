@@ -117,6 +117,38 @@
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'] <= getLeaseOps[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'])
       loop: "{{ range(0, no_of_leases) | list }}"
 
+    - name: "Get multiple client uuids."
+      include_role:
+        name: common
+        tasks_from: get_new_clientUUIDs
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "Get multiple resource uuids."
+      include_role:
+        name: common
+        tasks_from: get_new_resourceUUIDs
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Perform 'GET' operation for {{ no_of_leases }} new client-uuids and new resource-uuids."
+      vars:
+         input_param: {
+                'client': '{{ newClientUUIDS[item] }}',
+                'resource': '{{ newResourceUUIDS[item] }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'get_lease_{{ item }}'
+                 }
+         getOps: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+      debug:
+        msg: "Perform 'GET' operation for new client-uuids and new resource-uuids"
+      failed_when: >
+        (getOps['outfile_status'] != 0) or
+        (getOps['output_data'][0]['LeaseRes']['Status'] != 0) or
+        (getOps['output_data'][0]['LeaseRes']['Client'] != newClientUUIDS[item]) or
+        (getOps['output_data'][0]['LeaseRes']['Resource'] != newResourceUUIDS[item]) or
+        (getOps['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
+      loop: "{{ range(0, no_of_leases) | list }}"
+
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:

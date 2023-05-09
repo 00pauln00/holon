@@ -96,7 +96,7 @@
       vars:
          input_param: {
                 'client': '',
-                'resource': '{{ resourceUUIDS[item] }}',
+                'resource': '{{ newResourceUUIDS[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_after_peer1_become_leader_{{ item }}'
