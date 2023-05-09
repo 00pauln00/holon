@@ -25,11 +25,6 @@
       failed_when:
          (app_type != "lease")
 
-    - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
-      include_role:
-        name: common
-        tasks_from: get_server_uuid_info
-
     - name: Generate new resource
       shell: "/usr/bin/uuid"
       register: new_resourceUUID
@@ -110,7 +105,7 @@
     - name: "{{ recipe_name }}: Verify lease status"
       debug:
         msg: "Check GET status"
-       #no_log: true
+      no_log: true
       failed_when: >
          (getLease_client2['results'][0]['item']['output_data'][0]['LeaseRes']['Status'] != -1)
 
@@ -122,8 +117,18 @@
       failed_when: >
          (wr_response['LeaseState'] != INVALID)
 
-    - pause:
-        seconds: 60
+    - name: "{{ recipe_name }}: Pause for 60 sec so that lease gets expired."
+      pause:
+         seconds: 60
+
+    - name: "{{ recipe_name }}: Wait untill leaseState is expired for clientUUID 1."
+      include_role:
+        name: common
+        tasks_from: wait_until_leaseState_change
+      vars:
+         clientuuid: "{{ clientUUID1.stdout }}"
+         resourceuuid: "{{ new_resourceUUID.stdout }}"
+         leaseState: "{{ EXPIRED }}"
 
     - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation for client-1."
       vars:

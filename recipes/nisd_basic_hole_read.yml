@@ -1,4 +1,5 @@
 - import_playbook: nisd_initialization_and_startup.yml
+
 - name: "nisd_basic_hole_read"
   hosts: localhost
   connection: local
@@ -23,9 +24,6 @@
          msg:  "{{ lookup('niova_raftprocess', 'kill', get_nisd, wantlist=True) }}"
        no_log: True
 
-     - pause:
-        seconds: 2
-
      - name: "{{ recipe_name }}: Restart same nisd process."
        vars:
           input_param: {
@@ -36,9 +34,6 @@
        debug:
          msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
        no_log: True
-
-     - pause:
-         seconds: 2
 
      - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
        vars:
@@ -67,9 +62,6 @@
      - name: Generate new vdev-uuid
        shell: "/usr/bin/uuid"
        register: newVedv
-
-     - debug:
-         msg: "New vdev-uuid: {{ newVedv }}"
 
      - name: Generate new client-uuid for niova-block-test
        shell: "/usr/bin/uuid"

@@ -26,11 +26,6 @@
       failed_when:
          (app_type != "lease")
 
-    - name: "{{ recipe_name }}: Get cluster information"
-      include_role:
-        name: common
-        tasks_from: get_follower_stats
-
     - name: "Get multiple client uuids."
       include_role:
         name: common

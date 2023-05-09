@@ -103,7 +103,7 @@
         name: common
         tasks_from: get_server_uuid_info
 
-    - name: "{{ recipe_name }}: Resume inactive followers."
+   - name: "{{ recipe_name }}: Resume inactive followers."
       set_fact:
          quorum_rebuild_resume_peers: "{{ lookup('niova_raftprocess', 'resume', inactive_followers[item], wantlist=True) }}"
       loop: "{{ range(0, inactive_followers | length) | list }}"
@@ -132,7 +132,7 @@
         name: common
         tasks_from: get_server_uuid_info
 
-    #Create set of 2 app_uuids.
+   #Create set of 2 app_uuids.
     - name: "{{ recipe_name }}: Get set of required number of app_uuids."
       include_role:
         name: common
