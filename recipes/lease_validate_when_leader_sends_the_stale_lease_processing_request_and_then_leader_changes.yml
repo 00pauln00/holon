@@ -89,7 +89,6 @@
         name: common
         tasks_from: wait_until_leaseState_change
       vars:
-         clientuuid: "{{ ClientUUIDS[item] }}"
          resourceuuid: "{{ resourceUUIDS[item] }}"
          leaseState: "{{ STALE_INPROGRESS }}"
       loop: "{{ range(0, no_of_leases) | list }}"
@@ -130,7 +129,6 @@
         name: common
         tasks_from: wait_until_leaseState_change
       vars:
-         clientuuid: "{{ ClientUUIDS[item] }}"
          resourceuuid: "{{ resourceUUIDS[item] }}"
          leaseState: "{{ GRANTED }}"
       loop: "{{ range(0, no_of_leases) | list }}"
@@ -187,7 +185,6 @@
         name: common
         tasks_from: wait_until_leaseState_change
       vars:
-         clientuuid: "{{ ClientUUIDS[item] }}"
          resourceuuid: "{{ resourceUUIDS[item] }}"
          leaseState: "{{ GRANTED }}"
       loop: "{{ range(0, no_of_leases) | list }}"

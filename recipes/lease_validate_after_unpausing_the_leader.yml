@@ -29,30 +29,12 @@
        msg: "{{lookup('niova_raftprocess', 'resume', orig_leader['results'][0]['item'], wantlist=True)}}"
       no_log: True
 
-    - name: "{{ recipe_name }}: Enable send on all peers from the leader 1."
-      vars:
-         stage: "enable_net_send"
-         cmd: "net_send_enabled@true"
-         where: "/ctl_svc_nodes/uuid@{{ orig_leader['results'][0]['item'] }}"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
-      no_log: true
-
-    - name: "{{ recipe_name }}: Enable receive on all peers from the leader 1."
-      vars:
-         stage: "enable_net_rcv"
-         cmd: "net_recv_enabled@true"
-         where: "/ctl_svc_nodes/uuid@{{ orig_leader['results'][0]['item'] }}"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
-      no_log: true
-
     - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
       include_role:
         name: common
         tasks_from: get_server_uuid_info
 
-    - name: "Wait until leader becomes follower"
+    - name: "Wait until old leader becomes follower"
       debug:
         msg: "Wait till leader becomes follower."
       vars:
@@ -113,8 +95,8 @@
     - name: "{{ recipe_name }}: Verify already taken leases gets updated with new leader."
       vars:
          input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
-                'resource': '{{ resourceUUIDS[item] }}',
+                'client': '',
+                'resource': '{{ newResourceUUIDS[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_after_peer1_become_leader_{{ item }}'

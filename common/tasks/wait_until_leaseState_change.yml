@@ -3,7 +3,7 @@
     - name: "{{ recipe_name }}: Wait Until LeaseState set to: {{ leaseState }}."
       vars:
         input_param: {
-          'client': "{{ clientuuid }}",
+          'client': "",
           'resource': "{{ resourceuuid }}",
           'numOfLeases': "1",
           'getLeaseOutfile': "",
