@@ -66,7 +66,7 @@
     - name: "{{ recipe_name }}: Perform 'LOOKUP' operation for {{ no_of_leases }} client-uuids and resource-uuids."
       vars:
          input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
+                'client': '',
                 'resource': '{{ resourceUUIDS[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
@@ -106,7 +106,7 @@
     - name: "{{ recipe_name }}: Verify already taken leases gets updated with new leader."
       vars:
          input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
+                'client': '',
                 'resource': '{{ resourceUUIDS[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
@@ -118,6 +118,9 @@
       failed_when: >
         (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
+        (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
+        (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource']) or
+        (lookupLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'] <= lookupLeaseOps[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'])
       loop: "{{ range(0, no_of_leases) | list }}"
 

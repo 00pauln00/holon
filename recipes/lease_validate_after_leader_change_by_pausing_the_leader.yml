@@ -71,24 +71,6 @@
          - "{{ leader1 }}"
       register: orig_leader
 
-    - name: "{{ recipe_name }}: Disable send on all peers from the leader 1."
-      vars:
-         stage: "stage1_disable_net_send"
-         cmd: "net_send_enabled@false"
-         where: "/ctl_svc_nodes/uuid@{{ orig_leader['results'][0]['item'] }}"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
-      no_log: true
-
-    - name: "{{ recipe_name }}: Disable receive on all peers from the leader 1."
-      vars:
-         stage: "stage1_disable_net_recv"
-         cmd: "net_recv_enabled@false"
-         where: "/ctl_svc_nodes/uuid@{{ orig_leader['results'][0]['item'] }}"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
-      no_log: true
-
     - name: "{{ recipe_name }}: Pause the Leader 1"
       debug:
        msg: "{{lookup('niova_raftprocess', 'pause', orig_leader['results'][0]['item'], wantlist=True)}}"
@@ -102,7 +84,7 @@
     - name: "{{ recipe_name }}: Verify already taken leases gets updated with new leader."
       vars:
          input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
+                'client': '',
                 'resource': '{{ resourceUUIDS[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
@@ -115,6 +97,38 @@
         (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
         (lookup_aftr_new_leader[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'] <= getLeaseOps[item]['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTerm'])
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "Get multiple client uuids."
+      include_role:
+        name: common
+        tasks_from: get_new_clientUUIDs
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "Get multiple resource uuids."
+      include_role:
+        name: common
+        tasks_from: get_new_resourceUUIDs
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Perform 'GET' operation for {{ no_of_leases }} new client-uuids and new resource-uuids."
+      vars:
+         input_param: {
+                'client': '{{ newClientUUIDS[item] }}',
+                'resource': '{{ newResourceUUIDS[item] }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'get_lease_{{ item }}'
+                 }
+         getOps: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+      debug:
+        msg: "Perform 'GET' operation for new client-uuids and new resource-uuids"
+      failed_when: >
+        (getOps['outfile_status'] != 0) or
+        (getOps['output_data'][0]['LeaseRes']['Status'] != 0) or
+        (getOps['output_data'][0]['LeaseRes']['Client'] != newClientUUIDS[item]) or
+        (getOps['output_data'][0]['LeaseRes']['Resource'] != newResourceUUIDS[item]) or
+        (getOps['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
       loop: "{{ range(0, no_of_leases) | list }}"
 
     rescue:

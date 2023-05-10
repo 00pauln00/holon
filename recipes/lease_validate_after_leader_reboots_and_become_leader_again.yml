@@ -95,7 +95,7 @@
     - name: "{{ recipe_name }}: Verify already taken leases gets updated with new leader."
       vars:
          input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
+                'client': '',
                 'resource': '{{ resourceUUIDS[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
@@ -209,7 +209,7 @@
     - name: "{{ recipe_name }}: Perform and Verify 'LOOKUP' for second time written leases."
       vars:
          input_param: {
-                'client': '{{ Client[item] }}',
+                'client': '',
                 'resource': '{{ Resource[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
@@ -231,7 +231,7 @@
     - name: "{{ recipe_name }}: Perform and Verify 'LOOKUP' for firstly written leases."
       vars:
          input_param: {
-                'client': '{{ ClientUUIDS[item] }}',
+                'client': '',
                 'resource': '{{ resourceUUIDS[item] }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',

@@ -133,7 +133,7 @@
     - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation for client-1."
       vars:
          input_param: {
-                'client': '{{ clientUUID1.stdout }}',
+                'client': '',
                 'resource': '{{ new_resourceUUID.stdout }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
