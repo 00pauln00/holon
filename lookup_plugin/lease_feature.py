@@ -70,7 +70,7 @@ def lease_operation(cluster_params, operation, client, resource, numOfLeases, ge
     outfilePath = "%s/%s/%s_%s" % (base_dir, raft_uuid, outFileName, uuid.uuid1())
     ctl_interface_path = set_environment_variables(cluster_params)
 
-    if operation == "GET" or operation == "GET_VALIDATE":
+    if operation == "GET" or operation == "GET_VALIDATE" or operation == "REFRESH":
         #If resource-uuid and client-uuid passed by user.
         if getLeaseOutfile == '' and resource != '':
             process_popen = subprocess.Popen([bin_path, '-o', operation, '-u', client, '-v', resource, '-ru', raft_uuid,
