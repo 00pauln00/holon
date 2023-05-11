@@ -1,0 +1,143 @@
+- name: "lease_validate_as_expired_after_leader_kill"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "lease_validate_as_expired_after_leader_kill"
+     parent: None
+     no_of_leases: 4
+  vars_files:
+    - ../leaseStateValue.yml
+
+  tasks:
+  - block:
+
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    # check for the app_type
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'."
+      vars:
+         app_type: "{{ app_type }}"
+      debug:
+         msg: "app_type is: {{ app_type }}"
+      failed_when:
+         (app_type != "lease")
+
+    - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "Start 5 peers in the cluster"
+      include_role:
+        name: common
+        tasks_from: start_server
+      vars:
+        ServerUUID: "{{ NonRunningServers[item] }}"
+      loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get cluster information"
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
+
+    - name: "Get multiple client uuids."
+      include_role:
+        name: common
+        tasks_from: get_multiple_client_uuids
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "Get multiple resource uuids."
+      include_role:
+        name: common
+        tasks_from: get_multiple_resource_uuids
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Perform 'GET' operation for {{ no_of_leases }} client-uuids and resource-uuids."
+      vars:
+         input_param: {
+                'client': '{{ ClientUUIDS[item] }}',
+                'resource': '{{ resourceUUIDS[item] }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'get_lease_{{ item }}'
+                 }
+      set_fact:
+        getLeaseOps: "{{ getLeaseOps|default([]) + [lookup('lease_feature', 'GET', input_param, wantlist=True)] }}"
+      no_log: true
+      failed_when: >
+        (getLeaseOps[item]['outfile_status'] != 0) or
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item]) or
+        (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Pause for 60 sec so that lease gets expired."
+      pause:
+         seconds: 60
+
+    - name: "{{ recipe_name }}: Wait untill leaseState of all leases is expired."
+      include_role:
+        name: common
+        tasks_from: wait_until_leaseState_change
+      vars:
+         resourceuuid: "{{ resourceUUIDS[item] }}"
+         leaseState: "{{ EXPIRED }}"
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Store old leader-uuid"
+      vars:
+         old_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+      debug:
+        msg: "Old Leader UUID"
+      no_log: true
+      with_items:
+         - "{{ old_leader }}"
+      register: orig_leader
+
+    - name: "{{ recipe_name }}: Kill the Old Leader."
+      debug:
+        msg: "{{ lookup('niova_raftprocess', 'kill', orig_leader['results'][0]['item'], wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Get the running peers list."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Again wait until new leader election happens."
+      vars:
+         stage: "wait_for_new_leader_election"
+      debug:
+        msg: "Waiting for leader election"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != orig_leader['results'][0]['item']
+      retries: 10
+      delay: 1
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Perform 'LOOKUP' operation for {{ no_of_leases }} client-uuids and resource-uuids as after leader kill leases should expire."
+      vars:
+         input_param: {
+                'client': '',
+                'resource': '{{ resourceUUIDS[item] }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'lookup_lease_after_leader_kill{{ item }}'
+                 }
+      set_fact:
+        lookup_as_expired_after_leaderKill: "{{ lookup_as_expired_after_leaderKill|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
+      no_log: true
+      failed_when: >
+        (lookup_as_expired_after_leaderKill[item]['outfile_status'] != 0) or
+        (lookup_as_expired_after_leaderKill[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
+        (lookup_as_expired_after_leaderKill[item]['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
+        (lookup_as_expired_after_leaderKill[item]['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource']) or
+        (lookup_as_expired_after_leaderKill[item]['output_data'][0]['LeaseRes']['LeaseState'] != EXPIRED) or
+        (lookup_as_expired_after_leaderKill[item]['output_data'][0]['LeaseRes']['TTL'] > 0)
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
