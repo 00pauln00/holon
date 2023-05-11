@@ -33,7 +33,7 @@
        with_items:
           - "{{ ncpcliwr }}"
        register: firstwriteres5keys
-       no_log: true
+         #no_log: true
 
      - name: "{{ recipe_name }} : Pause vefore outfile verification"
        pause:
@@ -49,8 +49,8 @@
 
      - name: "{{ recipe_name }}: Verify write status"
        debug:
-         msg: "Check write response status."
-       no_log: true
+         msg: "Check write response status {{ firstwriteres5keys }}"
+        #no_log: true
        failed_when: >
           (item['Response']['Status'] != 0)
        loop: "{{ firstwriteres5keys['results'][0]['item']['output_data'] }}"
@@ -89,12 +89,12 @@
        with_items:
          - "{{ ncpclird }}"
        register: firstreadres5keys
-       no_log: true
+         #no_log: true
 
      - name: "{{ recipe_name }}: Verify outfile status and read status"
        debug:
         msg: "check outfile status and read status"
-       no_log: true
+          #no_log: true
        failed_when:
          (firstreadres5keys['results'][0]['item']['outfile_status'] != 0) or
          (firstreadres5keys['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
@@ -110,7 +110,7 @@
        with_items:
            - "{{ seq_no }}"
        register: seqNo
-       no_log: true
+         #no_log: true
 
      - name: "{{ recipe_name }}: Starting controlplane_client to over write the value."
        vars:
@@ -130,13 +130,13 @@
        with_items:
           - "{{ ncpcliwr }}"
        register: writeres_overwrite
-       no_log: true
+         #no_log: true
 
      - name: "{{ recipe_name }}: Verify outfile status"
        debug:
          msg:
            - "Check write outfile status: {{ writeres_overwrite['results'][0]['item']['outfile_status'] }}"
-       no_log: true
+             #no_log: true
        failed_when: >
          (writeres_overwrite['results'][0]['item']['outfile_status'] != 0)
 
@@ -166,13 +166,13 @@
        with_items:
           - "{{ ncpcliwr }}"
        register: writeres_Insert
-       no_log: true
+         #no_log: true
 
      - name: "{{ recipe_name }}: Verify outfile status"
        debug:
          msg:
            - "Check write outfile status: {{ writeres_Insert['results'][0]['item']['outfile_status'] }}"
-       no_log: true
+             #no_log: true
        failed_when: >
          (writeres_Insert['results'][0]['item']['outfile_status'] != 0)
 
@@ -200,12 +200,12 @@
        with_items:
           - "{{ ncpclird }}"
        register: consistencyCheck_rangereadres
-       no_log: true
+         #no_log: true
 
      - name: "{{ recipe_name }}: Verify outfile status and read status"
        debug:
         msg: "check outfile status and read status"
-       no_log: true
+          #no_log: true
        failed_when:
          (consistencyCheck_rangereadres['results'][0]['item']['outfile_status'] != 0) or
          (consistencyCheck_rangereadres['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
@@ -254,12 +254,12 @@
        with_items:
           - "{{ ncpclird }}"
        register: rangerd_aftr_rm_fi
-       no_log: true
+         #no_log: true
 
      - name: "{{ recipe_name }}: Verify outfile status and read status"
        debug:
         msg: "check outfile status and read status"
-       no_log: true
+          #no_log: true
        failed_when:
          (rangerd_aftr_rm_fi['results'][0]['item']['outfile_status'] != 0) or
          (rangerd_aftr_rm_fi['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
@@ -272,7 +272,7 @@
        with_items:
            - "{{ seq_no }}"
        register: seqNo_latest
-       no_log: true
+         #no_log: true
 
      - name: "{{ recipe_name }}: Validate that we should see updated seq no."
        vars:
