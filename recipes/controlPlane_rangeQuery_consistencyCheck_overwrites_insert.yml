@@ -34,6 +34,8 @@
           - "{{ ncpcliwr }}"
        register: firstwriteres5keys
        no_log: true
+       pause:
+         seconds: 10
 
      - name: "{{ recipe_name }}: Verify outfile status"
        debug:
