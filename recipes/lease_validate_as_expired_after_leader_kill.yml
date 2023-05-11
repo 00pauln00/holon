@@ -116,7 +116,7 @@
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    - name: "{{ recipe_name }}: Perform 'LOOKUP' operation for {{ no_of_leases }} client-uuids and resource-uuids as after leader kill leases should expire."
+    - name: "{{ recipe_name }}: Verify that now new leader reports already taken leases as expire."
       vars:
          input_param: {
                 'client': '',
