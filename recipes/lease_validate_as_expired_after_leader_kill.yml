@@ -125,16 +125,17 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_after_leader_kill{{ item }}'
                  }
-      set_fact:
-        lookup_as_expired_after_leaderKill: "{{ lookup_as_expired_after_leaderKill|default([]) + [lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True)] }}"
-      no_log: true
+         lookup_as_expired_after_leaderKill: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
+      debug:
+         msg: "Verify that now new leader reports already taken leases as expire"
+           #no_log: true
       failed_when: >
-        (lookup_as_expired_after_leaderKill[item]['outfile_status'] != 0) or
-        (lookup_as_expired_after_leaderKill[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
-        (lookup_as_expired_after_leaderKill[item]['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
-        (lookup_as_expired_after_leaderKill[item]['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource']) or
-        (lookup_as_expired_after_leaderKill[item]['output_data'][0]['LeaseRes']['LeaseState'] != EXPIRED) or
-        (lookup_as_expired_after_leaderKill[item]['output_data'][0]['LeaseRes']['TTL'] > 0)
+        (lookup_as_expired_after_leaderKill['outfile_status'] != 0) or
+        (lookup_as_expired_after_leaderKill['output_data'][0]['LeaseRes']['Status'] != 0) or
+        (lookup_as_expired_after_leaderKill['output_data'][0]['LeaseRes']['Client'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Client']) or
+        (lookup_as_expired_after_leaderKill['output_data'][0]['LeaseRes']['Resource'] != getLeaseOps[item]['output_data'][0]['LeaseRes']['Resource']) or
+        (lookup_as_expired_after_leaderKill['output_data'][0]['LeaseRes']['LeaseState'] != EXPIRED) or
+        (lookup_as_expired_after_leaderKill['output_data'][0]['LeaseRes']['TTL'] > 0)
       loop: "{{ range(0, no_of_leases) | list }}"
 
     rescue:
