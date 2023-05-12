@@ -135,7 +135,7 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
         elif app_type == "lease":
             log_path = "%s/%s_lease_pmdbServer.log" % (base_dir, peer_uuid)
             process_popen = subprocess.Popen([bin_path, '-r',
-                                          raft_uuid, '-u', peer_uuid, '-l' ,log_path],
+                                          raft_uuid, '-u', peer_uuid, '-cov', cluster_params['coverdir'],'-l' ,log_path],
                                           stdout = fp, stderr = fp)
 
     else:
