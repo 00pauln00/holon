@@ -333,7 +333,7 @@ class RaftProcess:
         process_obj = psutil.Process(pid)
         logging.warning("kill the process(%d) by sending sigterm" % pid)
         try:
-            process_obj.send_signal(signal.SIGKILL)
+            process_obj.send_signal(signal.SIGTERM)
         except subprocess.SubprocessError as e:
             logging.error("Failed to send kill signal with error: %s" % os.stderror(e.errno))
             return -1
