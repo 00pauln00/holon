@@ -154,14 +154,14 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
                                                       stdout = fp, stderr = fp)
         elif app_type == "foodpalace" or app_type == "covid":
             process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid, '-l', base_dir],
+                                    raft_uuid, '-u', peer_uuid, '-cov', cluster_params['coverdir'], '-l', base_dir],
                                     stdout = fp, stderr = fp)
         elif app_type == "niovakv":
             log_path = "%s/%s_niovakv_server.log" % (base_dir, peer_uuid)
             
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid,
-                                    '-c', gossipNodes, '-n', node_name, '-l', log_path],
+                                    '-c', gossipNodes, '-n', node_name,'-cov', cluster_params['coverdir'], '-l', log_path],
                                     stdout = fp, stderr = fp)
         elif app_type == "controlplane":
             log_path = "%s/%s_control_plane_proxy_server.log" % (base_dir, peer_uuid)
