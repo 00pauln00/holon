@@ -125,7 +125,7 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
             
             log_path = "%s/%s_niovakv_pmdbServer.log" % (base_dir, peer_uuid)
             process_popen = subprocess.Popen([bin_path, '-r',
-                                          raft_uuid, '-u', peer_uuid, '-cov', cluster_params['coverdir'] '-l' ,log_path],
+                                          raft_uuid, '-u', peer_uuid, '-cov', cluster_params['coverdir'], '-l' ,log_path],
                                           stdout = fp, stderr = fp)
 
         elif app_type == "covid" or app_type == "foodpalace":
