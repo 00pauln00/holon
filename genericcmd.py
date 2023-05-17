@@ -107,10 +107,13 @@ class GenericCmds:
     def port_check(self, port):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-        try:
-            s.bind(("127.0.0.1", port))
-        except socket.error as e:
-            if e.errno == errno.EADDRINUSE:
-               print(f"Port %d is already in use" % port)
-               exit()
+        for retry in range(10):
+            try:
+                s.bind(("127.0.0.1", port))
+            except socket.error as e:
+                print(f"Port %d is already in use, retrying connection" % port)
+                time.sleep(1)
+        else:
+            print(f"Port %d is in use, exiting" % port)
+            exit()
         s.close()
