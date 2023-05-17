@@ -110,9 +110,11 @@ class GenericCmds:
         for retry in range(10):
             try:
                 s.bind(("127.0.0.1", port))
+                return
             except socket.error as e:
-                print(f"Port %d is already in use, retrying connection" % port)
-                time.sleep(1)
+                if e.errno == errno.EADDRINUSE:
+                    print(f"Port %d is already in use, retrying connection" % port)
+                    time.sleep(1)
         else:
             print(f"Port %d is in use, exiting" % port)
             exit()
