@@ -35,10 +35,6 @@
        register: firstwriteres5keys
        no_log: true
 
-     - name: "{{ recipe_name }} : Pause vefore outfile verification"
-       pause:
-         seconds: 10
-
      - name: "{{ recipe_name }}: Verify outfile status"
        debug:
          msg:

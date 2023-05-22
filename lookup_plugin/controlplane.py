@@ -172,7 +172,6 @@ def get_the_output(outfilePath):
     outfile = outfilePath + '.json'
     counter = 0
     timeout = 100
-    print("XXX - ", outfile)
 
     # Wait till the output json file gets created.
     while True:
@@ -184,7 +183,6 @@ def get_the_output(outfilePath):
         else:
             break
     
-    print("XXX - Found the outfile - ", outfile)
     output_data = {}
     json_data = {}
     with open(outfile, "r+", encoding="utf-8") as json_file:
