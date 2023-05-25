@@ -37,7 +37,6 @@
       nnisds: "{{ nnisds | default(50) | int }}"
       blocktest_input_file_path: "{{ blocktest_file_path | default(false) | bool }}"
       nthreads:  "{{ nthreads | default(2) | int }}"
-      coverdir: "{{ cover | default('') | string }}"
     failed_when: >
       ((srv_port | int) >= 65536) or
       ((client_port | int) >= 65536) or
@@ -85,8 +84,6 @@
            nnisds: "{{ nnisds | default(5) }}"
            niovaBlockTest_input_file_path: "{{ blocktest_input_file_path }}"
            nthreads:  "{{ nthreads }}"
-           coverdir: "{{ coverdir }}"
-
 
   - name: "Prepare server configs"
     set_fact: ClusterInfo="{{lookup('niova_raftconfig', "server", wantlist=True)}}"

@@ -114,28 +114,28 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
             
             if cluster_params['prometheus_support'] == 0: 
                 process_popen = subprocess.Popen([bin_path , '-g',  gossipNodes , '-r',
-                                    raft_uuid, '-u', peer_uuid, '-cov', cluster_params['coverdir'], '-l', log_path],
+                                    raft_uuid, '-u', peer_uuid, '-l', log_path],
                                     stdout = fp, stderr = fp)
             else:
                 process_popen = subprocess.Popen([bin_path , '-g',  gossipNodes , '-r',
-                                    raft_uuid, '-u', peer_uuid, '-l' , log_path, '-cov', cluster_params['coverdir'],'-p', cluster_params['prometheus_support']],
+                                    raft_uuid, '-u', peer_uuid, '-l' , log_path, '-p', cluster_params['prometheus_support']],
                                     stdout = fp, stderr = fp)
 
         elif app_type == "niovakv":
             
             log_path = "%s/%s_niovakv_pmdbServer.log" % (base_dir, peer_uuid)
             process_popen = subprocess.Popen([bin_path, '-r',
-                                          raft_uuid, '-u', peer_uuid, '-cov', cluster_params['coverdir'], '-l' ,log_path],
+                                          raft_uuid, '-u', peer_uuid, '-l' ,log_path],
                                           stdout = fp, stderr = fp)
 
         elif app_type == "covid" or app_type == "foodpalace":
             process_popen = subprocess.Popen([bin_path, '-r',
-                                          raft_uuid, '-cov', cluster_params['coverdir'], '-u', peer_uuid],
+                                          raft_uuid, '-u', peer_uuid],
                                           stdout = fp, stderr = fp)
         elif app_type == "lease":
             log_path = "%s/%s_lease_pmdbServer.log" % (base_dir, peer_uuid)
             process_popen = subprocess.Popen([bin_path, '-r',
-                                          raft_uuid, '-u', peer_uuid, '-cov', cluster_params['coverdir'],'-l' ,log_path],
+                                          raft_uuid, '-u', peer_uuid, '-l' ,log_path],
                                           stdout = fp, stderr = fp)
 
     else:
@@ -161,13 +161,13 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
             
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid,
-                                    '-c', gossipNodes, '-n', node_name,'-cov', cluster_params['coverdir'], '-l', log_path],
+                                    '-c', gossipNodes, '-n', node_name, '-l', log_path],
                                     stdout = fp, stderr = fp)
         elif app_type == "controlplane":
             log_path = "%s/%s_control_plane_proxy_server.log" % (base_dir, peer_uuid)
             process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid, '-pa', gossipNodes,
-                                    '-n', node_name, '-l', log_path, '-cov', cluster_params['coverdir']],
+                                    '-n', node_name, '-l', log_path],
                                     stdout = fp, stderr = fp)
     return process_popen
 
