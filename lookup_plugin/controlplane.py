@@ -182,7 +182,7 @@ def get_the_output(outfilePath):
                 return {'outfile_status':-1}
         else:
             break
-    
+
     output_data = {}
     json_data = {}
     with open(outfile, "r+", encoding="utf-8") as json_file:

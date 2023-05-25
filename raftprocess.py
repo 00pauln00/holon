@@ -142,7 +142,7 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
         if app_type == "pumicedb":
             if coalesced_wr == 1:
                 process_popen = subprocess.Popen([bin_path, '-r',
-                                    raft_uuid, '-u', peer_uuid, '-a'], 
+                                    raft_uuid, '-u', peer_uuid, '-a'],
                                     stdout = fp, stderr = fp)
             elif sync == "1":
                   process_popen = subprocess.Popen([bin_path, '-r',
