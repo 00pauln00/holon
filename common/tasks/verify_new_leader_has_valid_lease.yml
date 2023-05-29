@@ -1,0 +1,118 @@
+---
+
+    - name: "{{ recipe_name }}: Get the list of peer UUIDs."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Get cluster information, leader uuid"
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
+
+     #Pause old leader
+    - name: "{{ recipe_name }}: Pause the leader"
+      debug:
+       msg: "{{lookup('niova_raftprocess', 'pause', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Get the running peers list after pausing the leader."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - set_fact:
+        newlist: "{{ NRunningPeers  | difference(LeaderUUID['/0/leader-uuid']) }}"
+
+    - name: "{{ recipe_name }}: Again wait until new leader election happens."
+      vars:
+         stage: "wait_for_new_leader_election"
+      debug:
+        msg: "Waiting for leader election"
+      until: lookup('niova_ctlrequest', 'lookup', newlist[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != LeaderUUID['/0/leader-uuid']
+      retries: 10
+      delay: 1
+      loop: "{{ range(0, newlist | length) | list }}"
+
+    - name: Generate new client
+      shell: "/usr/bin/uuid"
+      register: clientUUID1
+
+    - name: "{{ recipe_name }}: Perform 'GET' operation from new client uuid for the same resource uuid."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID1.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'get_lease_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+      debug:
+         msg: "GET operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: getLease
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check outfile status: {{ getLease['results'][0]['item']['outfile_status'] }}"
+      no_log: true
+      failed_when: >
+         (getLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check if 'GET' should not be successful as lease is owned by client uuid."
+      vars:
+         wr_response: "{{ getLease['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
+      debug:
+         msg: "Check if GET should not be successful as lease is owned by client uuid1"
+      failed_when: >
+         (wr_response['Status'] != -1) or
+         (wr_response['TTL'] != 0) or
+         (wr_response['LeaseState'] != INVALID) or
+         (wr_response['Client'] != "00000000-0000-0000-0000-000000000000") or
+         (wr_response['Resource'] != "00000000-0000-0000-0000-000000000000")
+
+    - name: "{{ recipe_name }}: Check if leader uuid is different all the time."
+      debug:
+        msg: "{{ LeaderUUID['/0/leader-uuid'] }}"
+
+    - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation for the resource uuid."
+      vars:
+         input_param: {
+                'client': '',
+                'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
+      debug:
+         msg: "lookup lease operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: lookupLease
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check outfile status: {{ lookupLease['results'][0]['item']['outfile_status'] }}"
+      no_log: true
+      failed_when: >
+         (lookupLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check if 'LOOKUP_VALIDATE' is successful."
+      vars:
+         rd_response: "{{ lookupLease['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
+      debug:
+         msg: "Check if LOOKUP is successful"
+      failed_when: >
+         (rd_response['Status'] != 0) or
+         (rd_response['LeaseState'] != GRANTED) or
+         (rd_response['Client'] != clientUUID.stdout|string) or
+         (rd_response['Resource'] != resourceUUID.stdout|string) or
+         (rd_response['TTL'] <= 0)
+
+    - name: "{{ recipe_name }}: Unpause old leader"
+      debug:
+       msg: "{{lookup('niova_raftprocess', 'resume', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
+      no_log: True
