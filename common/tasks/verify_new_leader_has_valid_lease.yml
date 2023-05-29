@@ -45,7 +45,7 @@
                 'resource': '{{ resourceUUID.stdout }}',
                 'numOfLeases': '1',
                 'getLeaseOutfile': '',
-                'outFileName': 'get_lease_{{ resourceUUID.stdout }}'
+                'outFileName': 'get_lease_for_client1_{{ resourceUUID.stdout }}'
                  }
          leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
       debug:
