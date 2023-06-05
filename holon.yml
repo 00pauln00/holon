@@ -85,7 +85,6 @@
            niovaBlockTest_input_file_path: "{{ blocktest_input_file_path }}"
            nthreads:  "{{ nthreads }}"
 
-
   - name: "Prepare server configs"
     set_fact: ClusterInfo="{{lookup('niova_raftconfig', "server", wantlist=True)}}"
 
