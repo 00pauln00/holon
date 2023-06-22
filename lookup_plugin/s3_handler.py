@@ -1,11 +1,57 @@
-def start_dbi_gen():
-    #TODO Start DBI gen process
+import struct
 
-def start_gc():
+class DBI_vblk_entry:
+    def __init__(self, dve_type, dve_crc, dve_number, dve_dbo_off, dve_dbo_len):
+        self.dve_type = dve_type
+        self.dve_crc = dve_crc
+        self.dve_number = dve_number
+        self.dve_dbo_off = dve_dbo_off
+        self.dve_dbo_len = dve_dbo_len
+
+class DBIEntryVal:
+    def __init__(self, vblk, seq, vblk_num):
+        self.vblk = vblk
+        self.seq = seq
+        self.vblk_num = vblk_num
+
+def start_dbi_gen(s3_params):
+    #TODO Start DBI gen process
+    out_dir = s3_params['out_dir']
+    outfile_path = "%s/" % out_dir  #TODO Add outfile name as DBO name
+
+    binary_dir = os.getenv('S3_BIN_PATH')
+    bin_path = '%s/example' % binary_dir
+
+    log_file = "%s/s3_log.log" % out_dir
+    fp = open(log_file, "w")
+
+    process_popen = subprocess.Popen([], stdout = fp, stderr = fp)
+
+    os.fsync(fp)
+    return process_popen,
+
+def start_gc(dbi_list):
     #TODO Start GC process
 
-def start_validate():
+def start_validate(dbi_list):
     #TODO Start GC validation process
+
+def read_dbi(file_path):
+	dbi_pattern = "<5IQI"
+    entries = []
+    with open(file_path, "rb") as file:
+        while True:
+            entry_data = file.read(struct.calcsize(dbi_pattern))
+            if not entry_data:
+                break
+            vblk_type, vblk_crc, vblk_number, vblk_dbo_off, vblk_dbo_len, seq, vblk_num = struct.unpack(dbi_pattern, entry_data)
+            vblk_entry = DBI_vblk_entry(vblk_type, vblk_crc, vblk_number, vblk_dbo_off, vblk_dbo_len)
+            entry = DBIEntryVal(vblk_entry, seq, vblk_num)
+            entries.append(entry)
+    return entries
+
+def cmp_and_verify_dbi(dbi_list1, dbi_list2):
+
 
 def extract_and_run_dbi_gen(s3_params, input_values):
     nDBIs = ""
@@ -18,13 +64,15 @@ def extract_and_run_dbi_gen(s3_params, input_values):
 
 def extract_and_run_gc(s3_params, input_values):
 
+    dbi_list = read_dbi(file_path)
     #TODO Start GC process with proper params
-    process, outfile = start_gc()
+    process, outfile = start_gc(dbi_list)
 
 def extract_and_run_validaiton():
 
+    dbi_list = read_dbi(file_path)
     #TODO Start validation process with proper params
-    process, outfile = start_validate()
+    process, outfile = start_validate(dbi_list)
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
