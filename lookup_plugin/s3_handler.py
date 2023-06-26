@@ -37,20 +37,30 @@ def start_validate(dbi_list):
     #TODO Start GC validation process
 
 def read_dbi(file_path):
-	dbi_pattern = "<5IQI"
+    #NOTE For different DBI Entries, the structs will have different alignments
     entries = []
     with open(file_path, "rb") as file:
         while True:
-            entry_data = file.read(struct.calcsize(dbi_pattern))
-            if not entry_data:
+            fe = file.read(struct.calcsize("<I"))
+            if not fe:
                 break
-            vblk_type, vblk_crc, vblk_number, vblk_dbo_off, vblk_dbo_len, seq, vblk_num = struct.unpack(dbi_pattern, entry_data)
-            vblk_entry = DBI_vblk_entry(vblk_type, vblk_crc, vblk_number, vblk_dbo_off, vblk_dbo_len)
-            entry = DBIEntryVal(vblk_entry, seq, vblk_num)
-            entries.append(entry)
+            t = struct.unpack_from("<I", fe)
+            if t[0] == 1:
+                dbi_pattern = "4IQI"
+                entry_data = file.read(struct.calcsize(dbi_pattern))
+                if not entry_data:
+                    break
+                vblk_type, vblk_crc, vblk_number, vblk_dbo_off, vblk_dbo_len, seq, vblk_num = struct.unpack(dbi_pattern, entry_data)
+                vblk_entry = DBI_vblk_entry(vblk_type, vblk_crc, vblk_number, vblk_dbo_off, vblk_dbo_len)
+                entry = DBIEntryVal(vblk_entry, seq, vblk_num)
+                entries.append(entry)
+            elif t[0] == 0:
+                #TODO Add code for unpacking dbi punch entry
     return entries
 
 def cmp_and_verify_dbi(dbi_list1, dbi_list2):
+    #NOTE If the comparison for dbi1 and dbi2 has to be unordered, then we have to use 'sets'
+
 
 
 def extract_and_run_dbi_gen(s3_params, input_values):
