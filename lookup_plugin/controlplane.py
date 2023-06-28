@@ -238,10 +238,15 @@ def start_niova_lookout_process(cluster_params, uport):
 
     genericcmdobj.recipe_json_dump(recipe_conf)
     logging.info("starting niova-lookout process")
-    process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes,
+    value = "-std=true"
+    if app_name == "controlplane":
+        process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes,
                                             '-n', lookout_uuid, '-r', raft_uuid,
                                             '-u', uport], stdout = fp, stderr = fp)
-
+    else:
+        process_popen = subprocess.Popen([bin_path, '-dir', str(ctl_interface_path), '-c', gossipNodes,
+                                            '-n', lookout_uuid, '-r', raft_uuid,
+                                            '-u', uport, value], stdout = fp, stderr = fp)
     #Check if niova-lookout process exited with error
     if process_popen.poll() is None:
         logging.info("niova-lookout process started successfully")

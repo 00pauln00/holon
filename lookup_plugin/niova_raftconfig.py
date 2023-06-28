@@ -108,18 +108,22 @@ class LookupModule(LookupBase):
 
         elif config_type == "niovakv":
             '''
-            Create niovakv.config file
+            Create niovakv config file
             '''
             raftconfobj_dict = niovakv_conf_create(cluster_params)
 
-        elif config_type == "controlplane":
+        elif config_type == "controlplane" or config_type == "standalone":
+            '''
+            Create controlPlane config file
+            '''
+
             peer_uuids = kwargs['variables']['ClusterInfo']['peer_uuid_dict']
 
             #Create gossipNodes file using peer-uuids
             raftconfobj_dict = controlplane_gossipNodes_create(cluster_params, peer_uuids, terms[1])
 
             return 0
-
+        
         else:
             '''
             Create client config files
