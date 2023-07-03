@@ -36,7 +36,6 @@
      - name: "Prepare port range file."
        set_fact: nisdPortRangeCreation="{{lookup('niova_raftconfig', "{{ app_type }}", 0,  wantlist=True)}}"
 
-      # we have loop of nnisds because we want to start lookout per nisd.
      - name: "{{ recipe_name }}: Start niova-lookout process."
        vars:
          input_param: {
@@ -46,8 +45,13 @@
          get_lookout: "{{ get_lookout | default([]) + [lookup('controlplane', 'niova-lookout', input_param, wantlist=true)] }}"
        loop: "{{ range(0, nlookouts | int) }}"
 
-     - debug:
-         msg: "{{ get_lookout }}"
+     - name: "{{ recipe_name }}: Starting controlplane_client to start prometheus."
+       vars:
+         input_param: {
+                  'Hport': ''
+                  }
+       debug:
+         msg: "{{ lookup('controlplane', 'prometheus', input_param, wantlist=True) }}"
 
      - name: "{{ recipe_name }}: Start niova-block-ctl process."
        vars:
@@ -63,14 +67,14 @@
 
      - name: "{{ recipe_name }}: Start nisd process."
        vars:
-         input_param: {
-                  'nisd_uuid' : '{{ get_nisd }}',
-                  'uport' : '1053',
-                  'lookout_uuid': '{{ get_lookout[0] }}'
-                  }
+          input_param: {
+              'nisd_uuid' : '{{ get_nisd }}',
+              'uport' : '1053',
+              'lookout_uuid': '{{ get_lookout[0] }}'
+              }
        debug:
          msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
-       #no_log: True
+           #no_log: True
 
      - pause:
          seconds: 2

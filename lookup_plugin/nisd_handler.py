@@ -341,7 +341,7 @@ def start_niova_block_test(cluster_params, input_values):
     logger.debug("vdev-uuid: %s", vdev)
     logger.debug("client-uuid: %s", client_uuid)
     file_size_in_bytes = "8589934592"
-
+    
     if sequential_writes == True and integrity_check == False and blocking_process == False:
         ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
                                    '-u', client_uuid, '-Z', request_size_in_bytes,
