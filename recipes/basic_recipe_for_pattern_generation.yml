@@ -1,0 +1,38 @@
+- name: "basic_recipe_for_pattern_generation"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "basic_recipe_for_pattern_generation"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Generate DBI requests."
+      include_role:
+        name: common
+        tasks_from: generate_dbi
+      vars:
+        PunchPercent: "0.3"
+        MaxPunchSize: "3"
+        MaxEntries: "2"
+        Entries: "5"
+        SeqStart: "1"
+        ChunkNum: "1"
+        Seed: "123"
+
+    - name: "{{ recipe_name }}: Get dir path."
+      include_role:
+        name: common
+        tasks_from: get_dir_path
+
+    #TODO Get dbi-dbo directory path and pass it to read DBI common library
+
+    - name: "{{ recipe_name }}: Start gc algorithm"
+      debug:
+        msg: ""
+      #TODO Call lookup-plugin which start gc algorithm
+
+    - name: "{{ recipe_name }}: Start gc validation"
+      debug:
+        msg: ""
+      #TODO Call lookup-plugin which validate gc

@@ -1,0 +1,17 @@
+---
+
+    - name: "Generate DBIs."
+      vars:
+         input_param: {
+                  'punchPer' : "{{ PunchPercent }}",
+                  'maxPunchSize' : "{{ MaxPunchSize }}",
+                  'maxEntries' : "{{ MaxEntries }}",
+                  'entries' : "{{ Entries }}",
+                  'seqStart' : "{{ SeqStart }}",
+                  'chunkNum' : "{{ ChunkNum }}",
+                  'seed' : "{{ Seed }}",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'generate_dbi', input_param, wantlist=True) }}"
+

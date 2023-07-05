@@ -1,0 +1,23 @@
+---
+
+    - name: "{{ recipe_name }}: Get the json path."
+      set_fact:
+        base_dir="{{ ClusterInfo | json_query('base_dir_path')}}"
+
+    - name: Find directories
+      find:
+        paths: "{{ base_dir }}"
+        file_type: directory
+      register: directories
+
+    - name: Store directory names starting with "dbi_" in a variable
+      set_fact:
+        directory_names: "{{ directories.files | map(attribute='path') | select('match', '^' + base_dir + '/dbi-dbo_.*$') | list }}"
+
+    #- name: Display directory names
+    #  debug:
+    #    var: directory_names
+
+    - debug:
+        msg: "{{ directory_names }}"
+

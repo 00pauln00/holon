@@ -1,108 +1,118 @@
-import struct
+from ansible.plugins.lookup import LookupBase
+import json
+import os
+from datetime import datetime
+import time
+import subprocess
+import uuid
+from func_timeout import func_timeout, FunctionTimedOut
+import time as time_global
 
-class DBI_vblk_entry:
-    def __init__(self, dve_type, dve_crc, dve_number, dve_dbo_off, dve_dbo_len):
-        self.dve_type = dve_type
-        self.dve_crc = dve_crc
-        self.dve_number = dve_number
-        self.dve_dbo_off = dve_dbo_off
-        self.dve_dbo_len = dve_dbo_len
+def start_generate_dbi(cluster_params, operation, punchPer, maxPunchSize,
+                                maxEntries, entries, seqStart, chunkNum, seed):
 
-class DBIEntryVal:
-    def __init__(self, vblk, seq, vblk_num):
-        self.vblk = vblk
-        self.seq = seq
-        self.vblk_num = vblk_num
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
 
-def start_dbi_gen(s3_params):
-    #TODO Start DBI gen process
-    out_dir = s3_params['out_dir']
-    outfile_path = "%s/" % out_dir  #TODO Add outfile name as DBO name
+    dirName = "dbi-dbo"
+    # Get current date and time
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
-    binary_dir = os.getenv('S3_BIN_PATH')
+    # Create new directory name with timestamp
+    new_directory_name = f'{dirName}_{timestamp}'
+
+    print("new_directory_name: ", new_directory_name)
+    path = "%s/%s/%s/" % (base_dir, raft_uuid, new_directory_name)
+    # Create the new directory
+    os.mkdir(path)
+
+    #print("new_directory_name: ", new_directory_name)
+    print("path: ", path)
+    # Prepare path for executables.
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    # Prepare path for log file.
+    dbiLogFile = "%s/%s/dbiLog.log" % (base_dir, raft_uuid)
+
+    # Open the log file to pass the fp to subprocess.Popen
+    fp = open(dbiLogFile, "a+")
+
+    #Get dummyDBI example
     bin_path = '%s/example' % binary_dir
 
-    log_file = "%s/s3_log.log" % out_dir
-    fp = open(log_file, "w")
-
-    process_popen = subprocess.Popen([], stdout = fp, stderr = fp)
+    process_popen = subprocess.Popen([bin_path, '-pp', punchPer, '-ps', maxPunchSize, '-me', maxEntries, '-e', entries,
+                                            '-ss', seqStart, '-c', chunkNum, '-seed', seed, '-p', path, '-dbo', "bin"], stdout = fp, stderr = fp)
 
     os.fsync(fp)
-    return process_popen,
+    return process_popen
 
-def start_gc(dbi_list):
-    #TODO Start GC process
+def start_gc_process(cluster_params, operation, dbi_input_path, path):
+    #TODO Modify parameters as per implementation
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
 
-def start_validate(dbi_list):
-    #TODO Start GC validation process
+    # Prepare path for executables.
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
 
-def read_dbi(file_path):
-    #NOTE For different DBI Entries, the structs will have different alignments
-    entries = []
-    with open(file_path, "rb") as file:
-        while True:
-            fe = file.read(struct.calcsize("<I"))
-            if not fe:
-                break
-            t = struct.unpack_from("<I", fe)
-            if t[0] == 1:
-                dbi_pattern = "4IQI"
-                entry_data = file.read(struct.calcsize(dbi_pattern))
-                if not entry_data:
-                    break
-                vblk_type, vblk_crc, vblk_number, vblk_dbo_off, vblk_dbo_len, seq, vblk_num = struct.unpack(dbi_pattern, entry_data)
-                vblk_entry = DBI_vblk_entry(vblk_type, vblk_crc, vblk_number, vblk_dbo_off, vblk_dbo_len)
-                entry = DBIEntryVal(vblk_entry, seq, vblk_num)
-                entries.append(entry)
-            elif t[0] == 0:
-                #TODO Add code for unpacking dbi punch entry
-    return entries
+    # Prepare path for log file.
+    dbiLogFile = "%s/%s/gcLog.log" % (base_dir, raft_uuid)
 
-def cmp_and_verify_dbi(dbi_list1, dbi_list2):
-    #NOTE If the comparison for dbi1 and dbi2 has to be unordered, then we have to use 'sets'
+    # Open the log file to pass the fp to subprocess.Popen
+    fp = open(dbiLogFile, "a+")
+
+    #Get dummyDBI example
+    bin_path = '%s/gc' % binary_dir
+
+    process_popen = subprocess.Popen([bin_path, '-inputPath', dbi_input_path, '-p', path], stdout = fp, stderr = fp)
+
+    os.fsync(fp)
+    return process_popen
 
 
+def start_gc_validate(cluster_params, operation, solutionArrFile, gc_dbi_list, dbi_generator_json):
+    #TODO Modify parameters as per implementation
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
 
-def extract_and_run_dbi_gen(s3_params, input_values):
-    nDBIs = ""
-    c_ow_percent = ""
-    p_ow_percent = ""
-    punch_ow_percent = ""
-    
-    #TODO Start dbi gen process with proper params
-    process, outfile = start_dbi_gen()
+    # Prepare path for executables.
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
 
-def extract_and_run_gc(s3_params, input_values):
+    # Prepare path for log file.
+    dbiLogFile = "%s/%s/gcValidtaeLog.log" % (base_dir, raft_uuid)
 
-    dbi_list = read_dbi(file_path)
-    #TODO Start GC process with proper params
-    process, outfile = start_gc(dbi_list)
+    # Open the log file to pass the fp to subprocess.Popen
+    fp = open(dbiLogFile, "a+")
 
-def extract_and_run_validaiton():
+    #Get dummyDBI example
+    bin_path = '%s/gc_validate' % binary_dir
 
-    dbi_list = read_dbi(file_path)
-    #TODO Start validation process with proper params
-    process, outfile = start_validate(dbi_list)
+    process_popen = subprocess.Popen([bin_path, '-sa', solutionArrFile, 'gcInput', gc_dbi_list, '-jpath', dbi_generator_json], stdout = fp, stderr = fp)
+
+    os.fsync(fp)
+    return process_popen
+
+def extracting_dictionary(cluster_params, operation, input_values):
+
+    print("input_values: :", input_values)
+
+    if operation == "generate_dbi":
+       popen = start_generate_dbi(cluster_params, operation, input_values['punchPer'], input_values['maxPunchSize'],
+                                         input_values['maxEntries'], input_values['entries'],
+                                         input_values['seqStart'], input_values['chunkNum'], input_values['seed'])
+    elif operation == "start_gc":
+       popen = start_gc_process(cluster_params, operation, input_values['dbiObjPath'], input_values['Path'])
+
+    elif operation == "gc_validate":
+       popen = start_gc_validate(cluster_params, operation, input_values['solutionArrFile'], input_values['gcDBIs'], input_values['dbiGeneratorPath'])
 
 class LookupModule(LookupBase):
-    def run(self, terms, **kwargs):
-        #Get lookup params
-        process_type = terms[0]
+    def run(self,terms,**kwargs):
+        #Get lookup parameter values
+        operation = terms[0]
         input_values = terms[1]
 
-        s3_params = kwargs['variables']['s3Params']
+        cluster_params = kwargs['variables']['ClusterParams']
 
-        if process_type == "dbi_gen":
-            data = extract_and_run_dbi_gen(s3_params, input_values)
+        if cluster_params['app_type'] == "gcvalidation":
+            extracting_dictionary(cluster_params, operation, input_values)
 
-            return data
-
-        if process_type == "gc_validation":
-            data = extract_and_validate(s3_params, input_values)
-
-            return data
-
-        elif process_type == "gc":
-            data = extract_and_run_gc(s3_params, input_values)
-
-            return data
