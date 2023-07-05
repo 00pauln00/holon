@@ -1,0 +1,35 @@
+- import_playbook: basic_recipe_for_pattern_generation.yml
+
+- name: "completely_overwritten_dbi"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "completely_overwritten_dbi"
+     parent: "basic_recipe_for_pattern_generation"
+
+  tasks:
+  - block:
+    
+    - name: "{{ recipe_name }}: Generate completely overwritten DBI."
+      include_role:
+        name: common
+        tasks_from: generate_dbi
+      vars:
+        PunchPercent: "0.3"
+        MaxPunchSize: "3"
+        MaxEntries: "2"
+        Entries: "5"
+        SeqStart: "1"
+        ChunkNum: "1"
+        Seed: "123"
+
+     #TODO Get dbi-dbo directory path and pass it to read DBI common library
+     #TODO Call lookup-plugin which start gc algorithm
+    - name: "{{ recipe_name }}: Start gc algorithm"
+      debug:
+        msg: ""
+    
+     #TODO Call lookup-plugin which validate gc
+    - name: "{{ recipe_name }}: Start gc validation"
+      debug:
+        msg: ""
