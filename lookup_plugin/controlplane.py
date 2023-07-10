@@ -347,7 +347,6 @@ class LookupModule(LookupBase):
                 os.mkdir(niova_lookout_path)
              
             niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['uport'])
-            print("niova_lookout_process", niova_lookout_process)
             return niova_lookout_process
 
         elif process_type == "testApp":
@@ -374,12 +373,9 @@ class LookupModule(LookupBase):
                     with open(http_port_path, "r") as f:
                         Lines = f.readlines()
                         for line in Lines:
-                            print(line)
                             prom_targets.append({'targets':['localhost:'+str(line)]})
                     config_file_path = "%s/prometheus.yml" % binary_dir
-                    print("config_file_path", config_file_path)
                     prometheus_process = subprocess.Popen([prometheus_path, "--config.file=%s" % config_file_path])
-                    print(prometheus_process)
 
                 else:
                     with open(prom_targets_path, "r") as f:
