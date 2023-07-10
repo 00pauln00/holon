@@ -9,7 +9,7 @@
 
   tasks:
   - block:
-    
+
     - name: "{{ recipe_name }}: Generate completely overwritten DBI."
       include_role:
         name: common
@@ -25,11 +25,28 @@
 
      #TODO Get dbi-dbo directory path and pass it to read DBI common library
      #TODO Call lookup-plugin which start gc algorithm
+
     - name: "{{ recipe_name }}: Start gc algorithm"
+      vars:
+         input_param: {
+                  'dbiObjPath' : "",
+                  'path' : "",
+                 }
       debug:
-        msg: ""
-    
-     #TODO Call lookup-plugin which validate gc
+         msg:
+          - "{{ lookup('s3_handler', ''start_gc', input_param, wantlist=True) }}"
+
     - name: "{{ recipe_name }}: Start gc validation"
+      vars:
+         input_param: {
+                  'solutionArrFile' : "",
+                  'gcDBIs' : "",
+                  'dbiGeneratorPath' : "",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'gc_validate', input_param, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Start gc algorithm"
       debug:
         msg: ""

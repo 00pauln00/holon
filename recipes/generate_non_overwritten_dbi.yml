@@ -28,11 +28,23 @@
     #TODO Get dbi-dbo directory path and pass it to read DBI common library
 
     - name: "{{ recipe_name }}: Start gc algorithm"
+      vars:
+         input_param: {
+                  'dbiObjPath' : "",
+                  'path' : "",
+                 }
       debug:
-        msg: ""
-      #TODO Call lookup-plugin which start gc algorithm
+         msg:
+          - "{{ lookup('s3_handler', ''start_gc', input_param, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start gc validation"
+      vars:
+         input_param: {
+                  'solutionArrFile' : "",
+                  'gcDBIs' : "",
+                  'dbiGeneratorPath' : "",
+                 }
       debug:
-        msg: ""
-      #TODO Call lookup-plugin which validate gc
+         msg:
+          - "{{ lookup('s3_handler', 'gc_validate', input_param, wantlist=True) }}"
+
