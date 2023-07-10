@@ -64,6 +64,9 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
         else:
             bin_path = '%s/CTLPlane_proxy' % binary_dir
 
+    elif app_type == "lease":
+            bin_path = '%s/LeaseApp_pmdbServer' % binary_dir
+
     elif app_type == "pumicedb":
         if backend_type == "pumicedb":
             if process_type == "server":
@@ -111,7 +114,7 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
             
             if cluster_params['prometheus_support'] == 0: 
                 process_popen = subprocess.Popen([bin_path , '-g',  gossipNodes , '-r',
-                                    raft_uuid, '-u', peer_uuid, '-l' , log_path],
+                                    raft_uuid, '-u', peer_uuid, '-l', log_path],
                                     stdout = fp, stderr = fp)
             else:
                 process_popen = subprocess.Popen([bin_path , '-g',  gossipNodes , '-r',
@@ -128,6 +131,11 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
         elif app_type == "covid" or app_type == "foodpalace":
             process_popen = subprocess.Popen([bin_path, '-r',
                                           raft_uuid, '-u', peer_uuid],
+                                          stdout = fp, stderr = fp)
+        elif app_type == "lease":
+            log_path = "%s/%s_lease_pmdbServer.log" % (base_dir, peer_uuid)
+            process_popen = subprocess.Popen([bin_path, '-r',
+                                          raft_uuid, '-u', peer_uuid, '-l' ,log_path],
                                           stdout = fp, stderr = fp)
 
     else:
@@ -325,7 +333,7 @@ class RaftProcess:
         process_obj = psutil.Process(pid)
         logging.warning("kill the process(%d) by sending sigterm" % pid)
         try:
-            process_obj.send_signal(signal.SIGKILL)
+            process_obj.send_signal(signal.SIGTERM)
         except subprocess.SubprocessError as e:
             logging.error("Failed to send kill signal with error: %s" % os.stderror(e.errno))
             return -1

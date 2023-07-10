@@ -1,0 +1,175 @@
+- name: "controlPlane_lease_recipe.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlPlane_lease_recipe"
+    parent: None
+    no_of_leases: 4
+  vars_files:
+    - ../leaseStateValue.yml
+
+  tasks:
+  - block:
+
+    # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+       vars:
+         app_type: "{{ app_type }}"
+       debug:
+         msg: "app_type is: {{ app_type }}"
+       failed_when:
+         (app_type != "controlplane")
+
+     - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+       include_role:
+          name: common
+          tasks_from: pmdb_cluster_init.yml
+       vars:
+         number_of_clients: 2
+         number_of_PMDBServers: 4
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
+       vars:
+         input_param: {
+                'Operation': 'membership',
+                'OutfileName': 'membership_output'
+                 }
+         ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "get membership details of running servers."
+       with_items:
+          - "{{ ncpclires }}"
+       register: membership
+       no_log: true
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to do rangeWrite with n as 5."
+       vars:
+         input_param: {
+                'Operation': 'write',
+                'OutfileName': 'Rangewrite_output',
+                'NoofWrites': '2',
+                'wait_for_outfile': True
+                 }
+         ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+       debug:
+         msg: "Write key-value from ncpc"
+       with_items:
+          - "{{ ncpcliwr }}"
+       register: writeres5keys
+       no_log: true
+
+     - name: "{{ recipe_name }}: Verify outfile status"
+       debug:
+         msg:
+           - "Check write outfile status: {{ writeres5keys['results'][0]['item']['outfile_status'] }}"
+       no_log: true
+       failed_when: >
+         (writeres5keys['results'][0]['item']['outfile_status'] != 0)
+
+     - name: "{{ recipe_name }}: Verify write status"
+       debug:
+         msg: "Check write response status"
+       no_log: true
+       failed_when: >
+         (item['Response']['Status'] != 0)
+       loop: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
+     
+     - name: Generate new resource
+       shell: "/usr/bin/uuid"
+       register: resourceUUID
+
+     - name: Generate new client
+       shell: "/usr/bin/uuid"
+       register: clientUUID
+ 
+     - name: "{{ recipe_name }}: Starting controlplane_client to getLease."
+       vars:
+         input_param: {
+                'Key': '{{ resourceUUID.stdout }}',
+                'Value': '{{ clientUUID.stdout }}',
+                'Operation': 'GetLease',
+                'Port': '5000',
+                'OutfileName': 'getLease_{{ resourceUUID.stdout }}',
+                'wait_for_outfile': True
+                 }
+         ncpc_get: "{{ lookup('controlplane', 'lease', input_param, wantlist=True) }}"
+       debug:
+         msg: "getLease from ncpc."
+       with_items:
+          - "{{ ncpc_get }}"
+       register: getLease
+
+     - name: "{{ recipe_name }}: Check if 'GET' is successful."
+       vars:
+          wr_response: "{{ getLease['results'][0]['item']['output_data']['LeaseRes'] }}"
+       debug:
+         msg: "Check if GET is successful"
+       failed_when: >
+           (wr_response['Status'] != 0) or
+           (wr_response['Client'] != clientUUID.stdout | string) or
+           (wr_response['Resource'] != resourceUUID.stdout | string) or
+           (wr_response['TTL'] != 60) or
+           (wr_response['LeaseState'] != GRANTED)
+
+     - name: "{{ recipe_name }}: Starting controlplane_client to refreshLease."
+       vars:
+         input_param: {
+                'Key': '{{ resourceUUID.stdout }}',
+                'Value': '{{ clientUUID.stdout }}',
+                'Operation': 'RefreshLease',
+                'Port': '5000',
+                'OutfileName': 'refreshLease_{{ resourceUUID.stdout }}',
+                'wait_for_outfile': True
+                 }
+         ncpc_refresh: "{{ lookup('controlplane', 'lease', input_param, wantlist=True) }}"
+       debug:
+         msg: "refreshLease from ncpc."
+       with_items:
+          - "{{ ncpc_refresh }}"
+       register: refreshLease
+
+     - name: "{{ recipe_name }}: Check if 'REFRESH' is successful."
+       vars:
+         wr_response: "{{ refreshLease['results'][0]['item']['output_data']['LeaseRes'] }}"
+       debug:
+         msg: "Check if REFRESH is successful"
+       failed_when: >
+         (wr_response['Status'] != 0) or
+         (wr_response['Client'] != clientUUID.stdout|string) or
+         (wr_response['Resource'] != resourceUUID.stdout|string) or
+         (wr_response['TTL'] != 60) or
+         (wr_response['LeaseState'] != GRANTED)
+     
+     - name: "{{ recipe_name }}: Starting controlplane_client to lookupLease."
+       vars:
+         input_param: {
+                'Key': '{{ resourceUUID.stdout }}',
+                'Value': '{{ clientUUID.stdout }}',
+                'Operation': 'LookupLease',
+                'Port': '5000',
+                'OutfileName': 'lookupLease_{{ resourceUUID.stdout }}',
+                'wait_for_outfile': True
+                 }
+         ncpc_lookup: "{{ lookup('controlplane', 'lease', input_param, wantlist=True) }}"
+       debug:
+         msg: "lookupLease from ncpc."
+       with_items:
+          - "{{ ncpc_lookup }}"
+       register: lookupLease
+
+     - name: "{{ recipe_name }}: Check if 'LOOKUP' is successful."
+       vars:
+         wr_response: "{{ lookupLease['results'][0]['item']['output_data']['LeaseRes'] }}"
+       debug:
+         msg: "Check if LOOKUP is successful"
+       failed_when: >
+         (wr_response['Status'] != 0) or
+         (wr_response['Client'] != clientUUID.stdout|string) or
+         (wr_response['Resource'] != resourceUUID.stdout|string) or
+         (wr_response['LeaseState'] != GRANTED)
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
+ 

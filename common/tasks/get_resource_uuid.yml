@@ -1,0 +1,9 @@
+---
+
+   - name: "{{ recipe_name }}: Generate New Resource UUID"
+     shell: "/usr/bin/uuid"
+     register: resource_uuid
+
+   - debug:
+       msg: "{{ resource_uuid.stdout }}"
+

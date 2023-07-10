@@ -63,13 +63,13 @@
        debug:
          msg:
            - "Check write outfile status: {{ writeres['results'][0]['item']['outfile_status'] }}"
-       #no_log: true
+       no_log: true
        failed_when: >
          (writeres['results'][0]['item']['outfile_status'] != 0)
 
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
-         wrstatus: "{{ writeres['results'][0]['item']['output_data']['Response']['Status'] }}"
+         wrstatus: "{{ writeres['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
        debug:
          msg: "Check if write is successful."
        failed_when: >
@@ -97,20 +97,20 @@
        debug:
         msg:
          - "Check read outfile status: {{ readres['results'][0]['item']['outfile_status'] }}"
-         - "Check read response status: {{readres['results'][0]['item']['output_data']['Response']['Status'] }}"
+         - "Check read response status: {{readres['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
        no_log: true
        failed_when:
          (readres['results'][0]['item']['outfile_status'] != 0) or
-         (readres['results'][0]['item']['output_data']['Response']['Status'] != 0)
+         (readres['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: compare values after sucessful write/read operation."
        vars:
-         rdval: "{{ readres['results'][0]['item']['output_data']['Response'] }}"
+         rdval: "{{ readres['results'][0]['item']['output_data'][0]['Response'] }}"
        debug:
          msg: "Verifying parameter after read operation"
        failed_when: >
          (rdval['Status'] != 0) or
-         (rdval['Response'] != "India")
+         ((rdval['ResultMap'][writeres['results'][0]['item']['output_data'][0]['Request']['Key']] | b64decode) != (writeres['results'][0]['item']['output_data'][0]['Request']['Value'] | b64decode))
 
      - name: "{{ recipe_name }}: Starting controlplane_client to get the config values."
        vars:

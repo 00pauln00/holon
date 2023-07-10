@@ -50,8 +50,8 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to write the value and verify its status."
        vars:
          input_param: {
-                'Key': 'Paro',
-                'Value': 'Scale',
+                'Key': 'Wel',
+                'Value': 'Come',
                 'Operation': 'write',
                 'IP_addr': '',
                 'Port': '',
@@ -77,7 +77,7 @@
 
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
-         wrstatus: "{{ writeresult['results'][0]['item']['output_data']['Response']['Status'] }}"
+         wrstatus: "{{ writeresult['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
        debug:
          msg: "Check if write is successful."
        failed_when: >
@@ -141,7 +141,7 @@
      - name: "{{ recipe_name }}: Starting controlplane_client to read the value and verify its status."
        vars:
          input_param: {
-                  'Key': 'Paro',
+                  'Key': 'Wel',
                   'Operation': 'read',
                   'OutfileName': 'read_outputControlplane_recipe',
                   'NoofWrites': '',
@@ -160,20 +160,20 @@
        debug:
         msg:
          - "Check read outfile status: {{ readresult['results'][0]['item']['outfile_status'] }}"
-         - "Check read response status: {{readresult['results'][0]['item']['output_data']['Response']['Status'] }}"
+         - "Check read response status: {{readresult['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
        no_log: true
        failed_when:
          (readresult['results'][0]['item']['outfile_status'] != 0) or
-         (readresult['results'][0]['item']['output_data']['Response']['Status'] != 0)
+         (readresult['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: compare values after sucessful write/read operation."
        vars:
-         rdval: "{{ readresult['results'][0]['item']['output_data']['Response'] }}"
+         rdval: "{{ readresult['results'][0]['item']['output_data'][0]['Response'] }}"
        debug:
          msg: "Verifying parameter after read operation"
        failed_when: >
          (rdval['Status'] != 0) or
-         (rdval['Response'] != "Scale")
+         ((rdval['ResultMap'][writeresult['results'][0]['item']['output_data'][0]['Request']['Key']] | b64decode) != (writeresult['results'][0]['item']['output_data'][0]['Request']['Value'] | b64decode))
 
      - name: "{{ recipe_name }}: Kill one of the pmdb server."
        debug:
@@ -221,4 +221,3 @@
      - name: "Recipe: {{ recipe_name }} failed"
        set_fact:
          terminate_recipe: true
-

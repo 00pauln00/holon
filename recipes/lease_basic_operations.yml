@@ -1,0 +1,209 @@
+- name: "lease_basic_operations"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "lease_basic_operations"
+     parent: None
+  vars_files:
+    - ../leaseStateValue.yml
+
+  tasks:
+  - block:
+    # check for the app_type
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+      vars:
+         app_type: "{{ app_type }}"
+      debug:
+         msg: "app_type is: {{ app_type }}"
+      failed_when:
+         (app_type != "lease")
+
+    - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "Start 5 peers in the cluster"
+      include_role:
+        name: common
+        tasks_from: start_server
+      vars:
+        ServerUUID: "{{ NonRunningServers[item] }}"
+      loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get the running peers list."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Wait until leader election happens."
+      vars:
+         stage: "wait_leader_election"
+      debug:
+        msg: "Waiting for leader election"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+      retries: 10
+      delay: 1
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get cluster information"
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
+
+    - name: "{{ recipe_name }}: Get the raft values for all running peers"
+      vars:
+         stage: "stage0_get_all"
+         raft_keys:
+            - "/raft_root_entry/0/leader-uuid"
+            - "/raft_root_entry/0/term"
+            - "/raft_root_entry/0/leader-time"
+         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+      debug:
+        msg: "Getting stats for all running peers: {{ peers_val }}"
+      no_log: true
+      with_items:
+         - "{{ peers_val }}"
+      register: stage0_peers_vals
+
+    - name: Generate new resource
+      shell: "/usr/bin/uuid"
+      register: resourceUUID
+
+    - name: Generate new client
+      shell: "/usr/bin/uuid"
+      register: clientUUID
+    
+    - name: "{{ recipe_name }}: Perform 'GET' operation."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'get_lease_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+      debug:
+         msg: "GET operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: getLease
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check outfile status: {{ getLease['results'][0]['item']['outfile_status'] }}"
+      no_log: true
+      failed_when: >
+         (getLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check if 'GET' is successful."
+      vars:
+         wr_response: "{{ getLease['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
+      debug:
+         msg: "Check if GET is successful"
+      failed_when: >
+         (wr_response['Status'] != 0) or
+         (wr_response['Client'] != clientUUID.stdout|string) or
+         (wr_response['Resource'] != resourceUUID.stdout|string) or
+         (wr_response['TTL'] <= 0) or
+         (wr_response['LeaseState'] != GRANTED)
+
+    - name: "{{ recipe_name }}: Pause for 2 seconds so that TTL gets changed."
+      pause:
+        seconds: 2
+
+    - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation."
+      vars:
+         input_param: {
+                'client': '',
+                'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
+      debug:
+         msg: "lookup lease operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: lookupLease
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check outfile status: {{ lookupLease['results'][0]['item']['outfile_status'] }}"
+      no_log: true
+      failed_when: >
+         (lookupLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check if 'LOOKUP_VALIDATE' is successful."
+      vars:
+         rd_response: "{{ lookupLease['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
+      debug:
+         msg: "Check if LOOKUP is successful"
+      failed_when: >
+         (rd_response['Status'] != 0) or
+         (rd_response['LeaseState'] != GRANTED)
+
+    - name: "{{ recipe_name }}: Compare TS of GET and Lookup operation."
+      vars:
+        wr_timestamp: "{{ getLease['results'][0]['item']['output_data'][0]['LeaseRes']['TimeStamp'] }}"
+        rd_timestamp: "{{ lookupLease['results'][0]['item']['output_data'][0]['LeaseRes']['TimeStamp'] }}"
+      debug:
+        msg: "compare TS with intitial values"
+      failed_when: >
+        (wr_timestamp['LeaderTerm'] != rd_timestamp['LeaderTerm']) or
+        (wr_timestamp['LeaderTime'] != rd_timestamp['LeaderTime'])
+
+    - name: "{{ recipe_name }}: Compare TTL."
+      vars:
+        wr_ttl: "{{ getLease['results'][0]['item']['output_data'][0]['LeaseRes']['TTL'] }}"
+        rd_ttl: "{{ lookupLease['results'][0]['item']['output_data'][0]['LeaseRes']['TTL'] }}"
+      debug:
+        msg: "Compare TTL"
+      failed_when: >
+        (rd_ttl >= wr_ttl)
+
+    - name: Generate new client
+      shell: "/usr/bin/uuid"
+      register: clientUUID1
+
+    - name: "{{ recipe_name }}: Perform 'GET' operation from new client uuid, even if lease is still valid for old client uuid."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID1.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'get_lease_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+      debug:
+         msg: "GET operation with new client uuid"
+      with_items:
+          - "{{ leaseApp }}"
+      register: getLease
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check outfile status: {{ getLease['results'][0]['item']['outfile_status'] }}"
+      no_log: true
+      failed_when: >
+         (getLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check if 'GET' should not be successful ad lease is taken by old clinet uuid."
+      vars:
+         wr_response: "{{ getLease['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
+      debug:
+         msg: "Check if GET is successful"
+      failed_when: >
+         (wr_response['Status'] != -1) or
+         (wr_response['Client'] != "00000000-0000-0000-0000-000000000000") or
+         (wr_response['Resource'] != "00000000-0000-0000-0000-000000000000") or
+         (wr_response['TTL'] < 0) or
+         (wr_response['LeaseState'] != INVALID)
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true

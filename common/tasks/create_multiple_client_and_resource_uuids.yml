@@ -1,0 +1,22 @@
+---
+
+    - name: "Get unused client uuid for starting the client."
+      include_role:
+        name: common
+        tasks_from: get_new_client_uuid
+      register: client_uuid
+
+    - name: "Add newly generated client uuid in client_uuids list."
+      set_fact:
+         Client: "{{ Client|default([]) + [client_uuid.stdout] }}"
+
+    - name: "Get unused resource uuid for starting the client."
+      include_role:
+        name: common
+        tasks_from: get_resource_uuid
+      register: resource_uuid
+
+    - name: "Add newly generated resource uuid in resource_uuids list."
+      set_fact:
+         Resource: "{{ Resource|default([]) + [resource_uuid.stdout] }}"
+

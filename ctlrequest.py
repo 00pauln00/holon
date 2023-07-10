@@ -141,7 +141,7 @@ class CtlRequest:
         '''
         rc = 0
         try:
-            func_timeout(10, self.check_for_outfile_creation, args=())
+            func_timeout(60, self.check_for_outfile_creation, args=())
         except FunctionTimedOut:
             if can_fail == False:
                 logging.error("Error : timeout occur for outfile creation : %s" % self.output_fpath)

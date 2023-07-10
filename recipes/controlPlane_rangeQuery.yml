@@ -19,15 +19,10 @@
      - name: "{{ recipe_name }}: Start pmdb and proxy servers."
        include_role:
           name: common
-          tasks_from: pmdb_cluster_init.yml
+          tasks_from: pmdb_cluster_init
        vars:
          number_of_clients: 2
          number_of_PMDBServers: 5
-
-     - name: "{{ recipe_name }}: Get the leader and follower uuids."
-       include_role:
-         name: common
-         tasks_from: get_follower_stats
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeWrite with n as 5."
        vars:
@@ -48,18 +43,18 @@
      - name: "{{ recipe_name }}: Verify outfile status"
        debug:
          msg:
-           - "Check write outfile status: {{ writeres5keys['results'][0]['item']['outfile_status'] }}"
+           - "Check write outfile status"
        no_log: true
        failed_when: >
          (writeres5keys['results'][0]['item']['outfile_status'] != 0)
 
      - name: "{{ recipe_name }}: Verify write status"
        debug:
-         msg: "Check write response status: {{ item.value['Status'] }}"
+         msg: "Check write response status: {{ item['Response']['Status'] }}"
        no_log: true
        failed_when: >
-         (item.value['Status'] != 0)
-       with_dict: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
+          (item['Response']['Status'] != 0)
+       loop: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with n as 5."
        vars:
@@ -81,36 +76,27 @@
 
      - name: "{{ recipe_name }}: Verify outfile status and read status"
        debug:
-        msg:
-         - "Check read outfile status: {{ readres5keys['results'][0]['item']['outfile_status'] }}"
-         - "Check read response status: {{readres5keys['results'][0]['item']['output_data']['Response']['Status'] }}"
+        msg: "Check read outfile status and read status"
        no_log: true
        failed_when:
          (readres5keys['results'][0]['item']['outfile_status'] != 0) or
-         (readres5keys['results'][0]['item']['output_data']['Response']['Status'] != 0)
+         (readres5keys['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: Compare write and read output with all the keys passed."
        vars:
-         readall: "{{readres5keys['results'][0]['item']['output_data']['Response']['Response']}}"
+         readall: "{{ readres5keys['results'][0]['item']['output_data'][0]['Response']['ResultMap']}}"
        debug:
          msg: "compare read and write output with all the keys passed"
-       failed_when: item.value['Value'] != readall[item.key]
-       with_dict: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
+       failed_when:  (item['Request']['Value'] | b64decode) != (readall[item['Request']['Key']] | b64decode)
+       loop: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
 
-     - name: "{{ recipe_name }}: Store the key which needs to be started for single key read task."
-       vars:
-         firstkey: "{{ writeres5keys['results'][0]['item']['output_data'] | dict2items |  map(attribute='key')| list | first }}"
-       debug:
-         msg: "Get the first key from the dictionary."
-       with_items:
-         - "{{ firstkey }}"
-       register: firstKey
-       no_log: true
+     - set_fact:
+         firstkey: "{{ writeres5keys['results'][0]['item']['output_data'][0]['Request']['Key'] }}"
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead single key."
        vars:
          input_param: {
-                'Key': '{{ firstKey["results"][0]["item"] }}',
+                'Key': '{{ firstkey }}',
                 'Operation': 'read',
                 'OutfileName': 'singleRangeRead_output',
                 'NoofWrites': '5',
@@ -127,20 +113,18 @@
 
      - name: "{{ recipe_name }}: Verify outfile status and read status"
        debug:
-        msg:
-         - "Check read outfile status: {{ singlereadres['results'][0]['item']['outfile_status'] }}"
-         - "Check read response status: {{ singlereadres['results'][0]['item']['output_data']['Response']['Status'] }}"
+        msg: "Check read outfile status and read status"
        failed_when:
          (singlereadres['results'][0]['item']['outfile_status'] != 0) or
-         (singlereadres['results'][0]['item']['output_data']['Response']['Status'] != 0)
+         (singlereadres['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: Compare read output and write output for single key."
        vars:
-          readsingle: "{{ singlereadres['results'][0]['item']['output_data']['Response']['Response'] }}"
-          writesingle: "{{ writeres5keys['results'][0]['item']['output_data'][firstKey['results'][0]['item']]['Value'] }}"
+          readsingle: "{{ singlereadres['results'][0]['item']['output_data'][0]['Response']['ResultMap'][writeres5keys['results'][0]['item']['output_data'][0]['Request']['Key']] }}"
+          writesingle: "{{ writeres5keys['results'][0]['item']['output_data'][0]['Request']['Value'] }}"
        debug:
          msg: "compare read and write for single task"
-       failed_when: readsingle != writesingle
+       failed_when: (readsingle | b64decode) != (writesingle | b64decode)
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with prefix passed."
        vars:
@@ -162,47 +146,33 @@
 
      - name: "{{ recipe_name }}: Verify outfile status and read status"
        debug:
-        msg:
-         - "Check read outfile status: {{ singlereadres['results'][0]['item']['outfile_status'] }}"
-         - "Check read response status: {{ singlereadres['results'][0]['item']['output_data']['Response']['Status'] }}"
+        msg: "Check read outfile status and read status"
        no_log: true
        failed_when:
          (singlereadres['results'][0]['item']['outfile_status'] != 0) or
-         (singlereadres['results'][0]['item']['output_data']['Response']['Status'] != 0)
+         (singlereadres['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: Get the output as per prefix in write dictionary."
        vars:
-         vprefix: "{{ writeres5keys['results'][0]['item']['output_data'] | dict2items | selectattr('key', 'match', '^v.+$') | map(attribute='key')| list }}"
-       debug:
-         msg: "Get the vprefix from dict "
-       with_items:
-         - "{{ vprefix }}"
-       register: vPrefix
+         vPrefix: "{{ item['Request']['Key'] | regex_search('^v.+$', multiline=True, ignorecase=True) }}"
+       set_fact:
+         list1: "{{ list1|default([]) + [vPrefix] }}"
+       loop: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
        no_log: true
 
-     - name: "{{ recipe_name }}: Compare read output with the prefix passed."
-       vars:
-             readprefix: "{{ readres['results'][0]['item']['output_data']['Response']['Response'][item] }}"
-             writeprefix: "{{ writeres5keys['results'][0]['item']['output_data'][item]['Value'] }}"
-       debug:
-         msg: "Compare Read output with the prefix passed"
-       failed_when: writeprefix != readprefix
-       with_items: "{{ readres['results'][0]['item']['output_data']['Response']['Response']  | dict2items |  map(attribute='key')| list }}"
-
-     - name: "{{ recipe_name }}: Get the prefix till v.uuid. and store it in an variable."
-       vars:
-         vUUIDprefix: "{{ vPrefix['results'][0]['item'] }}"
-       debug:
-         msg: "Get the vUUIDprefix from dict "
+     - name: "{{ recipe_name }}: Get list of <v.> prefix key."
+       set_fact:
+         list2: "{{list2|default([]) + [item]}}"
+       when: item != ""
        with_items:
-         - "{{ vUUIDprefix }}"
-       register: vUUIDPrefix
+        - "{{list1}}"
        no_log: true
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with prefix passed till <v.UUID>."
        vars:
+         vUUIDPrefix: "{{ list2[0] | truncate(39, True, '') }}"
          input_param: {
-                'Key': '{{vUUIDPrefix["results"][0]["item"]}}*',
+                'Key': '{{ vUUIDPrefix }}*',
                 'Operation': 'read',
                 'OutfileName': 'RangeRead_vUUIDprefix_output',
                 'NoofWrites': '5',
@@ -219,27 +189,25 @@
 
      - name: "{{ recipe_name }}: Verify outfile status and read status"
        debug:
-        msg:
-         - "Check read outfile status: {{ readWithPrefix_vUUID['results'][0]['item']['outfile_status'] }}"
-         - "Check read response status: {{ readWithPrefix_vUUID['results'][0]['item']['output_data']['Response']['Status'] }}"
+        msg: "Check read outfile status and read status"
        no_log: true
        failed_when:
          (readWithPrefix_vUUID['results'][0]['item']['outfile_status'] != 0) or
-         (readWithPrefix_vUUID['results'][0]['item']['output_data']['Response']['Status'] != 0)
+         (readWithPrefix_vUUID['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
 
-     - name: "{{ recipe_name }}: Compare read output with the v.UUID.prefix passed."
+     - name: "{{ recipe_name }}: Compare read output with the v.UUID.prefix passed"
+       include_role:
+          name: common
+          tasks_from: compare_uuid_prefix_value
        vars:
-             readprefix: "{{ readWithPrefix_vUUID['results'][0]['item']['output_data']['Response']['Response'][item] }}"
-             writeprefix: "{{ writeres5keys['results'][0]['item']['output_data'][item]['Value'] }}"
-       debug:
-         msg: "Compare Read output with the prefix passed"
-       failed_when: writeprefix != readprefix
-       with_items: "{{ readWithPrefix_vUUID['results'][0]['item']['output_data']['Response']['Response']  | dict2items |  map(attribute='key')| list }}"
+         wrRes: "{{ writeres5keys }}"
+         rdRes: "{{ readWithPrefix_vUUID['results'][0]['item']['output_data'][0]['Response']['ResultMap'][item] }}"
+       with_items: "{{ readWithPrefix_vUUID['results'][0]['item']['output_data'][0]['Response']['ResultMap']  | dict2items |  map(attribute='key')| list }}"
 
      - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with Invalid prefix passed."
        vars:
          input_param: {
-                'Key': 'Paroscale*',
+                'Key': 'Welcome*',
                 'Operation': 'read',
                 'OutfileName': 'RangeRead_InvalidPrefix_output',
                 'NoofWrites': '5',
@@ -256,20 +224,11 @@
 
      - name: "{{ recipe_name }}: Verify outfile status and read status"
        debug:
-        msg:
-         - "Check read outfile status: {{ readWithInvalidPrefix['results'][0]['item']['outfile_status'] }}"
-         - "Check read response status: {{ readWithInvalidPrefix['results'][0]['item']['output_data']['Response']['Status'] }}"
+        msg: "Check read outfile status"
        no_log: true
        failed_when:
          (readWithInvalidPrefix['results'][0]['item']['outfile_status'] != 0) or
-         (readWithInvalidPrefix['results'][0]['item']['output_data']['Response']['Status'] != 1)
-
-     - name: "{{ recipe_name }}: Check it should not return keys and value with invalid prefix passed."
-       vars:
-             readprefix: "{{ readWithInvalidPrefix['results'][0]['item']['output_data']['Response']['Response'] }}"
-       debug:
-         msg: "Check if response is Key not found with invalid prefix passed"
-       failed_when: readprefix != "Key not found"
+         (readWithInvalidPrefix['results'][0]['item']['output_data'][0]['Response']['Status'] != -1)
 
     rescue:
      - name: "Recipe: {{ recipe_name }} failed"

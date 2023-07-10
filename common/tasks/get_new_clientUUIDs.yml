@@ -1,0 +1,13 @@
+---
+    - name: "Get unused client uuid for starting the client."
+      include_role:
+        name: common
+        tasks_from: get_new_client_uuid
+      register: client_uuid
+
+    - name: "Add newly generated client uuid in client_uuids list."
+      vars:
+         newClientUUIDS: []
+      set_fact:
+         newClientUUIDS: "{{ newClientUUIDS + [client_uuid.stdout] }}"
+

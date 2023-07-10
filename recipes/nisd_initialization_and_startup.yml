@@ -63,7 +63,7 @@
        set_fact:
          get_nisd: "{{ lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True) }}"
        loop: "{{ range(0, nnisds | int) }}"
-       #no_log: True
+       no_log: True
 
      - name: "{{ recipe_name }}: Start nisd process."
        vars:
@@ -74,7 +74,7 @@
               }
        debug:
          msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
-           #no_log: True
+       no_log: True
 
      - pause:
          seconds: 2
@@ -151,7 +151,7 @@
          niorq_mgr_entry: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Verify niorq_mgr_root_entry info: {{ niorq_mgr_entry }}"
-       #no_log: True
+       no_log: True
        failed_when: >
          (niorq_mgr_entry['/0/uuid'] != get_nisd) or
          (niorq_mgr_entry['/0/status'] != "running") or
@@ -173,9 +173,6 @@
          msg:  "{{ lookup('niova_raftprocess', 'kill', get_nisd, wantlist=True) }}"
        no_log: True
 
-     - pause:
-        seconds: 2
-
      - name: "{{ recipe_name }}: Restart same nisd process."
        vars:
           input_param: {
@@ -187,10 +184,6 @@
          msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
        no_log: True
 
-     - pause:
-         seconds: 2
-
-     - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
        vars:
          stage: "wait_for_nisd_root_entry"
          lookout_uuid: "{{ get_lookout[0] }}"
@@ -313,9 +306,6 @@
          msg:  "{{ lookup('niova_raftprocess', 'kill', get_nisd, wantlist=True) }}"
        no_log: True
 
-     - pause:
-        seconds: 2
-
      - name: "{{ recipe_name }}: Restart same nisd process."
        vars:
           input_param: {
@@ -326,9 +316,6 @@
        debug:
          msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
        no_log: True
-
-     - pause:
-         seconds: 2
 
      - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
        vars:

@@ -60,11 +60,11 @@
 
      - name: "{{ recipe_name }}: Verify write status"
        debug:
-         msg: "Check write response status: {{ item.value['Status'] }}"
+         msg: "Check write response status"
        no_log: true
        failed_when: >
-         (item.value['Status'] != 0)
-       with_dict: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
+         (item['Response']['Status'] != 0)
+       loop: "{{ writeres5keys['results'][0]['item']['output_data'] }}"
 
      - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
        include_role:
@@ -96,15 +96,15 @@
        debug:
         msg:
          - "Check read outfile status: {{ readres5keys['results'][0]['item']['outfile_status'] }}"
-         - "Check read response status: {{readres5keys['results'][0]['item']['output_data']['Response']['Status'] }}"
+         - "Check read response status: {{ readres5keys['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
        no_log: true
        failed_when:
          (readres5keys['results'][0]['item']['outfile_status'] != 0) or
-         (readres5keys['results'][0]['item']['output_data']['Response']['Status'] != 0)
+         (readres5keys['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
        vars:
-          seq_no: "{{ readres5keys['results'][0]['item']['output_data']['Response']['Sequence_number'] }}"
+          seq_no: "{{ readres5keys['results'][0]['item']['output_data'][0]['Response']['SeqNum'] }}"
        debug:
          msg: "Get the seq no"
        with_items:
@@ -142,7 +142,7 @@
 
      - name: "{{ recipe_name }}: Check if write is successful."
        vars:
-         wrstatus: "{{ writeres_overwrite['results'][0]['item']['output_data']['Response']['Status'] }}"
+         wrstatus: "{{ writeres_overwrite['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
        debug:
          msg: "Check if write is successful."
        failed_when: >
@@ -174,16 +174,16 @@
        debug:
         msg:
          - "Check read outfile status: {{ specificSeqno_rangereadres['results'][0]['item']['outfile_status'] }}"
-         - "Check read response status: {{ specificSeqno_rangereadres['results'][0]['item']['output_data']['Response']['Status'] }}"
+         - "Check read response status: {{ specificSeqno_rangereadres['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
        no_log: true
        failed_when:
          (specificSeqno_rangereadres['results'][0]['item']['outfile_status'] != 0) or
-         (specificSeqno_rangereadres['results'][0]['item']['output_data']['Response']['Status'] != 0)
+         (specificSeqno_rangereadres['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
 
      - name: "{{ recipe_name }}: Validate that we should see updated seq no as snapshot is deleted."
        vars:
           seqNo_earlier: "{{ seqNo['results'][0]['item'] }}"
-          seqNo_new: "{{ specificSeqno_rangereadres['results'][0]['item']['output_data']['Response']['Sequence_number'] }}"
+          seqNo_new: "{{ specificSeqno_rangereadres['results'][0]['item']['output_data'][0]['Response']['SeqNum'] }}"
        debug:
          msg: "compare earlier seqno with old seq no."
        failed_when: seqNo_earlier == seqNo_new
