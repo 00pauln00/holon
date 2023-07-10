@@ -177,22 +177,6 @@ def create_nisd_device_and_uuid(nisd_uuid, nisd_dev_size):
 
     return nisdpath_device
 
-def set_environment_variables(cluster_params):
-    ctl_interface_path = "%s/%s/nisd-interface" % (cluster_params['base_dir'],
-                                                           cluster_params['raft_uuid'])
-
-    if os.path.exists(ctl_interface_path):
-        logging.info("file already exist")
-    else:
-        os.mkdir(ctl_interface_path)
-
-
-    #set environment variables
-    os.environ['NIOVA_INOTIFY_BASE_PATH'] = ctl_interface_path
-    os.environ['NIOVA_LOCAL_CTL_SVC_DIR'] = ctl_interface_path
-
-    return ctl_interface_path
-
 def controlplane_environment_variables(cluster_params,lookout_uuid):
     niova_lookout_ctl_interface_path = "%s/%s/niova_lookout/%s" % (cluster_params['base_dir'],
                                                            cluster_params['raft_uuid'], lookout_uuid)
@@ -201,7 +185,6 @@ def controlplane_environment_variables(cluster_params,lookout_uuid):
         logging.info("file already exist")
     else:
         os.mkdir(niova_lookout_ctl_interface_path)
-
     #set environment variables
     os.environ['NIOVA_INOTIFY_BASE_PATH'] = niova_lookout_ctl_interface_path
     os.environ['NIOVA_LOCAL_CTL_SVC_DIR'] = niova_lookout_ctl_interface_path
@@ -357,21 +340,22 @@ def start_niova_block_test(cluster_params, input_values):
     logger.debug("nisd-uuid: %s", nisd_uuid_to_write[5:])
     logger.debug("vdev-uuid: %s", vdev)
     logger.debug("client-uuid: %s", client_uuid)
-
+    file_size_in_bytes = "8589934592"
+    
     if sequential_writes == True and integrity_check == False and blocking_process == False:
         ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
                                    '-u', client_uuid, '-Z', request_size_in_bytes,
-                                   '-q', queue_depth, '-N', num_ops, '-I', '-Q'), stdout=fp, stderr=fp)
+                                   '-q', queue_depth, '-N', num_ops, '-I', '-Q', '-z', file_size_in_bytes), stdout=fp, stderr=fp)
 
     elif integrity_check == True and sequential_writes == False and blocking_process == False:
         ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
                                    '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
-                                   '-q', queue_depth, '-N', num_ops, '-I'), stdout=fp, stderr=fp)
+                                   '-q', queue_depth, '-N', num_ops, '-I', '-z', file_size_in_bytes), stdout=fp, stderr=fp)
 
     elif blocking_process == True and sequential_writes == False and integrity_check == False:
         proc = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
                                    '-u', client_uuid, '-Z', request_size_in_bytes,
-                                   '-q', queue_depth, '-N', num_ops, '-I', '-Q'], stdout=fp, stderr=fp)
+                                   '-q', queue_depth, '-N', num_ops, '-I', '-Q', '-z', file_size_in_bytes], stdout=fp, stderr=fp)
 
         poll = proc.poll()  # returns the exit code or None if the process is still running
         logger.info("niova-block-test args: %s", proc.args)
@@ -381,7 +365,7 @@ def start_niova_block_test(cluster_params, input_values):
     else:
         ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
                                    '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
-                                   '-q', queue_depth, '-N', num_ops), stdout=fp, stderr=fp)
+                                   '-q', queue_depth, '-N', num_ops, '-z', file_size_in_bytes), stdout=fp, stderr=fp)
 
     logger.info("niova-block-test args: %s", ps.args)
     logger.info("return code: %d", ps.returncode)
@@ -406,29 +390,20 @@ class LookupModule(LookupBase):
         #Get lookup parameter values
         process_type = terms[0]
         input_values = terms[1]
-        lookout_uuid = ""
         nisd_uuid = ""
 
         cluster_params = kwargs['variables']['ClusterParams']
 
         if process_type == "niova-block-ctl":
 
-               if input_values['lookout_uuid'] != "":
-                   controlplane_environment_variables(cluster_params, input_values['lookout_uuid'])
-               else:
-                   set_environment_variables(cluster_params)
-
+               controlplane_environment_variables(cluster_params, input_values['lookout_uuid'])
                niova_block_ctl_process = start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values)
 
                return niova_block_ctl_process
 
         elif process_type == "nisd":
 
-               if input_values['lookout_uuid'] != "":
-                   controlplane_environment_variables(cluster_params, input_values['lookout_uuid'])
-               else:
-                   set_environment_variables(cluster_params)
-
+               controlplane_environment_variables(cluster_params, input_values['lookout_uuid'])
                #start nisd process
                nisdPath = prepare_nisd_device_path(input_values['nisd_uuid'])
                nisd_process = start_nisd_process(cluster_params, input_values, nisdPath)
