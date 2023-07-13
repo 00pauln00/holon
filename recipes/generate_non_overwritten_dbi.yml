@@ -12,10 +12,10 @@
         name: common
         tasks_from: generate_dbi
       vars:
-        PunchPercent: "0.3"
-        MaxPunchSize: "3"
-        MaxEntries: "2"
-        Entries: "5"
+        PunchPercent: "0.01"
+        MaxPunchSize: "1"
+        MaxEntries: "5"
+        Entries: "3"
         SeqStart: "1"
         ChunkNum: "1"
         Seed: "123"
@@ -30,7 +30,7 @@
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
          input_param: {
-                  'dbiObjPath' : "",
+                  'dbiObjPath' : "{{ directory_names }}",
                   'path' : "",
                  }
       debug:
@@ -40,9 +40,9 @@
     - name: "{{ recipe_name }}: Start gc validation"
       vars:
          input_param: {
-                  'solutionArrFile' : "",
+                  'solutionArrFile' : "{{ solution_array_file }}",
                   'gcDBIs' : "",
-                  'dbiGeneratorPath' : "",
+                  'dbiGeneratorPath' : "{{ dummy_generator_path }}",
                  }
       debug:
          msg:
