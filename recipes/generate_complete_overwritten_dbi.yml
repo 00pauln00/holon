@@ -1,4 +1,4 @@
-- import_playbook: basic_recipe_for_pattern_generation.yml
+- import_playbook: generate_non_overwritten_dbi.yml
 
 - name: "completely_overwritten_dbi"
   hosts: localhost
