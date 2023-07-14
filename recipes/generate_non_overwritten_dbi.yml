@@ -12,13 +12,19 @@
         name: common
         tasks_from: generate_dbi
       vars:
-        PunchPercent: "0.01"
-        MaxPunchSize: "1"
-        MaxEntries: "5"
-        Entries: "3"
-        SeqStart: "1"
-        ChunkNum: "1"
-        Seed: "123"
+        input_param: {
+            'punchAmount': "16",
+            'punchesPer': "4",
+            'maxPuncheSize': "20",
+            'maxPunches': "20",
+            'maxVblks': "15",
+            'vblkPer': "10",
+            'vbAmount': "100",
+            'seqStart': "1",
+            'chunk': "1",
+            'seed': "123",
+            'genType': "0"
+            }
 
     - name: "{{ recipe_name }}: Get dir path."
       include_role:

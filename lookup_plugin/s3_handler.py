@@ -8,9 +8,8 @@ import uuid
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
 
-def start_generate_dbi(cluster_params, operation, punchPer, maxPunchSize,
-                                maxEntries, entries, seqStart, chunkNum, seed):
-
+def start_generate_dbi(cluster_params, operation, punchAmount, punchesPer, maxPuncheSize, maxPunches,
+                            maxVblks, vblkPer, vbAmount, seqStart, chunk, seed, genType):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -40,8 +39,10 @@ def start_generate_dbi(cluster_params, operation, punchPer, maxPunchSize,
     #Get dummyDBI example
     bin_path = '%s/example' % binary_dir
 
-    process_popen = subprocess.Popen([bin_path, '-pp', punchPer, '-ps', maxPunchSize, '-me', maxEntries, '-e', entries,
-                                            '-ss', seqStart, '-c', chunkNum, '-seed', seed, '-p', path, '-dbo', "bin"], stdout = fp, stderr = fp)
+    process_popen = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches, 
+                           "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
+                           "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
+                           "-vp", vblkPer], stdout = fp, stderr = fp)
 
     os.fsync(fp)
     return process_popen
@@ -96,9 +97,10 @@ def extracting_dictionary(cluster_params, operation, input_values):
     print("input_values: :", input_values)
 
     if operation == "generate_dbi":
-       popen = start_generate_dbi(cluster_params, operation, input_values['punchPer'], input_values['maxPunchSize'],
-                                         input_values['maxEntries'], input_values['entries'],
-                                         input_values['seqStart'], input_values['chunkNum'], input_values['seed'])
+       popen = start_generate_dbi(cluster_params, operation, input_values['punchAmount'], input_values['punchesPer'],
+                                  input_values['maxPuncheSize'], input_values['maxPunches'], input_values['maxVblks'],
+                                  input_values['vblkPer'], input_values['vbAmount'], input_values['seqStart'], 
+                                  input_values['chunk'], input_values['seed'], input_values['genType'])
     elif operation == "start_gc":
        popen = start_gc_process(cluster_params, operation, input_values['dbiObjPath'], input_values['Path'])
 
