@@ -92,6 +92,28 @@ def start_gc_validate(cluster_params, operation, solutionArrFile, gc_dbi_list, d
     os.fsync(fp)
     return process_popen
 
+def start_data_validate(cluster_params, operation, path):
+    #TODO Modify parameters as per implementation
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+
+    # Prepare path for executables.
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    # Prepare path for log file.
+    dbiLogFile = "%s/%s/dataValidateLog.log" % (base_dir, raft_uuid)
+
+    # Open the log file to pass the fp to subprocess.Popen
+    fp = open(dbiLogFile, "a+")
+
+    #Get dummyDBI example
+    bin_path = '%s/dataValidator' % binary_dir
+
+    process_popen = subprocess.Popen([bin_path, '-d', path], stdout = fp, stderr = fp)
+
+    os.fsync(fp)
+    return process_popen
+
 def extracting_dictionary(cluster_params, operation, input_values):
 
     print("input_values: :", input_values)
@@ -102,10 +124,13 @@ def extracting_dictionary(cluster_params, operation, input_values):
                                   input_values['vblkPer'], input_values['vbAmount'], input_values['seqStart'], 
                                   input_values['chunk'], input_values['seed'], input_values['genType'])
     elif operation == "start_gc":
-       popen = start_gc_process(cluster_params, operation, input_values['dbiObjPath'], input_values['Path'])
+       popen = start_gc_process(cluster_params, operation, input_values['dbiObjPath'], input_values['path'])
 
     elif operation == "gc_validate":
-       popen = start_gc_validate(cluster_params, operation, input_values['solutionArrFile'], input_values['gcDBIs'], input_values['dbiGeneratorPath'])
+        popen = start_gc_validate(cluster_params, operation, input_values['solutionArrFile'], input_values['gcDBIs'], input_values['dbiGeneratorPath'])
+
+    elif operation == "data_validate":
+       popen = start_data_validate(cluster_params, operation, input_values['path'])
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
