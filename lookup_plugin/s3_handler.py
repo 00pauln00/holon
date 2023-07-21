@@ -47,8 +47,7 @@ def start_generate_dbi(cluster_params, operation, punchAmount, punchesPer, maxPu
     os.fsync(fp)
     return process_popen
 
-def start_gc_process(cluster_params, operation, dbi_input_path, path):
-    #TODO Modify parameters as per implementation
+def start_gc_process(cluster_params, operation, dbi_input_path):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -62,38 +61,15 @@ def start_gc_process(cluster_params, operation, dbi_input_path, path):
     fp = open(dbiLogFile, "a+")
 
     #Get dummyDBI example
-    bin_path = '%s/gc' % binary_dir
+    bin_path = '%s/gcTester' % binary_dir
 
-    process_popen = subprocess.Popen([bin_path, '-inputPath', dbi_input_path, '-p', path], stdout = fp, stderr = fp)
-
-    os.fsync(fp)
-    return process_popen
-
-
-def start_gc_validate(cluster_params, operation, solutionArrFile, gc_dbi_list, dbi_generator_json):
-    #TODO Modify parameters as per implementation
-    base_dir = cluster_params['base_dir']
-    raft_uuid = cluster_params['raft_uuid']
-
-    # Prepare path for executables.
-    binary_dir = os.getenv('NIOVA_BIN_PATH')
-
-    # Prepare path for log file.
-    dbiLogFile = "%s/%s/gcValidtaeLog.log" % (base_dir, raft_uuid)
-
-    # Open the log file to pass the fp to subprocess.Popen
-    fp = open(dbiLogFile, "a+")
-
-    #Get dummyDBI example
-    bin_path = '%s/gc_validate' % binary_dir
-
-    process_popen = subprocess.Popen([bin_path, '-sa', solutionArrFile, 'gcInput', gc_dbi_list, '-jpath', dbi_generator_json], stdout = fp, stderr = fp)
+    process_popen = subprocess.Popen([bin_path, '-d', dbi_input_path], stdout = fp, stderr = fp)
 
     os.fsync(fp)
     return process_popen
+
 
 def start_data_validate(cluster_params, operation, path):
-    #TODO Modify parameters as per implementation
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -106,17 +82,34 @@ def start_data_validate(cluster_params, operation, path):
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(dbiLogFile, "a+")
 
-    #Get dummyDBI example
     bin_path = '%s/dataValidator' % binary_dir
 
     process_popen = subprocess.Popen([bin_path, '-d', path], stdout = fp, stderr = fp)
 
     os.fsync(fp)
-    return process_popen
+    
+    return process_popen 
+
+def load_json_contents(path):
+    counter = 0
+    timeout = 100
+    # Wait till the output json file gets created.
+    while True:
+        if not os.path.exists(path):
+            counter += 1
+            time.sleep(1)
+            if counter == timeout:
+                return {'outfile_status':-1}
+        else:
+            break
+
+    json_data = {}
+    with open(path, "r+", encoding="utf-8") as json_file:
+        json_data = json.load(json_file)
+
+    return json_data
 
 def extracting_dictionary(cluster_params, operation, input_values):
-
-    print("input_values: :", input_values)
 
     if operation == "generate_dbi":
        popen = start_generate_dbi(cluster_params, operation, input_values['punchAmount'], input_values['punchesPer'],
@@ -124,13 +117,17 @@ def extracting_dictionary(cluster_params, operation, input_values):
                                   input_values['vblkPer'], input_values['vbAmount'], input_values['seqStart'], 
                                   input_values['chunk'], input_values['seed'], input_values['genType'])
     elif operation == "start_gc":
-       popen = start_gc_process(cluster_params, operation, input_values['dbiObjPath'], input_values['path'])
-
-    elif operation == "gc_validate":
-        popen = start_gc_validate(cluster_params, operation, input_values['solutionArrFile'], input_values['gcDBIs'], input_values['dbiGeneratorPath'])
+       popen = start_gc_process(cluster_params, operation, input_values['dbiObjPath'])
 
     elif operation == "data_validate":
        popen = start_data_validate(cluster_params, operation, input_values['path'])
+
+    elif operation == "load_contents":
+        print("path from recipe", input_values['path'])
+        data = load_json_contents(input_values['path'])
+
+        return data
+    
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
@@ -141,5 +138,5 @@ class LookupModule(LookupBase):
         cluster_params = kwargs['variables']['ClusterParams']
 
         if cluster_params['app_type'] == "gcvalidation":
-            extracting_dictionary(cluster_params, operation, input_values)
-
+            data = extracting_dictionary(cluster_params, operation, input_values)
+            return data
