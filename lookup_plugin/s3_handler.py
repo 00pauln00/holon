@@ -20,13 +20,10 @@ def start_generate_dbi(cluster_params, operation, punchAmount, punchesPer, maxPu
     # Create new directory name with timestamp
     new_directory_name = f'{dirName}_{timestamp}'
 
-    print("new_directory_name: ", new_directory_name)
     path = "%s/%s/%s/" % (base_dir, raft_uuid, new_directory_name)
     # Create the new directory
     os.mkdir(path)
 
-    #print("new_directory_name: ", new_directory_name)
-    print("path: ", path)
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
@@ -39,10 +36,48 @@ def start_generate_dbi(cluster_params, operation, punchAmount, punchesPer, maxPu
     #Get dummyDBI example
     bin_path = '%s/example' % binary_dir
 
-    process_popen = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches, 
+    process_popen = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches,
                            "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
                            "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
                            "-vp", vblkPer], stdout = fp, stderr = fp)
+
+    os.fsync(fp)
+    return process_popen
+
+def start_pattern_generator(cluster_params, operation, punchAmount, punchesPer, maxPuncheSize, maxPunches,
+                            maxVblks, vblkPer, vbAmount, seqStart, chunk, seed, genType, blockSize, blockSizeMax,
+                            startVblk, vblkDump, strideWidth):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+
+    dirName = "dbi-dbo"
+    # Get current date and time
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+    # Create new directory name with timestamp
+    new_directory_name = f'{dirName}_{timestamp}'
+
+    path = "%s/%s/%s/" % (base_dir, raft_uuid, new_directory_name)
+    # Create the new directory
+    os.mkdir(path)
+
+    # Prepare path for executables.
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    # Prepare path for log file.
+    dbiLogFile = "%s/%s/dbiLog.log" % (base_dir, raft_uuid)
+
+    # Open the log file to pass the fp to subprocess.Popen
+    fp = open(dbiLogFile, "a+")
+
+    #Get dummyDBI example
+    bin_path = '%s/example' % binary_dir
+
+    process_popen = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches,
+                           "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
+                           "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
+                           "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
+                           "-vs", startVblk, "-d", vblkDump, "-sw", strideWidth], stdout = fp, stderr = fp)
 
     os.fsync(fp)
     return process_popen
@@ -87,8 +122,8 @@ def start_data_validate(cluster_params, operation, path):
     process_popen = subprocess.Popen([bin_path, '-d', path], stdout = fp, stderr = fp)
 
     os.fsync(fp)
-    
-    return process_popen 
+
+    return process_popen
 
 def load_json_contents(path):
     counter = 0
@@ -112,10 +147,18 @@ def load_json_contents(path):
 def extracting_dictionary(cluster_params, operation, input_values):
 
     if operation == "generate_dbi":
-       popen = start_generate_dbi(cluster_params, operation, input_values['punchAmount'], input_values['punchesPer'],
-                                  input_values['maxPuncheSize'], input_values['maxPunches'], input_values['maxVblks'],
-                                  input_values['vblkPer'], input_values['vbAmount'], input_values['seqStart'], 
+       popen = start_generate_dbi(cluster_params, operation, input_values['punchAmount'], input_values['punchPer'],
+                                  input_values['maxPunchSize'], input_values['maxPunches'], input_values['maxVblks'],
+                                  input_values['vblkPer'], input_values['vbAmount'], input_values['seqStart'],
                                   input_values['chunk'], input_values['seed'], input_values['genType'])
+
+    elif operation == "generate_pattern":
+       popen = start_pattern_generator(cluster_params, operation, input_values['punchAmount'], input_values['punchPer'],
+                                  input_values['maxPunchSize'], input_values['maxPunches'], input_values['maxVblks'],
+                                  input_values['vblkPer'], input_values['vbAmount'], input_values['seqStart'],
+                                  input_values['chunk'], input_values['seed'], input_values['genType'], input_values['blockSize'],
+                                  input_values['blockSizeMax'], input_values['startVblk'], input_values['vblkDump'],
+                                  input_values['strideWidth'])
     elif operation == "start_gc":
        popen = start_gc_process(cluster_params, operation, input_values['dbiObjPath'])
 
@@ -127,7 +170,7 @@ def extracting_dictionary(cluster_params, operation, input_values):
         data = load_json_contents(input_values['path'])
 
         return data
-    
+
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):

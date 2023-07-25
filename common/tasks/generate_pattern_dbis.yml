@@ -13,8 +13,14 @@
                   'seqStart' : "{{ SeqStart }}",
                   'chunk' : "{{ ChunkNum }}",
                   'seed' : "{{ Seed }}",
-                  'genType' : "{{ Type }}"
+                  'genType' : "{{ Type }}",
+                  'blockSize' : "{{ BlockSize }}",
+                  'blockSizeMax' : "{{ BlockSizeMax }}",
+                  'startVblk' : "{{ StartVblk }}",
+                  'vblkDump' : "{{ VblkDump }}",
+                  'strideWidth' : "{{ StrideWidth }}"
                  }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'generate_dbi', input_param, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'generate_pattern', input_param, wantlist=True) }}"
+

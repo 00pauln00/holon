@@ -1,0 +1,31 @@
+- name: "generate_random_dbi_pattern"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "generate_random_dbi_pattern"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Generate random DBI requests."
+      include_role:
+        name: common
+        tasks_from: generate_pattern_dbis
+      vars:
+        PunchAmount: "16"
+        PunchPer: "4"
+        MaxPunchSize: "20"
+        MaxPunches: "20"
+        MaxVblks: "15"
+        VblkPer: "10"
+        VbAmount: "100"
+        SeqStart: "1"
+        ChunkNum: "1"
+        Seed: "123"
+        Type: "0"     #You can pass different pattern value here.
+        BlockSize: "5"
+        BlockSizeMax: "15"
+        StartVblk: "111"
+        VblkDump: ""
+        StrideWidth: ""
+
