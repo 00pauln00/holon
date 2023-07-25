@@ -26,6 +26,26 @@
         BlockSize: "5"
         BlockSizeMax: "15"
         StartVblk: "111"
-        VblkDump: ""
-        StrideWidth: ""
+        StrideWidth: "20"
+
+    - name: "{{ recipe_name }}: Get dir path."
+      include_role:
+        name: common
+        tasks_from: get_dir_path
+
+    - name: "{{ recipe_name }}: load the contents of the dummy_generator.json file"
+      vars:
+         input_param: {
+                  'path' : "{{ directory_names[0] }}/dummy_generator.json",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'load_contents', input_param, wantlist=True) }}"
+      register: json_contents
+
+    - debug:
+        msg: "{{ json_contents }}"
+
+    - debug:
+        msg: "{{ json_contents['msg'][0]['DbiPath'] }}"
 

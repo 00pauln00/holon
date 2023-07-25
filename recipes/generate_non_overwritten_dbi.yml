@@ -24,6 +24,9 @@
         Seed: "123"
         Type: "0"     #You can pass different pattern value here.
 
+    - pause:
+        seconds: 3
+
     - name: "{{ recipe_name }}: Get dir path."
       include_role:
         name: common

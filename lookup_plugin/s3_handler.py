@@ -46,7 +46,7 @@ def start_generate_dbi(cluster_params, operation, punchAmount, punchesPer, maxPu
 
 def start_pattern_generator(cluster_params, operation, punchAmount, punchesPer, maxPuncheSize, maxPunches,
                             maxVblks, vblkPer, vbAmount, seqStart, chunk, seed, genType, blockSize, blockSizeMax,
-                            startVblk, vblkDump, strideWidth):
+                            startVblk, strideWidth):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -77,7 +77,7 @@ def start_pattern_generator(cluster_params, operation, punchAmount, punchesPer, 
                            "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
                            "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
                            "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
-                           "-vs", startVblk, "-d", vblkDump, "-sw", strideWidth], stdout = fp, stderr = fp)
+                           "-vs", startVblk, "-sw", strideWidth], stdout = fp, stderr = fp)
 
     os.fsync(fp)
     return process_popen
@@ -157,8 +157,7 @@ def extracting_dictionary(cluster_params, operation, input_values):
                                   input_values['maxPunchSize'], input_values['maxPunches'], input_values['maxVblks'],
                                   input_values['vblkPer'], input_values['vbAmount'], input_values['seqStart'],
                                   input_values['chunk'], input_values['seed'], input_values['genType'], input_values['blockSize'],
-                                  input_values['blockSizeMax'], input_values['startVblk'], input_values['vblkDump'],
-                                  input_values['strideWidth'])
+                                  input_values['blockSizeMax'], input_values['startVblk'], input_values['strideWidth'])
     elif operation == "start_gc":
        popen = start_gc_process(cluster_params, operation, input_values['dbiObjPath'])
 

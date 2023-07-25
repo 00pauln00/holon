@@ -29,10 +29,6 @@
         solution_array_file: "{{ found_files.files[0].path }}"
       when: found_files.files | length > 0
 
-    - name: "Print file path"
-      debug:
-        var: solution_array_file
-
     - name: "Find path of 'dummy_generator.json'"
       find:
         paths: "{{ directory_names }}"
@@ -45,6 +41,3 @@
         dummy_generator_path: "{{ found_files.files[0].path }}"
       when: found_files.files | length > 0
 
-    - name: "Print file path"
-      debug:
-        var: dummy_generator_path

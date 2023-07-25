@@ -17,7 +17,6 @@
                   'blockSize' : "{{ BlockSize }}",
                   'blockSizeMax' : "{{ BlockSizeMax }}",
                   'startVblk' : "{{ StartVblk }}",
-                  'vblkDump' : "{{ VblkDump }}",
                   'strideWidth' : "{{ StrideWidth }}"
                  }
       debug:
