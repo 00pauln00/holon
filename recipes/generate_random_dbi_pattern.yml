@@ -12,19 +12,19 @@
         name: common
         tasks_from: generate_pattern_dbis
       vars:
-        PunchAmount: "16"
-        PunchPer: "4"
-        MaxPunchSize: "20"
-        MaxPunches: "20"
-        MaxVblks: "15"
-        VblkPer: "10"
+        PunchAmount: "26"
+        PunchPer: "14"
+        MaxPunchSize: "40"
+        MaxPunches: "30"
+        MaxVblks: "35"
+        VblkPer: "20"
         VbAmount: "100"
         SeqStart: "1"
         ChunkNum: "1"
-        Seed: "123"
+        Seed: "141"
         Type: "0"     #You can pass different pattern value here.
-        BlockSize: "5"
-        BlockSizeMax: "15"
+        BlockSize: "20"
+        BlockSizeMax: "40"
         StartVblk: "111"
         StrideWidth: "20"
 
@@ -48,4 +48,25 @@
 
     - debug:
         msg: "{{ json_contents['msg'][0]['DbiPath'] }}"
+
+    - name: "{{ recipe_name }}: Start gc algorithm"
+      vars:
+         input_param: {
+                  'dbiObjPath' : "{{ json_contents['msg'][0]['DbiPath'] }}",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gc', input_param, wantlist=True) }}"
+
+    - debug:
+        msg: "SolutionArray: {{ directory_names[0] }}"
+
+    - name: "{{ recipe_name }}: Start data validation"
+      vars:
+         input_param: {
+                  'path' : "{{ directory_names[0] }}/",
+                  'gcPath' : "{{ json_contents['msg'][0]['DbiPath'] }}/GC_output"
+                 }
+      debug:
+         msg: "{{ lookup('s3_handler', 'data_validate', input_param, wantlist=True) }}"
 

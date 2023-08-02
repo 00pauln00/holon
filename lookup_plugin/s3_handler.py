@@ -98,13 +98,13 @@ def start_gc_process(cluster_params, operation, dbi_input_path):
     #Get dummyDBI example
     bin_path = '%s/gcTester' % binary_dir
 
-    process_popen = subprocess.Popen([bin_path, '-d', dbi_input_path], stdout = fp, stderr = fp)
+    process_popen = subprocess.Popen([bin_path, '-dir', dbi_input_path], stdout = fp, stderr = fp)
 
     os.fsync(fp)
     return process_popen
 
 
-def start_data_validate(cluster_params, operation, path):
+def start_data_validate(cluster_params, operation, path, gcPath):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -119,7 +119,7 @@ def start_data_validate(cluster_params, operation, path):
 
     bin_path = '%s/dataValidator' % binary_dir
 
-    process_popen = subprocess.Popen([bin_path, '-d', path], stdout = fp, stderr = fp)
+    process_popen = subprocess.Popen([bin_path, '-d', path, '-gcd', gcPath], stdout = fp, stderr = fp)
 
     os.fsync(fp)
 
@@ -127,7 +127,7 @@ def start_data_validate(cluster_params, operation, path):
 
 def load_json_contents(path):
     counter = 0
-    timeout = 100
+    timeout = 200
     # Wait till the output json file gets created.
     while True:
         if not os.path.exists(path):
@@ -162,7 +162,7 @@ def extracting_dictionary(cluster_params, operation, input_values):
        popen = start_gc_process(cluster_params, operation, input_values['dbiObjPath'])
 
     elif operation == "data_validate":
-       popen = start_data_validate(cluster_params, operation, input_values['path'])
+       popen = start_data_validate(cluster_params, operation, input_values['path'], input_values['gcPath'])
 
     elif operation == "load_contents":
         print("path from recipe", input_values['path'])
