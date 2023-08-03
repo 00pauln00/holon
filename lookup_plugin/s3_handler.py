@@ -4,11 +4,11 @@ import os
 from datetime import datetime
 import time
 import subprocess
-import uuid
+import uuid, random
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
 
-def start_generate_dbi(cluster_params, operation, punchAmount, punchesPer, maxPuncheSize, maxPunches,
+def start_generate_dbi(cluster_params, punchAmount, punchesPer, maxPuncheSize, maxPunches,
                             maxVblks, vblkPer, vbAmount, seqStart, chunk, seed, genType):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -55,9 +55,7 @@ def start_generate_dbi(cluster_params, operation, punchAmount, punchesPer, maxPu
         print(f"Process failed with exit code {exit_code}.")
         return False
 
-def start_pattern_generator(cluster_params, operation, punchAmount, punchesPer, maxPuncheSize, maxPunches,
-                            maxVblks, vblkPer, vbAmount, seqStart, chunk, seed, genType, blockSize, blockSizeMax,
-                            startVblk, strideWidth):
+def start_pattern_generator(cluster_params, genType):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -84,6 +82,22 @@ def start_pattern_generator(cluster_params, operation, punchAmount, punchesPer, 
     #Get dummyDBI example
     bin_path = '%s/example' % binary_dir
 
+    # Generate random values for the dbi pattern generation
+    chunk = str(random.randint(1, 200))
+    maxPunches = str(random.choice([2 ** i for i in range(6)]))
+    maxVblks = str(random.choice([2 ** i for i in range(10)]))
+    punchAmount = str(random.choice([2 ** i for i in range(10)])) 
+    punchesPer = "0"
+    maxPuncheSize = str(random.choice([2 ** i for i in range(10)]))
+    seed = str(random.randint(1, 100))
+    seqStart = "0"
+    vbAmount = str(random.randint(1, 10000000))
+    vblkPer = str(random.randint(1, 1000))
+    blockSize = str(random.randint(1, 32))
+    blockSizeMax = str(random.randint(1, 32))
+    startVblk = "0"
+    strideWidth = str(random.randint(1, 50)) 
+    
     process_popen = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches,
                            "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
                            "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
@@ -104,7 +118,7 @@ def start_pattern_generator(cluster_params, operation, punchAmount, punchesPer, 
         print(f"Process failed with exit code {exit_code}.")
         return False
 
-def start_gc_process(cluster_params, operation, dbi_input_path):
+def start_gc_process(cluster_params, dbi_input_path):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -136,7 +150,7 @@ def start_gc_process(cluster_params, operation, dbi_input_path):
         print(f"Process failed with exit code {exit_code}.")
         return False
 
-def start_data_validate(cluster_params, operation, path, gcPath):
+def start_data_validate(cluster_params, path, gcPath):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -189,22 +203,18 @@ def load_json_contents(path):
 def extracting_dictionary(cluster_params, operation, input_values):
 
     if operation == "generate_dbi":
-       popen = start_generate_dbi(cluster_params, operation, input_values['punchAmount'], input_values['punchPer'],
+       popen = start_generate_dbi(cluster_params, input_values['punchAmount'], input_values['punchPer'],
                                   input_values['maxPunchSize'], input_values['maxPunches'], input_values['maxVblks'],
                                   input_values['vblkPer'], input_values['vbAmount'], input_values['seqStart'],
                                   input_values['chunk'], input_values['seed'], input_values['genType'])
 
     elif operation == "generate_pattern":
-       popen = start_pattern_generator(cluster_params, operation, input_values['punchAmount'], input_values['punchPer'],
-                                  input_values['maxPunchSize'], input_values['maxPunches'], input_values['maxVblks'],
-                                  input_values['vblkPer'], input_values['vbAmount'], input_values['seqStart'],
-                                  input_values['chunk'], input_values['seed'], input_values['genType'], input_values['blockSize'],
-                                  input_values['blockSizeMax'], input_values['startVblk'], input_values['strideWidth'])
+       popen = start_pattern_generator(cluster_params, input_values['genType'])
     elif operation == "start_gc":
-       popen = start_gc_process(cluster_params, operation, input_values['dbiObjPath'])
+       popen = start_gc_process(cluster_params, input_values['dbiObjPath'])
 
     elif operation == "data_validate":
-       popen = start_data_validate(cluster_params, operation, input_values['path'], input_values['gcPath'])
+       popen = start_data_validate(cluster_params, input_values['path'], input_values['gcPath'])
 
     elif operation == "load_contents":
         print("path from recipe", input_values['path'])

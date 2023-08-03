@@ -4,30 +4,17 @@
   vars:
      recipe_name: "generate_random_dbi_pattern"
      parent: None
-
+  
   tasks:
   - block:
+
     - name: "{{ recipe_name }}: Generate random DBI requests."
       include_role:
         name: common
         tasks_from: generate_pattern_dbis
       vars:
-        PunchAmount: "26"
-        PunchPer: "14"
-        MaxPunchSize: "40"
-        MaxPunches: "30"
-        MaxVblks: "35"
-        VblkPer: "20"
-        VbAmount: "100"
-        SeqStart: "1"
-        ChunkNum: "1"
-        Seed: "141"
         Type: "0"     #You can pass different pattern value here.
-        BlockSize: "20"
-        BlockSizeMax: "40"
-        StartVblk: "111"
-        StrideWidth: "20"
-
+    
     - name: "{{ recipe_name }}: Get dir path."
       include_role:
         name: common
