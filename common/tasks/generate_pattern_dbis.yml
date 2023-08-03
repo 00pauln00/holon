@@ -3,21 +3,7 @@
     - name: "Generate DBIs."
       vars:
          input_param: {
-                  'punchAmount' : "{{ PunchAmount }}",
-                  'punchPer' : "{{ PunchPer }}",
-                  'maxPunchSize' : "{{ MaxPunchSize }}",
-                  'maxPunches' : "{{ MaxPunches }}",
-                  'maxVblks' : "{{ MaxVblks }}",
-                  'vblkPer' : "{{ VblkPer }}",
-                  'vbAmount' : "{{ VbAmount }}",
-                  'seqStart' : "{{ SeqStart }}",
-                  'chunk' : "{{ ChunkNum }}",
-                  'seed' : "{{ Seed }}",
                   'genType' : "{{ Type }}",
-                  'blockSize' : "{{ BlockSize }}",
-                  'blockSizeMax' : "{{ BlockSizeMax }}",
-                  'startVblk' : "{{ StartVblk }}",
-                  'strideWidth' : "{{ StrideWidth }}"
                  }
       debug:
          msg:
