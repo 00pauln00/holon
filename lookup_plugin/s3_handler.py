@@ -41,8 +41,19 @@ def start_generate_dbi(cluster_params, operation, punchAmount, punchesPer, maxPu
                            "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
                            "-vp", vblkPer], stdout = fp, stderr = fp)
 
-    os.fsync(fp)
-    return process_popen
+    # Wait for the process to finish and get the exit code
+    exit_code = process_popen.wait()
+
+    # Close the log file
+    fp.close()
+
+    # Check if the process finished successfully (exit code 0)
+    if exit_code == 0:
+        print("Process completed successfully.")
+        return True
+    else:
+        print(f"Process failed with exit code {exit_code}.")
+        return False
 
 def start_pattern_generator(cluster_params, operation, punchAmount, punchesPer, maxPuncheSize, maxPunches,
                             maxVblks, vblkPer, vbAmount, seqStart, chunk, seed, genType, blockSize, blockSizeMax,
@@ -79,8 +90,19 @@ def start_pattern_generator(cluster_params, operation, punchAmount, punchesPer, 
                            "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
                            "-vs", startVblk, "-sw", strideWidth], stdout = fp, stderr = fp)
 
-    os.fsync(fp)
-    return process_popen
+    # Wait for the process to finish and get the exit code
+    exit_code = process_popen.wait()
+
+    # Close the log file
+    fp.close()
+
+    # Check if the process finished successfully (exit code 0)
+    if exit_code == 0:
+        print("Process completed successfully.")
+        return True
+    else:
+        print(f"Process failed with exit code {exit_code}.")
+        return False
 
 def start_gc_process(cluster_params, operation, dbi_input_path):
     base_dir = cluster_params['base_dir']
@@ -100,9 +122,19 @@ def start_gc_process(cluster_params, operation, dbi_input_path):
 
     process_popen = subprocess.Popen([bin_path, '-dir', dbi_input_path], stdout = fp, stderr = fp)
 
-    os.fsync(fp)
-    return process_popen
+    # Wait for the process to finish and get the exit code
+    exit_code = process_popen.wait()
 
+    # Close the log file
+    fp.close()
+
+    # Check if the process finished successfully (exit code 0)
+    if exit_code == 0:
+        print("Process completed successfully.")
+        return True
+    else:
+        print(f"Process failed with exit code {exit_code}.")
+        return False
 
 def start_data_validate(cluster_params, operation, path, gcPath):
     base_dir = cluster_params['base_dir']
@@ -121,9 +153,19 @@ def start_data_validate(cluster_params, operation, path, gcPath):
 
     process_popen = subprocess.Popen([bin_path, '-d', path, '-gcd', gcPath], stdout = fp, stderr = fp)
 
-    os.fsync(fp)
+    # Wait for the process to finish and get the exit code
+    exit_code = process_popen.wait()
 
-    return process_popen
+    # Close the log file
+    fp.close()
+
+    # Check if the process finished successfully (exit code 0)
+    if exit_code == 0:
+        print("Process completed successfully.")
+        return True
+    else:
+        print(f"Process failed with exit code {exit_code}.")
+        return False
 
 def load_json_contents(path):
     counter = 0
@@ -179,6 +221,5 @@ class LookupModule(LookupBase):
 
         cluster_params = kwargs['variables']['ClusterParams']
 
-        if cluster_params['app_type'] == "gcvalidation":
-            data = extracting_dictionary(cluster_params, operation, input_values)
-            return data
+        data = extracting_dictionary(cluster_params, operation, input_values)
+        return data
