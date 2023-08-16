@@ -12,7 +12,7 @@
 
     - name: "Store directory names starting with 'dbi_' in a variable"
       set_fact:
-        directory_names: "{{ directories.files | map(attribute='path') | select('match', '^' + base_dir + '/dbi-dbo_.*$') | list }}"
+        directory_names: "{{ directories.files | map(attribute='path') | select('match', '^' + base_dir + '/bin') | list }}"
 
     - debug:
         msg: "{{ directory_names }}"

@@ -5,6 +5,7 @@ from datetime import datetime
 import time
 import subprocess
 import uuid, random
+import shutil
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
 
@@ -13,16 +14,20 @@ def start_generate_dbi(cluster_params, punchAmount, punchesPer, maxPuncheSize, m
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
-    dirName = "dbi-dbo"
-    # Get current date and time
-    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-
+    dirName = "bin"
     # Create new directory name with timestamp
-    new_directory_name = f'{dirName}_{timestamp}'
+    new_directory_name = f'{dirName}'
 
     path = "%s/%s/%s/" % (base_dir, raft_uuid, new_directory_name)
     # Create the new directory
-    os.mkdir(path)
+    if not os.path.exists(path):
+        # Create the directory path
+        try:
+            os.makedirs(path)
+        except Exception as e:
+            print(f"An error occurred while creating '{path}': {e}")
+    else:
+        print(f"Directory '{path}' already exists.")
 
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
@@ -59,16 +64,20 @@ def start_pattern_generator(cluster_params, genType):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
-    dirName = "dbi-dbo"
-    # Get current date and time
-    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-
+    dirName = "bin"
     # Create new directory name with timestamp
-    new_directory_name = f'{dirName}_{timestamp}'
+    new_directory_name = f'{dirName}'
 
     path = "%s/%s/%s/" % (base_dir, raft_uuid, new_directory_name)
     # Create the new directory
-    os.mkdir(path)
+    if not os.path.exists(path):
+        # Create the directory path
+        try:
+            os.makedirs(path)
+        except Exception as e:
+            print(f"An error occurred while creating '{path}': {e}")
+    else:
+        print(f"Directory '{path}' already exists.")
 
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
@@ -90,7 +99,7 @@ def start_pattern_generator(cluster_params, genType):
     punchesPer = "0"
     maxPuncheSize = str(random.choice([2 ** i for i in range(10)]))
     seed = str(random.randint(1, 100))
-    seqStart = "0"
+    seqStart = str(random.randint(1, 200))
     vbAmount = str(random.randint(1, 10000000))
     vblkPer = str(random.randint(1, 1000))
     blockSize = str(random.randint(1, 32))
@@ -118,7 +127,7 @@ def start_pattern_generator(cluster_params, genType):
         print(f"Process failed with exit code {exit_code}.")
         return False
 
-def start_gc_process(cluster_params, dbi_input_path):
+def start_gc_process(cluster_params, dbi_input_path, dbo_input_path):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -133,8 +142,18 @@ def start_gc_process(cluster_params, dbi_input_path):
 
     #Get dummyDBI example
     bin_path = '%s/gcTester' % binary_dir
+    gc_output_path = "%s/%s/GC_OUTPUT/"  % (base_dir, raft_uuid)
+    if not os.path.exists(gc_output_path):
+        # Create the directory path
+        try:
+            os.makedirs(gc_output_path)
+        except Exception as e:
+            print(f"An error occurred while creating '{path}': {e}")
+    else:
+        print(f"Directory '{gc_output_path}' already exists.")
 
-    process_popen = subprocess.Popen([bin_path, '-dir', dbi_input_path], stdout = fp, stderr = fp)
+    process_popen = subprocess.Popen([bin_path, '-dbi', dbi_input_path, '-dbo',
+                        dbo_input_path, '-o', gc_output_path], stdout = fp, stderr = fp)
 
     # Wait for the process to finish and get the exit code
     exit_code = process_popen.wait()
@@ -150,7 +169,7 @@ def start_gc_process(cluster_params, dbi_input_path):
         print(f"Process failed with exit code {exit_code}.")
         return False
 
-def start_data_validate(cluster_params, path, gcPath):
+def start_data_validate(cluster_params, path):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -164,6 +183,7 @@ def start_data_validate(cluster_params, path, gcPath):
     fp = open(dbiLogFile, "a+")
 
     bin_path = '%s/dataValidator' % binary_dir
+    gcPath = "%s/%s/GC_OUTPUT"  % (base_dir, raft_uuid)
 
     process_popen = subprocess.Popen([bin_path, '-d', path, '-gcd', gcPath], stdout = fp, stderr = fp)
 
@@ -200,6 +220,29 @@ def load_json_contents(path):
 
     return json_data
 
+def delete_dir(path):
+    try:
+        shutil.rmtree(path)
+        print(f"Directory '{path}' deleted successfully.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def copy_contents(source, destination):
+    try:
+        # List all items in the source directory
+        items = os.listdir(source)
+        # Iterate through each item and copy files to the destination
+        for item in items:
+            source_item = os.path.join(source, item)
+            destination_item = os.path.join(destination, item)
+
+            if os.path.isfile(source_item):
+                shutil.copy(source_item, destination_item)  # Copy files
+
+        print("Files copied successfully.")
+    except Exception as e:
+        print("An error occurred:", e)
+
 def extracting_dictionary(cluster_params, operation, input_values):
 
     if operation == "generate_dbi":
@@ -210,18 +253,32 @@ def extracting_dictionary(cluster_params, operation, input_values):
 
     elif operation == "generate_pattern":
        popen = start_pattern_generator(cluster_params, input_values['genType'])
+    
     elif operation == "start_gc":
-       popen = start_gc_process(cluster_params, input_values['dbiObjPath'])
+       popen = start_gc_process(cluster_params, input_values['dbiObjPath'], input_values['dboObjPath'])
 
     elif operation == "data_validate":
-       popen = start_data_validate(cluster_params, input_values['path'], input_values['gcPath'])
+       popen = start_data_validate(cluster_params, input_values['path'])
 
     elif operation == "load_contents":
-        print("path from recipe", input_values['path'])
         data = load_json_contents(input_values['path'])
-
         return data
+    
+    elif operation == "delete_file":
+        dbopath = input_values['path'] + "/dbo"
+        dbipath = input_values['path'] + "/dbi"
 
+        delete_dir(dbopath)
+        delete_dir(dbipath)
+    
+    elif operation == "copy_dbi_dbo":
+        gcdbi = "%s/%s/GC_OUTPUT/dbi"  % (cluster_params['base_dir'], cluster_params['raft_uuid'])
+        gcdbo = "%s/%s/GC_OUTPUT/dbo"  % (cluster_params['base_dir'], cluster_params['raft_uuid'])
+
+        dbiPath = input_values['dbiObjPath']
+        dboPath = input_values['dboObjPath']
+        copy_contents(gcdbi, dbiPath)
+        copy_contents(gcdbo, dboPath)
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
@@ -232,4 +289,5 @@ class LookupModule(LookupBase):
         cluster_params = kwargs['variables']['ClusterParams']
 
         data = extracting_dictionary(cluster_params, operation, input_values)
+    
         return data
