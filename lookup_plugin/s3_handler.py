@@ -87,21 +87,31 @@ def start_pattern_generator(cluster_params, genType):
 
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(dbiLogFile, "a+")
+    if os.path.exists(path+"dummy_generator.json"):
+        with open(path+"dummy_generator.json", "r+", encoding="utf-8") as json_file:
+            json_data = json.load(json_file)
+            print(json_data)
 
     #Get dummyDBI example
     bin_path = '%s/example' % binary_dir
-
+    
     # Generate random values for the dbi pattern generation
     chunk = str(random.randint(1, 200))
-    maxPunches = str(random.choice([2 ** i for i in range(6)]))
-    maxVblks = str(random.choice([2 ** i for i in range(10)]))
-    punchAmount = str(random.choice([2 ** i for i in range(10)])) 
+    maxPunches = str(random.choice([2 ** i for i in range(4)]))
+    maxVblks = str(random.choice([2 ** i for i in range(6)]))
+    punchAmount = str(random.choice([2 ** i for i in range(4)])) 
     punchesPer = "0"
-    maxPuncheSize = str(random.choice([2 ** i for i in range(10)]))
+    maxPuncheSize = str(random.choice([2 ** i for i in range(4)]))
     seed = str(random.randint(1, 100))
-    seqStart = str(random.randint(1, 200))
-    vbAmount = str(random.randint(1, 10000000))
-    vblkPer = str(random.randint(1, 1000))
+    if os.path.exists(path+"dummy_generator.json"):
+        with open(path+"dummy_generator.json", "r+", encoding="utf-8") as json_file:
+            json_data = json.load(json_file)
+            print(json_data['SeqStart'] + json_data['TotalVBLKs'])
+            seqStart = str(json_data['SeqStart'] + json_data['TotalVBLKs'] - 1)
+    else:
+        seqStart = str(random.randint(1, 200))
+    vbAmount = str(random.randint(1, 1000000))
+    vblkPer = str(random.randint(1, 100))
     blockSize = str(random.randint(1, 32))
     blockSizeMax = str(random.randint(1, 32))
     startVblk = "0"

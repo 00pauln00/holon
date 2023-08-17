@@ -29,30 +29,21 @@
           - "{{ lookup('s3_handler', 'load_contents', input_param, wantlist=True) }}"
       register: json_contents
 
-    - debug:
-        msg: "{{ json_contents }}"
-
-    - debug:
-        msg: "{{ json_contents['msg'][0]['DbiPath'] }}"
-
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
          input_param: {
                   'dbiObjPath' : "{{ json_contents['msg'][0]['DbiPath'] }}",
+                  'dboObjPath' : "{{ json_contents['msg'][0]['DboPath'] }}",
                  }
       debug:
          msg:
           - "{{ lookup('s3_handler', 'start_gc', input_param, wantlist=True) }}"
 
-    - debug:
-        msg: "SolutionArray: {{ directory_names[0] }}"
-
     - name: "{{ recipe_name }}: Start data validation"
       vars:
          input_param: {
                   'path' : "{{ directory_names[0] }}/",
-                  'gcPath' : "{{ json_contents['msg'][0]['DbiPath'] }}/GC_output"
+                  'gcPath' : "{{ directory_names[0] }}/GC_output"
                  }
       debug:
          msg: "{{ lookup('s3_handler', 'data_validate', input_param, wantlist=True) }}"
-
