@@ -87,31 +87,28 @@ def start_pattern_generator(cluster_params, genType):
 
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(dbiLogFile, "a+")
-    if os.path.exists(path+"dummy_generator.json"):
-        with open(path+"dummy_generator.json", "r+", encoding="utf-8") as json_file:
-            json_data = json.load(json_file)
-            print(json_data)
-
     #Get dummyDBI example
     bin_path = '%s/example' % binary_dir
     
     # Generate random values for the dbi pattern generation
-    chunk = str(random.randint(1, 200))
-    maxPunches = str(random.choice([2 ** i for i in range(4)]))
-    maxVblks = str(random.choice([2 ** i for i in range(6)]))
-    punchAmount = str(random.choice([2 ** i for i in range(4)])) 
-    punchesPer = "0"
-    maxPuncheSize = str(random.choice([2 ** i for i in range(4)]))
-    seed = str(random.randint(1, 100))
-    if os.path.exists(path+"dummy_generator.json"):
-        with open(path+"dummy_generator.json", "r+", encoding="utf-8") as json_file:
-            json_data = json.load(json_file)
-            print(json_data['SeqStart'] + json_data['TotalVBLKs'])
-            seqStart = str(json_data['SeqStart'] + json_data['TotalVBLKs'] - 1)
+    if os.path.exists(path + "dummy_generator.json"):
+         json_data = load_json_contents(path + "dummy_generator.json") 
+         chunk = str(json_data['TotalChunkSize'])
     else:
-        seqStart = str(random.randint(1, 200))
-    vbAmount = str(random.randint(1, 1000000))
-    vblkPer = str(random.randint(1, 100))
+        chunk = str(random.randint(1, 200))
+    maxPunches = str(random.choice([2 ** i for i in range(2)]))
+    maxVblks = str(random.choice([2 ** i for i in range(3)]))
+    punchAmount = str(random.choice([2 ** i for i in range(2)]))
+    punchesPer = "0"
+    maxPuncheSize = str(random.choice([2 ** i for i in range(2)]))
+    seed = str(random.randint(1, 100))
+    if os.path.exists(path+"dummy_generator.json"): 
+        json_data = load_json_contents(path + "dummy_generator.json")
+        seqStart = str(json_data['SeqStart'] + json_data['TotalVBLKs'])
+    else:
+        seqStart = "0"
+    vbAmount = str(random.randint(1, 1000))
+    vblkPer = str(random.randint(1, 10))
     blockSize = str(random.randint(1, 32))
     blockSizeMax = str(random.randint(1, 32))
     startVblk = "0"
@@ -289,6 +286,14 @@ def extracting_dictionary(cluster_params, operation, input_values):
         dboPath = input_values['dboObjPath']
         copy_contents(gcdbi, dbiPath)
         copy_contents(gcdbo, dboPath)
+
+    elif operation == "copy_contents":
+        dbiPath = input_values['dbiObjPath']
+        dboPath = input_values['dboObjPath']
+        destinationdbi = input_values['dbiObjPath']
+        destinationdbo = input_values['dboObjPath']
+        copy_contents(dbiPath, destinationdbi)
+        copy_contents(dboPath, destinationdbo)
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
