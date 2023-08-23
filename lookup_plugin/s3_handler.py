@@ -1,6 +1,6 @@
 from ansible.plugins.lookup import LookupBase
 import json
-import os
+import os, random
 from datetime import datetime
 import time
 import subprocess
@@ -273,7 +273,18 @@ def extracting_dictionary(cluster_params, operation, input_values):
 
         delete_dir(dbopath)
         delete_dir(dbipath)
-    
+   
+    elif operation == "delete_file_50Precent":
+        dbipath = input_values['path'] + "/dbi"
+        file_list = os.listdir(dbipath)
+        files_to_delete = len(file_list) // 2
+
+        random.shuffle(file_list)
+
+        for i in range(files_to_delete):
+            file_to_delete = os.path.join(directory_path, file_list[i])
+            os.remove(file_to_delete)
+
     elif operation == "copy_dbi_dbo":
         gcdbi = "%s/%s/GC_OUTPUT/dbi"  % (cluster_params['base_dir'], cluster_params['raft_uuid'])
         gcdbo = "%s/%s/GC_OUTPUT/dbo"  % (cluster_params['base_dir'], cluster_params['raft_uuid'])
