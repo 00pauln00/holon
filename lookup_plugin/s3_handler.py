@@ -113,15 +113,14 @@ def start_pattern_generator(cluster_params, genType):
     blockSizeMax = str(random.randint(1, 32))
     startVblk = "0"
     strideWidth = str(random.randint(1, 50)) 
-    
-    process_popen = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches,
+    process = subprocess.run([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches,
                            "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
                            "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
                            "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
                            "-vs", startVblk, "-sw", strideWidth], stdout = fp, stderr = fp)
 
     # Wait for the process to finish and get the exit code
-    exit_code = process_popen.wait()
+    exit_code = process.returncode
 
     # Close the log file
     fp.close()
@@ -129,10 +128,9 @@ def start_pattern_generator(cluster_params, genType):
     # Check if the process finished successfully (exit code 0)
     if exit_code == 0:
         print("Process completed successfully.")
-        return True
     else:
-        print(f"Process failed with exit code {exit_code}.")
-        return False
+        error_message = f"Process failed with exit code {exit_code}."
+        raise RuntimeError(error_message)
 
 def start_gc_process(cluster_params, dbi_input_path, dbo_input_path):
     base_dir = cluster_params['base_dir']
@@ -159,11 +157,11 @@ def start_gc_process(cluster_params, dbi_input_path, dbo_input_path):
     else:
         print(f"Directory '{gc_output_path}' already exists.")
 
-    process_popen = subprocess.Popen([bin_path, '-dbi', dbi_input_path, '-dbo',
+    process = subprocess.run([bin_path, '-dbi', dbi_input_path, '-dbo',
                         dbo_input_path, '-o', gc_output_path], stdout = fp, stderr = fp)
 
     # Wait for the process to finish and get the exit code
-    exit_code = process_popen.wait()
+    exit_code = process.returncode
 
     # Close the log file
     fp.close()
@@ -171,10 +169,9 @@ def start_gc_process(cluster_params, dbi_input_path, dbo_input_path):
     # Check if the process finished successfully (exit code 0)
     if exit_code == 0:
         print("Process completed successfully.")
-        return True
     else:
-        print(f"Process failed with exit code {exit_code}.")
-        return False
+        error_message = f"Process failed with exit code {exit_code}."
+        raise RuntimeError(error_message)
 
 def start_data_validate(cluster_params, path):
     base_dir = cluster_params['base_dir']
@@ -192,10 +189,10 @@ def start_data_validate(cluster_params, path):
     bin_path = '%s/dataValidator' % binary_dir
     gcPath = "%s/%s/GC_OUTPUT"  % (base_dir, raft_uuid)
 
-    process_popen = subprocess.Popen([bin_path, '-d', path, '-gcd', gcPath], stdout = fp, stderr = fp)
+    process = subprocess.run([bin_path, '-d', path, '-gcd', gcPath], stdout = fp, stderr = fp)
 
     # Wait for the process to finish and get the exit code
-    exit_code = process_popen.wait()
+    exit_code = process.returncode
 
     # Close the log file
     fp.close()
@@ -203,10 +200,9 @@ def start_data_validate(cluster_params, path):
     # Check if the process finished successfully (exit code 0)
     if exit_code == 0:
         print("Process completed successfully.")
-        return True
     else:
-        print(f"Process failed with exit code {exit_code}.")
-        return False
+        error_message = f"Process failed with exit code {exit_code}."
+        raise RuntimeError(error_message)
 
 def load_json_contents(path):
     counter = 0
