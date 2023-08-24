@@ -24,3 +24,19 @@
          msg:
           - "{{ lookup('s3_handler', 'start_gc', {}, s3_support, wantlist=True) }}"
 
+    - name: "{{ recipe_name }}: Get dir path."
+      include_role:
+        name: common
+        tasks_from: get_dir_path
+
+    - name: "{{ recipe_name }}: Start data validation"
+      vars:
+         input_param: {
+                  'path' : "{{ directory_names[0] }}/",
+                  'gcPath' : "{{ directory_names[0] }}/GC_OUTPUT"
+                 }
+         s3_support: True
+      debug:
+         msg: "{{ lookup('s3_handler', 'data_validate', input_param, s3_support, wantlist=True) }}"
+
+
