@@ -5,7 +5,8 @@
          input_param: {
                   'genType' : "{{ Type }}",
                  }
+         s3Support: "{{ s3_support }}"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'generate_pattern', input_param, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'generate_pattern', input_param, s3Support, wantlist=True) }}"
 

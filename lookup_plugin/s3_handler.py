@@ -9,6 +9,12 @@ import shutil
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
 
+def generate_directory_path(base_dir, raft_uuid, dirName):
+    new_directory_name = dirName
+
+    path = "%s/%s/%s/" % (base_dir, raft_uuid, new_directory_name)
+    return path
+
 def start_generate_dbi(cluster_params, punchAmount, punchesPer, maxPuncheSize, maxPunches,
                             maxVblks, vblkPer, vbAmount, seqStart, chunk, seed, genType):
     base_dir = cluster_params['base_dir']
@@ -60,15 +66,12 @@ def start_generate_dbi(cluster_params, punchAmount, punchesPer, maxPuncheSize, m
         print(f"Process failed with exit code {exit_code}.")
         return False
 
-def start_pattern_generator(cluster_params, genType):
+def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
     dirName = "bin"
-    # Create new directory name with timestamp
-    new_directory_name = f'{dirName}'
-
-    path = "%s/%s/%s/" % (base_dir, raft_uuid, new_directory_name)
+    path = generate_directory_path(base_dir, raft_uuid, dirName)
     # Create the new directory
     if not os.path.exists(path):
         # Create the directory path
@@ -89,20 +92,20 @@ def start_pattern_generator(cluster_params, genType):
     fp = open(dbiLogFile, "a+")
     #Get dummyDBI example
     bin_path = '%s/example' % binary_dir
-    
+
     # Generate random values for the dbi pattern generation
     if os.path.exists(path + "dummy_generator.json"):
-         json_data = load_json_contents(path + "dummy_generator.json") 
+         json_data = load_json_contents(path + "dummy_generator.json")
          chunk = str(json_data['TotalChunkSize'])
     else:
-        chunk = str(random.randint(1, 200))
+        chunk = chunkNumber
     maxPunches = str(random.choice([2 ** i for i in range(2)]))
     maxVblks = str(random.choice([2 ** i for i in range(3)]))
     punchAmount = str(random.choice([2 ** i for i in range(2)]))
     punchesPer = "0"
     maxPuncheSize = str(random.choice([2 ** i for i in range(2)]))
     seed = str(random.randint(1, 100))
-    if os.path.exists(path+"dummy_generator.json"): 
+    if os.path.exists(path+"dummy_generator.json"):
         json_data = load_json_contents(path + "dummy_generator.json")
         seqStart = str(json_data['SeqStart'] + json_data['TotalVBLKs'])
     else:
@@ -112,8 +115,21 @@ def start_pattern_generator(cluster_params, genType):
     blockSize = str(random.randint(1, 32))
     blockSizeMax = str(random.randint(1, 32))
     startVblk = "0"
-    strideWidth = str(random.randint(1, 50)) 
-    process = subprocess.run([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches,
+    strideWidth = str(random.randint(1, 50))
+
+    if s3Support == True:
+        s3config = '%s/s3.config.example' % binary_dir
+        # Prepare path for log file.
+        s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
+
+        process = subprocess.run([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches,
+                           "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
+                           "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
+                           "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
+                           "-vs", startVblk, "-sw", strideWidth, '-s3config', s3config, '-s3log',
+                           s3LogFile, '-bn', chunk], stdout = fp, stderr = fp)
+    else:
+        process = subprocess.run([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches,
                            "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
                            "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
                            "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
@@ -132,7 +148,7 @@ def start_pattern_generator(cluster_params, genType):
         error_message = f"Process failed with exit code {exit_code}."
         raise RuntimeError(error_message)
 
-def start_gc_process(cluster_params, dbi_input_path, dbo_input_path):
+def start_gc_process(cluster_params, chunkNumber, dbi_input_path, dbo_input_path, s3Support):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -157,8 +173,23 @@ def start_gc_process(cluster_params, dbi_input_path, dbo_input_path):
     else:
         print(f"Directory '{gc_output_path}' already exists.")
 
-    process = subprocess.run([bin_path, '-dbi', dbi_input_path, '-dbo',
-                        dbo_input_path, '-o', gc_output_path], stdout = fp, stderr = fp)
+    if s3Support == True:
+         s3config = '%s/s3.config.example' % binary_dir
+         # Prepare path for log file.
+         s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
+         downloadPath = "%s/%s/" % (base_dir, raft_uuid)
+         path = generate_directory_path(base_dir, raft_uuid, "bin")
+         # Generate random values for the dbi pattern generation
+         if os.path.exists(path + "dummy_generator.json"):
+              json_data = load_json_contents(path + "dummy_generator.json")
+              chunkNumber = str(json_data['TotalChunkSize'])
+         else:
+             print("dummy_generator.json is not present")
+         process = subprocess.run([bin_path, '-s3config', s3config, '-s3log',
+                              s3LogFile, '-bn', chunkNumber, '-path', downloadPath], stdout = fp, stderr = fp)
+    else:
+         process = subprocess.run([bin_path, '-dbi', dbi_input_path, '-dbo',
+                              dbo_input_path, '-o', gc_output_path], stdout = fp, stderr = fp)
 
     # Wait for the process to finish and get the exit code
     exit_code = process.returncode
@@ -246,7 +277,7 @@ def copy_contents(source, destination):
     except Exception as e:
         print("An error occurred:", e)
 
-def extracting_dictionary(cluster_params, operation, input_values):
+def extracting_dictionary(cluster_params, operation, chunkNumber, input_values, s3Support):
 
     if operation == "generate_dbi":
        popen = start_generate_dbi(cluster_params, input_values['punchAmount'], input_values['punchPer'],
@@ -255,10 +286,15 @@ def extracting_dictionary(cluster_params, operation, input_values):
                                   input_values['chunk'], input_values['seed'], input_values['genType'])
 
     elif operation == "generate_pattern":
-       popen = start_pattern_generator(cluster_params, input_values['genType'])
-    
+       popen = start_pattern_generator(cluster_params, chunkNumber, input_values['genType'], s3Support)
+
     elif operation == "start_gc":
-       popen = start_gc_process(cluster_params, input_values['dbiObjPath'], input_values['dboObjPath'])
+       if s3Support == True:
+           input_values['dbiObjPath'] = None
+           input_values['dboObjPath'] = None
+           popen = start_gc_process(cluster_params, chunkNumber, input_values['dbiObjPath'], input_values['dboObjPath'], s3Support)
+       else:
+           popen = start_gc_process(cluster_params, chunkNumber, input_values['dbiObjPath'], input_values['dboObjPath'], s3Support)
 
     elif operation == "data_validate":
        popen = start_data_validate(cluster_params, input_values['path'])
@@ -266,14 +302,14 @@ def extracting_dictionary(cluster_params, operation, input_values):
     elif operation == "load_contents":
         data = load_json_contents(input_values['path'])
         return data
-    
+
     elif operation == "delete_file":
         dbopath = input_values['path'] + "/dbo"
         dbipath = input_values['path'] + "/dbi"
 
         delete_dir(dbopath)
         delete_dir(dbipath)
-   
+
     elif operation == "delete_file_50Precent":
         dbipath = input_values['path'] + "/dbi"
         file_list = os.listdir(dbipath)
@@ -307,9 +343,13 @@ class LookupModule(LookupBase):
         #Get lookup parameter values
         operation = terms[0]
         input_values = terms[1]
+        s3Support = terms[2]
+
+        # Generate a random chunkNumber
+        chunkNumber = str(random.randint(1, 200))
 
         cluster_params = kwargs['variables']['ClusterParams']
 
-        data = extracting_dictionary(cluster_params, operation, input_values)
-    
+        data = extracting_dictionary(cluster_params, operation, chunkNumber, input_values, s3Support)
+
         return data

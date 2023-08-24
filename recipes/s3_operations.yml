@@ -1,0 +1,26 @@
+- name: "Perform S3 Operations"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "s3_operations"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "Generate DBIs and upload it to s3."
+      vars:
+         input_param: {
+                  'genType' : "2",
+                 }
+         s3_support: True
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'generate_pattern', input_param, s3_support, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Start gc algorithm"
+      vars:
+        s3_support: True
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gc', {}, s3_support, wantlist=True) }}"
+
