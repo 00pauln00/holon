@@ -4,6 +4,7 @@
   vars:
      recipe_name: "generate_sequential_dbi_pattern"
      parent: None
+     s3_support: False
 
   tasks:
   - block:
@@ -13,6 +14,7 @@
         tasks_from: generate_pattern_dbis
       vars:
         Type: "1"     #You can pass different pattern value here.
+        s3Support: "{{ s3_support }}"
 
     - name: "{{ recipe_name }}: Get dir path."
       include_role:
@@ -26,7 +28,7 @@
                  }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'load_contents', input_param, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'load_contents', input_param, s3_support, wantlist=True) }}"
       register: json_contents
 
     - name: "{{ recipe_name }}: Start gc algorithm"
@@ -37,7 +39,7 @@
                  }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc', input_param, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gc', input_param, s3_support, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start data validation"
       vars:
@@ -46,5 +48,5 @@
                   'gcPath' : "{{ directory_names[0] }}/GC_output"
                  }
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate', input_param, wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'data_validate', input_param, s3_support, wantlist=True) }}"
 

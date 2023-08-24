@@ -279,13 +279,7 @@ def copy_contents(source, destination):
 
 def extracting_dictionary(cluster_params, operation, chunkNumber, input_values, s3Support):
 
-    if operation == "generate_dbi":
-       popen = start_generate_dbi(cluster_params, input_values['punchAmount'], input_values['punchPer'],
-                                  input_values['maxPunchSize'], input_values['maxPunches'], input_values['maxVblks'],
-                                  input_values['vblkPer'], input_values['vbAmount'], input_values['seqStart'],
-                                  input_values['chunk'], input_values['seed'], input_values['genType'])
-
-    elif operation == "generate_pattern":
+    if operation == "generate_pattern":
        popen = start_pattern_generator(cluster_params, chunkNumber, input_values['genType'], s3Support)
 
     elif operation == "start_gc":
