@@ -15,57 +15,6 @@ def generate_directory_path(base_dir, raft_uuid, dirName):
     path = "%s/%s/%s/" % (base_dir, raft_uuid, new_directory_name)
     return path
 
-def start_generate_dbi(cluster_params, punchAmount, punchesPer, maxPuncheSize, maxPunches,
-                            maxVblks, vblkPer, vbAmount, seqStart, chunk, seed, genType):
-    base_dir = cluster_params['base_dir']
-    raft_uuid = cluster_params['raft_uuid']
-
-    dirName = "bin"
-    # Create new directory name with timestamp
-    new_directory_name = f'{dirName}'
-
-    path = "%s/%s/%s/" % (base_dir, raft_uuid, new_directory_name)
-    # Create the new directory
-    if not os.path.exists(path):
-        # Create the directory path
-        try:
-            os.makedirs(path)
-        except Exception as e:
-            print(f"An error occurred while creating '{path}': {e}")
-    else:
-        print(f"Directory '{path}' already exists.")
-
-    # Prepare path for executables.
-    binary_dir = os.getenv('NIOVA_BIN_PATH')
-
-    # Prepare path for log file.
-    dbiLogFile = "%s/%s/dbiLog.log" % (base_dir, raft_uuid)
-
-    # Open the log file to pass the fp to subprocess.Popen
-    fp = open(dbiLogFile, "a+")
-
-    #Get dummyDBI example
-    bin_path = '%s/example' % binary_dir
-
-    process_popen = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches,
-                           "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
-                           "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
-                           "-vp", vblkPer], stdout = fp, stderr = fp)
-
-    # Wait for the process to finish and get the exit code
-    exit_code = process_popen.wait()
-
-    # Close the log file
-    fp.close()
-
-    # Check if the process finished successfully (exit code 0)
-    if exit_code == 0:
-        print("Process completed successfully.")
-        return True
-    else:
-        print(f"Process failed with exit code {exit_code}.")
-        return False
-
 def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
