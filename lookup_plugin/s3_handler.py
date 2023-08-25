@@ -153,7 +153,7 @@ def start_gc_process(cluster_params, chunkNumber, dbi_input_path, dbo_input_path
         error_message = f"Process failed with exit code {exit_code}."
         raise RuntimeError(error_message)
 
-def start_data_validate(cluster_params, path, gcPath):
+def start_data_validate(cluster_params, path):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -167,6 +167,8 @@ def start_data_validate(cluster_params, path, gcPath):
     fp = open(dbiLogFile, "a+")
 
     bin_path = '%s/dataValidator' % binary_dir
+    gcPath = "%s/%s/GC_OUTPUT/" % (base_dir, raft_uuid)
+
     process = subprocess.Popen([bin_path, '-d', path, '-gcd', gcPath], stdout = fp, stderr = fp)
 
     # Wait for the process to finish and get the exit code
@@ -238,7 +240,7 @@ def extracting_dictionary(cluster_params, operation, chunkNumber, input_values, 
            popen = start_gc_process(cluster_params, chunkNumber, input_values['dbiObjPath'], input_values['dboObjPath'], s3Support)
 
     elif operation == "data_validate":
-       popen = start_data_validate(cluster_params, input_values['path'], input_values['gcPath'])
+       popen = start_data_validate(cluster_params, input_values['path'])
 
     elif operation == "load_contents":
         data = load_json_contents(input_values['path'])
