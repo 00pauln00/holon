@@ -46,7 +46,7 @@
       vars:
          input_param: {
                   'path' : "{{ directory_names[0] }}/",
-                  'gcPath' : "{{ directory_names[0] }}/GC_output"
+                  'gcPath' : "{{ directory_names[0] }}/GC_OUTPUT"
                  }
       debug:
          msg: "{{ lookup('s3_handler', 'data_validate', input_param, s3_support, wantlist=True) }}"

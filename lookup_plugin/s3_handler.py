@@ -48,18 +48,18 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support):
          chunk = str(json_data['TotalChunkSize'])
     else:
         chunk = chunkNumber
-    maxPunches = str(random.choice([2 ** i for i in range(2)]))
-    maxVblks = str(random.choice([2 ** i for i in range(3)]))
-    punchAmount = str(random.choice([2 ** i for i in range(2)]))
+    maxPunches = str(random.choice([2 ** i for i in range(6)]))
+    maxVblks = str(random.choice([2 ** i for i in range(4)]))
+    punchAmount = str(random.choice([2 ** i for i in range(6)]))
     punchesPer = "0"
-    maxPuncheSize = str(random.choice([2 ** i for i in range(2)]))
+    maxPuncheSize = str(random.choice([2 ** i for i in range(6)]))
     seed = str(random.randint(1, 100))
     if os.path.exists(path+"dummy_generator.json"):
         json_data = load_json_contents(path + "dummy_generator.json")
         seqStart = str(json_data['SeqStart'] + json_data['TotalVBLKs'])
     else:
         seqStart = "0"
-    vbAmount = str(random.randint(1, 1000))
+    vbAmount = str(random.randint(1, 100000))
     vblkPer = str(random.randint(1, 10))
     blockSize = str(random.randint(1, 32))
     blockSizeMax = str(random.randint(1, 32))
@@ -71,21 +71,21 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support):
         # Prepare path for log file.
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
 
-        process = subprocess.run([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches,
+        process = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches,
                            "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
                            "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
                            "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
                            "-vs", startVblk, "-sw", strideWidth, '-s3config', s3config, '-s3log',
                            s3LogFile, '-bn', chunk], stdout = fp, stderr = fp)
     else:
-        process = subprocess.run([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches,
+        process = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches,
                            "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
                            "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
                            "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
                            "-vs", startVblk, "-sw", strideWidth], stdout = fp, stderr = fp)
 
     # Wait for the process to finish and get the exit code
-    exit_code = process.returncode
+    exit_code = process.wait()
 
     # Close the log file
     fp.close()
@@ -134,14 +134,14 @@ def start_gc_process(cluster_params, chunkNumber, dbi_input_path, dbo_input_path
               chunkNumber = str(json_data['TotalChunkSize'])
          else:
              print("dummy_generator.json is not present")
-         process = subprocess.run([bin_path, '-s3config', s3config, '-s3log',
+         process = subprocess.Popen([bin_path, '-s3config', s3config, '-s3log',
                               s3LogFile, '-bn', chunkNumber, '-path', downloadPath], stdout = fp, stderr = fp)
     else:
-         process = subprocess.run([bin_path, '-dbi', dbi_input_path, '-dbo',
+         process = subprocess.Popen([bin_path, '-dbi', dbi_input_path, '-dbo',
                               dbo_input_path, '-o', gc_output_path], stdout = fp, stderr = fp)
 
     # Wait for the process to finish and get the exit code
-    exit_code = process.returncode
+    exit_code = process.wait()
 
     # Close the log file
     fp.close()
@@ -153,7 +153,7 @@ def start_gc_process(cluster_params, chunkNumber, dbi_input_path, dbo_input_path
         error_message = f"Process failed with exit code {exit_code}."
         raise RuntimeError(error_message)
 
-def start_data_validate(cluster_params, path):
+def start_data_validate(cluster_params, path, gcPath):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -167,12 +167,10 @@ def start_data_validate(cluster_params, path):
     fp = open(dbiLogFile, "a+")
 
     bin_path = '%s/dataValidator' % binary_dir
-    gcPath = "%s/%s/GC_OUTPUT"  % (base_dir, raft_uuid)
-
-    process = subprocess.run([bin_path, '-d', path, '-gcd', gcPath], stdout = fp, stderr = fp)
+    process = subprocess.Popen([bin_path, '-d', path, '-gcd', gcPath], stdout = fp, stderr = fp)
 
     # Wait for the process to finish and get the exit code
-    exit_code = process.returncode
+    exit_code = process.wait()
 
     # Close the log file
     fp.close()
@@ -240,7 +238,7 @@ def extracting_dictionary(cluster_params, operation, chunkNumber, input_values, 
            popen = start_gc_process(cluster_params, chunkNumber, input_values['dbiObjPath'], input_values['dboObjPath'], s3Support)
 
     elif operation == "data_validate":
-       popen = start_data_validate(cluster_params, input_values['path'])
+       popen = start_data_validate(cluster_params, input_values['path'], input_values['gcPath'])
 
     elif operation == "load_contents":
         data = load_json_contents(input_values['path'])
