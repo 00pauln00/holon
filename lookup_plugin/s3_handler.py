@@ -59,7 +59,7 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support):
         seqStart = str(json_data['SeqStart'] + json_data['TotalVBLKs'])
     else:
         seqStart = "0"
-    vbAmount = str(random.randint(1, 100000))
+    vbAmount = str(random.randint(1, 1000))
     vblkPer = str(random.randint(1, 10))
     blockSize = str(random.randint(1, 32))
     blockSizeMax = str(random.randint(1, 32))
@@ -226,6 +226,42 @@ def copy_contents(source, destination):
     except Exception as e:
         print("An error occurred:", e)
 
+def copy_DBI_file_generatorNum(path):
+    # Get a list of files in the source directory
+    file_list = os.listdir(path)
+
+    # Check if there are any files in the directory
+    if file_list:
+        # Select a random file from the list
+        random_file = random.choice(file_list)
+        print("Random file:", random_file)
+
+        # Split the filename by dots ('.')
+        filename_parts = random_file.split(".")
+
+        # Extract the 3rd last element after the dots
+        third_last_element = filename_parts[-3]
+        print("Original third_last_element:", third_last_element)
+
+        # Increment the extracted element by 1
+        new_third_last_element = str(int(third_last_element) + 1)
+        print("Updated third_last_element:", new_third_last_element)
+
+        # Update the filename with the incremented element
+        filename_parts[-3] = new_third_last_element
+        new_filename = ".".join(filename_parts)
+        print("New filename:", new_filename)
+
+        # Full path for the copied and renamed file
+        source_file_path = os.path.join(path, random_file)
+        new_file_path = os.path.join(path, new_filename)
+
+        # Copy the file and rename the copy
+        shutil.copy(source_file_path, new_file_path)
+        print(f"Successfully copied and renamed the file to '{new_file_path}'")
+    else:
+        print("No files found in the directory.") 
+
 def extracting_dictionary(cluster_params, operation, chunkNumber, input_values, s3Support):
 
     if operation == "generate_pattern":
@@ -280,6 +316,10 @@ def extracting_dictionary(cluster_params, operation, chunkNumber, input_values, 
         destinationdbo = input_values['dboObjPath']
         copy_contents(dbiPath, destinationdbi)
         copy_contents(dboPath, destinationdbo)
+
+    elif operation == "copy_DBI_file_generatorNum":
+        dbiPath = input_values['dbiObjPath']
+        copy_DBI_file_generatorNum(dbiPath)
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
