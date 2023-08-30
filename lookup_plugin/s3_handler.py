@@ -70,7 +70,6 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support):
         s3config = '%s/s3.config.example' % binary_dir
         # Prepare path for log file.
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
-
         process = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches,
                            "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
                            "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
@@ -86,7 +85,6 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support):
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
-
     # Close the log file
     fp.close()
 
@@ -123,6 +121,8 @@ def start_gc_process(cluster_params, chunkNumber, dbi_input_path, dbo_input_path
         print(f"Directory '{gc_output_path}' already exists.")
 
     if s3Support == True:
+         input_values = {}
+         input_values['debugMode'] = "false"
          s3config = '%s/s3.config.example' % binary_dir
          # Prepare path for log file.
          s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
@@ -135,7 +135,7 @@ def start_gc_process(cluster_params, chunkNumber, dbi_input_path, dbo_input_path
          else:
              print("dummy_generator.json is not present")
          process = subprocess.Popen([bin_path, '-s3config', s3config, '-s3log',
-                              s3LogFile, '-bn', chunkNumber, '-path', downloadPath], stdout = fp, stderr = fp)
+                              s3LogFile, '-bn', chunkNumber, '-path', downloadPath, '-o', gc_output_path, '-d', input_values['debugMode']], stdout = fp, stderr = fp)
     else:
          process = subprocess.Popen([bin_path, '-dbi', dbi_input_path, '-dbo',
                               dbo_input_path, '-o', gc_output_path], stdout = fp, stderr = fp)
@@ -260,7 +260,7 @@ def copy_DBI_file_generatorNum(path):
         shutil.copy(source_file_path, new_file_path)
         print(f"Successfully copied and renamed the file to '{new_file_path}'")
     else:
-        print("No files found in the directory.") 
+        print("No files found in the directory.")
 
 def extracting_dictionary(cluster_params, operation, chunkNumber, input_values, s3Support):
 

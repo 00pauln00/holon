@@ -1,9 +1,12 @@
-- name: "Perform S3 Operations"
+- import_playbook: s3_operations.yml
+
+- name: "multiple_gc_iterations_without_deleting_dbi_dbo"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "s3_operations"
-     parent: None
+     recipe_name: "multiple_gc_iterations_without_deleting_dbi_dbo"
+     parent: "s3_operations"
+     s3_support: True
 
   tasks:
   - block:
@@ -12,20 +15,19 @@
          input_param: {
                   'genType' : "0",
                  }
-         s3_support: True
       debug:
          msg:
           - "{{ lookup('s3_handler', 'generate_pattern', input_param, s3_support, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: Start gc algorithm and keep the dbi-dbo"
+    - name: "{{ recipe_name }}: Start gc algorithm."
       vars:
         input_param: {
-                  'debugMode' : "true",
+                  'debugMode' : "false",
                  }
         s3_support: True
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc', input_param, s3_support, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gc', {}, s3_support, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Get dir path."
       include_role:
@@ -40,5 +42,3 @@
          s3_support: True
       debug:
          msg: "{{ lookup('s3_handler', 'data_validate', input_param, s3_support, wantlist=True) }}"
-
-
