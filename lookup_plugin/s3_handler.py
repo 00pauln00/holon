@@ -75,7 +75,7 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support):
                            "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
                            "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
                            "-vs", startVblk, "-sw", strideWidth, '-s3config', s3config, '-s3log',
-                           s3LogFile, '-bn', chunk], stdout = fp, stderr = fp)
+                           s3LogFile], stdout = fp, stderr = fp)
     else:
         process = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dirName, "-mp", maxPunches,
                            "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
@@ -108,7 +108,6 @@ def start_gc_process(cluster_params, chunkNumber, dbi_input_path, dbo_input_path
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(dbiLogFile, "a+")
 
-    #Get dummyDBI example
     bin_path = '%s/gcTester' % binary_dir
     gc_output_path = "%s/%s/GC_OUTPUT/"  % (base_dir, raft_uuid)
     if not os.path.exists(gc_output_path):
@@ -128,14 +127,18 @@ def start_gc_process(cluster_params, chunkNumber, dbi_input_path, dbo_input_path
          s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
          downloadPath = "%s/%s/" % (base_dir, raft_uuid)
          path = generate_directory_path(base_dir, raft_uuid, "bin")
-         # Generate random values for the dbi pattern generation
+
+         # Check if file exist or not
          if os.path.exists(path + "dummy_generator.json"):
               json_data = load_json_contents(path + "dummy_generator.json")
               chunkNumber = str(json_data['TotalChunkSize'])
          else:
-             print("dummy_generator.json is not present")
+             err_msg = f"dummy_generator.json is not present"
+             raise RuntimeError(err_msg)
+
+         jPath = path + "dummy_generator.json"
          process = subprocess.Popen([bin_path, '-s3config', s3config, '-s3log',
-                              s3LogFile, '-bn', chunkNumber, '-path', downloadPath, '-o', gc_output_path, '-d', input_values['debugMode']], stdout = fp, stderr = fp)
+                              s3LogFile, '-j', jPath, '-path', downloadPath, '-o', gc_output_path, '-d', input_values['debugMode']], stdout = fp, stderr = fp)
     else:
          process = subprocess.Popen([bin_path, '-dbi', dbi_input_path, '-dbo',
                               dbo_input_path, '-o', gc_output_path], stdout = fp, stderr = fp)
