@@ -95,7 +95,7 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support):
         error_message = f"Process failed with exit code {exit_code}."
         raise RuntimeError(error_message)
 
-def start_gc_process(cluster_params, chunkNumber, dbi_input_path, dbo_input_path, s3Support):
+def start_gc_process(cluster_params, dbi_input_path, dbo_input_path, s3Support):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -108,8 +108,17 @@ def start_gc_process(cluster_params, chunkNumber, dbi_input_path, dbo_input_path
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(dbiLogFile, "a+")
 
+    path = generate_directory_path(base_dir, raft_uuid, "bin")
+    # Check if file exist or not
+    if os.path.exists(path + "dummy_generator.json"):
+         json_data = load_json_contents(path + "dummy_generator.json")
+         vdev = str(json_data['BucketName'])
+    else:
+         err_msg = f"dummy_generator.json is not present"
+         raise RuntimeError(err_msg)
+
     bin_path = '%s/gcTester' % binary_dir
-    gc_output_path = "%s/%s/GC_OUTPUT/"  % (base_dir, raft_uuid)
+    gc_output_path = "%s/%s/GC_OUTPUT/%s/"  % (base_dir, raft_uuid, vdev)
     if not os.path.exists(gc_output_path):
         # Create the directory path
         try:
@@ -126,15 +135,6 @@ def start_gc_process(cluster_params, chunkNumber, dbi_input_path, dbo_input_path
          # Prepare path for log file.
          s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
          downloadPath = "%s/%s/" % (base_dir, raft_uuid)
-         path = generate_directory_path(base_dir, raft_uuid, "bin")
-
-         # Check if file exist or not
-         if os.path.exists(path + "dummy_generator.json"):
-              json_data = load_json_contents(path + "dummy_generator.json")
-              chunkNumber = str(json_data['TotalChunkSize'])
-         else:
-             err_msg = f"dummy_generator.json is not present"
-             raise RuntimeError(err_msg)
 
          jPath = path + "dummy_generator.json"
          process = subprocess.Popen([bin_path, '-s3config', s3config, '-s3log',
@@ -156,7 +156,7 @@ def start_gc_process(cluster_params, chunkNumber, dbi_input_path, dbo_input_path
         error_message = f"Process failed with exit code {exit_code}."
         raise RuntimeError(error_message)
 
-def start_data_validate(cluster_params, path):
+def start_data_validate(cluster_params, path, chunkNumber):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -168,11 +168,19 @@ def start_data_validate(cluster_params, path):
 
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(dbiLogFile, "a+")
+    path = generate_directory_path(base_dir, raft_uuid, "bin")
+    # Check if file exist or not
+    if os.path.exists(path + "dummy_generator.json"):
+         json_data = load_json_contents(path + "dummy_generator.json")
+         chunkNumber = str(json_data['TotalChunkSize'])
+         vdev = str(json_data['BucketName'])
+    else:
+         err_msg = f"dummy_generator.json is not present"
+         raise RuntimeError(err_msg)
 
     bin_path = '%s/dataValidator' % binary_dir
-    gcPath = "%s/%s/GC_OUTPUT/" % (base_dir, raft_uuid)
-
-    process = subprocess.Popen([bin_path, '-d', path, '-gcd', gcPath], stdout = fp, stderr = fp)
+    gcOpPath = "%s/%s/GC_OUTPUT/%s/" % (base_dir, raft_uuid, vdev)
+    process = subprocess.Popen([bin_path, '-d', path, '-gcd', gcOpPath, '-c', chunkNumber], stdout = fp, stderr = fp)
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
@@ -274,12 +282,12 @@ def extracting_dictionary(cluster_params, operation, chunkNumber, input_values, 
        if s3Support == True:
            input_values['dbiObjPath'] = None
            input_values['dboObjPath'] = None
-           popen = start_gc_process(cluster_params, chunkNumber, input_values['dbiObjPath'], input_values['dboObjPath'], s3Support)
+           popen = start_gc_process(cluster_params, input_values['dbiObjPath'], input_values['dboObjPath'], s3Support)
        else:
-           popen = start_gc_process(cluster_params, chunkNumber, input_values['dbiObjPath'], input_values['dboObjPath'], s3Support)
+           popen = start_gc_process(cluster_params, input_values['dbiObjPath'], input_values['dboObjPath'], s3Support)
 
     elif operation == "data_validate":
-       popen = start_data_validate(cluster_params, input_values['path'])
+       popen = start_data_validate(cluster_params, input_values['path'], chunkNumber)
 
     elif operation == "load_contents":
         data = load_json_contents(input_values['path'])
