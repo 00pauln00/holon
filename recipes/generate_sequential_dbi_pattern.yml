@@ -8,7 +8,8 @@
 
   tasks:
   - block:
-    - name: "{{ recipe_name }}: Generate Sequential DBI requests."
+
+    -  name: "{{ recipe_name }}: Generate random DBI requests."
       include_role:
         name: common
         tasks_from: generate_pattern_dbis
@@ -16,36 +17,12 @@
         Type: "1"     #You can pass different pattern value here.
         s3Support: "{{ s3_support }}"
 
-    - name: "{{ recipe_name }}: Get dir path."
-      include_role:
-        name: common
-        tasks_from: get_dir_path
-
-    - name: "{{ recipe_name }}: load the contents of the dummy_generator.json file"
-      vars:
-         input_param: {
-                  'path' : "{{ directory_names[0] }}/dummy_generator.json",
-                 }
-      debug:
-         msg:
-          - "{{ lookup('s3_handler', 'load_contents', input_param, s3_support, wantlist=True) }}"
-      register: json_contents
-
     - name: "{{ recipe_name }}: Start gc algorithm"
-      vars:
-         input_param: {
-                  'dbiObjPath' : "{{ json_contents['msg'][0]['DbiPath'] }}",
-                  'dboObjPath' : "{{ json_contents['msg'][0]['DboPath'] }}",
-                 }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc', input_param, s3_support, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gc', s3_support, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start data validation"
-      vars:
-         input_param: {
-                  'path' : "{{ directory_names[0] }}/",
-                 }
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate', input_param, s3_support, wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'data_validate', s3_support, wantlist=True) }}"
 
