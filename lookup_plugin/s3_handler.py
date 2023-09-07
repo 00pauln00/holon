@@ -68,8 +68,7 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support, dir
         if os.path.exists(jsonPath + "dummy_generator.json"):
             json_data = load_json_contents(jsonPath + "dummy_generator.json")
             chunk = str(json_data['TotalChunkSize'])
-            seqStart = str(json_data['SeqStart'] + json_data['TotalVBLKs'] + json_data['TotalPunch'])
-            print(seqStart)
+            seqStart = str(json_data['SeqStart'] + json_data['TotalVBLKs'] + json_data['TotalPunch'] + 1)
             vdev = str(json_data['BucketName'])
     else:
         chunk = chunkNumber
@@ -81,7 +80,7 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support, dir
     punchesPer = "0"
     maxPuncheSize = str(random.choice([2 ** i for i in range(6)]))
     seed = str(random.randint(1, 100))
-    vbAmount = str(random.randint(1, 10000))
+    vbAmount = str(random.randint(1, 100))
     vblkPer = str(random.randint(1, 10))
     blockSize = str(random.randint(1, 32))
     blockSizeMax = str(random.randint(1, 32))
@@ -354,7 +353,7 @@ def extracting_dictionary(cluster_params, operation, s3Support, dirName):
         random.shuffle(file_list)
 
         for i in range(files_to_delete):
-            file_to_delete = os.path.join(directory_path, file_list[i])
+            file_to_delete = os.path.join(dbipath, file_list[i])
             os.remove(file_to_delete)
 
     elif operation == "copy_dbi_dbo":
@@ -372,9 +371,10 @@ def extracting_dictionary(cluster_params, operation, s3Support, dirName):
         
         gcdbi = "%s/%s/GC_OUTPUT/%s/dbi/%s"  % (cluster_params['base_dir'], cluster_params['raft_uuid'], vdev, chunk)
         gcdbo = "%s/%s/GC_OUTPUT/%s/dbo/%s"  % (cluster_params['base_dir'], cluster_params['raft_uuid'], vdev, chunk)
-
         copy_contents(gcdbi, dbipath)
         copy_contents(gcdbo, dbopath)
+        delete_dir(gcdbi)
+        delete_dir(gcdbo)
 
     elif operation == "copy_contents":
 
