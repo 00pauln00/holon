@@ -68,7 +68,7 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support, dir
         if os.path.exists(jsonPath + "dummy_generator.json"):
             json_data = load_json_contents(jsonPath + "dummy_generator.json")
             chunk = str(json_data['TotalChunkSize'])
-            seqStart = str(json_data['SeqStart'] + json_data['TotalVBLKs'] + json_data['TotalPunch'] + 1)
+            seqStart = str(json_data['SeqEnd'] + 1)
             vdev = str(json_data['BucketName'])
     else:
         chunk = chunkNumber
