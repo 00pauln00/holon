@@ -57,9 +57,9 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support, dir
 
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(dbiLogFile, "a+")
-    
+
     #Get dummyDBI example
-    bin_path = '%s/example' % binary_dir 
+    bin_path = '%s/example' % binary_dir
     print("path", path)
     vdev = ""
     # Generate random values for the dbi pattern generation
@@ -91,7 +91,15 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support, dir
         s3config = '%s/s3.config.example' % binary_dir
         # Prepare path for log file.
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
-        process = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dbo, "-mp", maxPunches,
+        if vdev != "":
+            process = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dbo, "-mp", maxPunches,
+                           "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
+                           "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
+                           "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
+                           "-vs", startVblk, "-sw", strideWidth, '-s3config', s3config, '-s3log',
+                           s3LogFile, "-vdev", vdev], stdout = fp, stderr = fp)
+        else:
+            process = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dbo, "-mp", maxPunches,
                            "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
                            "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
                            "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
@@ -127,7 +135,7 @@ def start_gc_process(cluster_params, s3Support, dirName):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     baseDir = os.path.join(base_dir, raft_uuid)
-    
+    debugMode = cluster_params['debugMode']
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
@@ -149,7 +157,7 @@ def start_gc_process(cluster_params, s3Support, dirName):
          raise RuntimeError(err_msg)
 
     bin_path = '%s/gcTester' % binary_dir
-    
+
     gc_output_path = "%s/%s/GC_OUTPUT/"  % (base_dir, raft_uuid)
     if not os.path.exists(gc_output_path):
         # Create the directory path
@@ -157,19 +165,19 @@ def start_gc_process(cluster_params, s3Support, dirName):
             os.makedirs(gc_output_path)
         except Exception as e:
             print(f"An error occurred while creating '{path}': {e}")
-    
+
     json_path = jsonPath + "/" + "dummy_generator.json"
     if s3Support == True:
-         input_values = {}
-         input_values['debugMode'] = "false"
          s3config = '%s/s3.config.example' % binary_dir
          # Prepare path for log file.
          s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
          downloadPath = "%s/%s/" % (base_dir, raft_uuid)
+         jPath = jsonPath + "dummy_generator.json"
+         cmd = [bin_path, '-s3config', s3config, '-s3log', s3LogFile, '-j', jPath, '-path', downloadPath, '-o', gc_output_path]
+         if debugMode:
+              cmd.append('-d')
 
-         jPath = path + "dummy_generator.json"
-         process = subprocess.Popen([bin_path, '-s3config', s3config, '-s3log',
-                              s3LogFile, '-j', jPath, '-path', downloadPath, '-o', gc_output_path, '-d', input_values['debugMode']], stdout = fp, stderr = fp)
+         process = subprocess.Popen(cmd, stdout = fp, stderr = fp)
     else:
          process = subprocess.Popen([bin_path, '-dbi', dbi_input_path, '-dbo',
                               dbo_input_path, '-o', gc_output_path, "-j", json_path], stdout = fp, stderr = fp)
@@ -312,8 +320,9 @@ def extracting_dictionary(cluster_params, operation, s3Support, dirName):
 
     if operation == "start_gc":
        if s3Support == True:
-           input_values['dbiObjPath'] = None
-           input_values['dboObjPath'] = None
+           #input_values['dbiObjPath'] = None
+           #input_values['dboObjPath'] = None
+           print("s3Support in function: ", s3Support)
            popen = start_gc_process(cluster_params, s3Support, dirName)
        else:
            popen = start_gc_process(cluster_params, s3Support, dirName)
@@ -368,7 +377,7 @@ def extracting_dictionary(cluster_params, operation, s3Support, dirName):
             err_msg = f"dummy_generator.json is not present"
             raise RuntimeError(err_msg)
 
-        
+
         gcdbi = "%s/%s/GC_OUTPUT/%s/dbi/%s"  % (cluster_params['base_dir'], cluster_params['raft_uuid'], vdev, chunk)
         gcdbo = "%s/%s/GC_OUTPUT/%s/dbo/%s"  % (cluster_params['base_dir'], cluster_params['raft_uuid'], vdev, chunk)
         copy_contents(gcdbi, dbipath)

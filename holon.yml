@@ -37,6 +37,7 @@
       nnisds: "{{ nnisds | default(50) | int }}"
       blocktest_input_file_path: "{{ blocktest_file_path | default(false) | bool }}"
       nthreads:  "{{ nthreads | default(2) | int }}"
+      debugMode: "{{ debugMode | default(false) | bool }}"
     failed_when: >
       ((srv_port | int) >= 65536) or
       ((client_port | int) >= 65536) or
@@ -84,6 +85,7 @@
            nnisds: "{{ nnisds | default(5) }}"
            niovaBlockTest_input_file_path: "{{ blocktest_input_file_path }}"
            nthreads:  "{{ nthreads }}"
+           debugMode: "{{ debugMode }}"
 
   - name: "Prepare server configs"
     set_fact: ClusterInfo="{{lookup('niova_raftconfig', "server", wantlist=True)}}"
@@ -100,6 +102,7 @@
         - "Raft params: {{ ClusterParams }}"
         - "Disable post run : {{ disable_post_run }}"
         - "Number of thread count: {{ nthreads }}"
+        - "Object deletion: {{ debugMode }}"
 
 - import_playbook: recipes/"{{ recipe }}"
   vars:
