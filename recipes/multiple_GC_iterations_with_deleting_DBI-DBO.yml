@@ -1,23 +1,15 @@
-- name: "multiple_gc_iterations_without_deleting_dbi_dbo"
+- import_playbook: generate_random_dbi_pattern.yml
+
+- name: "multiple_GC_iterations_with_deleting_DBI-DBO"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "multiple_gc_iterations_without_deleting_dbi_dbo"
+     recipe_name: "multiple_GC_iterations_with_deleting_DBI-DBO"
+     parent: "generate_random_dbi_pattern"
 
   tasks:
   - block:
-
-    - name: "{{ recipe_name }}: Generate random DBI requests."
-      include_role:
-        name: common
-        tasks_from: generate_pattern_dbis
-      vars:
-        Type: "0"     #You can pass different pattern value here.
-
-    - name: "{{ recipe_name }}: Start gc algorithm"
-      debug:
-         msg: "{{ lookup('s3_handler', 'start_gc', wantlist=True) }}"
-
+    
     - name: "{{ recipe_name }}: Generate random DBI requests."
       include_role:
         name: common
