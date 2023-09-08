@@ -9,6 +9,25 @@ import shutil
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
 
+def start_minio_server(cluster_params, dirName):
+    s3Support = cluster_params['s3Support']
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+
+    # Prepare path for log file.
+    s3_server = "%s/%s/s3Server.log" % (base_dir, raft_uuid)
+
+    if s3Support:
+        # Check if the directory exists, and if not, create it.
+        if not os.path.exists(os.path.expanduser(f'~/{dirName}')):
+            os.makedirs(os.path.expanduser(f'~/{dirName}'))
+
+        command = f"minio server ~/{dirName} --console-address ':9090' --address ':9000'"
+
+        with open(s3_server, "w") as log_file:
+             subprocess.Popen(command, shell=True, stdout=log_file, stderr=subprocess.STDOUT)
+    print("MinIO server started successfully in the background.")
+
 def generate_directory_path(base_dir, raft_uuid, dirName):
     new_directory_name = dirName
 
@@ -36,9 +55,11 @@ def get_dir_path(cluster_params, dirName):
     else:
         return None
 
-def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support, dirName):
+def start_pattern_generator(cluster_params, chunkNumber, genType, dirName):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
+
     dbo = "bin"
     path = generate_directory_path(base_dir, raft_uuid, dirName)
     # Create the new directory
@@ -87,7 +108,7 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support, dir
     startVblk = "0"
     strideWidth = str(random.randint(1, 50))
 
-    if s3Support == True:
+    if s3Support == "true":
         s3config = '%s/s3.config.example' % binary_dir
         # Prepare path for log file.
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
@@ -131,9 +152,10 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, s3Support, dir
         error_message = f"Process failed with exit code {exit_code}."
         raise RuntimeError(error_message)
 
-def start_gc_process(cluster_params, s3Support, dirName):
+def start_gc_process(cluster_params, dirName):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
     baseDir = os.path.join(base_dir, raft_uuid)
     debugMode = cluster_params['debugMode']
     # Prepare path for executables.
@@ -167,7 +189,7 @@ def start_gc_process(cluster_params, s3Support, dirName):
             print(f"An error occurred while creating '{path}': {e}")
 
     json_path = jsonPath + "/" + "dummy_generator.json"
-    if s3Support == True:
+    if s3Support == "true":
          s3config = '%s/s3.config.example' % binary_dir
          # Prepare path for log file.
          s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
@@ -316,16 +338,9 @@ def copy_DBI_file_generatorNum(cluster_params, dirName):
     else:
         print("No files found in the directory.")
 
-def extracting_dictionary(cluster_params, operation, s3Support, dirName):
-
+def extracting_dictionary(cluster_params, operation, dirName):
     if operation == "start_gc":
-       if s3Support == True:
-           #input_values['dbiObjPath'] = None
-           #input_values['dboObjPath'] = None
-           print("s3Support in function: ", s3Support)
-           popen = start_gc_process(cluster_params, s3Support, dirName)
-       else:
-           popen = start_gc_process(cluster_params, s3Support, dirName)
+       popen = start_gc_process(cluster_params, dirName)
 
     elif operation == "data_validate":
        popen = start_data_validate(cluster_params, dirName)
@@ -401,6 +416,8 @@ class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
         dirName = "dbi-dbo"
+        s3Dir = ""
+        port = ""
         operation = terms[0]
         # Generate a random chunkNumber
         chunkNumber = str(random.randint(1, 200))
@@ -408,9 +425,10 @@ class LookupModule(LookupBase):
         cluster_params = kwargs['variables']['ClusterParams']
         if operation == "generate_pattern":
             input_values = terms[1]
-            s3Support = terms[2]
-            popen = start_pattern_generator(cluster_params, chunkNumber, input_values['genType'], s3Support, dirName)
+            popen = start_pattern_generator(cluster_params, chunkNumber, input_values['genType'], dirName)
+        elif operation == "start_s3":
+              s3Dir = terms[1]
+              start_minio_server(cluster_params, s3Dir)
         else:
-            s3Support = terms[1]
-            data = extracting_dictionary(cluster_params, operation, s3Support, dirName)
+            data = extracting_dictionary(cluster_params, operation, dirName)
             return data

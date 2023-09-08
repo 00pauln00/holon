@@ -7,27 +7,32 @@
 
   tasks:
   - block:
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "minio_data"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+
+    - pause:
+        seconds: 3
+
     - name: "Generate Random DBIs and upload it to s3."
       vars:
          input_param: {
                   'genType' : "0",
                  }
-         s3_support: True
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'generate_pattern', input_param, s3_support, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'generate_pattern', input_param,  wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start gc algorithm and keep the dbi-dbo"
-      vars:
-        s3_support: True
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc', s3_support, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gc', wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start data validation"
-      vars:
-         s3_support: True
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate', s3_support, wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'data_validate', wantlist=True) }}"
 
 

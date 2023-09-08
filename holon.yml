@@ -38,6 +38,7 @@
       blocktest_input_file_path: "{{ blocktest_file_path | default(false) | bool }}"
       nthreads:  "{{ nthreads | default(2) | int }}"
       debugMode: "{{ debugMode | default(false) | bool }}"
+      s3Support: "{{ s3Support | default(false) | bool }}"
     failed_when: >
       ((srv_port | int) >= 65536) or
       ((client_port | int) >= 65536) or
@@ -86,6 +87,7 @@
            niovaBlockTest_input_file_path: "{{ blocktest_input_file_path }}"
            nthreads:  "{{ nthreads }}"
            debugMode: "{{ debugMode }}"
+           s3Support: "{{ s3Support }}"
 
   - name: "Prepare server configs"
     set_fact: ClusterInfo="{{lookup('niova_raftconfig', "server", wantlist=True)}}"
@@ -103,6 +105,7 @@
         - "Disable post run : {{ disable_post_run }}"
         - "Number of thread count: {{ nthreads }}"
         - "Object deletion: {{ debugMode }}"
+        - "s3Support: {{ s3Support }}"
 
 - import_playbook: recipes/"{{ recipe }}"
   vars:
