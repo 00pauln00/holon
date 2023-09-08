@@ -4,7 +4,6 @@
   vars:
      recipe_name: "generate_random_dbi_pattern"
      parent: None
-     s3_support: False
 
   tasks:
   - block:
@@ -20,9 +19,9 @@
     - name: "{{ recipe_name }}: Start gc algorithm"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc', s3_support, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gc', wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start data validation"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate', s3_support, wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'data_validate', wantlist=True) }}"
 

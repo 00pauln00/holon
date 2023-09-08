@@ -4,7 +4,6 @@
   vars:
      recipe_name: "generate_sequential_dbi_pattern"
      parent: None
-     s3_support: False
 
   tasks:
   - block:
@@ -15,14 +14,13 @@
         tasks_from: generate_pattern_dbis
       vars:
         Type: "1"     #You can pass different pattern value here.
-        s3Support: "{{ s3_support }}"
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc', s3_support, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gc', wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start data validation"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate', s3_support, wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'data_validate', wantlist=True) }}"
 
