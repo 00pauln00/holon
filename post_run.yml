@@ -38,6 +38,15 @@
     set_fact:
       jsondata: "{{ result.stdout | from_json }}"
 
+  - name: "{{ recipe_name }}: Get the s3 process pid and status."
+    set_fact:
+        process_pid: "{{ jsondata.s3_process.process_pid }}"
+        process_status: "{{ jsondata.s3_process.process_status }}"
+
+  - name: Kill the s3 process if it was found
+    shell: kill -9 {{ process_pid }}
+    when: process_status == "sleeping"
+
   - name: "Kill the processes after recipe execution"
     set_fact:
        kill_peer="{{lookup('niova_raftprocess', 'kill', raft_processes[item]['process_uuid'], wantlist=True)}}"

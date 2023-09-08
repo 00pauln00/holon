@@ -1,13 +1,25 @@
 from ansible.plugins.lookup import LookupBase
 import json
-import os, random
+import os, random, psutil
 from datetime import datetime
 import time
 import subprocess
 import uuid, random
 import shutil
+from genericcmd import *
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
+
+def load_recipe_op_config(cluster_params):
+    recipe_conf = {}
+    raft_json_fpath = "%s/%s/%s.json" % (cluster_params['base_dir'],
+                                         cluster_params['raft_uuid'],
+                                         cluster_params['raft_uuid'])
+    if os.path.exists(raft_json_fpath):
+        with open(raft_json_fpath, "r+", encoding="utf-8") as json_file:
+            recipe_conf = json.load(json_file)
+
+    return recipe_conf
 
 def start_minio_server(cluster_params, dirName):
     s3Support = cluster_params['s3Support']
@@ -17,6 +29,9 @@ def start_minio_server(cluster_params, dirName):
     # Prepare path for log file.
     s3_server = "%s/%s/s3Server.log" % (base_dir, raft_uuid)
 
+    # Open the log file to pass the fp to subprocess.Popen
+    fp = open(s3_server, "w")
+
     if s3Support:
         # Check if the directory exists, and if not, create it.
         if not os.path.exists(os.path.expanduser(f'~/{dirName}')):
@@ -24,9 +39,41 @@ def start_minio_server(cluster_params, dirName):
 
         command = f"minio server ~/{dirName} --console-address ':9090' --address ':9000'"
 
-        with open(s3_server, "w") as log_file:
-             subprocess.Popen(command, shell=True, stdout=log_file, stderr=subprocess.STDOUT)
-    print("MinIO server started successfully in the background.")
+        process_popen = subprocess.Popen(command, shell=True, stdout=fp, stderr=fp)
+
+        # Check if MinIO process started successfully
+        if process_popen.poll() is None:
+            logging.info("MinIO server started successfully in the background.")
+        else:
+            logging.info("MinIO server failed to start")
+            raise subprocess.SubprocessError(process_popen.returncode)
+
+        # Wait for a short time to ensure the MinIO process has started.
+        time.sleep(2)
+        genericcmdobj = GenericCmds()
+        recipe_conf = load_recipe_op_config(cluster_params)
+
+        if not "s3_process" in recipe_conf:
+            recipe_conf['s3_process'] = {}
+
+        # Find the MinIO server process using psutil
+        minio_process = None
+        for child in psutil.Process(process_popen.pid).children(recursive=True):
+            if "minio" in child.name().lower():
+                minio_process = child
+                break
+
+        if minio_process:
+            minio_pid = minio_process.pid
+            minio_status = minio_process.status()
+            logging.info(f"MinIO server PID: {minio_pid}, Status: {minio_status}")
+            recipe_conf['s3_process']['process_pid'] = minio_pid
+            recipe_conf['s3_process']['process_status'] = minio_status
+            genericcmdobj.recipe_json_dump(recipe_conf)
+        else:
+            logging.info("MinIO server process not found")
+
+    return process_popen
 
 def generate_directory_path(base_dir, raft_uuid, dirName):
     new_directory_name = dirName
@@ -427,8 +474,8 @@ class LookupModule(LookupBase):
             input_values = terms[1]
             popen = start_pattern_generator(cluster_params, chunkNumber, input_values['genType'], dirName)
         elif operation == "start_s3":
-              s3Dir = terms[1]
-              start_minio_server(cluster_params, s3Dir)
+            s3Dir = terms[1]
+            process = start_minio_server(cluster_params, s3Dir)
         else:
             data = extracting_dictionary(cluster_params, operation, dirName)
             return data

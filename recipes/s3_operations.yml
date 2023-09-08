@@ -35,4 +35,8 @@
       debug:
          msg: "{{ lookup('s3_handler', 'data_validate', wantlist=True) }}"
 
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
 
