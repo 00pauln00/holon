@@ -371,9 +371,6 @@ def deleteFiles(cluster_params, dirName):
     total_files = len(file_names)
     files_to_delete = total_files // 2
 
-    # Shuffle the file list randomly so that we delete random files
-    random.shuffle(file_names)
-
     for i in range(files_to_delete):
         file_to_delete = os.path.join(dbi_input_path, file_names[i])
         try:
