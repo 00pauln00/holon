@@ -75,25 +75,19 @@ def start_minio_server(cluster_params, dirName):
 
     return process_popen
 
-def generate_directory_path(base_dir, raft_uuid, dirName):
-    new_directory_name = dirName
-
-    path = "%s/%s/%s/" % (base_dir, raft_uuid, new_directory_name)
-    return path
-
 def get_dir_path(cluster_params, dirName):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     baseDir = os.path.join(base_dir, raft_uuid)
     dbi_dir = os.path.join(baseDir, dirName)
 
-    # Get a list of all entries (files and directories) under the 'bin' directory
+    # Get a list of all entries (files and directories) under the 'dbi-dbo' directory
     entries = os.listdir(dbi_dir)
 
     # Filter out directories only
     directories = [entry for entry in entries if os.path.isdir(os.path.join(dbi_dir, entry))]
 
-    # Check if there are any directories in the 'dbi_dir'
+    # Check if there are any directories in the
     if directories:
         # Return the path of the first directory found with a trailing slash
         first_directory = directories[0]
@@ -108,7 +102,7 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName):
     s3Support = cluster_params['s3Support']
 
     dbo = "bin"
-    path = generate_directory_path(base_dir, raft_uuid, dirName)
+    path = "%s/%s/%s/" % (base_dir, raft_uuid, dirName)
     # Create the new directory
     if not os.path.exists(path):
         # Create the directory path
@@ -128,16 +122,14 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName):
 
     #Get dummyDBI example
     bin_path = '%s/example' % binary_dir
-    print("path", path)
     vdev = ""
     # Generate random values for the dbi pattern generation
     jsonPath = get_dir_path(cluster_params, dirName)
     if jsonPath != None:
-        if os.path.exists(jsonPath + "dummy_generator.json"):
-            json_data = load_json_contents(jsonPath + "dummy_generator.json")
-            chunk = str(json_data['TotalChunkSize'])
-            seqStart = str(json_data['SeqEnd'] + 1)
-            vdev = str(json_data['BucketName'])
+        json_data = load_json_contents(jsonPath + "dummy_generator.json")
+        chunk = str(json_data['TotalChunkSize'])
+        seqStart = str(json_data['SeqEnd'] + 1)
+        vdev = str(json_data['BucketName'])
     else:
         chunk = chunkNumber
         seqStart = "0"
@@ -199,12 +191,12 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName):
         error_message = f"Process failed with exit code {exit_code}."
         raise RuntimeError(error_message)
 
-def start_gc_process(cluster_params, dirName):
+def start_gc_process(cluster_params, dirName, debugMode):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
     baseDir = os.path.join(base_dir, raft_uuid)
-    debugMode = cluster_params['debugMode']
+    
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
@@ -214,42 +206,27 @@ def start_gc_process(cluster_params, dirName):
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(dbiLogFile, "a+")
 
-    jsonPath = get_dir_path(cluster_params, dirName)
-    # Check if file exist or not
-    if os.path.exists(jsonPath + "dummy_generator.json"):
-         json_data = load_json_contents(jsonPath + "dummy_generator.json")
-         vdev = str(json_data['BucketName'])
-         dbo_input_path = str(json_data['DboPath'])
-         dbi_input_path = str(json_data['DbiPath'])
-    else:
-         err_msg = f"dummy_generator.json is not present"
-         raise RuntimeError(err_msg)
+    path = get_dir_path(cluster_params, dirName)
+    json_data = load_json_contents(path + "dummy_generator.json")
+    vdev = str(json_data['BucketName'])
+    dbo_input_path = str(json_data['DboPath'])
+    dbi_input_path = str(json_data['DbiPath'])
 
     bin_path = '%s/gcTester' % binary_dir
-
-    gc_output_path = "%s/%s/GC_OUTPUT/"  % (base_dir, raft_uuid)
-    if not os.path.exists(gc_output_path):
-        # Create the directory path
-        try:
-            os.makedirs(gc_output_path)
-        except Exception as e:
-            print(f"An error occurred while creating '{path}': {e}")
-
-    json_path = jsonPath + "/" + "dummy_generator.json"
+    json_path = path + "dummy_generator.json"
+    solnArry = path + "solutionArray"
     if s3Support == "true":
          s3config = '%s/s3.config.example' % binary_dir
          # Prepare path for log file.
          s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
          downloadPath = "%s/%s/" % (base_dir, raft_uuid)
-         jPath = jsonPath + "dummy_generator.json"
-         cmd = [bin_path, '-s3config', s3config, '-s3log', s3LogFile, '-j', jPath, '-path', downloadPath, '-o', gc_output_path]
+         cmd = [bin_path, '-s3config', s3config, '-s3log', s3LogFile, '-j', json_path, '-path', downloadPath, '-o', gc_output_path]
          if debugMode:
               cmd.append('-d')
 
          process = subprocess.Popen(cmd, stdout = fp, stderr = fp)
     else:
-         process = subprocess.Popen([bin_path, '-dbi', dbi_input_path, '-dbo',
-                              dbo_input_path, '-o', gc_output_path, "-j", json_path], stdout = fp, stderr = fp)
+         process = subprocess.Popen([bin_path, '-i', path, '-j', json_path, '-v', solnArry, '-d', str(debugMode)], stdout = fp, stderr = fp)
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
@@ -272,24 +249,19 @@ def start_data_validate(cluster_params, dirName):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
     # Prepare path for log file.
-    dbiLogFile = "%s/%s/dataValidateLog.log" % (base_dir, raft_uuid)
+    dbiLogFile = "%s/%s/dataValidate.log" % (base_dir, raft_uuid)
 
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(dbiLogFile, "a+")
 
     path = get_dir_path(cluster_params, dirName)
-    # Check if file exist or not
-    if os.path.exists(path + "dummy_generator.json"):
-         json_data = load_json_contents(path + "/" + "dummy_generator.json")
-         chunkNumber = str(json_data['TotalChunkSize'])
-         vdev = str(json_data['BucketName'])
-    else:
-         err_msg = f"dummy_generator.json is not present"
-         raise RuntimeError(err_msg)
+    json_data = load_json_contents(path + "/" + "dummy_generator.json")
+    chunkNumber = str(json_data['TotalChunkSize'])
+    vdev = str(json_data['BucketName'])
 
+    logFile = "%s/%s/dataValidateResult" % (base_dir, raft_uuid)
     bin_path = '%s/dataValidator' % binary_dir
-    gcOpPath = "%s/%s/GC_OUTPUT/%s/" % (base_dir, raft_uuid, vdev)
-    process = subprocess.Popen([bin_path, '-d', path, '-gcd', gcOpPath, '-c', chunkNumber], stdout = fp, stderr = fp)
+    process = subprocess.Popen([bin_path, '-d', path, '-c', chunkNumber, '-l', logFile], stdout = fp, stderr = fp)
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
@@ -323,38 +295,33 @@ def load_json_contents(path):
 
     return json_data
 
-def delete_dir(path):
-    try:
-        shutil.rmtree(path)
-        print(f"Directory '{path}' deleted successfully.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+def get_DBiFileNames(cluster_params, dirName):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    path = get_dir_path(cluster_params, dirName)
+    json_data = load_json_contents(jsonPath + "dummy_generator.json")
+    dbi_input_path = str(json_data['DbiPath'])
+    
+    # Initialize a list to store file names
+    file_names = []
 
-def copy_contents(source, destination):
-    try:
-        # List all items in the source directory
-        items = os.listdir(source)
-        # Iterate through each item and copy files to the destination
-        for item in items:
-            source_item = os.path.join(source, item)
-            destination_item = os.path.join(destination, item)
+    # Iterate over the files in the directory
+    for filename in os.listdir(dbi_input_path):
+        if os.path.isfile(os.path.join(dbi_input_path, filename)):
+            file_names.append(filename)
 
-            if os.path.isfile(source_item):
-                shutil.copy(source_item, destination_item)  # Copy files
-
-        print("Files copied successfully.")
-    except Exception as e:
-        print("An error occurred:", e)
+    # Create a JSON file and write the list of file names to it
+    json_filename = 'DBIFileNames.json'
+    path = "%s/%s/%s" % (base_dir, raft_uuid, json_filename)
+    with open(path, 'w') as json_file:
+        json.dump(file_names, json_file)
 
 def copy_DBI_file_generatorNum(cluster_params, dirName):
     jsonPath = get_dir_path(cluster_params, dirName)
-    if os.path.exists(jsonPath + "dummy_generator.json"):
-         json_data = load_json_contents(jsonPath + "dummy_generator.json")
-         dbi_input_path = str(json_data['DbiPath'])
-    else:
-         err_msg = f"dummy_generator.json is not present"
-         raise RuntimeError(err_msg)
-
+    json_data = load_json_contents(jsonPath + "dummy_generator.json")
+    dbi_input_path = str(json_data['DbiPath'])
+    
     # Get a list of files in the source directory
     file_list = os.listdir(dbi_input_path)
 
@@ -362,8 +329,6 @@ def copy_DBI_file_generatorNum(cluster_params, dirName):
     if file_list:
         # Select a random file from the list
         random_file = random.choice(file_list)
-
-        # Split the filename by dots ('.')
         filename_parts = random_file.split(".")
 
         # Extract the 3rd last element after the dots
@@ -385,80 +350,53 @@ def copy_DBI_file_generatorNum(cluster_params, dirName):
     else:
         print("No files found in the directory.")
 
-def extracting_dictionary(cluster_params, operation, dirName):
-    if operation == "start_gc":
-       popen = start_gc_process(cluster_params, dirName)
+def deleteFiles(cluster_params, dirName):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    json_filename = 'DBIFileNames.json'
+    path = "%s/%s/%s" % (base_dir, raft_uuid, json_filename)
 
-    elif operation == "data_validate":
+    jsonPath = get_dir_path(cluster_params, dirName)
+    json_data = load_json_contents(jsonPath + "dummy_generator.json")
+    dbi_input_path = str(json_data['DbiPath'])
+
+    # Read the JSON file to get the list of file names
+    json_filename = 'DBIFileNames.json'
+    path = "%s/%s/%s" % (base_dir, raft_uuid, json_filename)
+    with open(path, 'r') as json_file:
+        file_names = json.load(json_file)
+
+    # Calculate how many files you want to delete (half of the total)
+    total_files = len(file_names)
+    files_to_delete = total_files // 2
+
+    # Shuffle the file list randomly so that we delete random files
+    random.shuffle(file_names)
+
+    for i in range(files_to_delete):
+        file_to_delete = os.path.join(dbi_input_path, file_names[i])
+        try:
+            os.remove(file_to_delete)
+        except Exception as e:
+            print(f"Error deleting {file_to_delete}: {str(e)}")
+
+def extracting_dictionary(cluster_params, operation, dirName):
+    if operation == "data_validate":
        popen = start_data_validate(cluster_params, dirName)
 
     elif operation == "load_contents":
         data = load_json_contents(input_values['path'])
         return data
 
-    elif operation == "delete_file":
-        jsonPath = get_dir_path(cluster_params, dirName)
-        if os.path.exists(jsonPath + "dummy_generator.json"):
-            json_data = load_json_contents(jsonPath + "dummy_generator.json")
-            dbi_input_path = str(json_data['DbiPath'])
-            dbo_input_path = str(json_data['DboPath'])
-        else:
-            err_msg = f"dummy_generator.json is not present"
-            raise RuntimeError(err_msg)
-
-        delete_dir(dbi_input_path)
-        delete_dir(dbo_input_path)
-
-    elif operation == "delete_file_50Precent":
-        jsonPath = get_dir_path(cluster_params, dirName)
-        if os.path.exists(jsonPath + "dummy_generator.json"):
-            json_data = load_json_contents(jsonPath + "dummy_generator.json")
-            dbipath = str(json_data['DbiPath'])
-        else:
-            err_msg = f"dummy_generator.json is not present"
-            raise RuntimeError(err_msg)
-
-        file_list = os.listdir(dbipath)
-        files_to_delete = len(file_list) // 2
-
-        random.shuffle(file_list)
-
-        for i in range(files_to_delete):
-            file_to_delete = os.path.join(dbipath, file_list[i])
-            os.remove(file_to_delete)
-
-    elif operation == "copy_dbi_dbo":
-        jsonPath = get_dir_path(cluster_params, dirName)
-        if os.path.exists(jsonPath + "dummy_generator.json"):
-            json_data = load_json_contents(jsonPath + "dummy_generator.json")
-            dbipath = str(json_data['DbiPath'])
-            dbopath = str(json_data['DboPath'])
-            vdev  = str(json_data['BucketName'])
-            chunk = str(json_data['TotalChunkSize'])
-        else:
-            err_msg = f"dummy_generator.json is not present"
-            raise RuntimeError(err_msg)
-
-
-        gcdbi = "%s/%s/GC_OUTPUT/%s/dbi/%s"  % (cluster_params['base_dir'], cluster_params['raft_uuid'], vdev, chunk)
-        gcdbo = "%s/%s/GC_OUTPUT/%s/dbo/%s"  % (cluster_params['base_dir'], cluster_params['raft_uuid'], vdev, chunk)
-        copy_contents(gcdbi, dbipath)
-        copy_contents(gcdbo, dbopath)
-        delete_dir(gcdbi)
-        delete_dir(gcdbo)
-
-    elif operation == "copy_contents":
-
-        dbiPath = input_values['dbiObjPath']
-        dboPath = input_values['dboObjPath']
-        destinationdbi = input_values['dbiObjPath']
-        destinationdbo = input_values['dboObjPath']
-        copy_contents(dbiPath, destinationdbi)
-        copy_contents(dboPath, destinationdbo)
-
     elif operation == "copy_DBI_file_generatorNum":
         copy_DBI_file_generatorNum(cluster_params, dirName)
 
+    elif operation == "get_DBI_fileNames":
+        get_DBiFileNames(cluster_params, dirName)
+
+    elif operation == "delete_DBI_files":
+        deleteFiles(cluster_params, dirName)
+        
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
@@ -466,16 +404,23 @@ class LookupModule(LookupBase):
         s3Dir = ""
         port = ""
         operation = terms[0]
+        
         # Generate a random chunkNumber
         chunkNumber = str(random.randint(1, 200))
-
         cluster_params = kwargs['variables']['ClusterParams']
+        
         if operation == "generate_pattern":
             input_values = terms[1]
             popen = start_pattern_generator(cluster_params, chunkNumber, input_values['genType'], dirName)
+
         elif operation == "start_s3":
             s3Dir = terms[1]
-            process = start_minio_server(cluster_params, s3Dir)
+            process = start_minio_server(cluster_params, s3Dir)        
+        
+        elif operation == "start_gc":
+            debugMode = terms[1]
+            popen = start_gc_process(cluster_params, dirName, debugMode)
+
         else:
             data = extracting_dictionary(cluster_params, operation, dirName)
             return data
