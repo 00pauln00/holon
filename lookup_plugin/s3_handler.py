@@ -196,7 +196,6 @@ def start_gc_process(cluster_params, dirName, debugMode):
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
     baseDir = os.path.join(base_dir, raft_uuid)
-    
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
@@ -215,18 +214,20 @@ def start_gc_process(cluster_params, dirName, debugMode):
     bin_path = '%s/gcTester' % binary_dir
     json_path = path + "dummy_generator.json"
     solnArry = path + "solutionArray"
+    cmd = []
     if s3Support == "true":
          s3config = '%s/s3.config.example' % binary_dir
          # Prepare path for log file.
          s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
          downloadPath = "%s/%s/" % (base_dir, raft_uuid)
          cmd = [bin_path, '-s3config', s3config, '-s3log', s3LogFile, '-j', json_path, '-path', downloadPath, '-o', gc_output_path]
-         if debugMode:
-              cmd.append('-d')
-
-         process = subprocess.Popen(cmd, stdout = fp, stderr = fp)
     else:
-         process = subprocess.Popen([bin_path, '-i', path, '-j', json_path, '-v', solnArry, '-d', str(debugMode)], stdout = fp, stderr = fp)
+        cmd = [bin_path, '-i', path, '-j', json_path, '-v', solnArry]
+
+    if debugMode:
+        cmd.append('-d')
+
+    process = subprocess.Popen(cmd, stdout = fp, stderr = fp)
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
