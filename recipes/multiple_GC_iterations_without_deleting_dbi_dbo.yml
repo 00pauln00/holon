@@ -16,7 +16,7 @@
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
-        debugMode: True
+        debugMode: true
       debug:
          msg: "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
 
@@ -29,7 +29,7 @@
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
-        debugMode: False
+        debugMode: false
       debug:
          msg: "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
 

@@ -213,14 +213,14 @@ def start_gc_process(cluster_params, dirName, debugMode):
 
     bin_path = '%s/gcTester' % binary_dir
     json_path = path + "dummy_generator.json"
-    solnArry = path + "solutionArray"
+    solnArry = path
     cmd = []
     if s3Support == "true":
          s3config = '%s/s3.config.example' % binary_dir
          # Prepare path for log file.
          s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
          downloadPath = "%s/%s/" % (base_dir, raft_uuid)
-         cmd = [bin_path, '-s3config', s3config, '-s3log', s3LogFile, '-j', json_path, '-path', downloadPath, '-o', gc_output_path]
+         cmd = [bin_path, '-s3config', s3config, '-s3log', s3LogFile, '-j', json_path, '-v', solnArry, '-path', downloadPath]
     else:
         cmd = [bin_path, '-i', path, '-j', json_path, '-v', solnArry]
 
@@ -303,7 +303,7 @@ def get_DBiFileNames(cluster_params, dirName):
     path = get_dir_path(cluster_params, dirName)
     json_data = load_json_contents(jsonPath + "dummy_generator.json")
     dbi_input_path = str(json_data['DbiPath'])
-    
+
     # Initialize a list to store file names
     file_names = []
 
@@ -322,7 +322,7 @@ def copy_DBI_file_generatorNum(cluster_params, dirName):
     jsonPath = get_dir_path(cluster_params, dirName)
     json_data = load_json_contents(jsonPath + "dummy_generator.json")
     dbi_input_path = str(json_data['DbiPath'])
-    
+
     # Get a list of files in the source directory
     file_list = os.listdir(dbi_input_path)
 
@@ -397,7 +397,7 @@ def extracting_dictionary(cluster_params, operation, dirName):
 
     elif operation == "delete_DBI_files":
         deleteFiles(cluster_params, dirName)
-        
+
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
@@ -405,19 +405,19 @@ class LookupModule(LookupBase):
         s3Dir = ""
         port = ""
         operation = terms[0]
-        
+
         # Generate a random chunkNumber
         chunkNumber = str(random.randint(1, 200))
         cluster_params = kwargs['variables']['ClusterParams']
-        
+
         if operation == "generate_pattern":
             input_values = terms[1]
             popen = start_pattern_generator(cluster_params, chunkNumber, input_values['genType'], dirName)
 
         elif operation == "start_s3":
             s3Dir = terms[1]
-            process = start_minio_server(cluster_params, s3Dir)        
-        
+            process = start_minio_server(cluster_params, s3Dir)
+
         elif operation == "start_gc":
             debugMode = terms[1]
             popen = start_gc_process(cluster_params, dirName, debugMode)
