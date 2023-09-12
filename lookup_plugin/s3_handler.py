@@ -140,7 +140,7 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName):
     punchesPer = "0"
     maxPuncheSize = str(random.choice([2 ** i for i in range(6)]))
     seed = str(random.randint(1, 100))
-    vbAmount = str(random.randint(1, 100000))
+    vbAmount = str(random.randint(100, 100000))
     vblkPer = str(random.randint(1, 10))
     blockSize = str(random.randint(1, 32))
     blockSizeMax = str(random.randint(1, 32))
@@ -206,11 +206,6 @@ def start_gc_process(cluster_params, dirName, debugMode):
     fp = open(dbiLogFile, "a+")
 
     path = get_dir_path(cluster_params, dirName)
-    json_data = load_json_contents(path + "dummy_generator.json")
-    vdev = str(json_data['BucketName'])
-    dbo_input_path = str(json_data['DboPath'])
-    dbi_input_path = str(json_data['DbiPath'])
-
     bin_path = '%s/gcTester' % binary_dir
     json_path = path + "dummy_generator.json"
     solnArry = path
