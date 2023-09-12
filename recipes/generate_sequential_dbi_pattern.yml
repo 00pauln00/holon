@@ -22,10 +22,10 @@
        vars:
         Type: "1"     #You can pass different pattern value here.
 
-    - name: "{{ recipe_name }}: Start gc algorithm"
-      vars:
+     - name: "{{ recipe_name }}: Start gc algorithm"
+       vars:
         debugMode: false
-      debug:
+       debug:
          msg:
           - "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
 
