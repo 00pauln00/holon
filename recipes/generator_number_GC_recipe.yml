@@ -23,9 +23,11 @@
           - "{{ lookup('s3_handler', 'copy_DBI_file_generatorNum', s3_support, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start gc algorithm"
+      vars:
+        debugMode: false
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc', s3_support, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start data validation"
       debug:
