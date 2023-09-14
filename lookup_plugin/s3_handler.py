@@ -101,7 +101,6 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName):
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
 
-    dbo = "bin"
     path = "%s/%s/%s/" % (base_dir, raft_uuid, dirName)
     # Create the new directory
     if not os.path.exists(path):
@@ -152,14 +151,14 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName):
         # Prepare path for log file.
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
         if vdev != "":
-            process = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dbo, "-mp", maxPunches,
+            process = subprocess.Popen([bin_path, "-c", chunk, "-mp", maxPunches,
                            "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
                            "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
                            "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
                            "-vs", startVblk, "-sw", strideWidth, '-s3config', s3config, '-s3log',
                            s3LogFile, "-vdev", vdev], stdout = fp, stderr = fp)
         else:
-            process = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dbo, "-mp", maxPunches,
+            process = subprocess.Popen([bin_path, "-c", chunk, "-mp", maxPunches,
                            "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
                            "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
                            "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
@@ -167,13 +166,13 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName):
                            s3LogFile], stdout = fp, stderr = fp)
     else:
         if vdev != "":
-            process = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dbo, "-mp", maxPunches,
+            process = subprocess.Popen([bin_path, "-c", chunk, "-mp", maxPunches,
                            "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
                            "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
                            "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
                            "-vs", startVblk, "-sw", strideWidth, "-vdev", vdev], stdout = fp, stderr = fp)
         else:
-            process = subprocess.Popen([bin_path, "-c", chunk, "-dbo", dbo, "-mp", maxPunches,
+            process = subprocess.Popen([bin_path, "-c", chunk, "-mp", maxPunches,
                                "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
                                "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
                                "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
