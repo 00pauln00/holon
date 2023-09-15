@@ -139,7 +139,7 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName):
     punchesPer = "0"
     maxPuncheSize = str(random.choice([2 ** i for i in range(6)]))
     seed = str(random.randint(1, 100))
-    vbAmount =  str(random.randint(10000, 100000))
+    vbAmount =  str(random.randint(1000, 10000))
     vblkPer = str(random.randint(1, 10))
     blockSize = str(random.randint(1, 32))
     blockSizeMax = str(random.randint(1, 32))
