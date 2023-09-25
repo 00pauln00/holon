@@ -1,0 +1,43 @@
+---
+
+    - name: "Get the json path."
+      set_fact:
+        base_dir="{{ ClusterInfo | json_query('base_dir_path')}}"
+
+    - name: "Find directories"
+      find:
+        paths: "{{ base_dir }}"
+        file_type: directory
+      register: directories
+
+    - name: "Store directory names starting with 'dbi_' in a variable"
+      set_fact:
+        directory_names: "{{ directories.files | map(attribute='path') | select('match', '^' + base_dir + '/bin') | list }}"
+
+    - debug:
+        msg: "{{ directory_names }}"
+
+    - name: "Find path of 'solutionArray'"
+      find:
+        paths: "{{ directory_names }}"
+        patterns: "solutionArray"
+        file_type: file
+      register: found_files
+
+    - name: "Get 'solutionArray' filepath"
+      set_fact:
+        solution_array_file: "{{ found_files.files[0].path }}"
+      when: found_files.files | length > 0
+
+    - name: "Find path of 'dummy_generator.json'"
+      find:
+        paths: "{{ directory_names }}"
+        patterns: "dummy_generator.json"
+        file_type: file
+      register: found_files
+
+    - name: "Get 'dummy_generator.json' filepath"
+      set_fact:
+        dummy_generator_path: "{{ found_files.files[0].path }}"
+      when: found_files.files | length > 0
+
