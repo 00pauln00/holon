@@ -308,11 +308,36 @@ def get_DBiFileNames(cluster_params, dirName):
     with open(path, 'w') as json_file:
         json.dump(file_names, json_file)
 
+
+def search_files_by_string(directory, search_string):
+
+        filename=search_string + ".dbo"
+
+        file_part = filename.split(".")
+        old_uuid = file_part[0]
+        new_uuid = str(uuid.uuid4())  # Generate a new UUID as a string
+        file_part[0] = new_uuid
+
+        # Create the new filename by joining the parts with '.'
+        newfile = ".".join(file_part)
+
+        # Create the full paths for the source and destination files
+        source_path = os.path.join(directory, filename)
+        destination_path = os.path.join(directory, newfile)
+
+
+        # Copy the file with the new filename
+        shutil.copyfile(source_path, destination_path)
+
+        return new_uuid
+
+
+
 def copy_DBI_file_generatorNum(cluster_params, dirName):
     jsonPath = get_dir_path(cluster_params, dirName)
     json_data = load_json_contents(jsonPath + "dummy_generator.json")
     dbi_input_path = str(json_data['DbiPath'])
-
+    dbo_input_path = str(json_data['DboPath'])
     # Get a list of files in the source directory
     file_list = os.listdir(dbi_input_path)
 
@@ -323,13 +348,17 @@ def copy_DBI_file_generatorNum(cluster_params, dirName):
         filename_parts = random_file.split(".")
 
         # Extract the 3rd last element after the dots
-        third_last_element = filename_parts[-3]
-
+        third_last_element = filename_parts[-2]
+        uuid = filename_parts[2]
+        # create dbo file with new uuid 
+        result = search_files_by_string(dbo_input_path, uuid)
+        
         # Increment the extracted element by 1
         new_third_last_element = str(int(third_last_element) + 1)
 
         # Update the filename with the incremented element
-        filename_parts[-3] = new_third_last_element
+        filename_parts[-2] = new_third_last_element
+        filename_parts[2] = result
         new_filename = ".".join(filename_parts)
 
         # Full path for the copied and renamed file

@@ -25,7 +25,7 @@
        vars:
          numRemaining: "{{ num_of_remaining }}"
          NisdUUID: "{{ get_nisd }}"
-         LookoutUUID: ""
+         LookoutUUID: "{{ get_lookout[0] }}"
          fault_injection_name: "metablock_multi_fill"
 
      - name: "{{ recipe_name }}: Apply fault injection on NISD and verify."
@@ -34,7 +34,7 @@
          tasks_from: enable_fi_on_nisd
        vars:
          NisdUUID: "{{ get_nisd }}"
-         LookoutUUID: ""
+         LookoutUUID: "{{ get_lookout[0] }}"
          fault_injection_name: "metablock_multi_fill"
 
      - name: Generate new vdev-uuid
@@ -59,7 +59,7 @@
                  'integrity_check' : True,
                  'sequential_writes' : False,
                  'blocking_process' : False,
-                 'lookout_uuid': ''
+                 'lookout_uuid': '{{ get_lookout[0] }}'
                  }
          wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
        debug:
@@ -82,7 +82,7 @@
               - "/nisd_chunks/0/metablock-seqno"
               - "/nisd_chunks/0/num-data-pblks"
               - "/nisd_chunks/0/num-reserved-meta-pblks"
-         lookout_uuid: ""
+         lookout_uuid: "{{ get_lookout[0] }}"
          getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
          msg: "Verify nisd values after writes: {{ getNiovaBlockTest }}"
@@ -98,7 +98,7 @@
         stage: "get_fi"
         fi_key:
            - "/fault_injection_points"
-        lookout_uuid: ""
+        lookout_uuid: "{{ get_lookout[0] }}"
         get_fi: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, fi_key, 'nisd', lookout_uuid, wantlist=True) }}"
        debug:
         msg: "Getting fault_injection_points array."
