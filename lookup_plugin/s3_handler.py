@@ -315,15 +315,8 @@ def get_DBiFileNames(cluster_params, dirName):
 
 def search_files_by_string(directory, search_string):
 
-    matching_files = []  # Initialize a list to store matching filenames
+        filename=search_string + ".dbo"
 
-    # Iterate over files in the directory
-    for filename in os.listdir(directory):
-        if search_string in filename:
-            matching_files.append(filename)  # Append matching filenames to the list
-
-    # Process each matching filename
-    for filename in matching_files:
         file_part = filename.split(".")
         old_uuid = file_part[0]
         new_uuid = str(uuid.uuid4())  # Generate a new UUID as a string
@@ -340,7 +333,7 @@ def search_files_by_string(directory, search_string):
         # Copy the file with the new filename
         shutil.copyfile(source_path, destination_path)
 
-    return new_uuid
+        return new_uuid
 
 
 
