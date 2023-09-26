@@ -199,10 +199,10 @@ def start_gc_process(cluster_params, dirName, debugMode):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
     # Prepare path for log file.
-    dbiLogFile = "%s/%s/gcLog.log" % (base_dir, raft_uuid)
+    gcLogFile = "%s/%s/gcLog.log" % (base_dir, raft_uuid)
 
     # Open the log file to pass the fp to subprocess.Popen
-    fp = open(dbiLogFile, "a+")
+    fp = open(gcLogFile, "a+")
 
     path = get_dir_path(cluster_params, dirName)
     bin_path = '%s/gcTester' % binary_dir
@@ -213,8 +213,8 @@ def start_gc_process(cluster_params, dirName, debugMode):
          s3config = '%s/s3.config.example' % binary_dir
          # Prepare path for log file.
          s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
-         downloadPath = "%s/%s/" % (base_dir, raft_uuid)
-         cmd = [bin_path, '-s3config', s3config, '-s3log', s3LogFile, '-j', json_path, '-v', solnArry, '-path', downloadPath]
+         downloadPath = "%s/%s/s3-downloaded-obj" % (base_dir, raft_uuid)
+         cmd = [bin_path, '-i', path, '-s3config', s3config, '-s3log', s3LogFile, '-j', json_path, '-v', solnArry, '-path', downloadPath]
     else:
         cmd = [bin_path, '-i', path, '-j', json_path, '-v', solnArry]
 
@@ -239,30 +239,26 @@ def start_gc_process(cluster_params, dirName, debugMode):
 def start_data_validate(cluster_params, dirName):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
-
+    s3Support = cluster_params['s3Support']
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
     # Prepare path for log file.
-    dbiLogFile = "%s/%s/dataValidate.log" % (base_dir, raft_uuid)
-
-    # Open the log file to pass the fp to subprocess.Popen
-    fp = open(dbiLogFile, "a+")
+    logFile = "%s/%s/dataValidateResult" % (base_dir, raft_uuid)
 
     path = get_dir_path(cluster_params, dirName)
     json_data = load_json_contents(path + "/" + "dummy_generator.json")
     chunkNumber = str(json_data['TotalChunkSize'])
     vdev = str(json_data['BucketName'])
 
-    logFile = "%s/%s/dataValidateResult" % (base_dir, raft_uuid)
+    downloadPath = "%s/%s/s3-downloaded-obj/%s/" % (base_dir, raft_uuid, vdev)
     bin_path = '%s/dataValidator' % binary_dir
-    process = subprocess.Popen([bin_path, '-d', path, '-c', chunkNumber, '-l', logFile], stdout = fp, stderr = fp)
-
+    if s3Support == "true":
+        process = subprocess.Popen([bin_path, '-d', downloadPath, '-c', chunkNumber, '-l', logFile])
+    else:
+        process = subprocess.Popen([bin_path, '-d', path, '-c', chunkNumber, '-l', logFile])
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
-
-    # Close the log file
-    fp.close()
 
     # Check if the process finished successfully (exit code 0)
     if exit_code == 0:
