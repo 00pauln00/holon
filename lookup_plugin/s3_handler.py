@@ -308,11 +308,8 @@ def get_DBiFileNames(cluster_params, dirName):
     with open(path, 'w') as json_file:
         json.dump(file_names, json_file)
 
-
 def search_files_by_string(directory, search_string):
-
         filename=search_string + ".dbo"
-
         file_part = filename.split(".")
         old_uuid = file_part[0]
         new_uuid = str(uuid.uuid4())  # Generate a new UUID as a string
@@ -325,13 +322,10 @@ def search_files_by_string(directory, search_string):
         source_path = os.path.join(directory, filename)
         destination_path = os.path.join(directory, newfile)
 
-
         # Copy the file with the new filename
         shutil.copyfile(source_path, destination_path)
 
         return new_uuid
-
-
 
 def copy_DBI_file_generatorNum(cluster_params, dirName):
     jsonPath = get_dir_path(cluster_params, dirName)
