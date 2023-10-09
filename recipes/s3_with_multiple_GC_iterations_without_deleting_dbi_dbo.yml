@@ -1,0 +1,38 @@
+- import_playbook: s3_operations.yml
+
+- name: "s3_with_multiple_GC_iterations_without_deleting_dbi_dbo"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "s3_with_multiple_GC_iterations_without_deleting_dbi_dbo"
+     parent: "s3_operations"
+
+  tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    - name: "Generate Random DBIs and upload it to s3."
+      vars:
+         input_param: {
+                  'genType' : "0",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'generate_pattern', input_param, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Start gc algorithm."
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gc', wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Start data validation"
+      debug:
+         msg: "{{ lookup('s3_handler', 'data_validate', wantlist=True) }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
+
