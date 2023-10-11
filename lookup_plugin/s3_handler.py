@@ -25,7 +25,6 @@ def start_minio_server(cluster_params, dirName):
     s3Support = cluster_params['s3Support']
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
-
     # Prepare path for log file.
     s3_server = "%s/%s/s3Server.log" % (base_dir, raft_uuid)
 
@@ -34,10 +33,10 @@ def start_minio_server(cluster_params, dirName):
 
     if s3Support:
         # Check if the directory exists, and if not, create it.
-        if not os.path.exists(os.path.expanduser(f'~/{dirName}')):
-            os.makedirs(os.path.expanduser(f'~/{dirName}'))
+        if not os.path.exists(os.path.expanduser(f'{base_dir}/{raft_uuid}/{dirName}')):
+            os.makedirs(os.path.expanduser(f'{base_dir}/{raft_uuid}/{dirName}'))
 
-        command = f"minio server ~/{dirName} --console-address ':9090' --address ':9000'"
+        command = f"minio server {base_dir}/{raft_uuid}/{dirName} --console-address ':9090' --address ':9000'"
 
         process_popen = subprocess.Popen(command, shell=True, stdout=fp, stderr=fp)
 
