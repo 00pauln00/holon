@@ -95,7 +95,7 @@ def get_dir_path(cluster_params, dirName):
     else:
         return None
 
-def start_pattern_generator(cluster_params, chunkNumber, genType, dirName):
+def start_pattern_generator(cluster_params, chunkNumber, genType, dirName, overlapSeq):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -144,38 +144,30 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName):
     blockSizeMax = str(random.randint(1, 32))
     startVblk = "0"
     strideWidth = str(random.randint(1, 50))
+    # Initialize the command list with common arguments
+    cmd = [
+        bin_path, "-c", chunk, "-mp", maxPunches, "-mv", maxVblks, "-p", path,
+        "-pa", punchAmount, "-pp", punchesPer, "-ps", maxPuncheSize, "-seed", seed,
+        "-ss", seqStart, "-va", vbAmount, "-vp", vblkPer, "-t", genType,
+        "-bs", blockSize, "-bsm", blockSizeMax, "-vs", startVblk, "-sw", strideWidth
+    ]
 
+    # Add the S3-specific options if s3Support is "true"
     if s3Support == "true":
         s3config = '%s/s3.config.example' % binary_dir
-        # Prepare path for log file.
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
-        if vdev != "":
-            process = subprocess.Popen([bin_path, "-c", chunk, "-mp", maxPunches,
-                           "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
-                           "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
-                           "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
-                           "-vs", startVblk, "-sw", strideWidth, '-s3config', s3config, '-s3log',
-                           s3LogFile, "-vdev", vdev], stdout = fp, stderr = fp)
-        else:
-            process = subprocess.Popen([bin_path, "-c", chunk, "-mp", maxPunches,
-                           "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
-                           "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
-                           "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
-                           "-vs", startVblk, "-sw", strideWidth, '-s3config', s3config, '-s3log',
-                           s3LogFile], stdout = fp, stderr = fp)
-    else:
-        if vdev != "":
-            process = subprocess.Popen([bin_path, "-c", chunk, "-mp", maxPunches,
-                           "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
-                           "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
-                           "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
-                           "-vs", startVblk, "-sw", strideWidth, "-vdev", vdev], stdout = fp, stderr = fp)
-        else:
-            process = subprocess.Popen([bin_path, "-c", chunk, "-mp", maxPunches,
-                               "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
-                               "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
-                               "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
-                               "-vs", startVblk, "-sw", strideWidth], stdout = fp, stderr = fp)
+        cmd.extend(['-s3config', s3config, '-s3log', s3LogFile])
+
+    # Add the -se option if overlapSeq is provided
+    if overlapSeq:
+       cmd.extend(['-se', overlapSeq])
+
+    # Add the -vdev option if vdev is provided
+    if vdev:
+       cmd.extend(['-vdev', vdev])
+
+    # Launch the subprocess with the constructed command
+    process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
@@ -343,9 +335,9 @@ def copy_DBI_file_generatorNum(cluster_params, dirName):
         # Extract the 3rd last element after the dots
         third_last_element = filename_parts[-2]
         uuid = filename_parts[2]
-        # create dbo file with new uuid 
+        # create dbo file with new uuid
         result = search_files_by_string(dbo_input_path, uuid)
-        
+
         # Increment the extracted element by 1
         new_third_last_element = str(int(third_last_element) + 1)
 
@@ -421,7 +413,7 @@ class LookupModule(LookupBase):
 
         if operation == "generate_pattern":
             input_values = terms[1]
-            popen = start_pattern_generator(cluster_params, chunkNumber, input_values['genType'], dirName)
+            popen = start_pattern_generator(cluster_params, chunkNumber, input_values['genType'], dirName, input_values['overlapSeq'])
 
         elif operation == "start_s3":
             s3Dir = terms[1]

@@ -4,6 +4,7 @@
       vars:
          input_param: {
                   'genType' : "{{ Type }}",
+                  'overlapSeq' : "{{ OverlapSeqNum | default(0) }}",
                  }
       debug:
          msg:

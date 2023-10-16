@@ -20,6 +20,7 @@
         tasks_from: generate_pattern_dbis
       vars:
         Type: "0"     #You can pass different pattern value here.
+        OverlapSeqNum: ""
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
@@ -33,6 +34,7 @@
         tasks_from: generate_pattern_dbis
       vars:
         Type: "0"     #You can pass different pattern value here.
+        OverlapSeqNum: ""
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
