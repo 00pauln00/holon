@@ -33,10 +33,10 @@ def start_minio_server(cluster_params, dirName):
 
     if s3Support:
         # Check if the directory exists, and if not, create it.
-        if not os.path.exists(os.path.expanduser(f'{base_dir}/{raft_uuid}/{dirName}')):
-            os.makedirs(os.path.expanduser(f'{base_dir}/{raft_uuid}/{dirName}'))
+        if not os.path.exists(os.path.expanduser(f'/local/{dirName}')):
+            os.makedirs(os.path.expanduser(f'/local/{dirName}'))
 
-        command = f"minio server {base_dir}/{raft_uuid}/{dirName} --console-address ':9090' --address ':9000'"
+        command = f"minio server /local/{dirName} --console-address ':9090' --address ':9000'"
 
         process_popen = subprocess.Popen(command, shell=True, stdout=fp, stderr=fp)
 
@@ -144,6 +144,7 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName, overl
     blockSizeMax = str(random.randint(1, 32))
     startVblk = "0"
     strideWidth = str(random.randint(1, 50))
+    numOfSet = str(random.randint(1, 10))
     # Initialize the command list with common arguments
     cmd = [
         bin_path, "-c", chunk, "-mp", maxPunches, "-mv", maxVblks, "-p", path,
@@ -160,12 +161,13 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName, overl
 
     # Add the -se option if overlapSeq is provided
     if overlapSeq:
-       cmd.extend(['-se', overlapSeq])
+       cmd.extend(['-se', overlapSeq, '-ts', numOfSet])
 
     # Add the -vdev option if vdev is provided
     if vdev:
        cmd.extend(['-vdev', vdev])
 
+    print("cmd: ", cmd)
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
 
