@@ -1,0 +1,32 @@
+- name: "Overlapping_seq_range-case1"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "Overlapping_seq_range_case1"
+     parent: None
+
+  tasks:
+  - block:
+    
+    - name: "{{ recipe_name }}: Generate overlapping seq range and unique DBIs."
+      include_role:
+        name: common
+        tasks_from: generate_pattern_dbis
+      vars:
+        Type: "0"
+        OverlapSeqNum: "5"
+
+    - name: "{{ recipe_name }}: delete 2 files from the dbi set."
+      debug:
+         msg: "{{ lookup('s3_handler', 'deleteSetFiles', wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Perform GC and keep stale dbis"
+      vars:
+        debugMode: false
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Start data validation"
+      debug:
+         msg: "{{ lookup('s3_handler', 'data_validate', wantlist=True) }}"

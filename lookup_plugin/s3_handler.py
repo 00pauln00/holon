@@ -384,6 +384,51 @@ def deleteFiles(cluster_params, dirName):
         except Exception as e:
             print(f"Error deleting {file_to_delete}: {str(e)}")
 
+def deleteSetFiles(cluster_params, dirName):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    json_data = load_json_contents(jsonPath + "dummy_generator.json")
+    dbi_input_path = str(json_data['DbiPath'])
+    
+    files = os.listdir(dbi_input_path)
+
+    # Count of deleted files
+    deleted_count = 0
+
+    # Iterate through the files and delete the first two that start with "0_"
+    for filename in files:
+        if filename.startswith("0_"):
+            file_path = os.path.join(dbi_input_path, filename)
+            os.remove(file_path)
+            print(f"Deleted: {file_path}")
+            deleted_count += 1
+
+            if deleted_count >= 2:
+                break
+
+def deleteSetFileS3(cluster_params, dirName):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    json_path = path + "dummy_generator.json"
+    filenames = []
+    files = os.listdir(dbi_input_path)
+    for filename in files:
+        if filename.startswith("0_"):
+            file_path = os.path.join(dbi_input_path, filename)
+            filenames.append(file_path)
+
+    print("filenames are: ", filenames)
+
+    s3config = '%s/s3.config.example' % binary_dir
+    bin_path = '%s/deleteObjects' % binary_dir
+    process = subprocess.Popen([bin_path, '-s3config', s3config, '-json', json_path, '-fileNames', filenames ])
+
+
 def extracting_dictionary(cluster_params, operation, dirName):
     if operation == "data_validate":
        popen = start_data_validate(cluster_params, dirName)
@@ -400,6 +445,9 @@ def extracting_dictionary(cluster_params, operation, dirName):
 
     elif operation == "delete_DBI_files":
         deleteFiles(cluster_params, dirName)
+
+    elif operation == "deleteSetFiles":
+        deleteSetFiles(cluster_params, dirName)
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
@@ -424,6 +472,9 @@ class LookupModule(LookupBase):
         elif operation == "start_gc":
             debugMode = terms[1]
             popen = start_gc_process(cluster_params, dirName, debugMode)
+        
+        elif operation == "deleteSetFileS3":
+            popen = start_gc_process(cluster_params, dirName)
 
         else:
             data = extracting_dictionary(cluster_params, operation, dirName)
