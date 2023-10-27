@@ -1,8 +1,8 @@
-- name: "generate_random_dbi_pattern"
+- name: "generate_large_overlap_sbi_set"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "generate_random_dbi_pattern"
+     recipe_name: "generate_large_overlap_sbi_set"
      parent: None
 
   tasks:
@@ -15,15 +15,15 @@
           - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
-    - name: "{{ recipe_name }}: Generate random DBI requests."
+    - name: "{{ recipe_name }}: Generate 5M overlapping seq range and unique DBIs."
       include_role:
         name: common
         tasks_from: generate_pattern_dbis
       vars:
-        Type: "0"     #You can pass different pattern value here.
-        OverlapSeqNum: ""
+        Type: "0"
+        OverlapSeqNum: "500000"
 
-    - name: "{{ recipe_name }}: Start gc algorithm"
+    - name: "{{ recipe_name }}: Perform GC"
       vars:
         debugMode: false
       debug:
@@ -33,9 +33,4 @@
     - name: "{{ recipe_name }}: Start data validation"
       debug:
          msg: "{{ lookup('s3_handler', 'data_validate', wantlist=True) }}"
-
-    rescue:
-      - name: "Recipe: {{ recipe_name }} failed"
-        set_fact:
-           terminate_recipe: true
 
