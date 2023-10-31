@@ -1,0 +1,22 @@
+{
+    "chunk": "",
+    "maxPunches": "",
+    "maxVblks": "",
+    "punchAmount": "",
+    "punchesPer": "",
+    "maxPunchSize": "",
+    "seed": "",
+    "seqStart": "",
+    "vbAmount": "",
+    "vblkPer": "",
+    "genType": "",
+    "blockSize": "",
+    "blockSizeMax": "",
+    "startVblk": "",
+    "strideWidth": "",
+    "overlapSeq": "",
+    "numOfSet": "",
+    "vdev": "",
+    "s3config": "",
+    "debugMode":
+}

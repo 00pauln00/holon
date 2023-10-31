@@ -10,20 +10,6 @@ from genericcmd import *
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
 
-def store_parameters_to_json(params, filename):
-    # If the file already exists, load its contents
-    existing_params = {}
-    if os.path.isfile(filename):
-        with open(filename, 'r') as json_file:
-            existing_params = json.load(json_file)
-
-    # Update the existing parameters with the new parameters
-    existing_params.update(params)
-
-    # Store the merged parameters in a JSON file
-    with open(filename, 'w') as json_file:
-        json.dump(existing_params, json_file, indent=4)  # Indent with 4 spaces
-
 def load_parameters_from_json(filename):
     # Load parameters from a JSON file
     with open(filename, 'r') as json_file:
@@ -66,7 +52,7 @@ def prepare_command_from_parameters(cluster_params, params, dirName, operation):
                    "-ss", params["seqStart"], "-va", params["vbAmount"], "-vp", params["vblkPer"],
                    "-t", params["genType"], "-bs", params["blockSize"], "-bsm", params["blockSizeMax"],
                    "-vs", params["startVblk"], "-sw", params["strideWidth"], "-se", params["overlapSeq"],
-                   "-ts", params["numOfSet"], "-vdev", params["vdev"], "-s3config", params["s3config"],
+                   "-ts", params["numOfSet"], "-vdev", params["vdev"], "-s3config", params["s3configPath"],
                    "-s3log", s3UploadLogFile
                ]
         else:
@@ -93,11 +79,11 @@ def prepare_command_from_parameters(cluster_params, params, dirName, operation):
                s3DownloadLogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
                cmd = [
                        bin_path, "-i", path, "-s3config", params["s3config"],
-                       "-s3log", s3DownloadLogFile, "-j", json_path, "-path", downloadPath,
+                       "-s3log", s3DownloadLogFile, "-j", json_path, "-path", downloadPath
                ]
         else:
               cmd = [
-                       bin_path, "-i", path, "-j", json_path,
+                       bin_path, "-i", path, "-j", json_path
               ]
         if params["debugMode"]:
             cmd.append('-d')
@@ -107,7 +93,6 @@ def prepare_command_from_parameters(cluster_params, params, dirName, operation):
 
     elif operation == "run_data_validator":
         bin_path = '%s/dataValidator' % binary_dir
-        fp = open(data_validator_log, "a+")
         path = get_dir_path(cluster_params, dirName)
         json_data = load_json_contents(path + "/" + "dummy_generator.json")
         vdev = str(json_data['BucketName'])
@@ -124,7 +109,7 @@ def prepare_command_from_parameters(cluster_params, params, dirName, operation):
                     '-l', data_validator_log
              ]
         # Launch the subprocess with stdout and stderr redirected to the 'fp' file
-        process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
+        process = subprocess.Popen(cmd)
         processes.append(process)
 
     # Wait for all processes to finish
@@ -284,11 +269,6 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName, overl
     # Add the S3-specific options if s3Support is "true"
     if s3Support == "true":
         s3config = '%s/s3.config.example' % binary_dir
-        parameters = {
-          "s3config" : s3config,
-        }
-        # Store parameters to a JSON file
-        store_parameters_to_json(parameters, "seed.json")
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
         cmd.extend(['-s3config', s3config, '-s3log', s3LogFile])
 
@@ -300,34 +280,6 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName, overl
     if vdev:
        cmd.extend(['-vdev', vdev])
 
-    # Example of how to use these functions
-    parameters = {
-      "chunk": chunk,
-      "maxPunches": maxPunches,
-      "maxVblks" : maxVblks,
-      "path" : path,
-      "punchAmount" : punchAmount,
-      "punchesPer" : punchesPer,
-      "maxPunchSize" : maxPuncheSize,
-      "seed" : seed,
-      "seqStart" : seqStart,
-      "seqStart" : seqStart,
-      "vbAmount" : vbAmount,
-      "vblkPer" : vblkPer,
-      "genType" : genType,
-      "blockSize" : blockSize,
-      "blockSizeMax" : blockSizeMax,
-      "startVblk" : startVblk,
-      "strideWidth" : strideWidth,
-      "overlapSeq" : overlapSeq,
-      "numOfSet" : numOfSet,
-      "vdev" : vdev,
-    }
-
-    # Store parameters to a JSON file
-    store_parameters_to_json(parameters, "seed.json")
-
-    print("cmd: ", cmd)
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
 
@@ -374,14 +326,6 @@ def start_gc_process(cluster_params, dirName, debugMode):
 
     if debugMode:
         cmd.append('-d')
-
-    # Example of how to use these functions
-    parameters = {
-      "debugMode" : debugMode,
-    }
-
-    # Store parameters to a JSON file
-    store_parameters_to_json(parameters, "seed.json")
 
     process = subprocess.Popen(cmd, stdout = fp, stderr = fp)
 
