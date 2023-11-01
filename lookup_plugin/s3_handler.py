@@ -521,14 +521,17 @@ def deleteSetFiles(cluster_params, dirName):
             if deleted_count >= 2:
                 break
 
-def deleteSetFileS3(cluster_params, dirName):
+def deleteSetFileS3(cluster_params, dirName, operation):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
-
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
-    json_path = path + "dummy_generator.json"
+    json_path = jsonPath + "dummy_generator.json"
+    json_data = load_json_contents(jsonPath + "dummy_generator.json")
+    dbi_input_path = str(json_data['DbiPath'])
+    bucketName = str(json_data['BucketName'])
+
     filenames = []
     files = os.listdir(dbi_input_path)
     for filename in files:
@@ -537,9 +540,8 @@ def deleteSetFileS3(cluster_params, dirName):
             filenames.append(file_path)
 
     s3config = '%s/s3.config.example' % binary_dir
-    bin_path = '%s/deleteObjects' % binary_dir
-    process = subprocess.Popen([bin_path, '-s3config', s3config, '-json', json_path, '-fileNames', filenames ])
-
+    bin_path = '%s/s3Operation' % binary_dir
+    process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', filenames[0]])
 
 def extracting_dictionary(cluster_params, operation, dirName):
     if operation == "data_validate":
@@ -586,7 +588,8 @@ class LookupModule(LookupBase):
             popen = start_gc_process(cluster_params, dirName, debugMode)
 
         elif operation == "deleteSetFileS3":
-            popen = start_gc_process(cluster_params, dirName)
+            operation = terms[1]
+            popen = deleteSetFileS3(cluster_params, dirName, operation)
 
         elif operation == "json_params":
             utility = terms[1]

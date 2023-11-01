@@ -25,8 +25,10 @@
         OverlapSeqNum: "5"
 
     - name: "{{ recipe_name }}: delete 2 files from the dbi set from s3."
+      vars:
+        operation: "delete"
       debug:
-         msg: "{{ lookup('s3_handler', 'deleteSetFileS3', wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'deleteSetFileS3', operation, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Perform GC and keep stale dbis"
       vars:
