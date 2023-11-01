@@ -1,0 +1,43 @@
+- name: "multiple_GC_iterations_with_dbiSet"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "multiple_GC_iterations_with_dbiSet"
+     parent: None
+
+  tasks:
+  - block:
+    
+    - name: "{{ recipe_name }}: Generate overlapping seq range and unique DBIs."
+      include_role:
+        name: common
+        tasks_from: generate_pattern_dbis
+      vars:
+        Type: "0"
+        OverlapSeqNum: "5"
+
+    - name: "{{ recipe_name }}: Perform GC and keep stale dbis"
+      vars:
+        debugMode: false
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Generate random DBI requests."
+      include_role:
+        name: common
+        tasks_from: generate_pattern_dbis
+      vars:
+        Type: "0"
+        OverlapSeqNum: ""
+
+    - name: "{{ recipe_name }}: Perform GC and keep stale dbis"
+      vars:
+        debugMode: false
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Start data validation"
+      debug:
+         msg: "{{ lookup('s3_handler', 'data_validate', wantlist=True) }}"

@@ -531,6 +531,7 @@ def deleteSetFileS3(cluster_params, dirName, operation):
     json_data = load_json_contents(jsonPath + "dummy_generator.json")
     dbi_input_path = str(json_data['DbiPath'])
     bucketName = str(json_data['BucketName'])
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
 
     filenames = []
     files = os.listdir(dbi_input_path)
@@ -541,7 +542,7 @@ def deleteSetFileS3(cluster_params, dirName, operation):
 
     s3config = '%s/s3.config.example' % binary_dir
     bin_path = '%s/s3Operation' % binary_dir
-    process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', filenames[0]])
+    process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', filenames[0], '-l', logFile])
 
 def extracting_dictionary(cluster_params, operation, dirName):
     if operation == "data_validate":
