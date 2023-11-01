@@ -16,7 +16,7 @@ def load_parameters_from_json(filename):
         params = json.load(json_file)
     return params
 
-def prepare_command_from_parameters(cluster_params, params, dirName, operation):
+def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operation):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -33,95 +33,80 @@ def prepare_command_from_parameters(cluster_params, params, dirName, operation):
         except Exception as e:
             print(f"An error occurred while creating '{path}': {e}")
 
-    # Prepare path for log file.
-    dbiLogFile = "%s/%s/dbiLog.log" % (base_dir, raft_uuid)
-    gcLogFile = "%s/%s/gcLog.log" % (base_dir, raft_uuid)
-    data_validator_log = "%s/%s/dataValidatorResult" % (base_dir, raft_uuid)
-    # Create a list to store all subprocesses
     processes = []
 
-    if operation == "run_example":
-        bin_path = '%s/example' % binary_dir
-        fp = open(dbiLogFile, "a+")
-        if s3Support == "true":
+    for params in jsonParams:
+       cmd = []
+       # Prepare path for log file.
+       dbiLogFile = "%s/%s/dbiLog_%s.log" % (base_dir, raft_uuid, params["seed"])
+       gcLogFile = "%s/%s/gcLog_%s.log" % (base_dir, raft_uuid, params["seed"])
+       data_validator_log = "%s/%s/dataValidatorResult_%s" % (base_dir, raft_uuid, params["seed"])
+
+       if operation == "run_example":
+          bin_path = '%s/example' % binary_dir
+          if s3Support == "true":
                s3UploadLogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
-               cmd = [
-                   bin_path, "-c", params["chunk"], "-mp", params["maxPunches"],
+               cmd.extend([bin_path, "-c", params["chunk"], "-mp", params["maxPunches"],
                    "-mv", params["maxVblks"], "-p", path, "-pa", params["punchAmount"],
                    "-pp", params["punchesPer"], "-ps", params["maxPunchSize"], "-seed", params["seed"],
                    "-ss", params["seqStart"], "-va", params["vbAmount"], "-vp", params["vblkPer"],
                    "-t", params["genType"], "-bs", params["blockSize"], "-bsm", params["blockSizeMax"],
-                   "-vs", params["startVblk"], "-sw", params["strideWidth"], "-se", params["overlapSeq"],
+                   "-vs", params["startVblk"], "-se", params["overlapSeq"],
                    "-ts", params["numOfSet"], "-vdev", params["vdev"], "-s3config", params["s3configPath"],
-                   "-s3log", s3UploadLogFile
-               ]
-        else:
-               cmd = [
-                   bin_path, "-c", params["chunk"], "-mp", params["maxPunches"],
+                   "-s3log", s3UploadLogFile])
+          else:
+               cmd.extend([bin_path, "-c", params["chunk"], "-mp", params["maxPunches"],
                    "-mv", params["maxVblks"], "-p", path, "-pa", params["punchAmount"],
                    "-pp", params["punchesPer"], "-ps", params["maxPunchSize"], "-seed", params["seed"],
                    "-ss", params["seqStart"], "-va", params["vbAmount"], "-vp", params["vblkPer"],
                    "-t", params["genType"], "-bs", params["blockSize"], "-bsm", params["blockSizeMax"],
-                   "-vs", params["startVblk"], "-sw", params["strideWidth"], "-se", params["overlapSeq"],
-                   "-ts", params["numOfSet"], "-vdev", params["vdev"]
-               ]
-        # Launch the subprocess with stdout and stderr redirected to the 'fp' file
-        process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
-        processes.append(process)
+                   "-vs", params["startVblk"], "-se", params["overlapSeq"],
+                   "-ts", params["numOfSet"], "-vdev", params["vdev"]])
+          if params["strideWidth"] != "":
+                cmd.extend(["-sw", params["strideWidth"]])
 
-    elif operation == "run_gc":
-        bin_path = '%s/gcTester' % binary_dir
-        fp = open(gcLogFile, "a+")
-        path = get_dir_path(cluster_params, dirName)
-        json_path = path + "dummy_generator.json"
-        downloadPath = "%s/%s/s3-downloaded-obj" % (base_dir, raft_uuid)
-        if s3Support == "true":
+       elif operation == "run_gc":
+          bin_path = '%s/gcTester' % binary_dir
+          path = get_dir_path(cluster_params, dirName)
+          json_path = path + "dummy_generator.json"
+          downloadPath = "%s/%s/s3-downloaded-obj" % (base_dir, raft_uuid)
+          if s3Support == "true":
                s3DownloadLogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
-               cmd = [
-                       bin_path, "-i", path, "-s3config", params["s3config"],
-                       "-s3log", s3DownloadLogFile, "-j", json_path, "-path", downloadPath
-               ]
-        else:
-              cmd = [
-                       bin_path, "-i", path, "-j", json_path
-              ]
-        if params["debugMode"]:
-            cmd.append('-d')
-        # Launch the subprocess with stdout and stderr redirected to the 'fp' file
-        process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
-        processes.append(process)
+               cmd.extend([bin_path, "-i", path, "-s3config", params["s3config"],
+                       "-s3log", s3DownloadLogFile, "-j", json_path, "-path", downloadPath])
+          else:
+              cmd.extend([bin_path, "-i", path, "-j", json_path])
+          if params["debugMode"]:
+              cmd.append('-d')
 
-    elif operation == "run_data_validator":
-        bin_path = '%s/dataValidator' % binary_dir
-        path = get_dir_path(cluster_params, dirName)
-        json_data = load_json_contents(path + "/" + "dummy_generator.json")
-        vdev = str(json_data['BucketName'])
-        downloadPath = "%s/%s/s3-downloaded-obj/%s/" % (base_dir, raft_uuid, vdev)
-        if s3Support == "true":
-                cmd = [
-                    bin_path, '-d', downloadPath, '-c', params['chunk'],
-                    '-l', data_validator_log
-                ]
-        else:
+       elif operation == "run_data_validator":
+          bin_path = '%s/dataValidator' % binary_dir
+          path = get_dir_path(cluster_params, dirName)
+          json_data = load_json_contents(path + "/" + "dummy_generator.json")
+          vdev = str(json_data['BucketName'])
+          downloadPath = "%s/%s/s3-downloaded-obj/%s/" % (base_dir, raft_uuid, vdev)
+          if s3Support == "true":
+                cmd.extend([bin_path, '-d', downloadPath, '-c', params['chunk'],
+                    '-l', data_validator_log])
+          else:
              path = get_dir_path(cluster_params, dirName)
-             cmd = [
-                    bin_path, '-d', path, '-c', params['chunk'],
-                    '-l', data_validator_log
-             ]
-        # Launch the subprocess with stdout and stderr redirected to the 'fp' file
-        process = subprocess.Popen(cmd)
-        processes.append(process)
+             cmd.extend([bin_path, '-d', path, '-c', params['chunk'],
+                    '-l', data_validator_log])
 
-    # Wait for all processes to finish
-    exit_codes = [process.wait() for process in processes]
+       fp = open(dbiLogFile if operation == "run_example" else gcLogFile, "a+")
+       process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
+       # Wait for the process to finish and get the exit code
+       exit_code = process.wait()
 
-    # Check exit codes for all processes
-    for i, exit_code in enumerate(exit_codes):
-        if exit_code == 0:
-            print(f"Process {i + 1} completed successfully.")
-        else:
-            error_message = f"Process failed with exit code {exit_code}."
-            raise RuntimeError(error_message)
+       # close the log file
+       fp.close()
+
+       # Check if the process finished successfully (exit code 0)
+       if exit_code == 0:
+          print("Process completed successfully.")
+       else:
+          error_message = f"Process failed with exit code {exit_code}."
+          raise RuntimeError(error_message)
 
 def load_recipe_op_config(cluster_params):
     recipe_conf = {}
@@ -593,11 +578,16 @@ class LookupModule(LookupBase):
             popen = deleteSetFileS3(cluster_params, dirName, operation)
 
         elif operation == "json_params":
-            utility = terms[1]
-            # Load parameters from the JSON file
-            loaded_params = load_parameters_from_json("seed.json")
-            # Prepare the command from loaded parameters
-            command = prepare_command_from_parameters(cluster_params, loaded_params, dirName, utility)
+            #entry = terms[1]
+            load_params = load_parameters_from_json("seed.json")
+
+            for params in load_params:
+               # Prepare the command from loaded parameters
+               prepare_command_from_parameters(cluster_params, [params], dirName, 'run_example')
+               # Prepare the command from loaded parameters
+               prepare_command_from_parameters(cluster_params, [params], dirName, 'run_gc')
+               # Prepare the command from loaded parameters
+               prepare_command_from_parameters(cluster_params, [params], dirName, 'run_data_validator')
 
         else:
             data = extracting_dictionary(cluster_params, operation, dirName)
