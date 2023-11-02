@@ -16,7 +16,7 @@ def load_parameters_from_json(filename):
         params = json.load(json_file)
     return params
 
-def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operation):
+def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operation, params_type):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -25,7 +25,7 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
     path = "%s/%s/%s/" % (base_dir, raft_uuid, dirName)
-    # Create the new directory
+    #Create the new directory
     if not os.path.exists(path):
         # Create the directory path
         try:
@@ -42,6 +42,9 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
        gcLogFile = "%s/%s/gcLog_%s.log" % (base_dir, raft_uuid, params["seed"])
        data_validator_log = "%s/%s/dataValidatorResult_%s" % (base_dir, raft_uuid, params["seed"])
 
+       seqStart = params["seqStart"]
+       vdev = params["vdev"]
+
        if operation == "run_example":
           bin_path = '%s/example' % binary_dir
           if s3Support == "true":
@@ -49,49 +52,48 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
                cmd.extend([bin_path, "-c", params["chunk"], "-mp", params["maxPunches"],
                    "-mv", params["maxVblks"], "-p", path, "-pa", params["punchAmount"],
                    "-pp", params["punchesPer"], "-ps", params["maxPunchSize"], "-seed", params["seed"],
-                   "-ss", params["seqStart"], "-va", params["vbAmount"], "-vp", params["vblkPer"],
+                   "-ss", seqStart, "-va", params["vbAmount"], "-vp", params["vblkPer"],
                    "-t", params["genType"], "-bs", params["blockSize"], "-bsm", params["blockSizeMax"],
-                   "-vs", params["startVblk"], "-vdev", params["vdev"], "-s3config", params["s3configPath"],
+                   "-vs", params["startVblk"], "-vdev", vdev, "-s3config", params["s3configPath"],
                    "-s3log", s3UploadLogFile])
           else:
                cmd.extend([bin_path, "-c", params["chunk"], "-mp", params["maxPunches"],
                    "-mv", params["maxVblks"], "-p", path, "-pa", params["punchAmount"],
                    "-pp", params["punchesPer"], "-ps", params["maxPunchSize"], "-seed", params["seed"],
-                   "-ss", params["seqStart"], "-va", params["vbAmount"], "-vp", params["vblkPer"],
+                   "-ss", seqStart, "-va", params["vbAmount"], "-vp", params["vblkPer"],
                    "-t", params["genType"], "-bs", params["blockSize"], "-bsm", params["blockSizeMax"],
-                   "-vs", params["startVblk"], "-vdev", params["vdev"]])
+                   "-vs", params["startVblk"], "-vdev", vdev])
           if params["strideWidth"] != "":
                 cmd.extend(["-sw", params["strideWidth"]])
           if params["overlapSeq"] != "" and params["numOfSet"] != "":
-                cmd.extend("-se", params["overlapSeq"], "-ts", params["numOfSet"])
+                cmd.extend(["-se", params["overlapSeq"], "-ts", params["numOfSet"]])
+
        elif operation == "run_gc":
           bin_path = '%s/gcTester' % binary_dir
-          path = get_dir_path(cluster_params, dirName)
-          json_path = path + "dummy_generator.json"
+          get_path = get_dir_path(cluster_params, dirName)
+          json_path = get_path + "dummy_generator.json"
           downloadPath = "%s/%s/s3-downloaded-obj" % (base_dir, raft_uuid)
           if s3Support == "true":
                s3DownloadLogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
-               cmd.extend([bin_path, "-i", path, "-s3config", params["s3config"],
+               cmd.extend([bin_path, "-i", get_path, "-s3config", params["s3config"],
                        "-s3log", s3DownloadLogFile, "-j", json_path, "-path", downloadPath])
           else:
-              cmd.extend([bin_path, "-i", path, "-j", json_path])
+              cmd.extend([bin_path, "-i", get_path, "-j", json_path])
           if params["debugMode"]:
               cmd.append('-d')
 
        elif operation == "run_data_validator":
           bin_path = '%s/dataValidator' % binary_dir
-          path = get_dir_path(cluster_params, dirName)
-          json_data = load_json_contents(path + "/" + "dummy_generator.json")
+          get_path = get_dir_path(cluster_params, dirName)
+          json_data = load_json_contents(get_path + "dummy_generator.json")
           vdev = str(json_data['BucketName'])
           downloadPath = "%s/%s/s3-downloaded-obj/%s/" % (base_dir, raft_uuid, vdev)
           if s3Support == "true":
                 cmd.extend([bin_path, '-d', downloadPath, '-c', params['chunk'],
                     '-l', data_validator_log])
           else:
-             path = get_dir_path(cluster_params, dirName)
-             cmd.extend([bin_path, '-d', path, '-c', params['chunk'],
+             cmd.extend([bin_path, '-d', get_path, '-c', params['chunk'],
                     '-l', data_validator_log])
-
        fp = open(dbiLogFile if operation == "run_example" else gcLogFile, "a+")
        process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
        # Wait for the process to finish and get the exit code
@@ -183,11 +185,12 @@ def get_dir_path(cluster_params, dirName):
     # Filter out directories only
     directories = [entry for entry in entries if os.path.isdir(os.path.join(dbi_dir, entry))]
 
-    # Check if there are any directories in the
     if directories:
-        # Return the path of the first directory found with a trailing slash
-        first_directory = directories[0]
-        directory_path = os.path.join(dbi_dir, first_directory, '')  # Add the trailing slash here
+        # Sort directories based on creation time (most recent first)
+        directories.sort(key=lambda d: os.path.getctime(os.path.join(dbi_dir, d)), reverse=True)
+        # Return the path of the most recently created directory with a trailing slash
+        most_recent_directory = directories[0]
+        directory_path = os.path.join(dbi_dir, most_recent_directory, '')  # Add the trailing slash here
         return directory_path
     else:
         return None
@@ -577,13 +580,13 @@ class LookupModule(LookupBase):
             popen = deleteSetFileS3(cluster_params, dirName, operation)
 
         elif operation == "json_params":
+            params_type = terms[1]
             load_params = load_parameters_from_json("seed.json")
-
-            for params in load_params:
-               prepare_command_from_parameters(cluster_params, [params], dirName, 'run_example')
-               prepare_command_from_parameters(cluster_params, [params], dirName, 'run_gc')
-               prepare_command_from_parameters(cluster_params, [params], dirName, 'run_data_validator')
-
+            if params_type == "single_iteration":
+               single_itr = ['run_example', 'run_gc', 'run_data_validator']
+               for params in load_params["single_iteration"]:
+                  for i in single_itr:
+                     prepare_command_from_parameters(cluster_params, [params], dirName, i, params_type)
         else:
             data = extracting_dictionary(cluster_params, operation, dirName)
             return data

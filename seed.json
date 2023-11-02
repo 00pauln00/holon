@@ -1,4 +1,5 @@
-[
+{
+"single_iteration": [
   {
     "chunk": "1",
     "maxPunches": "64",
@@ -65,4 +66,51 @@
     "s3configPath": "",
     "debugMode": false
   }
+],
+"multiple_iteration": [
+  {
+    "chunk": "2",
+    "maxPunches": "64",
+    "maxVblks": "1024",
+    "punchAmount": "10",
+    "punchesPer": "0",
+    "maxPunchSize": "1024",
+    "seed": "2",
+    "seqStart": "0",
+    "vbAmount": "100000",
+    "vblkPer": "10",
+    "genType": "2",
+    "blockSize": "4",
+    "blockSizeMax": "32",
+    "startVblk": "1",
+    "strideWidth": "",
+    "overlapSeq": "",
+    "numOfSet": "",
+    "vdev": "",
+    "s3configPath": "",
+    "debugMode": true
+  },
+  {
+    "chunk": "1",
+    "maxPunches": "64",
+    "maxVblks": "1024",
+    "punchAmount": "1024",
+    "punchesPer": "0",
+    "maxPunchSize": "1024",
+    "seed": "1",
+    "seqStart": "0",
+    "vbAmount": "500000",
+    "vblkPer": "100",
+    "genType": "2",
+    "blockSize": "16",
+    "blockSizeMax": "32",
+    "startVblk": "1",
+    "strideWidth": "",
+    "overlapSeq": "10",
+    "numOfSet": "3",
+    "vdev": "",
+    "s3configPath": "",
+    "debugMode": true
+  }
 ]
+}
