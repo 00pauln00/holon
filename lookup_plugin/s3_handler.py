@@ -51,8 +51,7 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
                    "-pp", params["punchesPer"], "-ps", params["maxPunchSize"], "-seed", params["seed"],
                    "-ss", params["seqStart"], "-va", params["vbAmount"], "-vp", params["vblkPer"],
                    "-t", params["genType"], "-bs", params["blockSize"], "-bsm", params["blockSizeMax"],
-                   "-vs", params["startVblk"], "-se", params["overlapSeq"],
-                   "-ts", params["numOfSet"], "-vdev", params["vdev"], "-s3config", params["s3configPath"],
+                   "-vs", params["startVblk"], "-vdev", params["vdev"], "-s3config", params["s3configPath"],
                    "-s3log", s3UploadLogFile])
           else:
                cmd.extend([bin_path, "-c", params["chunk"], "-mp", params["maxPunches"],
@@ -60,11 +59,11 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
                    "-pp", params["punchesPer"], "-ps", params["maxPunchSize"], "-seed", params["seed"],
                    "-ss", params["seqStart"], "-va", params["vbAmount"], "-vp", params["vblkPer"],
                    "-t", params["genType"], "-bs", params["blockSize"], "-bsm", params["blockSizeMax"],
-                   "-vs", params["startVblk"], "-se", params["overlapSeq"],
-                   "-ts", params["numOfSet"], "-vdev", params["vdev"]])
+                   "-vs", params["startVblk"], "-vdev", params["vdev"]])
           if params["strideWidth"] != "":
                 cmd.extend(["-sw", params["strideWidth"]])
-
+          if params["overlapSeq"] != "" and params["numOfSet"] != "":
+                cmd.extend("-se", params["overlapSeq"], "-ts", params["numOfSet"])
        elif operation == "run_gc":
           bin_path = '%s/gcTester' % binary_dir
           path = get_dir_path(cluster_params, dirName)
@@ -578,15 +577,11 @@ class LookupModule(LookupBase):
             popen = deleteSetFileS3(cluster_params, dirName, operation)
 
         elif operation == "json_params":
-            #entry = terms[1]
             load_params = load_parameters_from_json("seed.json")
 
             for params in load_params:
-               # Prepare the command from loaded parameters
                prepare_command_from_parameters(cluster_params, [params], dirName, 'run_example')
-               # Prepare the command from loaded parameters
                prepare_command_from_parameters(cluster_params, [params], dirName, 'run_gc')
-               # Prepare the command from loaded parameters
                prepare_command_from_parameters(cluster_params, [params], dirName, 'run_data_validator')
 
         else:
