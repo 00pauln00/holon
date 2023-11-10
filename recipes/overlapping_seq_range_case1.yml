@@ -7,14 +7,16 @@
 
   tasks:
   - block:
-    
+
     - name: "{{ recipe_name }}: Generate overlapping seq range and unique DBIs."
       include_role:
         name: common
-        tasks_from: generate_pattern_dbis
+        tasks_from: generate_overlapping_dbi_set
       vars:
         Type: "0"
-        OverlapSeqNum: "5"
+        VblkNum: "1000"
+        VblkPer: "8"
+        DBIPerSet: "5"
 
     - name: "{{ recipe_name }}: delete 2 files from the dbi set."
       debug:

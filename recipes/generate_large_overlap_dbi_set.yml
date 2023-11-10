@@ -21,8 +21,8 @@
         tasks_from: generate_overlapping_dbi_set
       vars:
         Type: "0"
-        VblkNum: "100000"
-        VblkPer: "10"
+        VblkNum: "11000000"
+        VblkPer: "6000000"
         DBIPerSet: "5000000"
 
     - name: "{{ recipe_name }}: Perform GC"
