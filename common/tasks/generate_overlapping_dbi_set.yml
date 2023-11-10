@@ -4,6 +4,9 @@
       vars:
          input_param: {
                   'genType' : "{{ Type }}",
+                  'vbAmount' : "{{ VblkNum }}",
+                  'vblkPer' : "{{ VblkPer }}",
+                  'overlapSeq' : "{{ DBIPerSet }}",
                  }
       debug:
          msg:

@@ -215,7 +215,7 @@ def get_dir_path(cluster_params, dirName, seed=None):
     else:
         return None
 
-def start_pattern_generator(cluster_params, chunkNumber, genType, dirName, overlapSeq):
+def start_pattern_generator(cluster_params, chunkNumber, genType, dirName, input_values):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -259,17 +259,18 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName, overl
     maxPuncheSize = str(random.choice([2 ** i for i in range(6)]))
     seed = str(random.randint(1, 100))
     vbAmount =  str(random.randint(1000, 10000))
-    vblkPer = str(random.randint(1, 10))
+    vblkPer = str(random.randint(1, 20))
     blockSize = str(random.randint(1, 32))
     blockSizeMax = str(random.randint(1, 32))
     startVblk = "0"
     strideWidth = str(random.randint(1, 50))
     numOfSet = str(random.randint(1, 10))
+
     # Initialize the command list with common arguments
     cmd = [
         bin_path, "-c", chunk, "-mp", maxPunches, "-mv", maxVblks, "-p", path,
         "-pa", punchAmount, "-pp", punchesPer, "-ps", maxPuncheSize, "-seed", seed,
-        "-ss", seqStart, "-va", vbAmount, "-vp", vblkPer, "-t", genType,
+        "-ss", seqStart, "-t", genType,
         "-bs", blockSize, "-bsm", blockSizeMax, "-vs", startVblk, "-sw", strideWidth
     ]
 
@@ -279,9 +280,11 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName, overl
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
         cmd.extend(['-s3config', s3config, '-s3log', s3LogFile])
 
-    # Add the -se option if overlapSeq is provided
-    if overlapSeq:
-       cmd.extend(['-se', overlapSeq, '-ts', numOfSet])
+    # Add the -se and -ts option if overlapSeq is provided
+    if 'overlapSeq' not in input_values:
+        cmd.extend(['-va', str(vbAmount), '-vp', str(vblkPer)])
+    else:
+        cmd.extend(['-va', input_values['vbAmount'], '-vp', input_values['vblkPer'], '-se', input_values['overlapSeq'], '-ts', str(numOfSet)])
 
     # Add the -vdev option if vdev is provided
     if vdev:
@@ -585,7 +588,7 @@ class LookupModule(LookupBase):
 
         if operation == "generate_pattern":
             input_values = terms[1]
-            popen = start_pattern_generator(cluster_params, chunkNumber, input_values['genType'], dirName, input_values['overlapSeq'])
+            popen = start_pattern_generator(cluster_params, chunkNumber, input_values['genType'], dirName, input_values)
 
         elif operation == "start_s3":
             s3Dir = terms[1]

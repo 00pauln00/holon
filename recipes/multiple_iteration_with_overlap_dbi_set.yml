@@ -18,10 +18,12 @@
     - name: "{{ recipe_name }}: Generate overlapping seq range and unique DBIs."
       include_role:
         name: common
-        tasks_from: generate_pattern_dbis
+        tasks_from: generate_overlapping_dbi_set
       vars:
-        Type: "0"  #TODO pass pattern to generate overlap seq range DBI
-        OverlapSeqNum: "5"
+        Type: "0"
+        VblkNum: "1000"
+        VblkPer: "8"
+        DBIPerSet: "5"
 
     - name: "{{ recipe_name }}: Perform GC and keep stale dbis"
       vars:
@@ -30,13 +32,15 @@
          msg:
           - "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: Again generate overlapping seq range DBIs."
+    - name: "{{ recipe_name }}: Generate overlapping seq range and unique DBIs."
       include_role:
         name: common
-        tasks_from: generate_pattern_dbis
+        tasks_from: generate_overlapping_dbi_set
       vars:
-        Type: "0"  #TODO pass pattern to generate overlap seq range DBI
-        OverlapSeqNum: "5"
+        Type: "0"
+        VblkNum: "1000"
+        VblkPer: "8"
+        DBIPerSet: "5"
 
     - name: "{{ recipe_name }}: Perform GC and keep stale dbis"
       vars:

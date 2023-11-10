@@ -18,10 +18,12 @@
     - name: "{{ recipe_name }}: Generate overlapping seq range and unique DBIs."
       include_role:
         name: common
-        tasks_from: generate_pattern_dbis
+        tasks_from: generate_overlapping_dbi_set
       vars:
         Type: "0"
-        OverlapSeqNum: "5"
+        VblkNum: "2000"
+        VblkPer: "8"
+        DBIPerSet: "7"
 
     - name: "{{ recipe_name }}: Perform GC"
       vars:
