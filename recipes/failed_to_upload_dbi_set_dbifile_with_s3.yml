@@ -26,6 +26,10 @@
         VblkPer: "8"
         DBIPerSet: "5"
 
+    - name: "{{ recipe_name }}: copy dbi set files into a new directory."
+      debug:
+         msg: "{{ lookup('s3_handler', 'copyDBIset', wantlist=True) }}"
+
     - name: "{{ recipe_name }}: delete 2 files from the dbi set from s3."
       vars:
         operation: "delete"

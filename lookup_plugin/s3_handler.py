@@ -515,21 +515,24 @@ def deleteSetFiles(cluster_params, dirName):
     json_data = load_json_contents(jsonPath + "dummy_generator.json")
     dbi_input_path = str(json_data['DbiPath'])
 
-    files = os.listdir(dbi_input_path)
+    destination_path = jsonPath + "dbisetFname.txt"
+    with open(destination_path, 'r') as file:
+        # Read the contents of the file
+        file_contents = file.read()
+    file_list = file_contents.rstrip(', ').split(', ')
+    
+    filename = random.choice(file_list)
+    file_path = dbi_input_path + "/" + filename
+    os.remove(file_path)
+    print(f"Deleted: {file_path}")
+    
+    prefix = filename.split('.')[0]
 
-    # Count of deleted files
-    deleted_count = 0
-
-    # Iterate through the files and delete the first two that start with "0_"
-    for filename in files:
-        if filename.startswith("0_"):
-            file_path = os.path.join(dbi_input_path, filename)
-            os.remove(file_path)
-            print(f"Deleted: {file_path}")
-            deleted_count += 1
-
-            if deleted_count >= 2:
-                break
+    # Create a list to store files with the same prefix
+    files_with_same_prefix = [file for file in file_list if file.startswith(prefix)]
+    with open(destination_path, 'w') as file:
+        for item in files_with_same_prefix:
+            file.write(item + ", ")
 
 def deleteSetFileS3(cluster_params, dirName, operation):
     base_dir = cluster_params['base_dir']
@@ -544,15 +547,52 @@ def deleteSetFileS3(cluster_params, dirName, operation):
     logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
 
     filenames = []
-    files = os.listdir(dbi_input_path)
-    for filename in files:
-        if filename.startswith("0_"):
-            file_path = os.path.join(dbi_input_path, filename)
-            filenames.append(file_path)
+    destination_path = jsonPath + "dbisetFname.txt"
+    with open(destination_path, 'r') as file:
+        # Read the contents of the file
+        file_contents = file.read()
+    
+    file_list = file_contents.rstrip(', ').split(', ')
+    filename = random.choice(file_list)
+    file_path = dbi_input_path + "/" + filename
+    prefix = filename.split('.')[0]
+
+    # Create a list to store files with the same prefix
+    files_with_same_prefix = [file for file in file_list if file.startswith(prefix)]
+    with open(destination_path, 'w') as file:
+        for item in files_with_same_prefix:
+            file.write(item + ", ")
 
     s3config = '%s/s3.config.example' % binary_dir
     bin_path = '%s/s3Operation' % binary_dir
-    process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', filenames[0], '-l', logFile])
+    process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', file_path, '-l', logFile])
+
+def copyDBIset_NewDir(cluster_params, dirName):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    
+    json_path = jsonPath + "dummy_generator.json"
+    json_data = load_json_contents(jsonPath + "dummy_generator.json")
+    dbi_input_path = str(json_data['DbiPath'])
+    bucketName = str(json_data['BucketName'])
+
+    newDir = "dbiSetFiles"
+    file_path = jsonPath + "dbisetFname.txt"
+    try:
+        with open(file_path, 'r') as file:
+            # Read the contents of the file
+            file_contents = file.read()
+    except FileNotFoundError:
+        print(f"The file '{file_path}' was not found.")
+    
+    file_list = file_contents.rstrip(', ').split(', ')
+    for fileNames in file_list:
+        source_path = dbi_input_path +"/" + fileNames
+        destination_path = jsonPath + newDir
+        if not os.path.exists(destination_path):
+            os.makedirs(destination_path)
+        shutil.copy2(source_path, destination_path)
 
 def extracting_dictionary(cluster_params, operation, dirName):
     if operation == "data_validate":
@@ -573,6 +613,9 @@ def extracting_dictionary(cluster_params, operation, dirName):
 
     elif operation == "deleteSetFiles":
         deleteSetFiles(cluster_params, dirName)
+
+    elif operation == "copyDBIset":
+        copyDBIset_NewDir(cluster_params, dirName)
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):

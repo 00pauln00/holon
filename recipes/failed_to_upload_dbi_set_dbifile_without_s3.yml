@@ -1,8 +1,8 @@
-- name: "Overlapping_seq_range-case1"
+- name: "failed_to_upload_dbi_set_dbifile_without_s3"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "Overlapping_seq_range_case1"
+     recipe_name: "failed_to_upload_dbi_set_dbifile_without_s3"
      parent: None
 
   tasks:
@@ -18,7 +18,11 @@
         VblkPer: "8"
         DBIPerSet: "5"
 
-    - name: "{{ recipe_name }}: delete 2 files from the dbi set."
+    - name: "{{ recipe_name }}: copy dbi set files into a new directory."
+      debug:
+         msg: "{{ lookup('s3_handler', 'copyDBIset', wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: delete one file from the dbi set."
       debug:
          msg: "{{ lookup('s3_handler', 'deleteSetFiles', wantlist=True) }}"
 
