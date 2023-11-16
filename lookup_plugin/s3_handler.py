@@ -341,16 +341,10 @@ def start_gc_process(cluster_params, dirName, debugMode):
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
-
     # Close the log file
     fp.close()
-
-    # Check if the process finished successfully (exit code 0)
-    if exit_code == 0:
-        print("Process completed successfully.")
-    else:
-        error_message = f"Process failed with exit code {exit_code}."
-        raise RuntimeError(error_message)
+    
+    return exit_code
 
 def start_data_validate(cluster_params, dirName):
     base_dir = cluster_params['base_dir']
@@ -640,6 +634,8 @@ class LookupModule(LookupBase):
         elif operation == "start_gc":
             debugMode = terms[1]
             popen = start_gc_process(cluster_params, dirName, debugMode)
+            
+            return popen
 
         elif operation == "deleteSetFileS3":
             operation = terms[1]

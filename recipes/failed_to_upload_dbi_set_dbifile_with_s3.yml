@@ -42,7 +42,8 @@
       debug:
          msg:
           - "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
+      register: gc_output
 
-    - name: "{{ recipe_name }}: Start data validation"
-      debug:
-         msg: "{{ lookup('s3_handler', 'data_validate', wantlist=True) }}"
+    - debug:
+         msg: "GC will fail"
+      failed_when: gc_output['msg'][0] == 1
