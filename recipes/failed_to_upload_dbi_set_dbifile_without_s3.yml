@@ -26,7 +26,7 @@
       debug:
          msg: "{{ lookup('s3_handler', 'deleteSetFiles', wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: Perform GC and keep stale dbis"
+    - name: "{{ recipe_name }}: Perform GC."
       vars:
         debugMode: false
       debug:
