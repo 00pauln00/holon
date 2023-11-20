@@ -1,8 +1,8 @@
-- name: "generate_overlap_dbi_set_and_upload_to_s3"
+- name: "basic_recipe_for_overlap_dbi_set"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "generate_overlap_dbi_set_and_upload_to_s3"
+     recipe_name: "basic_recipe_for_overlap_dbi_set"
      parent: None
 
   tasks:
