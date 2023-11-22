@@ -29,7 +29,7 @@
 
     - debug:
          msg: "Check return code of GC Process."
-      failed_when: gc_output['msg'][0] == 0
+      failed_when: gc_output['msg'][0] != "0"
 
     - name: "{{ recipe_name }}: Start data validation"
       debug:

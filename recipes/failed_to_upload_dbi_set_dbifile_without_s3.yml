@@ -36,4 +36,4 @@
     
     - debug:
          msg: "GC will fail"
-      failed_when: gc_output['msg'][0] == 1
+      failed_when: gc_output['msg'][0] != "1"
