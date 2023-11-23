@@ -9,6 +9,10 @@
 
   tasks:
   - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
     - name: "{{ recipe_name }}: Generate random DBI requests."
       include_role:
         name: common
@@ -21,6 +25,11 @@
         debugMode: false
       debug:
          msg: "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
+      register: gc_output
+
+    - debug:
+         msg: "Check return code of GC Process."
+      failed_when: gc_output['msg'][0] != "0"
 
     - name: "{{ recipe_name }}: Start data validation"
       debug:

@@ -1,8 +1,8 @@
-- name: "generate_reverse_sequential_dbi_pattern"
+- name: "basic_recipe_for_overlap_dbi_set"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "generate_reverse_sequential_dbi_pattern"
+     recipe_name: "basic_recipe_for_overlap_dbi_set"
      parent: None
 
   tasks:
@@ -15,14 +15,17 @@
           - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
-    - name: "{{ recipe_name }}: Generate random DBI requests."
+    - name: "{{ recipe_name }}: Generate overlapping seq range and unique DBIs."
       include_role:
         name: common
-        tasks_from: generate_pattern_dbis
+        tasks_from: generate_overlapping_dbi_set
       vars:
-        Type: "2"     #You can pass different pattern value here.
+        Type: "0"
+        VblkNum: "2000"
+        VblkPer: "8"
+        DBIPerSet: "7"
 
-    - name: "{{ recipe_name }}: Start gc algorithm"
+    - name: "{{ recipe_name }}: Perform GC"
       vars:
         debugMode: false
       debug:
@@ -31,7 +34,7 @@
       register: gc_output
 
     - debug:
-         msg: "Check return code of GC Process."
+         msg: "check return code of GC process"
       failed_when: gc_output['msg'][0] != "0"
 
     - name: "{{ recipe_name }}: Start data validation"

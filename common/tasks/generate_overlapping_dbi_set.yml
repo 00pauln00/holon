@@ -1,0 +1,14 @@
+---
+
+    - name: "Generate DBIs."
+      vars:
+         input_param: {
+                  'genType' : "{{ Type }}",
+                  'vbAmount' : "{{ VblkNum }}",
+                  'vblkPer' : "{{ VblkPer }}",
+                  'overlapSeq' : "{{ DBIPerSet }}",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'generate_pattern', input_param, wantlist=True) }}"
+

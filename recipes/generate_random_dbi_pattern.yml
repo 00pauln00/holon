@@ -28,8 +28,18 @@
       debug:
          msg:
           - "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
+      register: gc_output
+
+    - debug:
+         msg: "Check return code of GC Process."
+      failed_when: gc_output['msg'][0] != "0"
 
     - name: "{{ recipe_name }}: Start data validation"
       debug:
          msg: "{{ lookup('s3_handler', 'data_validate', wantlist=True) }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
 

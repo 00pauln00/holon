@@ -10,6 +10,120 @@ from genericcmd import *
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
 
+def load_parameters_from_json(filename):
+    # Load parameters from a JSON file
+    with open(filename, 'r') as json_file:
+        params = json.load(json_file)
+    return params
+
+def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operation, params_type):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
+
+    # Prepare path for executables.
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    dbiPath = "%s/%s/%s/" % (base_dir, raft_uuid, dirName)
+    #Create the new directory
+    if not os.path.exists(dbiPath):
+        # Create the directory path
+        try:
+            os.makedirs(dbiPath)
+        except Exception as e:
+            print(f"An error occurred while creating '{path}': {e}")
+
+    processes = []
+
+    for params in jsonParams:
+       path = dbiPath + params["seed"]
+       #Create the new directory
+       if not os.path.exists(path):
+          # Create the directory path
+          try:
+             os.makedirs(path)
+          except Exception as e:
+             print(f"An error occurred while creating '{path}': {e}")
+
+       cmd = []
+       # Prepare path for log file.
+       dbiLogFile = "%s/%s/dbiLog_%s.log" % (base_dir, raft_uuid, params["seed"])
+       gcLogFile = "%s/%s/gcLog_%s.log" % (base_dir, raft_uuid, params["seed"])
+       data_validator_log = "%s/%s/dataValidatorResult_%s" % (base_dir, raft_uuid, params["seed"])
+
+       if operation == "run_example":
+          bin_path = '%s/example' % binary_dir
+          jsonPath = get_dir_path(cluster_params, dirName, params["seed"])
+          if jsonPath != None:
+               json_data = load_json_contents(jsonPath + "/dummy_generator.json")
+               params["seqStart"] = str(json_data['SeqEnd'] + 1)
+               params["vdev"] = str(json_data['BucketName'])
+          else:
+               params["seqStart"] = "0"
+               params["vdev"] = ""
+
+          if s3Support == "true":
+               s3UploadLogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
+               cmd.extend([bin_path, "-c", params["chunk"], "-mp", params["maxPunches"],
+                   "-mv", params["maxVblks"], "-p", path, "-pa", params["punchAmount"],
+                   "-pp", params["punchesPer"], "-ps", params["maxPunchSize"], "-seed", params["seed"],
+                   "-ss", params["seqStart"], "-va", params["vbAmount"], "-vp", params["vblkPer"],
+                   "-t", params["genType"], "-bs", params["blockSize"], "-bsm", params["blockSizeMax"],
+                   "-vs", params["startVblk"], "-vdev", params["vdev"], "-s3config", params["s3configPath"],
+                   "-s3log", s3UploadLogFile])
+          else:
+               cmd.extend([bin_path, "-c", params["chunk"], "-mp", params["maxPunches"],
+                   "-mv", params["maxVblks"], "-p", path, "-pa", params["punchAmount"],
+                   "-pp", params["punchesPer"], "-ps", params["maxPunchSize"], "-seed", params["seed"],
+                   "-ss", params["seqStart"], "-va", params["vbAmount"], "-vp", params["vblkPer"],
+                   "-t", params["genType"], "-bs", params["blockSize"], "-bsm", params["blockSizeMax"],
+                   "-vs", params["startVblk"], "-vdev", params["vdev"]])
+          if params["strideWidth"] != "":
+                cmd.extend(["-sw", params["strideWidth"]])
+          if params["overlapSeq"] != "" and params["numOfSet"] != "":
+                cmd.extend(["-se", params["overlapSeq"], "-ts", params["numOfSet"]])
+
+       elif operation == "run_gc":
+          bin_path = '%s/gcTester' % binary_dir
+          get_path = get_dir_path(cluster_params, dirName, params["seed"])
+          json_path = get_path + "dummy_generator.json"
+          downloadPath = "%s/%s/s3-downloaded-obj" % (base_dir, raft_uuid)
+          if s3Support == "true":
+               s3DownloadLogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
+               cmd.extend([bin_path, "-i", get_path, "-s3config", params["s3config"],
+                       "-s3log", s3DownloadLogFile, "-j", json_path, "-path", downloadPath])
+          else:
+              cmd.extend([bin_path, "-i", get_path, "-j", json_path])
+          if params["debugMode"]:
+              cmd.append('-d')
+
+       elif operation == "run_data_validator":
+          bin_path = '%s/dataValidator' % binary_dir
+          get_path = get_dir_path(cluster_params, dirName, params["seed"])
+          json_data = load_json_contents(get_path + "dummy_generator.json")
+          vdev = str(json_data['BucketName'])
+          downloadPath = "%s/%s/s3-downloaded-obj/%s/" % (base_dir, raft_uuid, vdev)
+          if s3Support == "true":
+                cmd.extend([bin_path, '-d', downloadPath, '-c', params['chunk'],
+                    '-l', data_validator_log])
+          else:
+             cmd.extend([bin_path, '-d', get_path, '-c', params['chunk'],
+                    '-l', data_validator_log])
+       fp = open(dbiLogFile if operation == "run_example" else gcLogFile, "a+")
+       process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
+       # Wait for the process to finish and get the exit code
+       exit_code = process.wait()
+
+       # close the log file
+       fp.close()
+
+       # Check if the process finished successfully (exit code 0)
+       if exit_code == 0:
+          print("Process completed successfully.")
+       else:
+          error_message = f"Process failed with exit code {exit_code}."
+          raise RuntimeError(error_message)
+
 def load_recipe_op_config(cluster_params):
     recipe_conf = {}
     raft_json_fpath = "%s/%s/%s.json" % (cluster_params['base_dir'],
@@ -25,7 +139,6 @@ def start_minio_server(cluster_params, dirName):
     s3Support = cluster_params['s3Support']
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
-
     # Prepare path for log file.
     s3_server = "%s/%s/s3Server.log" % (base_dir, raft_uuid)
 
@@ -34,10 +147,10 @@ def start_minio_server(cluster_params, dirName):
 
     if s3Support:
         # Check if the directory exists, and if not, create it.
-        if not os.path.exists(os.path.expanduser(f'~/{dirName}')):
-            os.makedirs(os.path.expanduser(f'~/{dirName}'))
+        if not os.path.exists(os.path.expanduser(f'/local/{dirName}')):
+            os.makedirs(os.path.expanduser(f'/local/{dirName}'))
 
-        command = f"minio server ~/{dirName} --console-address ':9090' --address ':9000'"
+        command = f"minio server /local/{dirName} --console-address ':9090' --address ':9000'"
 
         process_popen = subprocess.Popen(command, shell=True, stdout=fp, stderr=fp)
 
@@ -75,11 +188,16 @@ def start_minio_server(cluster_params, dirName):
 
     return process_popen
 
-def get_dir_path(cluster_params, dirName):
+def get_dir_path(cluster_params, dirName, seed=None):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     baseDir = os.path.join(base_dir, raft_uuid)
-    dbi_dir = os.path.join(baseDir, dirName)
+    #dbi_dir = os.path.join(baseDir, dirName, seed)
+
+    if seed is not None:
+        dbi_dir = os.path.join(baseDir, dirName, seed)
+    else:
+        dbi_dir = os.path.join(baseDir, dirName)
 
     # Get a list of all entries (files and directories) under the 'dbi-dbo' directory
     entries = os.listdir(dbi_dir)
@@ -87,16 +205,17 @@ def get_dir_path(cluster_params, dirName):
     # Filter out directories only
     directories = [entry for entry in entries if os.path.isdir(os.path.join(dbi_dir, entry))]
 
-    # Check if there are any directories in the
     if directories:
-        # Return the path of the first directory found with a trailing slash
-        first_directory = directories[0]
-        directory_path = os.path.join(dbi_dir, first_directory, '')  # Add the trailing slash here
+        # Sort directories based on creation time (most recent first)
+        directories.sort(key=lambda d: os.path.getctime(os.path.join(dbi_dir, d)), reverse=True)
+        # Return the path of the most recently created directory with a trailing slash
+        most_recent_directory = directories[0]
+        directory_path = os.path.join(dbi_dir, most_recent_directory, '')  # Add the trailing slash here
         return directory_path
     else:
         return None
 
-def start_pattern_generator(cluster_params, chunkNumber, genType, dirName):
+def start_pattern_generator(cluster_params, chunkNumber, genType, dirName, input_values):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -140,43 +259,39 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName):
     maxPuncheSize = str(random.choice([2 ** i for i in range(6)]))
     seed = str(random.randint(1, 100))
     vbAmount =  str(random.randint(1000, 10000))
-    vblkPer = str(random.randint(1, 10))
+    vblkPer = str(random.randint(1, 20))
     blockSize = str(random.randint(1, 32))
     blockSizeMax = str(random.randint(1, 32))
     startVblk = "0"
     strideWidth = str(random.randint(1, 50))
+    numOfSet = str(random.randint(1, 10))
 
+    # Initialize the command list with common arguments
+    cmd = [
+        bin_path, "-c", chunk, "-mp", maxPunches, "-mv", maxVblks, "-p", path,
+        "-pa", punchAmount, "-pp", punchesPer, "-ps", maxPuncheSize, "-seed", seed,
+        "-ss", seqStart, "-t", genType,
+        "-bs", blockSize, "-bsm", blockSizeMax, "-vs", startVblk, "-sw", strideWidth
+    ]
+
+    # Add the S3-specific options if s3Support is "true"
     if s3Support == "true":
         s3config = '%s/s3.config.example' % binary_dir
-        # Prepare path for log file.
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
-        if vdev != "":
-            process = subprocess.Popen([bin_path, "-c", chunk, "-mp", maxPunches,
-                           "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
-                           "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
-                           "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
-                           "-vs", startVblk, "-sw", strideWidth, '-s3config', s3config, '-s3log',
-                           s3LogFile, "-vdev", vdev], stdout = fp, stderr = fp)
-        else:
-            process = subprocess.Popen([bin_path, "-c", chunk, "-mp", maxPunches,
-                           "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
-                           "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
-                           "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
-                           "-vs", startVblk, "-sw", strideWidth, '-s3config', s3config, '-s3log',
-                           s3LogFile], stdout = fp, stderr = fp)
+        cmd.extend(['-s3config', s3config, '-s3log', s3LogFile])
+
+    # Add the -se and -ts option if overlapSeq is provided
+    if 'overlapSeq' not in input_values:
+        cmd.extend(['-va', str(vbAmount), '-vp', str(vblkPer)])
     else:
-        if vdev != "":
-            process = subprocess.Popen([bin_path, "-c", chunk, "-mp", maxPunches,
-                           "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
-                           "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
-                           "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
-                           "-vs", startVblk, "-sw", strideWidth, "-vdev", vdev], stdout = fp, stderr = fp)
-        else:
-            process = subprocess.Popen([bin_path, "-c", chunk, "-mp", maxPunches,
-                               "-mv",maxVblks, "-p", path, "-pa", punchAmount, "-pp", punchesPer,
-                               "-ps", maxPuncheSize, "-seed",  seed, "-ss", seqStart, "-va", vbAmount,
-                               "-vp", vblkPer, "-t", genType, "-bs", blockSize, "-bsm", blockSizeMax,
-                               "-vs", startVblk, "-sw", strideWidth], stdout = fp, stderr = fp)
+        cmd.extend(['-va', input_values['vbAmount'], '-vp', input_values['vblkPer'], '-se', input_values['overlapSeq'], '-ts', str(numOfSet)])
+
+    # Add the -vdev option if vdev is provided
+    if vdev:
+       cmd.extend(['-vdev', vdev])
+
+    # Launch the subprocess with the constructed command
+    process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
@@ -207,16 +322,17 @@ def start_gc_process(cluster_params, dirName, debugMode):
     path = get_dir_path(cluster_params, dirName)
     bin_path = '%s/gcTester' % binary_dir
     json_path = path + "dummy_generator.json"
-    solnArry = path
     cmd = []
+    #s3config = '%s/s3.config.example' % binary_dir
+    #downloadPath = "%s/%s/s3-downloaded-obj" % (base_dir, raft_uuid)
     if s3Support == "true":
          s3config = '%s/s3.config.example' % binary_dir
          # Prepare path for log file.
          s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
          downloadPath = "%s/%s/s3-downloaded-obj" % (base_dir, raft_uuid)
-         cmd = [bin_path, '-i', path, '-s3config', s3config, '-s3log', s3LogFile, '-j', json_path, '-v', solnArry, '-path', downloadPath]
+         cmd = [bin_path, '-i', path, '-s3config', s3config, '-s3log', s3LogFile, '-j', json_path, '-path', downloadPath]
     else:
-        cmd = [bin_path, '-i', path, '-j', json_path, '-v', solnArry]
+        cmd = [bin_path, '-i', path, '-j', json_path]
 
     if debugMode:
         cmd.append('-d')
@@ -225,16 +341,10 @@ def start_gc_process(cluster_params, dirName, debugMode):
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
-
     # Close the log file
     fp.close()
-
-    # Check if the process finished successfully (exit code 0)
-    if exit_code == 0:
-        print("Process completed successfully.")
-    else:
-        error_message = f"Process failed with exit code {exit_code}."
-        raise RuntimeError(error_message)
+    
+    return exit_code
 
 def start_data_validate(cluster_params, dirName):
     base_dir = cluster_params['base_dir']
@@ -257,6 +367,7 @@ def start_data_validate(cluster_params, dirName):
         process = subprocess.Popen([bin_path, '-d', downloadPath, '-c', chunkNumber, '-l', logFile])
     else:
         process = subprocess.Popen([bin_path, '-d', path, '-c', chunkNumber, '-l', logFile])
+
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
 
@@ -340,21 +451,19 @@ def copy_DBI_file_generatorNum(cluster_params, dirName):
         # Select a random file from the list
         random_file = random.choice(file_list)
         filename_parts = random_file.split(".")
-
         # Extract the 3rd last element after the dots
-        third_last_element = filename_parts[-2]
+        third_last_element = filename_parts[-3]
         uuid = filename_parts[2]
-        # create dbo file with new uuid 
+        # create dbo file with new uuid
         result = search_files_by_string(dbo_input_path, uuid)
-        
+
         # Increment the extracted element by 1
         new_third_last_element = str(int(third_last_element) + 1)
 
         # Update the filename with the incremented element
-        filename_parts[-2] = new_third_last_element
+        filename_parts[-3] = new_third_last_element
         filename_parts[2] = result
         new_filename = ".".join(filename_parts)
-
         # Full path for the copied and renamed file
         source_file_path = os.path.join(dbi_input_path, random_file)
         new_file_path = os.path.join(dbi_input_path, new_filename)
@@ -391,6 +500,92 @@ def deleteFiles(cluster_params, dirName):
         except Exception as e:
             print(f"Error deleting {file_to_delete}: {str(e)}")
 
+def deleteSetFiles(cluster_params, dirName):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    json_data = load_json_contents(jsonPath + "dummy_generator.json")
+    dbi_input_path = str(json_data['DbiPath'])
+
+    destination_path = jsonPath + "dbisetFname.txt"
+    with open(destination_path, 'r') as file:
+        # Read the contents of the file
+        file_contents = file.read()
+    file_list = file_contents.rstrip(', ').split(', ')
+    
+    filename = random.choice(file_list)
+    file_path = dbi_input_path + "/" + filename
+    os.remove(file_path)
+    print(f"Deleted: {file_path}")
+    
+    prefix = filename.split('.')[0]
+
+    # Create a list to store files with the same prefix
+    files_with_same_prefix = [file for file in file_list if file.startswith(prefix)]
+    with open(destination_path, 'w') as file:
+        for item in files_with_same_prefix:
+            file.write(item + ", ")
+
+def deleteSetFileS3(cluster_params, dirName, operation):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    json_path = jsonPath + "dummy_generator.json"
+    json_data = load_json_contents(jsonPath + "dummy_generator.json")
+    dbi_input_path = str(json_data['DbiPath'])
+    bucketName = str(json_data['BucketName'])
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
+
+    filenames = []
+    destination_path = jsonPath + "dbisetFname.txt"
+    with open(destination_path, 'r') as file:
+        # Read the contents of the file
+        file_contents = file.read()
+    
+    file_list = file_contents.rstrip(', ').split(', ')
+    filename = random.choice(file_list)
+    file_path = dbi_input_path + "/" + filename
+    prefix = filename.split('.')[0]
+
+    # Create a list to store files with the same prefix
+    files_with_same_prefix = [file for file in file_list if file.startswith(prefix)]
+    with open(destination_path, 'w') as file:
+        for item in files_with_same_prefix:
+            file.write(item + ", ")
+
+    s3config = '%s/s3.config.example' % binary_dir
+    bin_path = '%s/s3Operation' % binary_dir
+    process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', file_path, '-l', logFile])
+
+def copyDBIset_NewDir(cluster_params, dirName):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    
+    json_path = jsonPath + "dummy_generator.json"
+    json_data = load_json_contents(jsonPath + "dummy_generator.json")
+    dbi_input_path = str(json_data['DbiPath'])
+    bucketName = str(json_data['BucketName'])
+
+    newDir = "dbiSetFiles"
+    file_path = jsonPath + "dbisetFname.txt"
+    try:
+        with open(file_path, 'r') as file:
+            # Read the contents of the file
+            file_contents = file.read()
+    except FileNotFoundError:
+        print(f"The file '{file_path}' was not found.")
+    
+    file_list = file_contents.rstrip(', ').split(', ')
+    for fileNames in file_list:
+        source_path = dbi_input_path +"/" + fileNames
+        destination_path = jsonPath + newDir
+        if not os.path.exists(destination_path):
+            os.makedirs(destination_path)
+        shutil.copy2(source_path, destination_path)
+
 def extracting_dictionary(cluster_params, operation, dirName):
     if operation == "data_validate":
        popen = start_data_validate(cluster_params, dirName)
@@ -408,6 +603,12 @@ def extracting_dictionary(cluster_params, operation, dirName):
     elif operation == "delete_DBI_files":
         deleteFiles(cluster_params, dirName)
 
+    elif operation == "deleteSetFiles":
+        deleteSetFiles(cluster_params, dirName)
+
+    elif operation == "copyDBIset":
+        copyDBIset_NewDir(cluster_params, dirName)
+
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
@@ -422,7 +623,7 @@ class LookupModule(LookupBase):
 
         if operation == "generate_pattern":
             input_values = terms[1]
-            popen = start_pattern_generator(cluster_params, chunkNumber, input_values['genType'], dirName)
+            popen = start_pattern_generator(cluster_params, chunkNumber, input_values['genType'], dirName, input_values)
 
         elif operation == "start_s3":
             s3Dir = terms[1]
@@ -431,7 +632,35 @@ class LookupModule(LookupBase):
         elif operation == "start_gc":
             debugMode = terms[1]
             popen = start_gc_process(cluster_params, dirName, debugMode)
+            
+            return popen
 
+        elif operation == "deleteSetFileS3":
+            operation = terms[1]
+            popen = deleteSetFileS3(cluster_params, dirName, operation)
+
+        elif operation == "json_params":
+            params_type = terms[1]
+            load_params = load_parameters_from_json("seed.json")
+            if params_type == "multiple_iteration":
+               multi_itr_seq = ['run_example', 'run_gc', 'run_example', 'run_gc', 'run_data_validator']
+               for params in load_params["multiple_iteration"]:
+                 for j in multi_itr_seq:
+                    if j == "run_gc":
+                       if "debugMode" in params:
+                           prepare_command_from_parameters(cluster_params, [params], dirName, j, params_type)
+                       else:
+                           # Run with debugMode=False
+                           params_without_debug = params.copy()
+                           params_without_debug["debugMode"] = False
+                           prepare_command_from_parameters(cluster_params, [params_without_debug], dirName, j, params_type)
+                    else:
+                       prepare_command_from_parameters(cluster_params, [params], dirName, j, params_type)
+            elif params_type == "single_iteration":
+               single_itr_seq = ['run_example', 'run_gc', 'run_data_validator']
+               for params in load_params["single_iteration"]:
+                  for i in single_itr_seq:
+                     prepare_command_from_parameters(cluster_params, [params], dirName, i, params_type)
         else:
             data = extracting_dictionary(cluster_params, operation, dirName)
             return data

@@ -1,0 +1,49 @@
+- name: "failed_to_upload_dbi_set_dbifile_with_s3"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "failed_to_upload_dbi_set_dbifile_with_s3"
+     parent: None
+
+  tasks:
+  - block:
+
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "minio_data"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+    - name: "{{ recipe_name }}: Generate overlapping seq range and unique DBIs."
+      include_role:
+        name: common
+        tasks_from: generate_overlapping_dbi_set
+      vars:
+        Type: "0"
+        VblkNum: "1000"
+        VblkPer: "8"
+        DBIPerSet: "5"
+
+    - name: "{{ recipe_name }}: copy dbi set files into a new directory."
+      debug:
+         msg: "{{ lookup('s3_handler', 'copyDBIset', wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: delete file from the dbi set from s3."
+      vars:
+        operation: "delete"
+      debug:
+         msg: "{{ lookup('s3_handler', 'deleteSetFileS3', operation, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Perform GC."
+      vars:
+        debugMode: false
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
+      register: gc_output
+
+    - debug:
+         msg: "GC will fail"
+      failed_when: gc_output['msg'][0] != "1"

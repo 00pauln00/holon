@@ -1,0 +1,29 @@
+- name: "multiple_iteration_with_json_params"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "multiple_iteration_with_json_params"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "minio_data"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+    - name: "Run GC utilities with single iteration json paramters"
+      vars:
+        params_type: 'multiple_iteration'
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'json_params', params_type, wantlist=True) }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
+
