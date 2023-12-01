@@ -90,7 +90,7 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           downloadPath = "%s/%s/s3-downloaded-obj" % (base_dir, raft_uuid)
           if s3Support == "true":
                s3DownloadLogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
-               cmd.extend([bin_path, "-i", get_path, "-s3config", params["s3config"],
+               cmd.extend([bin_path, "-i", get_path, "-s3config", params["s3configPath"],
                        "-s3log", s3DownloadLogFile, "-j", json_path, "-path", downloadPath])
           else:
               cmd.extend([bin_path, "-i", get_path, "-j", json_path])
@@ -101,8 +101,7 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           bin_path = '%s/dataValidator' % binary_dir
           get_path = get_dir_path(cluster_params, dirName, params["seed"])
           json_data = load_json_contents(get_path + "dummy_generator.json")
-          vdev = str(json_data['BucketName'])
-          downloadPath = "%s/%s/s3-downloaded-obj/%s/" % (base_dir, raft_uuid, vdev)
+          downloadPath = "%s/%s/s3-downloaded-obj/" % (base_dir, raft_uuid)
           if s3Support == "true":
                 cmd.extend([bin_path, '-d', downloadPath, '-c', params['chunk'],
                     '-l', data_validator_log])
@@ -323,8 +322,6 @@ def start_gc_process(cluster_params, dirName, debugMode):
     bin_path = '%s/gcTester' % binary_dir
     json_path = path + "dummy_generator.json"
     cmd = []
-    #s3config = '%s/s3.config.example' % binary_dir
-    #downloadPath = "%s/%s/s3-downloaded-obj" % (base_dir, raft_uuid)
     if s3Support == "true":
          s3config = '%s/s3.config.example' % binary_dir
          # Prepare path for log file.
@@ -343,7 +340,7 @@ def start_gc_process(cluster_params, dirName, debugMode):
     exit_code = process.wait()
     # Close the log file
     fp.close()
-    
+
     return exit_code
 
 def start_data_validate(cluster_params, dirName):
@@ -359,9 +356,8 @@ def start_data_validate(cluster_params, dirName):
     path = get_dir_path(cluster_params, dirName)
     json_data = load_json_contents(path + "/" + "dummy_generator.json")
     chunkNumber = str(json_data['TotalChunkSize'])
-    vdev = str(json_data['BucketName'])
 
-    downloadPath = "%s/%s/s3-downloaded-obj/%s/" % (base_dir, raft_uuid, vdev)
+    downloadPath = "%s/%s/s3-downloaded-obj/" % (base_dir, raft_uuid)
     bin_path = '%s/dataValidator' % binary_dir
     if s3Support == "true":
         process = subprocess.Popen([bin_path, '-d', downloadPath, '-c', chunkNumber, '-l', logFile])
@@ -512,12 +508,12 @@ def deleteSetFiles(cluster_params, dirName):
         # Read the contents of the file
         file_contents = file.read()
     file_list = file_contents.rstrip(', ').split(', ')
-    
+
     filename = random.choice(file_list)
     file_path = dbi_input_path + "/" + filename
     os.remove(file_path)
     print(f"Deleted: {file_path}")
-    
+
     prefix = filename.split('.')[0]
 
     # Create a list to store files with the same prefix
@@ -543,7 +539,7 @@ def deleteSetFileS3(cluster_params, dirName, operation):
     with open(destination_path, 'r') as file:
         # Read the contents of the file
         file_contents = file.read()
-    
+
     file_list = file_contents.rstrip(', ').split(', ')
     filename = random.choice(file_list)
     file_path = dbi_input_path + "/" + filename
@@ -563,7 +559,7 @@ def copyDBIset_NewDir(cluster_params, dirName):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
-    
+
     json_path = jsonPath + "dummy_generator.json"
     json_data = load_json_contents(jsonPath + "dummy_generator.json")
     dbi_input_path = str(json_data['DbiPath'])
@@ -577,7 +573,7 @@ def copyDBIset_NewDir(cluster_params, dirName):
             file_contents = file.read()
     except FileNotFoundError:
         print(f"The file '{file_path}' was not found.")
-    
+
     file_list = file_contents.rstrip(', ').split(', ')
     for fileNames in file_list:
         source_path = dbi_input_path +"/" + fileNames
@@ -632,7 +628,7 @@ class LookupModule(LookupBase):
         elif operation == "start_gc":
             debugMode = terms[1]
             popen = start_gc_process(cluster_params, dirName, debugMode)
-            
+
             return popen
 
         elif operation == "deleteSetFileS3":

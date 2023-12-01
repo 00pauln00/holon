@@ -54,7 +54,7 @@
     "seed": "57",
     "seqStart": "0",
     "vbAmount": "6174",
-    "vblkPer": "4",
+    "vblkPer": "6",
     "genType": "0",
     "blockSize": "19",
     "blockSizeMax": "22",
