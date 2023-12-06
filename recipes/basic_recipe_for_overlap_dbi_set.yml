@@ -24,6 +24,7 @@
         VblkNum: "2000"
         VblkPer: "8"
         DBIPerSet: "7"
+        ChunkNum: "-1"
       register: chunk
 
     - name: "{{ recipe_name }}: Perform GC"

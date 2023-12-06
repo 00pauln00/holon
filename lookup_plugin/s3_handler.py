@@ -290,7 +290,8 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values):
     if 'overlapSeq' not in input_values:
         cmd.extend(['-va', str(vbAmount), '-vp', str(vblkPer)])
     else:
-        cmd.extend(['-va', input_values['vbAmount'], '-vp', input_values['vblkPer'], '-se', input_values['overlapSeq'], '-ts', str(numOfSet)])
+        cmd.extend(['-va', input_values['vbAmount'], '-vp', input_values['vblkPer'],
+                    '-se', input_values['overlapSeq'], '-ts', str(numOfSet)])
 
     # Add the -vdev option if vdev is provided
     if vdev:
