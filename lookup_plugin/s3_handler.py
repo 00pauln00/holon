@@ -499,11 +499,11 @@ def deleteFiles(cluster_params, dirName):
         except Exception as e:
             print(f"Error deleting {file_to_delete}: {str(e)}")
 
-def deleteSetFiles(cluster_params, dirName):
+def deleteSetFiles(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
-    json_data = load_json_contents(jsonPath + "dummy_generator.json")
+    json_data = load_json_contents(jsonPath + "/DV/" + chunk + "/dummy_generator.json")
     dbi_input_path = str(json_data['DbiPath'])
 
     destination_path = jsonPath + "dbisetFname.txt"
@@ -558,13 +558,13 @@ def deleteSetFileS3(cluster_params, dirName, operation):
     bin_path = '%s/s3Operation' % binary_dir
     process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', file_path, '-l', logFile])
 
-def copyDBIset_NewDir(cluster_params, dirName):
+def copyDBIset_NewDir(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
-
-    json_path = jsonPath + "dummy_generator.json"
-    json_data = load_json_contents(jsonPath + "dummy_generator.json")
+    json_path = jsonPath + "/DV/" + chunk + "/" + "dummy_generator.json"
+    print("json_path is: ", json_path)
+    json_data = load_json_contents(json_path)
     dbi_input_path = str(json_data['DbiPath'])
     bucketName = str(json_data['BucketName'])
 
@@ -602,9 +602,6 @@ def extracting_dictionary(cluster_params, operation, dirName):
     elif operation == "deleteSetFiles":
         deleteSetFiles(cluster_params, dirName)
 
-    elif operation == "copyDBIset":
-        copyDBIset_NewDir(cluster_params, dirName)
-
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
@@ -641,6 +638,14 @@ class LookupModule(LookupBase):
         elif operation == "deleteSetFileS3":
             operation = terms[1]
             popen = deleteSetFileS3(cluster_params, dirName, operation)
+        
+        elif operation == "copyDBIset":
+            chunk = terms[1]
+            copyDBIset_NewDir(cluster_params, dirName, chunk)
+        
+        elif operation == "deleteSetFiles":
+            chunk = terms[1]
+            deleteSetFiles(cluster_params, dirName, chunk)
 
         elif operation == "json_params":
             params_type = terms[1]
