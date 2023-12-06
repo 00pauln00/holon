@@ -214,11 +214,10 @@ def get_dir_path(cluster_params, dirName, seed=None):
     else:
         return None
 
-def start_pattern_generator(cluster_params, chunkNumber, genType, dirName, input_values):
+def start_pattern_generator(cluster_params, genType, dirName, input_values):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
-
     path = "%s/%s/%s/" % (base_dir, raft_uuid, dirName)
     # Create the new directory
     if not os.path.exists(path):
@@ -240,15 +239,22 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName, input
     #Get dummyDBI example
     bin_path = '%s/example' % binary_dir
     vdev = ""
+
+    chunkNum = ""
+    if input_values['chunkNumber'] == "-1":
+        # Generate a random chunkNumber
+        chunkNum = str(random.randint(1, 200))
+
     # Generate random values for the dbi pattern generation
     jsonPath = get_dir_path(cluster_params, dirName)
     if jsonPath != None:
-        json_data = load_json_contents(jsonPath + "dummy_generator.json")
+        newPath = jsonPath + "DV/" + input_values['chunkNumber']
+        json_data = load_json_contents(newPath + "/dummy_generator.json")
         chunk = str(json_data['TotalChunkSize'])
         seqStart = str(json_data['SeqEnd'] + 1)
         vdev = str(json_data['BucketName'])
     else:
-        chunk = chunkNumber
+        chunk = chunkNum
         seqStart = "0"
 
     maxPunches = str(random.choice([2 ** i for i in range(6)]))
@@ -359,7 +365,6 @@ def start_data_validate(cluster_params, dirName, chunk):
     logFile = "%s/%s/dataValidateResult" % (base_dir, raft_uuid)
 
     path = get_dir_path(cluster_params, dirName)
-
     downloadPath = "%s/%s/s3-downloaded-obj/" % (base_dir, raft_uuid)
     bin_path = '%s/dataValidator' % binary_dir
     if s3Support == "true":
@@ -396,12 +401,11 @@ def load_json_contents(path):
 
     return json_data
 
-def get_DBiFileNames(cluster_params, dirName):
+def get_DBiFileNames(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
-    path = get_dir_path(cluster_params, dirName)
-    json_data = load_json_contents(jsonPath + "dummy_generator.json")
+    json_data = load_json_contents(jsonPath + "DV/" + str(chunk) + "/dummy_generator.json")
     dbi_input_path = str(json_data['DbiPath'])
 
     # Initialize a list to store file names
@@ -472,14 +476,13 @@ def copy_DBI_file_generatorNum(cluster_params, dirName):
     else:
         print("No files found in the directory.")
 
-def deleteFiles(cluster_params, dirName):
+def deleteFiles(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     json_filename = 'DBIFileNames.json'
-    path = "%s/%s/%s" % (base_dir, raft_uuid, json_filename)
 
     jsonPath = get_dir_path(cluster_params, dirName)
-    json_data = load_json_contents(jsonPath + "dummy_generator.json")
+    json_data = load_json_contents(jsonPath + "DV/" + str(chunk) + "/dummy_generator.json")
     dbi_input_path = str(json_data['DbiPath'])
 
     # Read the JSON file to get the list of file names
@@ -593,12 +596,6 @@ def extracting_dictionary(cluster_params, operation, dirName):
     elif operation == "copy_DBI_file_generatorNum":
         copy_DBI_file_generatorNum(cluster_params, dirName)
 
-    elif operation == "get_DBI_fileNames":
-        get_DBiFileNames(cluster_params, dirName)
-
-    elif operation == "delete_DBI_files":
-        deleteFiles(cluster_params, dirName)
-
     elif operation == "deleteSetFiles":
         deleteSetFiles(cluster_params, dirName)
 
@@ -616,7 +613,7 @@ class LookupModule(LookupBase):
 
         if operation == "generate_pattern":
             input_values = terms[1]
-            popen = start_pattern_generator(cluster_params, chunkNumber, input_values['genType'], dirName, input_values)
+            popen = start_pattern_generator(cluster_params, input_values['genType'], dirName, input_values)
 
             return popen
 
@@ -630,19 +627,27 @@ class LookupModule(LookupBase):
             popen = start_gc_process(cluster_params, dirName, debugMode, chunk)
 
             return popen
-        
+
         elif operation == "data_validate":
             Chunk = terms[1]
             popen = start_data_validate(cluster_params, dirName, Chunk)
 
+        elif operation == "get_DBI_fileNames":
+            Chunk = terms[1]
+            get_DBiFileNames(cluster_params, dirName, Chunk)
+
+        elif operation == "delete_DBI_files":
+            Chunk = terms[1]
+            deleteFiles(cluster_params, dirName, Chunk)
+
         elif operation == "deleteSetFileS3":
             operation = terms[1]
             popen = deleteSetFileS3(cluster_params, dirName, operation)
-        
+
         elif operation == "copyDBIset":
             chunk = terms[1]
             copyDBIset_NewDir(cluster_params, dirName, chunk)
-        
+
         elif operation == "deleteSetFiles":
             chunk = terms[1]
             deleteSetFiles(cluster_params, dirName, chunk)

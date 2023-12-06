@@ -4,6 +4,7 @@
       vars:
          input_param: {
                   'genType' : "{{ Type }}",
+                  'chunkNumber' : "{{ ChunkNum }}"
                  }
       debug:
          msg:
