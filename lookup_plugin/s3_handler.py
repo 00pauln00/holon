@@ -55,7 +55,8 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           bin_path = '%s/example' % binary_dir
           jsonPath = get_dir_path(cluster_params, dirName, params["seed"])
           if jsonPath != None:
-               json_data = load_json_contents(jsonPath + "/dummy_generator.json")
+               newPath = jsonPath + "DV/" + params["chunk"]
+               json_data = load_json_contents(newPath + "/dummy_generator.json")
                params["seqStart"] = str(json_data['SeqEnd'] + 1)
                params["vdev"] = str(json_data['BucketName'])
           else:
@@ -86,21 +87,21 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
        elif operation == "run_gc":
           bin_path = '%s/gcTester' % binary_dir
           get_path = get_dir_path(cluster_params, dirName, params["seed"])
-          json_path = get_path + "dummy_generator.json"
+          json_path = get_path + "DV/" + params["chunk"] + "/dummy_generator.json"
           downloadPath = "%s/%s/s3-downloaded-obj" % (base_dir, raft_uuid)
           if s3Support == "true":
                s3DownloadLogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
-               cmd.extend([bin_path, "-i", get_path, "-s3config", params["s3configPath"],
-                       "-s3log", s3DownloadLogFile, "-j", json_path, "-path", downloadPath])
+               cmd.extend([bin_path, "-i", get_path, '-v', params["vdev"], '-c', params["chunk"], "-s3config", params["s3configPath"],
+                       "-s3log", s3DownloadLogFile, "-path", downloadPath])
           else:
-              cmd.extend([bin_path, "-i", get_path, "-j", json_path])
+              cmd.extend([bin_path, "-i", get_path, '-v', params["vdev"], '-c', params["chunk"]])
           if params["debugMode"]:
               cmd.append('-d')
 
        elif operation == "run_data_validator":
           bin_path = '%s/dataValidator' % binary_dir
           get_path = get_dir_path(cluster_params, dirName, params["seed"])
-          json_data = load_json_contents(get_path + "dummy_generator.json")
+          json_data = load_json_contents(get_path + "DV/" + params["chunk"] + "/dummy_generator.json")
           downloadPath = "%s/%s/s3-downloaded-obj/" % (base_dir, raft_uuid)
           if s3Support == "true":
                 cmd.extend([bin_path, '-d', downloadPath, '-c', params['chunk'],
