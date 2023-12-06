@@ -3,7 +3,7 @@ import json
 import os, random, psutil
 from datetime import datetime
 import time
-import subprocess
+import subprocess ,re
 import uuid, random
 import shutil
 from genericcmd import *
@@ -304,7 +304,9 @@ def start_pattern_generator(cluster_params, chunkNumber, genType, dirName, input
         error_message = f"Process failed with exit code {exit_code}."
         raise RuntimeError(error_message)
 
-def start_gc_process(cluster_params, dirName, debugMode):
+    return chunk
+
+def start_gc_process(cluster_params, dirName, debugMode, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -320,16 +322,19 @@ def start_gc_process(cluster_params, dirName, debugMode):
 
     path = get_dir_path(cluster_params, dirName)
     bin_path = '%s/gcTester' % binary_dir
-    json_path = path + "dummy_generator.json"
+    matches = re.findall(r'[\w-]{36}', path)
+    vdev_uuid = matches[-1] if matches else None
+    print("vdev uuid: ", vdev_uuid)
+
     cmd = []
     if s3Support == "true":
          s3config = '%s/s3.config.example' % binary_dir
          # Prepare path for log file.
          s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
          downloadPath = "%s/%s/s3-downloaded-obj" % (base_dir, raft_uuid)
-         cmd = [bin_path, '-i', path, '-s3config', s3config, '-s3log', s3LogFile, '-j', json_path, '-path', downloadPath]
+         cmd = [bin_path, '-i', path, '-s3config', s3config, '-s3log', s3LogFile, '-j', '-v', vdev_uuid, '-c', chunk, downloadPath]
     else:
-        cmd = [bin_path, '-i', path, '-j', json_path]
+        cmd = [bin_path, '-i', path, '-v', vdev_uuid, '-c', chunk]
 
     if debugMode:
         cmd.append('-d')
@@ -343,7 +348,7 @@ def start_gc_process(cluster_params, dirName, debugMode):
 
     return exit_code
 
-def start_data_validate(cluster_params, dirName):
+def start_data_validate(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -354,15 +359,13 @@ def start_data_validate(cluster_params, dirName):
     logFile = "%s/%s/dataValidateResult" % (base_dir, raft_uuid)
 
     path = get_dir_path(cluster_params, dirName)
-    json_data = load_json_contents(path + "/" + "dummy_generator.json")
-    chunkNumber = str(json_data['TotalChunkSize'])
 
     downloadPath = "%s/%s/s3-downloaded-obj/" % (base_dir, raft_uuid)
     bin_path = '%s/dataValidator' % binary_dir
     if s3Support == "true":
-        process = subprocess.Popen([bin_path, '-d', downloadPath, '-c', chunkNumber, '-l', logFile])
+        process = subprocess.Popen([bin_path, '-d', downloadPath, '-c', chunk, '-l', logFile])
     else:
-        process = subprocess.Popen([bin_path, '-d', path, '-c', chunkNumber, '-l', logFile])
+        process = subprocess.Popen([bin_path, '-d', path, '-c', chunk, '-l', logFile])
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
@@ -583,10 +586,7 @@ def copyDBIset_NewDir(cluster_params, dirName):
         shutil.copy2(source_path, destination_path)
 
 def extracting_dictionary(cluster_params, operation, dirName):
-    if operation == "data_validate":
-       popen = start_data_validate(cluster_params, dirName)
-
-    elif operation == "load_contents":
+    if operation == "load_contents":
         data = load_json_contents(input_values['path'])
         return data
 
@@ -621,15 +621,22 @@ class LookupModule(LookupBase):
             input_values = terms[1]
             popen = start_pattern_generator(cluster_params, chunkNumber, input_values['genType'], dirName, input_values)
 
+            return popen
+
         elif operation == "start_s3":
             s3Dir = terms[1]
             process = start_minio_server(cluster_params, s3Dir)
 
         elif operation == "start_gc":
             debugMode = terms[1]
-            popen = start_gc_process(cluster_params, dirName, debugMode)
+            chunk = terms[2]
+            popen = start_gc_process(cluster_params, dirName, debugMode, chunk)
 
             return popen
+        
+        elif operation == "data_validate":
+            Chunk = terms[1]
+            popen = start_data_validate(cluster_params, dirName, Chunk)
 
         elif operation == "deleteSetFileS3":
             operation = terms[1]
