@@ -332,7 +332,7 @@ def start_gc_process(cluster_params, dirName, debugMode, chunk):
          # Prepare path for log file.
          s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
          downloadPath = "%s/%s/s3-downloaded-obj" % (base_dir, raft_uuid)
-         cmd = [bin_path, '-i', path, '-s3config', s3config, '-s3log', s3LogFile, '-j', '-v', vdev_uuid, '-c', chunk, downloadPath]
+         cmd = [bin_path, '-i', path, '-s3config', s3config, '-s3log', s3LogFile, '-v', vdev_uuid, '-c', chunk, downloadPath]
     else:
         cmd = [bin_path, '-i', path, '-v', vdev_uuid, '-c', chunk]
 

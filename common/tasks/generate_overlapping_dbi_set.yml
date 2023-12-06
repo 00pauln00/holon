@@ -11,4 +11,4 @@
       debug:
          msg:
           - "{{ lookup('s3_handler', 'generate_pattern', input_param, wantlist=True) }}"
-
+      register: chunk
