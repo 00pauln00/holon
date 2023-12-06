@@ -23,9 +23,6 @@
         Type: "0"
       register: chunk
   
-    - debug:
-        msg: "{{ chunk['msg'][0] }}"
-
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
         debugMode: false
