@@ -7,6 +7,7 @@
                   'vbAmount' : "{{ VblkNum }}",
                   'vblkPer' : "{{ VblkPer }}",
                   'overlapSeq' : "{{ DBIPerSet }}",
+                  'chunkNumber' : "{{ ChunkNum }}"
                  }
       debug:
          msg:
