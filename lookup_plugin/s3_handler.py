@@ -443,9 +443,10 @@ def search_files_by_string(directory, search_string):
 
         return new_uuid
 
-def copy_DBI_file_generatorNum(cluster_params, dirName):
+def copy_DBI_file_generatorNum(cluster_params, dirName, chunk):
     jsonPath = get_dir_path(cluster_params, dirName)
-    json_data = load_json_contents(jsonPath + "dummy_generator.json")
+    path = jsonPath + "DV/" + str(chunk) + "/dummy_generator.json"
+    json_data = load_json_contents(path)
     dbi_input_path = str(json_data['DbiPath'])
     dbo_input_path = str(json_data['DboPath'])
     # Get a list of files in the source directory
@@ -508,7 +509,7 @@ def deleteSetFiles(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
-    json_data = load_json_contents(jsonPath + "/DV/" + chunk + "/dummy_generator.json")
+    json_data = load_json_contents(jsonPath + "DV/" + chunk + "/dummy_generator.json")
     dbi_input_path = str(json_data['DbiPath'])
 
     destination_path = jsonPath + "dbisetFname.txt"
@@ -530,14 +531,15 @@ def deleteSetFiles(cluster_params, dirName, chunk):
         for item in files_with_same_prefix:
             file.write(item + ", ")
 
-def deleteSetFileS3(cluster_params, dirName, operation):
+def deleteSetFileS3(cluster_params, dirName, operation, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
-    json_path = jsonPath + "dummy_generator.json"
-    json_data = load_json_contents(jsonPath + "dummy_generator.json")
+    json_path = jsonPath + "DV/" + chunk + "/" + "dummy_generator.json"
+    print("json_path")
+    json_data = load_json_contents(jsonPath)
     dbi_input_path = str(json_data['DbiPath'])
     bucketName = str(json_data['BucketName'])
     logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
@@ -568,7 +570,6 @@ def copyDBIset_NewDir(cluster_params, dirName, chunk):
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
     json_path = jsonPath + "/DV/" + chunk + "/" + "dummy_generator.json"
-    print("json_path is: ", json_path)
     json_data = load_json_contents(json_path)
     dbi_input_path = str(json_data['DbiPath'])
     bucketName = str(json_data['BucketName'])
@@ -594,12 +595,6 @@ def extracting_dictionary(cluster_params, operation, dirName):
     if operation == "load_contents":
         data = load_json_contents(input_values['path'])
         return data
-
-    elif operation == "copy_DBI_file_generatorNum":
-        copy_DBI_file_generatorNum(cluster_params, dirName)
-
-    elif operation == "deleteSetFiles":
-        deleteSetFiles(cluster_params, dirName)
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
@@ -644,7 +639,8 @@ class LookupModule(LookupBase):
 
         elif operation == "deleteSetFileS3":
             operation = terms[1]
-            popen = deleteSetFileS3(cluster_params, dirName, operation)
+            chunk = terms[2]
+            popen = deleteSetFileS3(cluster_params, dirName, operation, chunk)
 
         elif operation == "copyDBIset":
             chunk = terms[1]
@@ -653,6 +649,10 @@ class LookupModule(LookupBase):
         elif operation == "deleteSetFiles":
             chunk = terms[1]
             deleteSetFiles(cluster_params, dirName, chunk)
+        
+        elif operation == "copy_DBI_file_generatorNum":
+            chunk = terms[1]
+            copy_DBI_file_generatorNum(cluster_params, dirName, chunk)
 
         elif operation == "json_params":
             params_type = terms[1]
