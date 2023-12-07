@@ -17,6 +17,7 @@
         VblkNum: "1000"
         VblkPer: "8"
         DBIPerSet: "5"
+        ChunkNum: "-1"
       register: chunk
 
     - name: "{{ recipe_name }}: copy dbi set files into a new directory."
