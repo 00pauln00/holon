@@ -21,7 +21,8 @@
         tasks_from: generate_pattern_dbis
        vars:
         Type: "1"
-        register: chunk
+        ChunkNum: "-1"
+       register: chunk
 
      - name: "{{ recipe_name }}: Start gc algorithm"
        vars:

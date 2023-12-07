@@ -332,7 +332,6 @@ def start_gc_process(cluster_params, dirName, debugMode, chunk):
     bin_path = '%s/gcTester' % binary_dir
     matches = re.findall(r'[\w-]{36}', path)
     vdev_uuid = matches[-1] if matches else None
-    print("vdev uuid: ", vdev_uuid)
 
     cmd = []
     if s3Support == "true":
@@ -340,7 +339,7 @@ def start_gc_process(cluster_params, dirName, debugMode, chunk):
          # Prepare path for log file.
          s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
          downloadPath = "%s/%s/s3-downloaded-obj" % (base_dir, raft_uuid)
-         cmd = [bin_path, '-i', path, '-s3config', s3config, '-s3log', s3LogFile, '-v', vdev_uuid, '-c', chunk, downloadPath]
+         cmd = [bin_path, '-i', path, '-s3config', s3config, '-s3log', s3LogFile, '-v', vdev_uuid, '-c', chunk, '-path', downloadPath]
     else:
         cmd = [bin_path, '-i', path, '-v', vdev_uuid, '-c', chunk]
 
@@ -369,8 +368,9 @@ def start_data_validate(cluster_params, dirName, chunk):
     path = get_dir_path(cluster_params, dirName)
     downloadPath = "%s/%s/s3-downloaded-obj/" % (base_dir, raft_uuid)
     bin_path = '%s/dataValidator' % binary_dir
+
     if s3Support == "true":
-        process = subprocess.Popen([bin_path, '-d', downloadPath, '-c', chunk, '-l', logFile])
+        process = subprocess.Popen([bin_path, '-d', downloadPath, '-c', chunk, '-l', logFile, '-s3Enable', s3Support])
     else:
         process = subprocess.Popen([bin_path, '-d', path, '-c', chunk, '-l', logFile])
 
@@ -538,7 +538,6 @@ def deleteSetFileS3(cluster_params, dirName, operation, chunk):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
     json_path = jsonPath + "DV/" + chunk + "/" + "dummy_generator.json"
-    print("json_path")
     json_data = load_json_contents(jsonPath)
     dbi_input_path = str(json_data['DbiPath'])
     bucketName = str(json_data['BucketName'])
