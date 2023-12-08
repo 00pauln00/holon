@@ -370,7 +370,7 @@ def start_data_validate(cluster_params, dirName, chunk):
     bin_path = '%s/dataValidator' % binary_dir
 
     if s3Support == "true":
-        process = subprocess.Popen([bin_path, '-d', downloadPath, '-c', chunk, '-l', logFile, '-s3Enable', s3Support])
+        process = subprocess.Popen([bin_path, '-d', downloadPath, '-c', chunk, '-l', logFile])
     else:
         process = subprocess.Popen([bin_path, '-d', path, '-c', chunk, '-l', logFile])
 
