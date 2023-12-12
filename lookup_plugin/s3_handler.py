@@ -403,6 +403,119 @@ def load_json_contents(path):
 
     return json_data
 
+def uploadAndDeleteCorruptedFile(cluster_params, dirName, operation, chunk):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    newPath = jsonPath + "DV/" + str(chunk) + "/dummy_generator.json"
+    json_data = load_json_contents(newPath)
+
+    dbi_input_path = str(json_data['DbiPath'])
+    bucketName = str(json_data['BucketName'])
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
+
+    # Get a list of files in the source directory
+    file_list = os.listdir(dbi_input_path)
+
+    last_file = ""
+    if len(file_list) > 1:
+        # Sort the file list by modification time (oldest to newest)
+        file_list.sort(key=lambda x: os.path.getmtime(os.path.join(dbi_input_path, x)))
+        # Get the last file in the sorted list
+        last_file = file_list[-1]
+
+    # Construct the source file path
+    source_file_path = os.path.join(dbi_input_path, last_file)
+    # Get the size of the file
+    fileSize = os.path.getsize(source_file_path)
+    # Split the file name using '.' as the delimiter
+    parts = last_file.split('.')
+    numOfEntries = parts[4]
+    # Calculate the size of each entry
+    entry_size = int(fileSize) // int(numOfEntries)
+    # Construct the destination directory path
+    dest_dir = os.path.join(base_dir, raft_uuid, 'origDBIFile')
+    dest_file_path = os.path.join(dest_dir, last_file)
+    s3config = '%s/s3.config.example' % binary_dir
+    bin_path = '%s/s3Operation' % binary_dir
+    if operation == "upload":
+            # Check if the destination directory exists, and create if not
+            if not os.path.exists(dest_dir):
+                os.makedirs(dest_dir)
+            # Copy the file to the destination directory
+            shutil.copy(source_file_path, dest_file_path)
+            # Modify the last file by adding "0000" at the end
+            with open(source_file_path, 'r+b') as f:
+                 # Seek to the position where the last entry starts
+                 f.seek(fileSize - entry_size)
+                 # Write zeroes to the remaining part of the file
+                 f.write(b'\x00' * entry_size)
+
+            process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+
+    elif operation == "delete":
+
+            process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+
+def uploadOrigFile(cluster_params, dirName, operation, chunk):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    json_data = load_json_contents(jsonPath + "DV/" + str(chunk) + "/dummy_generator.json")
+    dbi_input_path = str(json_data['DbiPath'])
+    bucketName = str(json_data['BucketName'])
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
+
+    # Get a list of files in the source directory
+    file_list = os.listdir(dbi_input_path)
+
+    if len(file_list) > 1:
+        # Sort the file list by modification time (oldest to newest)
+        file_list.sort(key=lambda x: os.path.getmtime(os.path.join(dbi_input_path, x)))
+
+        # Get the last file in the sorted list
+        last_file = file_list[-1]
+
+        # Construct the source file path
+        source_file_path = os.path.join(dbi_input_path, last_file)
+        # Construct the destination directory path
+        dest_dir = os.path.join(base_dir, raft_uuid, 'origDBIFile')
+        dest_file_path = os.path.join(dest_dir, last_file)
+        # Copy the file to the destination directory
+        shutil.copy(dest_file_path, source_file_path)
+        s3config = '%s/s3.config.example' % binary_dir
+        bin_path = '%s/s3Operation' % binary_dir
+        process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+
+def perform_s3_operation(cluster_params, dirName, operation, chunk):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    json_data = load_json_contents(jsonPath + "DV/" + str(chunk) + "/dummy_generator.json")
+    dbi_input_path = str(json_data['DbiPath'])
+    bucketName = str(json_data['BucketName'])
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
+
+    # Get a list of files in the source directory
+    file_list = os.listdir(dbi_input_path)
+
+    if len(file_list) > 1:
+        # Sort the file list by modification time (oldest to newest)
+        file_list.sort(key=lambda x: os.path.getmtime(os.path.join(dbi_input_path, x)))
+
+        # Get the last file in the sorted list
+        last_file = file_list[-2]
+        file_path = dbi_input_path + "/" + last_file
+
+        s3config = '%s/s3.config.example' % binary_dir
+        bin_path = '%s/s3Operation' % binary_dir
+        process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', file_path, '-l', logFile])
+
 def get_DBiFileNames(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -641,6 +754,22 @@ class LookupModule(LookupBase):
             chunk = terms[2]
             popen = deleteSetFileS3(cluster_params, dirName, operation, chunk)
 
+        elif operation == "performS3Operation":
+            s3Operation = terms[1]
+            chunk = terms[2]
+            if s3Operation == "delete" or s3Operation == "upload":
+                perform_s3_operation(cluster_params, dirName, s3Operation, chunk)
+
+        elif operation == "corruptedFileOps":
+            s3Operation = terms[1]
+            chunk = terms[2]
+            uploadAndDeleteCorruptedFile(cluster_params, dirName, s3Operation, chunk)
+
+        elif operation == "uploadOrigFile":
+            s3Operation = terms[1]
+            chunk = terms[2]
+            uploadOrigFile(cluster_params, dirName, s3Operation, chunk)
+
         elif operation == "copyDBIset":
             chunk = terms[1]
             copyDBIset_NewDir(cluster_params, dirName, chunk)
@@ -648,7 +777,7 @@ class LookupModule(LookupBase):
         elif operation == "deleteSetFiles":
             chunk = terms[1]
             deleteSetFiles(cluster_params, dirName, chunk)
-        
+
         elif operation == "copy_DBI_file_generatorNum":
             chunk = terms[1]
             copy_DBI_file_generatorNum(cluster_params, dirName, chunk)
