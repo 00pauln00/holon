@@ -632,9 +632,8 @@ def deleteSetFiles(cluster_params, dirName, chunk):
     file_list = file_contents.rstrip(', ').split(', ')
 
     filename = random.choice(file_list)
-    file_path = dbi_input_path + "/" + filename
-    os.remove(file_path)
-    print(f"Deleted: {file_path}")
+    os.remove(filename)
+    print(f"Deleted: {filename}")
 
     prefix = filename.split('.')[0]
 
@@ -697,7 +696,7 @@ def copyDBIset_NewDir(cluster_params, dirName, chunk):
 
     file_list = file_contents.rstrip(', ').split(', ')
     for fileNames in file_list:
-        source_path = dbi_input_path +"/" + fileNames
+        source_path = fileNames
         destination_path = jsonPath + newDir
         if not os.path.exists(destination_path):
             os.makedirs(destination_path)
