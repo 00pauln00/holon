@@ -316,11 +316,11 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values):
         chunk = chunkNum
         seqStart = "0"
 
-    maxPunches = str(random.choice([2 ** i for i in range(6)]))
-    maxVblks = str(random.choice([2 ** i for i in range(4)]))
-    punchAmount = str(random.choice([2 ** i for i in range(6)]))
+    maxPunches = str(random.randint(1, 50))
+    maxVblks = str(random.randint(100, 1000))
+    punchAmount = str(random.randint(51, 100))
     punchesPer = "0"
-    maxPuncheSize = str(random.choice([2 ** i for i in range(6)]))
+    maxPuncheSize = str(random.randint(1, 1024))
     seed = str(random.randint(1, 100))
     vbAmount =  str(random.randint(1000, 10000))
     vblkPer = str(random.randint(1, 20))
