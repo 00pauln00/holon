@@ -1,0 +1,108 @@
+- name: "multiple_iteration_with_params1"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "multiple_iteration_with_params1"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "minio_data"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+    - name: "Generate DBIs for first iteration."
+      vars:
+         input_param: {
+                  "chunk": "1",
+                  "maxPunches": "83",
+                  "maxVblks": "6514",
+                  "punchAmount": "134",
+                  "punchesPer": "0",
+                  "maxPunchSize": "1024",
+                  "seed": "123",
+                  "seqStart": "0",
+                  "vbAmount": "136834",
+                  "vblkPer": "4879",
+                  "genType": "0",
+                  "blockSize": "0",
+                  "blockSizeMax": "22",
+                  "startVblk": "-1",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "1998c673-bab7-4cd3-b4c7-24cd515f3293",
+                  "s3configPath": "",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Perform GC after first iteration"
+      vars:
+        debugMode: false
+        Chunk: "1"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+      register: gc_output
+
+    - debug:
+         msg: "Check return code of GC Process."
+      failed_when: gc_output['msg'][0] != "0"
+
+    - name: "Generate DBIs for second iteration."
+      vars:
+         input_param: {
+                  "chunk": "1",
+                  "maxPunches": "180",
+                  "maxVblks": "2396",
+                  "punchAmount": "158",
+                  "punchesPer": "0",
+                  "maxPunchSize": "1024",
+                  "seed": "123",
+                  "seqStart": "136968",
+                  "vbAmount": "193390",
+                  "vblkPer": "7311",
+                  "genType": "3",
+                  "blockSize": "0",
+                  "blockSizeMax": "6",
+                  "startVblk": "-1",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "1998c673-bab7-4cd3-b4c7-24cd515f3293",
+                  "s3configPath": "",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Perform GC after second iteration"
+      vars:
+        debugMode: false
+        Chunk: "1"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+      register: gc_output
+
+    - debug:
+         msg: "Check return code of GC Process."
+      failed_when: gc_output['msg'][0] != "0"
+
+    - name: "{{ recipe_name }}: Start data validation"
+      vars:
+        Chunk: "1"
+      debug:
+         msg: "{{ lookup('s3_handler', 'data_validate',  Chunk, wantlist=True) }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
+

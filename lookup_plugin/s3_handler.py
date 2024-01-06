@@ -16,6 +16,64 @@ def load_parameters_from_json(filename):
         params = json.load(json_file)
     return params
 
+def multiple_iteration_params(cluster_params, dirName, input_values):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
+
+    path = "%s/%s/%s/" % (base_dir, raft_uuid, dirName)
+    # Create the new directory
+    if not os.path.exists(path):
+        # Create the directory path
+        try:
+            os.makedirs(path)
+        except Exception as e:
+            print(f"An error occurred while creating '{path}': {e}")
+
+    # Prepare path for executables.
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    # Prepare path for log file.
+    dbiLogFile = "%s/%s/dbiLog.log" % (base_dir, raft_uuid)
+
+    # Open the log file to pass the fp to subprocess.Popen
+    fp = open(dbiLogFile, "a+")
+
+    #Get dummyDBI example
+    bin_path = '%s/example' % binary_dir
+
+    # Initialize the command list with common arguments
+    cmd = [
+        bin_path, "-c", input_values['chunk'], "-mp", input_values['maxPunches'], "-mv", input_values['maxVblks'], "-p", path,
+        "-pa", input_values['punchAmount'], "-pp", input_values['punchesPer'], "-ps", input_values['maxPunchSize'], "-seed", input_values['seed'],
+        "-ss", input_values['seqStart'], "-t", input_values['genType'], input_values['vbAmount'], '-vp', input_values['vblkPer'],
+        "-se", input_values['overlapSeq'], "-ts", input_values['numOfSet'], "-vdev", input_values['vdev'],
+        "-bs", input_values['blockSize'], "-bsm", input_values['blockSizeMax'], "-vs", input_values['startVblk'], "-sw", input_values['strideWidth']
+    ]
+
+    # Add the S3-specific options if s3Support is "true"
+    if s3Support == "true":
+        s3config = '%s/s3.config.example' % binary_dir
+        s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
+        cmd.extend(['-s3config', input_values['s3configPath'], '-s3log', input_values['s3LogFile']])
+
+    # Launch the subprocess with the constructed command
+    process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
+
+    # Wait for the process to finish and get the exit code
+    exit_code = process.wait()
+    # Close the log file
+    fp.close()
+
+    # Check if the process finished successfully (exit code 0)
+    if exit_code == 0:
+        print("Process completed successfully.")
+    else:
+        error_message = f"Process failed with exit code {exit_code}."
+        raise RuntimeError(error_message)
+
+    return process
+
 def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operation, params_type):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -104,10 +162,10 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           json_data = load_json_contents(get_path + "DV/" + params["chunk"] + "/dummy_generator.json")
           downloadPath = "%s/%s/s3-downloaded-obj/" % (base_dir, raft_uuid)
           if s3Support == "true":
-                cmd.extend([bin_path, '-d', downloadPath, '-c', params['chunk'],
+                cmd.extend([bin_path, '-s', downloadPath, '-d', downloadPath, '-c', params['chunk'],
                     '-l', data_validator_log])
           else:
-             cmd.extend([bin_path, '-d', get_path, '-c', params['chunk'],
+             cmd.extend([bin_path, '-s', get_path, '-d', get_path, '-c', params['chunk'],
                     '-l', data_validator_log])
        fp = open(dbiLogFile if operation == "run_example" else gcLogFile, "a+")
        process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
@@ -781,24 +839,16 @@ class LookupModule(LookupBase):
             chunk = terms[1]
             copy_DBI_file_generatorNum(cluster_params, dirName, chunk)
 
+        elif operation == "multiple_iteration_params":
+            input_values = terms[1]
+            popen = multiple_iteration_params(cluster_params, dirName, input_values)
+
+            return popen
+
         elif operation == "json_params":
             params_type = terms[1]
             load_params = load_parameters_from_json("seed.json")
-            if params_type == "multiple_iteration":
-               multi_itr_seq = ['run_example', 'run_gc', 'run_example', 'run_gc', 'run_data_validator']
-               for params in load_params["multiple_iteration"]:
-                 for j in multi_itr_seq:
-                    if j == "run_gc":
-                       if "debugMode" in params:
-                           prepare_command_from_parameters(cluster_params, [params], dirName, j, params_type)
-                       else:
-                           # Run with debugMode=False
-                           params_without_debug = params.copy()
-                           params_without_debug["debugMode"] = False
-                           prepare_command_from_parameters(cluster_params, [params_without_debug], dirName, j, params_type)
-                    else:
-                       prepare_command_from_parameters(cluster_params, [params], dirName, j, params_type)
-            elif params_type == "single_iteration":
+            if params_type == "single_iteration":
                single_itr_seq = ['run_example', 'run_gc', 'run_data_validator']
                for params in load_params["single_iteration"]:
                   for i in single_itr_seq:
