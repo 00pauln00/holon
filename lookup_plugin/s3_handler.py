@@ -145,14 +145,15 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
        elif operation == "run_gc":
           bin_path = '%s/gcTester' % binary_dir
           get_path = get_dir_path(cluster_params, dirName, params["seed"])
-          json_path = get_path + "DV/" + params["chunk"] + "/dummy_generator.json"
-          downloadPath = "%s/%s/s3-downloaded-obj" % (base_dir, raft_uuid)
+          json_data = load_json_contents(get_path + "DV/" + params["chunk"] + "/dummy_generator.json")
+          vdev = str(json_data['BucketName'])
+          downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
           if s3Support == "true":
                s3DownloadLogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
-               cmd.extend([bin_path, "-i", get_path, '-v', params["vdev"], '-c', params["chunk"], "-s3config", params["s3configPath"],
+               cmd.extend([bin_path, "-i", get_path, '-v', vdev, '-c', params["chunk"], "-s3config", params["s3configPath"],
                        "-s3log", s3DownloadLogFile, "-path", downloadPath])
           else:
-              cmd.extend([bin_path, "-i", get_path, '-v', params["vdev"], '-c', params["chunk"]])
+              cmd.extend([bin_path, "-i", get_path, '-v', vdev, '-c', params["chunk"]])
           if params["debugMode"]:
               cmd.append('-d')
 
@@ -160,10 +161,11 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           bin_path = '%s/dataValidator' % binary_dir
           get_path = get_dir_path(cluster_params, dirName, params["seed"])
           json_data = load_json_contents(get_path + "DV/" + params["chunk"] + "/dummy_generator.json")
-          downloadPath = "%s/%s/s3-downloaded-obj/" % (base_dir, raft_uuid)
+          vdev = str(json_data['BucketName'])
+          downloadPath = "%s/%s/dv-downloaded-obj/" % (base_dir, raft_uuid)
           if s3Support == "true":
-                cmd.extend([bin_path, '-s', downloadPath, '-d', downloadPath, '-c', params['chunk'],
-                    '-l', data_validator_log])
+                cmd.extend([bin_path, '-s', get_path, '-d', downloadPath, '-c', params['chunk'],
+                    '-b', vdev, '-s3config', params["s3configPath"], '-l', data_validator_log])
           else:
              cmd.extend([bin_path, '-s', get_path, '-d', get_path, '-c', params['chunk'],
                     '-l', data_validator_log])
@@ -396,7 +398,7 @@ def start_gc_process(cluster_params, dirName, debugMode, chunk):
          s3config = '%s/s3.config.example' % binary_dir
          # Prepare path for log file.
          s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
-         downloadPath = "%s/%s/s3-downloaded-obj" % (base_dir, raft_uuid)
+         downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
          cmd = [bin_path, '-i', path, '-s3config', s3config, '-s3log', s3LogFile, '-v', vdev_uuid, '-c', chunk, '-path', downloadPath]
     else:
         cmd = [bin_path, '-i', path, '-v', vdev_uuid, '-c', chunk]
@@ -424,11 +426,16 @@ def start_data_validate(cluster_params, dirName, chunk):
     logFile = "%s/%s/dataValidateResult" % (base_dir, raft_uuid)
 
     path = get_dir_path(cluster_params, dirName)
-    downloadPath = "%s/%s/s3-downloaded-obj/" % (base_dir, raft_uuid)
+    downloadPath = "%s/%s/dv-downloaded-obj/" % (base_dir, raft_uuid)
     bin_path = '%s/dataValidator' % binary_dir
+    if path != None:
+        newPath = path + "DV/" + chunk
+        json_data = load_json_contents(newPath + "/dummy_generator.json")
+        vdev = str(json_data['BucketName'])
 
     if s3Support == "true":
-        process = subprocess.Popen([bin_path, '-s', downloadPath, '-d', downloadPath, '-c', chunk, '-l', logFile])
+        s3config = '%s/s3.config.example' % binary_dir
+        process = subprocess.Popen([bin_path, '-s', path, '-d', downloadPath, '-c', chunk, '-s3config', s3config, '-b', vdev, '-l', logFile])
     else:
         process = subprocess.Popen([bin_path, '-s', path, '-d', path, '-c', chunk, '-l', logFile])
 
