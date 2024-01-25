@@ -1,0 +1,55 @@
+- name: "generate_dbis_with_punches"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "generate_dbis_with_punches"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "minio_data"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+    - name: "Generate DBIs with punches only."
+      vars:
+         input_param: {
+                  'genType' : '0',
+                  'chunkNumber' : '-1',
+                  'vbAmount' : '0',
+                  'vblkPer' : '1',
+                  'dbiWithPunches' : '1'
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'generate_pattern', input_param, wantlist=True) }}"
+      register: chunk
+
+    - name: "{{ recipe_name }}: Start gc algorithm"
+      vars:
+        debugMode: false
+        Chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+      register: gc_output
+
+    - debug:
+         msg: "Check return code of GC Process."
+      failed_when: gc_output['msg'][0] != "0"
+
+    - name: "{{ recipe_name }}: Start data validation"
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('s3_handler', 'data_validate',  Chunk, wantlist=True) }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
+

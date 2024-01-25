@@ -357,6 +357,9 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values):
     if vdev:
        cmd.extend(['-vdev', vdev])
 
+    if 'dbiWithPunches' in input_values:
+       cmd.extend(['-va', input_values['vbAmount'], '-vp', input_values['vblkPer'],
+                        '-e', input_values['dbiWithPunches']])
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
 
@@ -787,7 +790,6 @@ class LookupModule(LookupBase):
         if operation == "generate_pattern":
             input_values = terms[1]
             popen = start_pattern_generator(cluster_params, input_values['genType'], dirName, input_values)
-
             return popen
 
         elif operation == "start_s3":
