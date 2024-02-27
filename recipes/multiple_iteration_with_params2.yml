@@ -1,8 +1,8 @@
-- name: "multiple_iteration_with_params1"
+- name: "multiple_iteration_with_params2"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "multiple_iteration_with_params1"
+     recipe_name: "multiple_iteration_with_params2"
      parent: None
 
   tasks:
