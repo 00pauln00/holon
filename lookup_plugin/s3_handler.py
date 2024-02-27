@@ -41,21 +41,31 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
 
     #Get dummyDBI example
     bin_path = '%s/example' % binary_dir
+    jsonPath = get_dir_path(cluster_params, dirName)
+    if jsonPath != None:
+        newPath = jsonPath + "DV/" + input_values["chunk"]
+        json_data = load_json_contents(newPath + "/dummy_generator.json")
+        input_values["vdev"] = str(json_data['BucketName'])
 
     # Initialize the command list with common arguments
     cmd = [
         bin_path, "-c", input_values['chunk'], "-mp", input_values['maxPunches'], "-mv", input_values['maxVblks'], "-p", path,
         "-pa", input_values['punchAmount'], "-pp", input_values['punchesPer'], "-ps", input_values['maxPunchSize'], "-seed", input_values['seed'],
-        "-ss", input_values['seqStart'], "-t", input_values['genType'], input_values['vbAmount'], '-vp', input_values['vblkPer'],
-        "-se", input_values['overlapSeq'], "-ts", input_values['numOfSet'], "-vdev", input_values['vdev'],
-        "-bs", input_values['blockSize'], "-bsm", input_values['blockSizeMax'], "-vs", input_values['startVblk'], "-sw", input_values['strideWidth']
+        "-ss", input_values['seqStart'], "-t", input_values['genType'], '-va', input_values['vbAmount'], '-vp', input_values['vblkPer'],
+        "-vdev", input_values["vdev"], "-bs", input_values['blockSize'], "-bsm", input_values['blockSizeMax'], "-vs", input_values['startVblk']
     ]
+    if input_values["strideWidth"] != "":
+        cmd.extend(["-sw", input_values["strideWidth"]])
+    if input_values["overlapSeq"] != "" and input_values["numOfSet"] != "":
+        cmd.extend(["-se", input_values["overlapSeq"], "-ts", input_values["numOfSet"]])
+
+    print("cmd is: ", cmd)
     # Add the S3-specific options if s3Support is "true"
     if s3Support == "true":
         s3config = '%s/s3.config.example' % binary_dir
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
         cmd.extend(['-s3config', input_values['s3configPath'], '-s3log', input_values['s3LogFile']])
-    
+
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
 
@@ -815,7 +825,7 @@ def copyDBIFile_changeSeqNum(cluster_params, dirName, chunk):
         content = old_file.read()
         with open(new_DBO_file_path, 'wb') as new_file:
             new_file.write(content)
-    
+
     # Increment the extracted element by 1
     new_firstSeqNum = str(int(end_seq[1]) + 1)
     new_endSeqNum = str(int(end_seq[1]) + int(Num_of_entries))
