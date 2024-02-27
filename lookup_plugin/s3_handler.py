@@ -50,13 +50,12 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
         "-se", input_values['overlapSeq'], "-ts", input_values['numOfSet'], "-vdev", input_values['vdev'],
         "-bs", input_values['blockSize'], "-bsm", input_values['blockSizeMax'], "-vs", input_values['startVblk'], "-sw", input_values['strideWidth']
     ]
-    print("cmd is: ", cmd)
     # Add the S3-specific options if s3Support is "true"
     if s3Support == "true":
         s3config = '%s/s3.config.example' % binary_dir
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
         cmd.extend(['-s3config', input_values['s3configPath'], '-s3log', input_values['s3LogFile']])
-    print("cmd before passing it to popen : ", cmd)
+    
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
 
