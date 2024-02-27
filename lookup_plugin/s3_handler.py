@@ -50,13 +50,13 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
         "-se", input_values['overlapSeq'], "-ts", input_values['numOfSet'], "-vdev", input_values['vdev'],
         "-bs", input_values['blockSize'], "-bsm", input_values['blockSizeMax'], "-vs", input_values['startVblk'], "-sw", input_values['strideWidth']
     ]
-
+    print("cmd is: ", cmd)
     # Add the S3-specific options if s3Support is "true"
     if s3Support == "true":
         s3config = '%s/s3.config.example' % binary_dir
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
         cmd.extend(['-s3config', input_values['s3configPath'], '-s3log', input_values['s3LogFile']])
-
+    print("cmd before passing it to popen : ", cmd)
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
 
@@ -770,6 +770,69 @@ def copyDBIset_NewDir(cluster_params, dirName, chunk):
             os.makedirs(destination_path)
         shutil.copy2(source_path, destination_path)
 
+def copyDBIFile_changeSeqNum(cluster_params, dirName, chunk):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    json_path = jsonPath + "/DV/" + chunk + "/" + "dummy_generator.json"
+    json_data = load_json_contents(json_path)
+    dbi_input_path = str(json_data['DbiPath'])
+    dbo_input_path = str(json_data['DboPath'])
+
+    # Check if the path is a directory
+    if not os.path.isdir(dbi_input_path):
+        print(f"{dbi_input_path} is not a valid directory path.")
+        return
+
+    # Get the list of files in the directory
+    files = [f for f in os.listdir(dbi_input_path) if os.path.isfile(os.path.join(dbi_input_path, f))]
+
+    # Check if there are any files in the directory
+    if not files:
+        print(f"No files found in {dbi_input_path}.")
+        return
+
+    # Get the last file from the list
+    last_file = files[-1]
+
+    filename_parts = last_file.split(".")
+    old_seq_num = filename_parts[0]
+    end_seq = old_seq_num.split("_")
+
+    # Extract the 3rd last element after the dots
+    Num_of_entries = filename_parts[-4]
+    uuid_str = filename_parts[2]
+
+    # create dbo file with new uuid
+    result = search_files_by_string(dbo_input_path, uuid_str)
+    new_uuid = str(uuid.uuid4())  # Generate a new UUID
+
+    # Full path for the copied and renamed file
+    old_DBO_file_path = os.path.join(dbo_input_path, f"{result}.dbo")
+    new_DBO_file_path = os.path.join(dbo_input_path, f"{new_uuid}.dbo")
+
+    # Copy the contents of old_DBO_file_path to new_DBO_file_path
+    with open(old_DBO_file_path, 'rb') as old_file:
+        content = old_file.read()
+        with open(new_DBO_file_path, 'wb') as new_file:
+            new_file.write(content)
+    
+    # Increment the extracted element by 1
+    new_firstSeqNum = str(int(end_seq[1]) + 1)
+    new_endSeqNum = str(int(end_seq[1]) + int(Num_of_entries))
+    joined_seq = "_".join([new_firstSeqNum, new_endSeqNum])
+
+    filename_parts[0] = joined_seq
+    filename_parts[2] = str(new_uuid)
+    new_filename = ".".join(filename_parts)
+
+    # Full path for the copied and renamed file
+    source_file_path = os.path.join(dbi_input_path, last_file)
+    new_file_path = os.path.join(dbi_input_path, new_filename)
+
+    # Copy the file and rename the copy
+    shutil.copy(source_file_path, new_file_path)
+
 def extracting_dictionary(cluster_params, operation, dirName):
     if operation == "load_contents":
         data = load_json_contents(input_values['path'])
@@ -847,6 +910,10 @@ class LookupModule(LookupBase):
         elif operation == "copy_DBI_file_generatorNum":
             chunk = terms[1]
             copy_DBI_file_generatorNum(cluster_params, dirName, chunk)
+
+        elif operation == "copyDBIFile_changeSeqNum":
+            chunk = terms[1]
+            copyDBIFile_changeSeqNum(cluster_params, dirName, chunk)
 
         elif operation == "multiple_iteration_params":
             input_values = terms[1]

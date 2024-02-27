@@ -1,0 +1,73 @@
+- name: "gc_gap_in_seqRange_BugFix"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "gc_gap_in_seqRange_BugFix"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "minio_data"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+    - name: "Generate DBIs"
+      vars:
+         input_param: {
+                  "chunk": "1",
+                  "maxPunches": "83",
+                  "maxVblks": "100",
+                  "punchAmount": "100",
+                  "punchesPer": "0",
+                  "maxPunchSize": "10",
+                  "seed": "123",
+                  "seqStart": "0",
+                  "vbAmount": "100",
+                  "vblkPer": "20",
+                  "genType": "0",
+                  "blockSize": "0",
+                  "blockSizeMax": "22",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "4d2403f6-d489-11ee-bb54-22abb648e432",
+                  "s3configPath": "",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Make a copy of the file and change seq number of the file."
+      vars:
+        Chunk: "1"
+      debug:
+         msg: "{{ lookup('s3_handler', 'copyDBIFile_changeSeqNum', Chunk, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Perform GC"
+      vars:
+        debugMode: false
+        Chunk: "1"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+      register: gc_output
+
+    - debug:
+         msg: "Check return code of GC Process."
+      failed_when: gc_output['msg'][0] != "0"
+
+    - name: "{{ recipe_name }}: Start data validation"
+      vars:
+        Chunk: "1"
+      debug:
+         msg: "{{ lookup('s3_handler', 'data_validate',  Chunk, wantlist=True) }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
