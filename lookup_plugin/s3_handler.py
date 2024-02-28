@@ -59,7 +59,6 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
     if input_values["overlapSeq"] != "" and input_values["numOfSet"] != "":
         cmd.extend(["-se", input_values["overlapSeq"], "-ts", input_values["numOfSet"]])
 
-    print("cmd is: ", cmd)
     # Add the S3-specific options if s3Support is "true"
     if s3Support == "true":
         s3config = '%s/s3.config.example' % binary_dir
