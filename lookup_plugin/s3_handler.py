@@ -429,6 +429,67 @@ def start_gc_process(cluster_params, dirName, debugMode, chunk):
 
     return exit_code
 
+def start_gcService_process(cluster_params, dirName, dryRun):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
+    app_name = cluster_params['app_type']
+
+    baseDir = os.path.join(base_dir, raft_uuid)
+    # Prepare path for executables.
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    # Prepare path for log file.
+    gcLogFile = "%s/%s/gcS3Log.log" % (base_dir, raft_uuid)
+
+    # Open the log file to pass the fp to subprocess.Popen
+    fp = open(gcLogFile, "a+")
+
+    path = get_dir_path(cluster_params, dirName)
+    bin_path = '%s/GCService' % binary_dir
+    matches = re.findall(r'[\w-]{36}', path)
+    vdev_uuid = matches[-1] if matches else None
+
+    cmd = []
+    s3config = '%s/s3.config.example' % binary_dir
+    # Prepare path for log file.
+    s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
+    downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
+    cmd = [bin_path, '-path', path, '-s3config', s3config, '-s3log', s3LogFile]
+
+    if dryRun:
+        cmd.append('-dr')
+
+    process_popen = subprocess.Popen(cmd, stdout = fp, stderr = fp)
+
+    #Check if gcService process exited with error
+    if process_popen.poll() is None:
+        logging.info("gcService process started successfully")
+    else:
+        logging.info("gcService failed to start")
+        raise subprocess.SubprocessError(process_popen.returncode)
+
+
+    #writing the information of lookout uuids dict into raft_uuid.json
+    recipe_conf = load_recipe_op_config(cluster_params)
+
+    #writing the information of lookout uuid in gcService_process into raft_uuid.json
+    pid = process_popen.pid
+    ps = psutil.Process(pid)
+
+    if not "gcService_process" in recipe_conf:
+        recipe_conf['gcService_process'] = {}
+
+    recipe_conf['gcService_process']['process_pid'] = pid
+    recipe_conf['gcService_process']['process_type'] = "gcService"
+    recipe_conf['gcService_process']['process_app_type'] = app_name
+    recipe_conf['gcService_process']['process_status'] = ps.status()
+
+    genericcmdobj = GenericCmds()
+    genericcmdobj.recipe_json_dump(recipe_conf)
+
+    os.fsync(fp)
+
 def start_data_validate(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -876,6 +937,10 @@ class LookupModule(LookupBase):
             popen = start_gc_process(cluster_params, dirName, debugMode, chunk)
 
             return popen
+
+        elif operation == "start_gcService":
+            dryRun = terms[1]
+            start_gcService_process(cluster_params, dirName, dryRun)
 
         elif operation == "data_validate":
             Chunk = terms[1]
