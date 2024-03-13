@@ -54,6 +54,9 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
         "-ss", input_values['seqStart'], "-t", input_values['genType'], '-va', input_values['vbAmount'], '-vp', input_values['vblkPer'],
         "-vdev", input_values["vdev"], "-bs", input_values['blockSize'], "-bsm", input_values['blockSizeMax'], "-vs", input_values['startVblk']
     ]
+    if input_values["punchwholechunk"] == "true":
+        cmd.extend(["-pc", input_values["punchwholechunk"]])
+        print("cmd is: ", cmd)
     if input_values["strideWidth"] != "":
         cmd.extend(["-sw", input_values["strideWidth"]])
     if input_values["overlapSeq"] != "" and input_values["numOfSet"] != "":
@@ -993,6 +996,14 @@ class LookupModule(LookupBase):
             popen = multiple_iteration_params(cluster_params, dirName, input_values)
 
             return popen
+
+        elif operation == "getGCMarkerFileSeq":
+            seq = getGCMarkerFileSeq()
+            return seq
+
+        elif operation == "getNisdMarkerFileSeq":
+            seq = getNisdMarkerFileSeq()
+            return seq
 
         elif operation == "json_params":
             params_type = terms[1]

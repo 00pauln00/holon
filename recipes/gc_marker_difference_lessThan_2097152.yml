@@ -1,0 +1,52 @@
+- name: "gc_cost_calc_recipe"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "gc_cost_calc_recipe"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "minio_data"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+     - name: "{{ recipe_name }}: Generate sequential DBI requests."
+       include_role:
+        name: common
+        tasks_from: generate_pattern_dbis
+       vars:
+        Type: "1"
+        ChunkNum: "-1"
+       register: chunk
+
+    - name: "{{ recipe_name }}: Start GCService"
+      vars:
+        dryRun: True
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gcService', dryRun, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Check GC Marker file sequence."
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'getGCMarkerFileSeq', dryRun, wantlist=True) }}"
+      register: gcMarkerFileSeq
+
+    - name: "{{ recipe_name }}: Check Nisd Marker file sequence."
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'getNisdMarkerFileSeq', dryRun, wantlist=True) }}"
+      register: nisdMarkerFileSeq
+ 
+    - debug:
+        msg: "{{ gcMarkerFileSeq }} and {{ nisdMarkerFileSeq }}"
+
+    - name: "{{ recipe_name }}: Check if GC and Nisd Marker are equal."
+      debug:
+         msg: "Check if GC and Nisd Marker are equal"
+      failed_when: gcMarkerFileSeq == nisdMarkerFileSeq
