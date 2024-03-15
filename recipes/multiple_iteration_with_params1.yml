@@ -37,6 +37,7 @@
                   "numOfSet": "",
                   "vdev": "1998c673-bab7-4cd3-b4c7-24cd515f3293",
                   "s3configPath": "",
+                  "punchwholechunk": "false",
                  }
       debug:
          msg:
@@ -77,7 +78,8 @@
                   "numOfSet": "",
                   "vdev": "1998c673-bab7-4cd3-b4c7-24cd515f3293",
                   "s3configPath": "",
-                 }
+                  "punchwholechunk": "false",
+                  }
       debug:
          msg:
           - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param, wantlist=True) }}"

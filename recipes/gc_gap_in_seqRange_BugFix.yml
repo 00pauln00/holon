@@ -37,6 +37,7 @@
                   "numOfSet": "",
                   "vdev": "4d2403f6-d489-11ee-bb54-22abb648e432",
                   "s3configPath": "",
+                  "punchwholechunk": "false",
                  }
       debug:
          msg:
