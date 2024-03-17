@@ -56,7 +56,6 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
     ]
     if input_values["punchwholechunk"] == "true":
         cmd.extend(["-pc", input_values["punchwholechunk"]])
-        print("cmd is: ", cmd)
     if input_values["strideWidth"] != "":
         cmd.extend(["-sw", input_values["strideWidth"]])
     if input_values["overlapSeq"] != "" and input_values["numOfSet"] != "":
@@ -66,7 +65,7 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
     if s3Support == "true":
         s3config = '%s/s3.config.example' % binary_dir
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
-        cmd.extend(['-s3config', input_values['s3configPath'], '-s3log', input_values['s3LogFile']])
+        cmd.extend(['-s3config', input_values['s3configPath'], '-s3log', s3LogFile])
 
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
@@ -910,6 +909,21 @@ def extracting_dictionary(cluster_params, operation, dirName):
         data = load_json_contents(input_values['path'])
         return data
 
+def getGCMarkerFileSeq():
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    directory = jsonPath + "/maker/" + chunk + "/"
+    files = glob.glob(os.path.join(directory, 'gcmrk*'))
+
+    # Check if any file is found
+    if files:
+        print("Files starting with 'gcmrk' found in the directory:")
+        return True
+    else:
+        print("No files starting with 'gcmrk' found in the directory.")
+        return False
+
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
@@ -998,12 +1012,9 @@ class LookupModule(LookupBase):
             return popen
 
         elif operation == "getGCMarkerFileSeq":
-            seq = getGCMarkerFileSeq()
-            return seq
-
-        elif operation == "getNisdMarkerFileSeq":
-            seq = getNisdMarkerFileSeq()
-            return seq
+            isPresent = getGCMarkerFileSeq()
+        
+            return isPresent
 
         elif operation == "json_params":
             params_type = terms[1]
