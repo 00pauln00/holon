@@ -1,8 +1,8 @@
-- name: "gc_cost_calc_recipe"
+- name: "gc_space_saved_cost_greater_than_cost_of_costAPI"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "gc_cost_calc_recipe"
+     recipe_name: "gc_space_saved_cost_greater_than_cost_of_costAPI"
      parent: None
 
   tasks:
@@ -21,9 +21,9 @@
                   "chunk": "1",
                   "maxPunches": "1",
                   "maxVblks": "2097152",
-                  "punchAmount": "1",
-                  "punchesPer": "1",
-                  "maxPunchSize": "1",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "6000",
                   "seed": "1",
                   "seqStart": "0",
                   "vbAmount": "2097152",
@@ -35,37 +35,9 @@
                   "strideWidth": "",
                   "overlapSeq": "",
                   "numOfSet": "",
-                  "vdev": "7d3f6156-16db-4635-9d94-8adb68aae169",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
                   "s3configPath": "",
                   "punchwholechunk": "false",
-                 }
-      debug:
-         msg:
-          - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param, wantlist=True) }}"
-
-    - name: "Generate DBIs with punch entry for whole chunk"
-      vars:
-         input_param: {
-                  "chunk": "1",
-                  "maxPunches": "500",
-                  "maxVblks": "10",
-                  "punchAmount": "2097152",
-                  "punchesPer": "0",
-                  "maxPunchSize": "100",
-                  "seed": "1",
-                  "seqStart": "0",
-                  "vbAmount": "0",
-                  "vblkPer": "0",
-                  "genType": "1",
-                  "blockSize": "16",
-                  "blockSizeMax": "32",
-                  "startVblk": "0",
-                  "strideWidth": "",
-                  "overlapSeq": "",
-                  "numOfSet": "",
-                  "vdev": "7d3f6156-16db-4635-9d94-8adb68aae169",
-                  "s3configPath": "",
-                  "punchwholechunk": "true",
                  }
       debug:
          msg:
@@ -92,4 +64,3 @@
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
            terminate_recipe: true
-

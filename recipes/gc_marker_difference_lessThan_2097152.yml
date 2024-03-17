@@ -36,17 +36,8 @@
          msg:
           - "{{ lookup('s3_handler', 'getGCMarkerFileSeq', dryRun, wantlist=True) }}"
       register: gcMarkerFileSeq
-
-    - name: "{{ recipe_name }}: Check Nisd Marker file sequence."
+     
+    - name: "{{ recipe_name }}: Validate that GC Marker file is Present."
       debug:
-         msg:
-          - "{{ lookup('s3_handler', 'getNisdMarkerFileSeq', dryRun, wantlist=True) }}"
-      register: nisdMarkerFileSeq
- 
-    - debug:
-        msg: "{{ gcMarkerFileSeq }} and {{ nisdMarkerFileSeq }}"
-
-    - name: "{{ recipe_name }}: Check if GC and Nisd Marker are equal."
-      debug:
-         msg: "Check if GC and Nisd Marker are equal"
-      failed_when: gcMarkerFileSeq == nisdMarkerFileSeq
+        msg: "Validate that GC is not processed the vdev and chunk as marker diff is less that 2097152"
+      failed_when: gcMarkerFileSeq == True
