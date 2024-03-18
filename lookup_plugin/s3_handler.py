@@ -6,6 +6,7 @@ import time
 import subprocess ,re
 import uuid, random
 import shutil
+import glob
 from genericcmd import *
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
@@ -909,11 +910,11 @@ def extracting_dictionary(cluster_params, operation, dirName):
         data = load_json_contents(input_values['path'])
         return data
 
-def getGCMarkerFileSeq():
+def isGCMarkerFilePresent(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
-    directory = jsonPath + "/maker/" + chunk + "/"
+    directory = jsonPath + "/marker/" + chunk + "/"
     files = glob.glob(os.path.join(directory, 'gcmrk*'))
 
     # Check if any file is found
@@ -923,6 +924,36 @@ def getGCMarkerFileSeq():
     else:
         print("No files starting with 'gcmrk' found in the directory.")
         return False
+
+def extract_last_number(filename):
+    # Extract the last number before the last dot in the filename
+    match = re.search(r'(\d+)\.(?=[^.]*$)', filename)
+    if match:
+        return int(match.group(1))
+    else:
+        return None
+
+def getGCMarkerFileSeq(cluster_params, dirName, chunk):
+    jsonPath = get_dir_path(cluster_params, dirName)
+    directory = os.path.join(jsonPath, "marker", chunk)
+    file = glob.glob(os.path.join(directory, 'gcmrk*'))
+
+    if file:
+        endSeq = extract_last_number(os.path.basename(file[0]))
+        return endSeq
+    else:
+        return -1
+
+def getNISDMarkerFileSeq(cluster_params, dirName, chunk):
+    jsonPath = get_dir_path(cluster_params, dirName)
+    directory = os.path.join(jsonPath, "maker", chunk)
+    file = glob.glob(os.path.join(directory, 'nisdmrk*'))
+
+    if file:
+        endSeq = extract_last_number(os.path.basename(file[0]))
+        return endSeq
+    else:
+        return -1
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
@@ -1011,10 +1042,22 @@ class LookupModule(LookupBase):
 
             return popen
 
-        elif operation == "getGCMarkerFileSeq":
-            isPresent = getGCMarkerFileSeq()
-        
+        elif operation == "isGCMarkerFilePresent":
+            chunk = terms[1]
+            isPresent = isGCMarkerFilePresent(cluster_params, dirName, chunk)
             return isPresent
+
+        elif operation == "getGCMarkerFileSeq":
+            chunk = terms[1]
+            seqNum = getGCMarkerFileSeq(cluster_params, dirName, chunk)
+        
+            return seqNum
+
+        elif operation == "getNISDMarkerFileSeq":
+            chunk = terms[1]
+            seqNum = getNISDMarkerFileSeq(cluster_params, dirName, chunk)
+
+            return seqNum
 
         elif operation == "json_params":
             params_type = terms[1]
