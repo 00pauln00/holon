@@ -64,9 +64,9 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
 
     # Add the S3-specific options if s3Support is "true"
     if s3Support == "true":
-        s3config = '%s/s3.config.example' % binary_dir
+        s3configPath = '%s/s3.config.example' % binary_dir
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
-        cmd.extend(['-s3config', input_values['s3configPath'], '-s3log', s3LogFile])
+        cmd.extend(['-s3config', s3configPath, '-s3log', s3LogFile])
 
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
@@ -221,7 +221,7 @@ def start_minio_server(cluster_params, dirName):
         if not os.path.exists(os.path.expanduser(f'/local/{dirName}')):
             os.makedirs(os.path.expanduser(f'/local/{dirName}'))
 
-        command = f"minio server /local/{dirName} --console-address ':9000' --address ':9090'"
+        command = f"minio server /local/{dirName} --console-address ':4000' --address ':4090'"
 
         process_popen = subprocess.Popen(command, shell=True, stdout=fp, stderr=fp)
 
@@ -455,7 +455,7 @@ def start_gcService_process(cluster_params, dirName, dryRun):
     # Prepare path for log file.
     s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
     downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
-    cmd = [bin_path, '-path', path, '-s3config', s3config, '-s3log', s3LogFile]
+    cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile]
 
     if dryRun:
         cmd.append('-dr')
@@ -1039,7 +1039,7 @@ class LookupModule(LookupBase):
             chunk = terms[1]
             copyDBIFile_changeSeqNum(cluster_params, dirName, chunk)
 
-        elif operation == "multiple_iteration_params":
+        elif operation == "multiple_iteration_params" or operation == "example_params":
             input_values = terms[1]
             popen = multiple_iteration_params(cluster_params, dirName, input_values)
 
@@ -1053,7 +1053,7 @@ class LookupModule(LookupBase):
         elif operation == "getGCMarkerFileSeq":
             chunk = terms[1]
             seqNum = getGCMarkerFileSeq(cluster_params, dirName, chunk)
-        
+
             return seqNum
 
         elif operation == "getNISDMarkerFileSeq":
