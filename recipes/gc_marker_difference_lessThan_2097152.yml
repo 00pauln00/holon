@@ -49,7 +49,7 @@
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
       register: NisdMarkerEndSeq
 
     - name: "{{ recipe_name }}: Check GC Marker file sequence."
@@ -57,7 +57,7 @@
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
       register: GCMarkerEndSeq
 
     - name: "{{ recipe_name }}: Validate that NISD and GC Marker file's endSeq doesn't match."
