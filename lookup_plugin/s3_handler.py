@@ -221,7 +221,7 @@ def start_minio_server(cluster_params, dirName):
         if not os.path.exists(os.path.expanduser(f'/local/{dirName}')):
             os.makedirs(os.path.expanduser(f'/local/{dirName}'))
 
-        command = f"minio server /local/{dirName} --console-address ':9090' --address ':9000'"
+        command = f"minio server /local/{dirName} --console-address ':9000' --address ':9090'"
 
         process_popen = subprocess.Popen(command, shell=True, stdout=fp, stderr=fp)
 
@@ -936,24 +936,27 @@ def extract_last_number(filename):
 def getGCMarkerFileSeq(cluster_params, dirName, chunk):
     jsonPath = get_dir_path(cluster_params, dirName)
     directory = os.path.join(jsonPath, "marker", chunk)
-    file = glob.glob(os.path.join(directory, 'gcmrk*'))
+    files = glob.glob(os.path.join(directory, 'gcmrk*'))
 
-    if file:
-        endSeq = extract_last_number(os.path.basename(file[0]))
+    if files:
+        file_path = files[0]
+        endSeq = extract_last_number(os.path.basename(file_path))
         return endSeq
     else:
         return -1
 
 def getNISDMarkerFileSeq(cluster_params, dirName, chunk):
     jsonPath = get_dir_path(cluster_params, dirName)
-    directory = os.path.join(jsonPath, "maker", chunk)
-    file = glob.glob(os.path.join(directory, 'nisdmrk*'))
+    directory = os.path.join(jsonPath, "marker", chunk)
+    files = glob.glob(os.path.join(directory, 'nisdmrk*'))
 
-    if file:
-        endSeq = extract_last_number(os.path.basename(file[0]))
+    if files:
+        file_path = files[0]
+        endSeq = extract_last_number(os.path.basename(file_path))
         return endSeq
     else:
         return -1
+
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
