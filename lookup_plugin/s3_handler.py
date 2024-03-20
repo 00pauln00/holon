@@ -914,8 +914,12 @@ def isGCMarkerFilePresent(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
-    directory = jsonPath + "/marker/" + chunk + "/"
-    files = glob.glob(os.path.join(directory, 'gcmrk*'))
+    if jsonPath != None:
+        newPath = jsonPath + "DV/" + chunk
+        json_data = load_json_contents(newPath + "/dummy_generator.json")
+        vdev = str(json_data['BucketName'])
+    downloadPath = "%s/%s/gc-downloaded-obj/%s/marker/%s" % (base_dir, raft_uuid, vdev, chunk)
+    files = glob.glob(os.path.join(downloadPath, 'gcmrk*'))
 
     # Check if any file is found
     if files:
@@ -934,13 +938,23 @@ def extract_last_number(filename):
         return None
 
 def getGCMarkerFileSeq(cluster_params, dirName, chunk):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
-    directory = os.path.join(jsonPath, "marker", chunk)
+    if jsonPath != None:
+        newPath = jsonPath + "DV/" + chunk
+        json_data = load_json_contents(newPath + "/dummy_generator.json")
+        vdev = str(json_data['BucketName'])
+
+    downloadPath = "%s/%s/gc-downloaded-obj/%s/" % (base_dir, raft_uuid, vdev)
+    directory = os.path.join(downloadPath, "marker", chunk)
     files = glob.glob(os.path.join(directory, 'gcmrk*'))
 
     if files:
         file_path = files[0]
+        print("filePath: ", file_path)
         endSeq = extract_last_number(os.path.basename(file_path))
+        print("endSeq: ", endSeq)
         return endSeq
     else:
         return -1
@@ -952,7 +966,9 @@ def getNISDMarkerFileSeq(cluster_params, dirName, chunk):
 
     if files:
         file_path = files[0]
+        print("filePath: ", file_path)
         endSeq = extract_last_number(os.path.basename(file_path))
+        print("endSeq: ", endSeq)
         return endSeq
     else:
         return -1
