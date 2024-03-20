@@ -41,7 +41,7 @@
                  }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: pause for 10 seconds."
       pause:
