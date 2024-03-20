@@ -929,11 +929,12 @@ def isGCMarkerFilePresent(cluster_params, dirName, chunk):
         print("No files starting with 'gcmrk' found in the directory.")
         return False
 
-def extract_last_number(filename):
-    # Extract the last number before the last dot in the filename
-    match = re.search(r'(\d+)\.(?=[^.]*$)', filename)
-    if match:
-        return int(match.group(1))
+def extract_endSeq(filepath):
+    filename = os.path.basename(filepath)
+    parts = filename.split('.')
+    last_part = parts[-1]  # Get the last part of the filename
+    if last_part.isdigit():
+        return int(last_part)
     else:
         return None
 
@@ -952,9 +953,7 @@ def getGCMarkerFileSeq(cluster_params, dirName, chunk):
 
     if files:
         file_path = files[0]
-        print("filePath: ", file_path)
-        endSeq = extract_last_number(os.path.basename(file_path))
-        print("endSeq: ", endSeq)
+        endSeq = extract_endSeq(os.path.basename(file_path))
         return endSeq
     else:
         return -1
@@ -966,9 +965,7 @@ def getNISDMarkerFileSeq(cluster_params, dirName, chunk):
 
     if files:
         file_path = files[0]
-        print("filePath: ", file_path)
-        endSeq = extract_last_number(os.path.basename(file_path))
-        print("endSeq: ", endSeq)
+        endSeq = extract_endSeq(os.path.basename(file_path))
         return endSeq
     else:
         return -1

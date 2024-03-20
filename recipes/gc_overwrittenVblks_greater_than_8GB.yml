@@ -54,6 +54,16 @@
          msg:
           - "{{ lookup('s3_handler', 'start_gcService', dryRun, wantlist=True) }}"
 
+    - name: "{{ recipe_name }}: Wait until GC marker file present."
+      vars:
+         Chunk: "5"
+         stage: "wait_for_gc_marker"
+      debug:
+        msg: "Waiting for GC Marker File"
+      until: lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, wantlist=True) == true
+      retries: 200
+      delay: 2
+
     - name: "{{ recipe_name }}: Check GC Marker file is Present or not."
       vars:
         Chunk: "5"
@@ -83,10 +93,10 @@
           - "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
       register: GCMarkerEndSeq
 
-    - name: "{{ recipe_name }}: Validate that NISD and GC Marker file's endSeq doesn't match."
+    - name: "{{ recipe_name }}: Validate that NISD and GC Marker Sequnece matched"
       debug:
-        msg: "Validate that GC is not processed and Marker file's endSeq doesn't match"
-      failed_when: NisdMarkerEndSeq == GCMarkerEndSeq
+        msg: "Validate that NISD and GC marker file SEq are same."
+      failed_when: NisdMarkerEndSeq != GCMarkerEndSeq
 
     - name: "{{ recipe_name }}: Start data validation"
       vars:
