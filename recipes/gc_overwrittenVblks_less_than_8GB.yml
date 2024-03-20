@@ -41,7 +41,7 @@
                  }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: pause for 5 seconds."
       pause:
@@ -58,6 +58,27 @@
       debug:
         msg: "Validate that GC is not processed for vdev and chunk as space saved cost is less that cost of APIs"
       failed_when: isGCMarkerFilePresent == True
+
+    - name: "{{ recipe_name }}: Check NISD Marker file sequence."
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
+      register: NisdMarkerEndSeq
+
+    - name: "{{ recipe_name }}: Check GC Marker file sequence."
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
+      register: GCMarkerEndSeq
+
+    - name: "{{ recipe_name }}: Validate that NISD and GC Marker file's endSeq doesn't match."
+      debug:
+        msg: "Validate that GC is not processed and Marker file's endSeq doesn't match"
+      failed_when: NisdMarkerEndSeq == GCMarkerEndSeq
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
