@@ -68,6 +68,7 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
         cmd.extend(['-s3config', s3configPath, '-s3log', s3LogFile])
 
+    print("cmd: ", cmd)
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
 
@@ -330,13 +331,13 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values):
         seqStart = "0"
 
     maxPunches = str(random.randint(1, 50))
-    maxVblks = str(random.randint(100, 1000))
+    maxVblks = str(random.randint(100, 256))
     punchAmount = str(random.randint(51, 100))
     punchesPer = "0"
-    maxPuncheSize = str(random.randint(1, 1024))
+    maxPuncheSize = str(random.randint(1, 20))
     seed = str(random.randint(1, 100))
-    vbAmount =  str(random.randint(1000, 10000))
-    vblkPer = str(random.randint(1, 20))
+    vbAmount =  str(random.randint(100, 256))
+    vblkPer = str(random.randint(1, 99))
     blockSize = str(random.randint(1, 32))
     blockSizeMax = str(random.randint(1, 32))
     startVblk = "0"
@@ -371,6 +372,7 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values):
     if 'dbiWithPunches' in input_values:
        cmd.extend(['-va', input_values['vbAmount'], '-vp', input_values['vblkPer'],
                         '-e', input_values['dbiWithPunches']])
+    print("cmd: ", cmd)
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
 
