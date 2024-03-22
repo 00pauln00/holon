@@ -21,9 +21,9 @@
         tasks_from: generate_overlapping_dbi_set
       vars:
         Type: "0"
-        VblkNum: "1000"
-        VblkPer: "8"
-        DBIPerSet: "5"
+        VblkNum: "100"
+        VblkPer: "5"
+        DBIPerSet: "3"
         ChunkNum: "-1"
       register: chunk
 
@@ -46,9 +46,9 @@
         tasks_from: generate_overlapping_dbi_set
       vars:
         Type: "0"
-        VblkNum: "1000"
-        VblkPer: "8"
-        DBIPerSet: "5"
+        VblkNum: "100"
+        VblkPer: "5"
+        DBIPerSet: "3"
         ChunkNum: "{{ chunk['msg'][0] }}"
 
     - name: "{{ recipe_name }}: Perform GC and Delete stale dbis"
