@@ -21,9 +21,9 @@
         tasks_from: generate_overlapping_dbi_set
       vars:
         Type: "0"
-        VblkNum: "250"
-        VblkPer: "10"
-        DBIPerSet: "3"
+        VblkNum: "2000"
+        VblkPer: "8"
+        DBIPerSet: "7"
         ChunkNum: "-1"
       register: chunk
 
