@@ -47,6 +47,7 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
         newPath = jsonPath + "DV/" + input_values["chunk"]
         json_data = load_json_contents(newPath + "/dummy_generator.json")
         input_values["vdev"] = str(json_data['BucketName'])
+        input_values["seqStart"] = str(json_data['SeqEnd'] + 1)
 
     # Initialize the command list with common arguments
     cmd = [
@@ -950,10 +951,10 @@ def getGCMarkerFileSeq(cluster_params, dirName, chunk):
     downloadPath = "%s/%s/gc-downloaded-obj/%s/" % (base_dir, raft_uuid, vdev)
     directory = os.path.join(downloadPath, "marker", chunk)
     files = glob.glob(os.path.join(directory, 'gcmrk*'))
-
+    # Sort files based on creation time (most recent first)
+    files.sort(key=lambda f: os.path.getctime(f), reverse=True)
     if files:
-        file_path = files[0]
-        endSeq = extract_endSeq(os.path.basename(file_path))
+        endSeq = extract_endSeq(os.path.basename(files[0]))
         return endSeq
     else:
         return -1

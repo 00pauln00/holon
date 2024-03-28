@@ -18,18 +18,18 @@
     - name: "Generate DBIs with vblk entry"
       vars:
         input_param: {
-                  "chunk": "1",
-                  "maxPunches": "512",
-                  "maxVblks": "90000",
-                  "punchAmount": "30000",
+                  "chunk": "2",
+                  "maxPunches": "20",
+                  "maxVblks": "256",
+                  "punchAmount": "100",
                   "punchesPer": "0",
-                  "maxPunchSize": "30000",
-                  "seed": "1",
+                  "maxPunchSize": "20",
+                  "seed": "123",
                   "seqStart": "0",
-                  "vbAmount": "90000 ",
-                  "vblkPer": "10000",
+                  "vbAmount": "250",
+                  "vblkPer": "100",
                   "genType": "1",
-                  "blockSize": "4",
+                  "blockSize": "8",
                   "blockSizeMax": "32",
                   "startVblk": "0",
                   "strideWidth": "",
@@ -43,16 +43,60 @@
          msg:
           - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: pause for 5 seconds."
+    - name: "{{ recipe_name }}: pause for 1 seconds."
       pause:
-        seconds: 5
+        seconds: 1
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
-        dryRun: True
+        dryRun: False
       debug:
          msg:
           - "{{ lookup('s3_handler', 'start_gcService', dryRun, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: pause for 1 seconds."
+      pause:
+        seconds: 1
+
+    - name: "Second iteration DBIs"
+      vars:
+        input_param: {
+                  "chunk": "2",
+                  "maxPunches": "20",
+                  "maxVblks": "256",
+                  "punchAmount": "100",
+                  "punchesPer": "0",
+                  "maxPunchSize": "20",
+                  "seed": "123",
+                  "seqStart": "",
+                  "vbAmount": "250",
+                  "vblkPer": "100",
+                  "genType": "1",
+                  "blockSize": "8",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "26b26faa-e5af-11ee-802e-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: pause for 1 seconds."
+      pause:
+        seconds: 1
+
+    - name: "{{ recipe_name }}: Check GC Marker file is Present or not."
+      vars:
+        Chunk: "2"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, wantlist=True) }}"
+      register: isGCMarkerFilePresent
 
     - name: "{{ recipe_name }}: Validate that GC Marker file is Present."
       debug:
@@ -61,7 +105,7 @@
 
     - name: "{{ recipe_name }}: Check NISD Marker file sequence."
       vars:
-        Chunk: "{{ chunk['msg'][0] }}"
+        Chunk: "2"
       debug:
          msg:
           - "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
@@ -69,7 +113,7 @@
 
     - name: "{{ recipe_name }}: Check GC Marker file sequence."
       vars:
-        Chunk: "{{ chunk['msg'][0] }}"
+        Chunk: "2"
       debug:
          msg:
           - "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
