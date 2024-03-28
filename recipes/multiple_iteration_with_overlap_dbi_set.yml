@@ -1,8 +1,8 @@
-- name: "basic_recipe_for_overlapping_seq_range"
+- name: "multiple_iteration_with_overlap_dbi_set"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "basic_recipe_for_overlapping_seq_range"
+     recipe_name: "multiple_iteration_with_overlap_dbi_set"
      parent: None
 
   tasks:
@@ -24,13 +24,16 @@
         VblkNum: "1000"
         VblkPer: "8"
         DBIPerSet: "5"
+        ChunkNum: "-1"
+      register: chunk
 
     - name: "{{ recipe_name }}: Perform GC and keep stale dbis"
       vars:
         debugMode: true
+        Chunk: "{{ chunk['msg'][0] }}"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -46,13 +49,15 @@
         VblkNum: "1000"
         VblkPer: "8"
         DBIPerSet: "5"
+        ChunkNum: "{{ chunk['msg'][0] }}"
 
-    - name: "{{ recipe_name }}: Perform GC and keep stale dbis"
+    - name: "{{ recipe_name }}: Perform GC and Delete stale dbis"
       vars:
         debugMode: false
+        Chunk: "{{ chunk['msg'][0] }}"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -60,6 +65,8 @@
       failed_when: gc_output['msg'][0] != "0"
 
     - name: "{{ recipe_name }}: Start data validation"
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate', wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'data_validate', Chunk, wantlist=True) }}"
 

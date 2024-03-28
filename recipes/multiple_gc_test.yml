@@ -20,13 +20,18 @@
         tasks_from: generate_pattern_dbis
       vars:
         Type: "2"     #You can pass different pattern value here.
-        OverlapSeqNum: ""
+        ChunkNum: "-1"
+      register: chunk
+
+    - debug:
+        msg: "{{ chunk['msg'][0] }}"
 
     - name: "{{ recipe_name }}: Run gc algorithm without deletion"
       vars:
         debugMode: true
+        Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -39,13 +44,14 @@
         tasks_from: generate_pattern_dbis
       vars:
         Type: "2"     #You can pass different pattern value here.
-        OverlapSeqNum: ""
+        ChunkNum: "{{ chunk['msg'][0] }}"
 
     - name: "{{ recipe_name }}: Run gc algorithm with deletion"
       vars:
         debugMode: false
+        Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -55,8 +61,9 @@
     - name: "{{ recipe_name }}: Again run gc algorithm with deletion"
       vars:
         debugMode: false
+        Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -64,5 +71,7 @@
       failed_when: gc_output['msg'][0] != "0"
 
     - name: "{{ recipe_name }}: Start data validation"
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate', wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'data_validate', Chunk, wantlist=True) }}"

@@ -1,0 +1,65 @@
+- name: "gc_validation_for_missing_seq_range_with_s3"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "gc_validation_for_missing_seq_range_with_s3"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    - name: "{{ recipe_name }}: Generate random DBI requests."
+      include_role:
+        name: common
+        tasks_from: generate_pattern_dbis
+      vars:
+        Type: "0"     #You can pass different pattern value here.
+        ChunkNum: "-1"
+      register: chunk
+
+    - name: "{{ recipe_name }}: delete any seq range dbi file."
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+        operation: "delete"
+      debug:
+         msg: "{{ lookup('s3_handler', 'performS3Operation', operation, Chunk,  wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Start gc algorithm"
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+        debugMode: true
+      debug:
+         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+      register: gc_output
+
+    - debug:
+         msg: "GC should fail as one of then seq range dbi file is not uploaded."
+      failed_when: gc_output['msg'][0] != "1"
+
+    - name: "{{ recipe_name }}: Re-upload deleted file to s3."
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+        operation: "upload"
+      debug:
+         msg: "{{ lookup('s3_handler', 'performS3Operation', operation, Chunk, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: After uploading the deleted file, perform GC operation."
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+        debugMode: false
+      debug:
+         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+      register: gc_output
+
+    - debug:
+         msg: "Now GC should successful as file is re-uploaded."
+      failed_when: gc_output['msg'][0] != "0"
+
+    - name: "{{ recipe_name }}: Perform data validation"
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('s3_handler', 'data_validate', Chunk, wantlist=True) }}"
