@@ -19,17 +19,17 @@
       vars:
          input_param: {
                   "chunk": "1",
-                  "maxPunches": "1",
+                  "maxPunches": "1024",
                   "maxVblks": "2097152",
                   "punchAmount": "6000",
                   "punchesPer": "0",
-                  "maxPunchSize": "6000",
+                  "maxPunchSize": "2048",
                   "seed": "1",
                   "seqStart": "0",
                   "vbAmount": "2097152",
-                  "vblkPer": "1000",
+                  "vblkPer": "100000",
                   "genType": "1",
-                  "blockSize": "16",
+                  "blockSize": "4",
                   "blockSizeMax": "32",
                   "startVblk": "0",
                   "strideWidth": "",
@@ -43,17 +43,38 @@
          msg:
           - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: pause for 10 seconds."
+    - name: "{{ recipe_name }}: pause for 3 seconds."
       pause:
-        seconds: 10
+        seconds: 3
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
-        dryRun: True
+        dryRun: False
       debug:
          msg:
           - "{{ lookup('s3_handler', 'start_gcService', dryRun, wantlist=True) }}"
-    
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present."
+      vars:
+         Chunk: "1"
+         stage: "wait_for_gc_marker"
+      debug:
+        msg: "Waiting for GC Marker File"
+      until: lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, wantlist=True) == true
+      retries: 200
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
+      vars:
+         Chunk: "1"
+         gcMarkerEndSeq: "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
+         NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
+      debug:
+        msg: "Wait until marker values gets match"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 200
+      delay: 2
+
     - name: "{{ recipe_name }}: Start data validation"
       vars:
         Chunk: "1"
