@@ -40,13 +40,23 @@
 
   - name: "{{ recipe_name }}: Get the s3 process pid and status."
     set_fact:
-       process_pid: "{{ jsondata.s3_process.process_pid | default('') }}"
-       process_status: "{{ jsondata.s3_process.process_status | default('') }}"
+        process_pid: "{{ jsondata.s3_process.process_pid | default('') }}"
+        process_status: "{{ jsondata.s3_process.process_status | default('') }}"
     when: jsondata.s3_process is defined
 
   - name: Kill the s3 process if it was found
     shell: kill -9 {{ process_pid }}
     when: jsondata.s3_process is defined and process_status == "sleeping" and process_pid != ""
+
+  - name: "{{ recipe_name }}: Get the GC Service process pid and status."
+    set_fact:
+       process_pid: "{{ jsondata.gcService_process.process_pid | default('') }}"
+       process_status: "{{ jsondata.gcService_process.process_status | default('') }}"
+    when: jsondata.gcService_process is defined
+
+  - name: Kill the GC Service process if it was found
+    shell: kill -9 {{ process_pid }}
+    when: jsondata.gcService_process is defined and process_status == "sleeping" and process_pid != ""
 
   - name: "Kill the processes after recipe execution"
     set_fact:

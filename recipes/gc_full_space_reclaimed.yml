@@ -49,7 +49,7 @@
                   "chunk": "1",
                   "maxPunches": "500",
                   "maxVblks": "10",
-                  "punchAmount": "2097152",
+                  "punchAmount": "2",
                   "punchesPer": "0",
                   "maxPunchSize": "100",
                   "seed": "1",
@@ -71,17 +71,33 @@
          msg:
           - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: pause for 10 seconds."
-      pause:
-        seconds: 10
-
     - name: "{{ recipe_name }}: Start GCService"
       vars:
         dryRun: True
       debug:
          msg:
           - "{{ lookup('s3_handler', 'start_gcService', dryRun, wantlist=True) }}"
-    
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present."
+      vars:
+         Chunk: "1"
+      debug:
+        msg: "Waiting for GC Marker File"
+      until: lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, wantlist=True) == true
+      retries: 200
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
+      vars:
+         Chunk: "1"
+         gcMarkerEndSeq: "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
+         NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
+      debug:
+        msg: "Wait until marker values gets match"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 200
+      delay: 2
+
     - name: "{{ recipe_name }}: Start data validation"
       vars:
         Chunk: "1"
