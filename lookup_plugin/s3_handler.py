@@ -48,7 +48,7 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
         json_data = load_json_contents(newPath + "/dummy_generator.json")
         input_values["vdev"] = str(json_data['BucketName'])
         input_values["seqStart"] = str(json_data['SeqEnd'] + 1)
-
+     
     # Initialize the command list with common arguments
     cmd = [
         bin_path, "-c", input_values['chunk'], "-mp", input_values['maxPunches'], "-mv", input_values['maxVblks'], "-p", path,
@@ -56,27 +56,25 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
         "-ss", input_values['seqStart'], "-t", input_values['genType'], '-va', input_values['vbAmount'], '-vp', input_values['vblkPer'],
         "-vdev", input_values["vdev"], "-bs", input_values['blockSize'], "-bsm", input_values['blockSizeMax'], "-vs", input_values['startVblk']
     ]
-    if input_values["punchwholechunk"] == "true":
-        cmd.extend(["-pc", input_values["punchwholechunk"]])
-    if input_values["strideWidth"] != "":
-        cmd.extend(["-sw", input_values["strideWidth"]])
-    if input_values["overlapSeq"] != "" and input_values["numOfSet"] != "":
-        cmd.extend(["-se", input_values["overlapSeq"], "-ts", input_values["numOfSet"]])
-
     # Add the S3-specific options if s3Support is "true"
     if s3Support == "true":
         s3configPath = '%s/s3.config.example' % binary_dir
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
         cmd.extend(['-s3config', s3configPath, '-s3log', s3LogFile])
 
+    if input_values["punchwholechunk"] == "=true":
+        cmd.extend(["-pc", input_values["punchwholechunk"]])
+    if input_values["strideWidth"] != "":
+        cmd.extend(["-sw", input_values["strideWidth"]])
+    if input_values["overlapSeq"] != "" and input_values["numOfSet"] != "":
+        cmd.extend(["-se", input_values["overlapSeq"], "-ts", input_values["numOfSet"]])
+
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
-
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
     # Close the log file
     fp.close()
-
     # Check if the process finished successfully (exit code 0)
     if exit_code == 0:
         print("Process completed successfully.")
