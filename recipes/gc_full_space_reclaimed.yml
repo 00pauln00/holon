@@ -41,7 +41,7 @@
                  }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
 
     - name: "Generate DBIs with punch entry for whole chunk"
       vars:
@@ -53,7 +53,7 @@
                   "punchesPer": "0",
                   "maxPunchSize": "100",
                   "seed": "1",
-                  "seqStart": "0",
+                  "seqStart": "",
                   "vbAmount": "0",
                   "vblkPer": "0",
                   "genType": "1",
@@ -65,15 +65,15 @@
                   "numOfSet": "",
                   "vdev": "7d3f6156-16db-4635-9d94-8adb68aae169",
                   "s3configPath": "",
-                  "punchwholechunk": "true",
+                  "punchwholechunk": "=true",
                  }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
-        dryRun: True
+        dryRun: False
       debug:
          msg:
           - "{{ lookup('s3_handler', 'start_gcService', dryRun, wantlist=True) }}"
