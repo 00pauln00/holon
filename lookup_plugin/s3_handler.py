@@ -220,7 +220,7 @@ def start_minio_server(cluster_params, dirName):
         if not os.path.exists(os.path.expanduser(f'/local/{dirName}')):
             os.makedirs(os.path.expanduser(f'/local/{dirName}'))
 
-        command = f"minio server /local/{dirName} --console-address ':4000' --address ':4090'"
+        command = f"minio server /local/{dirName} --console-address ':2000' --address ':2090'"
 
         process_popen = subprocess.Popen(command, shell=True, stdout=fp, stderr=fp)
 
@@ -468,7 +468,10 @@ def start_gcService_process(cluster_params, dirName, dryRun):
         logging.info("gcService failed to start")
         raise subprocess.SubprocessError(process_popen.returncode)
 
-
+    if downloadPath != None:
+        print("downloadPath exist ", downloadPath)
+    else: 
+        print("download path doesn't exist")
     #writing the information of lookout uuids dict into raft_uuid.json
     recipe_conf = load_recipe_op_config(cluster_params)
 
@@ -515,6 +518,11 @@ def start_data_validate(cluster_params, dirName, chunk):
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
+
+    if downloadPath != None:
+        print("data validation download dir is present")
+    else:
+        print("it is not present")
 
     # Check if the process finished successfully (exit code 0)
     if exit_code == 0:
