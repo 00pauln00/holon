@@ -43,10 +43,6 @@
          msg:
           - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: pause for 2 seconds."
-      pause:
-        seconds: 2
-
     - name: "{{ recipe_name }}: Start GCService"
       vars:
         dryRun: False
@@ -54,54 +50,18 @@
          msg:
           - "{{ lookup('s3_handler', 'start_gcService', dryRun, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: pause for 2 seconds."
-      pause:
-        seconds: 2
-
     - name: "Generate Second Iteration DBIs"
       vars:
         input_param: {
                   "chunk": "1",
                   "maxPunches": "1024",
-                  "maxVblks": "2096980",
-                  "punchAmount": "6000",
+                  "maxVblks": "2097152",
+                  "punchAmount": "7000",
                   "punchesPer": "0",
                   "maxPunchSize": "2048",
                   "seed": "1",
                   "seqStart": "",
-                  "vbAmount": "2096980",
-                  "vblkPer": "100000",
-                  "genType": "1",
-                  "blockSize": "4",
-                  "blockSizeMax": "32",
-                  "startVblk": "0",
-                  "strideWidth": "",
-                  "overlapSeq": "",
-                  "numOfSet": "",
-                  "vdev": "e7fb3b4d-40b2-4ceb-bc2a-6d49f26d0a97",
-                  "s3configPath": "",
-                  "punchwholechunk": "false",
-                 }
-      debug:
-         msg:
-          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
-
-    - name: "{{ recipe_name }}: pause for 2 seconds."
-      pause:
-        seconds: 2
-
-    - name: "Generate Third Iteration DBIs"
-      vars:
-        input_param: {
-                  "chunk": "1",
-                  "maxPunches": "1024",
-                  "maxVblks": "2096980",
-                  "punchAmount": "6000",
-                  "punchesPer": "0",
-                  "maxPunchSize": "2048",
-                  "seed": "1",
-                  "seqStart": "",
-                  "vbAmount": "2096980",
+                  "vbAmount": "2097152",
                   "vblkPer": "100000",
                   "genType": "1",
                   "blockSize": "4",

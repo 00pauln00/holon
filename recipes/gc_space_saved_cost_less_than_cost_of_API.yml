@@ -43,10 +43,6 @@
          msg:
           - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: pause for 3 seconds."
-      pause:
-        seconds: 3
-
     - name: "{{ recipe_name }}: Start GCService"
       vars:
         dryRun: False
