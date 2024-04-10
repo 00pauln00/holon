@@ -43,16 +43,16 @@
          msg:
           - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: pause for 3 seconds."
-      pause:
-        seconds: 3
-
     - name: "{{ recipe_name }}: Start GCService"
       vars:
         dryRun: False
       debug:
          msg:
           - "{{ lookup('s3_handler', 'start_gcService', dryRun, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: pause for 3 seconds."
+      pause:
+        seconds: 2
 
     - name: "{{ recipe_name }}: Wait until GC marker file present."
       vars:
@@ -61,7 +61,7 @@
       debug:
         msg: "Waiting for GC Marker File"
       until: lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, wantlist=True) == true
-      retries: 200
+      retries: 300
       delay: 2
 
     - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
