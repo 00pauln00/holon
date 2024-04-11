@@ -1,8 +1,8 @@
-- name: "gc_cost_calc_recipe"
+- name: "gc_full_space_reclaimed"
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "gc_cost_calc_recipe"
+     recipe_name: "gc_full_space_reclaimed"
      parent: None
 
   tasks:
