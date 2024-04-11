@@ -27,7 +27,7 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
     if not os.path.exists(path):
         # Create the directory path
         try:
-            os.makedirs(path)
+            os.makedirs(path, mode=0o777)
         except Exception as e:
             print(f"An error occurred while creating '{path}': {e}")
 
@@ -97,7 +97,7 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
     if not os.path.exists(dbiPath):
         # Create the directory path
         try:
-            os.makedirs(dbiPath)
+            os.makedirs(dbiPath, mode=0o777)
         except Exception as e:
             print(f"An error occurred while creating '{path}': {e}")
 
@@ -109,7 +109,7 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
        if not os.path.exists(path):
           # Create the directory path
           try:
-             os.makedirs(path)
+             os.makedirs(path, mode=0o777)
           except Exception as e:
              print(f"An error occurred while creating '{path}': {e}")
 
@@ -218,7 +218,7 @@ def start_minio_server(cluster_params, dirName):
     if s3Support:
         # Check if the directory exists, and if not, create it.
         if not os.path.exists(os.path.expanduser(f'/local/{dirName}')):
-            os.makedirs(os.path.expanduser(f'/local/{dirName}'))
+            os.makedirs(os.path.expanduser(f'/local/{dirName}'), mode=0o777)
 
         command = f"minio server /local/{dirName} --console-address ':2000' --address ':2090'"
 
@@ -294,7 +294,7 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values):
     if not os.path.exists(path):
         # Create the directory path
         try:
-            os.makedirs(path)
+            os.makedirs(path, mode=0o777)
         except Exception as e:
             print(f"An error occurred while creating '{path}': {e}")
 
@@ -589,7 +589,7 @@ def uploadAndDeleteCorruptedFile(cluster_params, dirName, operation, chunk):
     if operation == "upload":
             # Check if the destination directory exists, and create if not
             if not os.path.exists(dest_dir):
-                os.makedirs(dest_dir)
+                os.makedirs(dest_dir, mode=0o777)
             # Copy the file to the destination directory
             shutil.copy(source_file_path, dest_file_path)
             # Modify the last file by adding "0000" at the end
@@ -846,7 +846,7 @@ def copyDBIset_NewDir(cluster_params, dirName, chunk):
         source_path = fileNames
         destination_path = jsonPath + newDir
         if not os.path.exists(destination_path):
-            os.makedirs(destination_path)
+            os.makedirs(destination_path, mode=0o777)
         shutil.copy2(source_path, destination_path)
 
 def copyDBIFile_changeSeqNum(cluster_params, dirName, chunk):
