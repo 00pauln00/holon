@@ -48,7 +48,7 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
         json_data = load_json_contents(newPath + "/dummy_generator.json")
         input_values["vdev"] = str(json_data['BucketName'])
         input_values["seqStart"] = str(json_data['SeqEnd'] + 1)
-     
+
     # Initialize the command list with common arguments
     cmd = [
         bin_path, "-c", input_values['chunk'], "-mp", input_values['maxPunches'], "-mv", input_values['maxVblks'], "-p", path,
@@ -470,7 +470,7 @@ def start_gcService_process(cluster_params, dirName, dryRun):
 
     if downloadPath != None:
         print("downloadPath exist ", downloadPath)
-    else: 
+    else:
         print("download path doesn't exist")
     #writing the information of lookout uuids dict into raft_uuid.json
     recipe_conf = load_recipe_op_config(cluster_params)
@@ -520,13 +520,13 @@ def start_data_validate(cluster_params, dirName, chunk):
     exit_code = process.wait()
 
     if downloadPath != None:
-        print("data validation download dir is present")
+        f"data validation download dir is present"
     else:
-        print("it is not present")
+        f"data validation download dir is not present"
 
     # Check if the process finished successfully (exit code 0)
     if exit_code == 0:
-        print("Process completed successfully.")
+        f"Process completed successfully."
     else:
         error_message = f"Process failed with exit code {exit_code}."
         raise RuntimeError(error_message)
