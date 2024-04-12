@@ -510,19 +510,16 @@ def start_data_validate(cluster_params, dirName, chunk):
         json_data = load_json_contents(newPath + "/dummy_generator.json")
         vdev = str(json_data['BucketName'])
 
-    if s3Support == "true":
-        s3config = '%s/s3.config.example' % binary_dir
-        process = subprocess.Popen([bin_path, '-s', path, '-d', downloadPath, '-c', chunk, '-s3config', s3config, '-b', vdev, '-l', logFile])
-    else:
-        process = subprocess.Popen([bin_path, '-s', path, '-d', path, '-c', chunk, '-l', logFile])
+    process = subprocess.Popen([bin_path, '-s', path, '-d', path, '-c', chunk, '-l', logFile])
+
+    #if s3Support == "true":
+    #    s3config = '%s/s3.config.example' % binary_dir
+    #    process = subprocess.Popen([bin_path, '-s', path, '-d', downloadPath, '-c', chunk, '-s3config', s3config, '-b', vdev, '-l', logFile])
+    #else:
+    #    process = subprocess.Popen([bin_path, '-s', path, '-d', path, '-c', chunk, '-l', logFile])
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
-
-    if downloadPath != None:
-        f"data validation download dir is present"
-    else:
-        f"data validation download dir is not present"
 
     # Check if the process finished successfully (exit code 0)
     if exit_code == 0:
