@@ -454,7 +454,7 @@ def start_gcService_process(cluster_params, dirName, dryRun):
     # Prepare path for log file.
     s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
     downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
-    cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile]
+    cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120', '-l', '6', '-p', '7500']
 
     if dryRun:
         cmd.append('-dr')
@@ -510,13 +510,15 @@ def start_data_validate(cluster_params, dirName, chunk):
         json_data = load_json_contents(newPath + "/dummy_generator.json")
         vdev = str(json_data['BucketName'])
 
-    process = subprocess.Popen([bin_path, '-s', path, '-d', path, '-c', chunk, '-l', logFile])
+    print("path: ", path)
+    print('bin_path ', bin_path, '-s', path, '-d', path, '-c', chunk, '-l', logFile)
+    #process = subprocess.Popen([bin_path, '-s', path, '-d', path, '-c', chunk, '-l', logFile])
 
-    #if s3Support == "true":
-    #    s3config = '%s/s3.config.example' % binary_dir
-    #    process = subprocess.Popen([bin_path, '-s', path, '-d', downloadPath, '-c', chunk, '-s3config', s3config, '-b', vdev, '-l', logFile])
-    #else:
-    #    process = subprocess.Popen([bin_path, '-s', path, '-d', path, '-c', chunk, '-l', logFile])
+    if s3Support == "true":
+        s3config = '%s/s3.config.example' % binary_dir
+        process = subprocess.Popen([bin_path, '-s', path, '-d', downloadPath, '-c', chunk, '-s3config', s3config, '-b', vdev, '-l', logFile])
+    else:
+        process = subprocess.Popen([bin_path, '-s', path, '-d', path, '-c', chunk, '-l', logFile])
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
@@ -924,7 +926,7 @@ def isGCMarkerFilePresent(cluster_params, dirName, chunk):
         vdev = str(json_data['BucketName'])
     downloadPath = "%s/%s/gc-downloaded-obj/%s/marker/%s" % (base_dir, raft_uuid, vdev, chunk)
     files = glob.glob(os.path.join(downloadPath, 'gcmrk*'))
-
+    print("downloadPath: ", downloadPath)
     # Check if any file is found
     if files:
         print("Files starting with 'gcmrk' found in the directory:")
@@ -953,6 +955,7 @@ def getGCMarkerFileSeq(cluster_params, dirName, chunk):
 
     downloadPath = "%s/%s/gc-downloaded-obj/%s/" % (base_dir, raft_uuid, vdev)
     directory = os.path.join(downloadPath, "marker", chunk)
+    print("GC directory: ", directory)
     files = glob.glob(os.path.join(directory, 'gcmrk*'))
     # Sort files based on creation time (most recent first)
     files.sort(key=lambda f: os.path.getctime(f), reverse=True)
@@ -965,6 +968,7 @@ def getGCMarkerFileSeq(cluster_params, dirName, chunk):
 def getNISDMarkerFileSeq(cluster_params, dirName, chunk):
     jsonPath = get_dir_path(cluster_params, dirName)
     directory = os.path.join(jsonPath, "marker", chunk)
+    print("NISD directory: ", directory)
     files = glob.glob(os.path.join(directory, 'nisdmrk*'))
 
     if files:
