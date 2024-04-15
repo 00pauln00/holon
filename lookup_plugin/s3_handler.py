@@ -501,22 +501,24 @@ def start_data_validate(cluster_params, dirName, chunk):
 
     # Prepare path for log file.
     logFile = "%s/%s/dataValidateResult" % (base_dir, raft_uuid)
+    jsonPath = get_dir_path(cluster_params, dirName)
+    newPath = jsonPath + "DV/" + str(chunk) + "/dummy_generator.json"
+    json_data = load_json_contents(newPath)
+    dbi_input_path = str(json_data['DbiPath'])
+    vdev = str(json_data['BucketName'])
 
     path = get_dir_path(cluster_params, dirName)
-    downloadPath = "%s/%s/dv-downloaded-obj/" % (base_dir, raft_uuid)
+    downloadPath = "%s/%s/gc-downloaded-obj/%s" % (base_dir, raft_uuid, vdev)
     bin_path = '%s/dataValidator' % binary_dir
     if path != None:
         newPath = path + "DV/" + chunk
         json_data = load_json_contents(newPath + "/dummy_generator.json")
         vdev = str(json_data['BucketName'])
 
-    print("path: ", path)
-    print('bin_path ', bin_path, '-s', path, '-d', path, '-c', chunk, '-l', logFile)
-    #process = subprocess.Popen([bin_path, '-s', path, '-d', path, '-c', chunk, '-l', logFile])
-
     if s3Support == "true":
         s3config = '%s/s3.config.example' % binary_dir
-        process = subprocess.Popen([bin_path, '-s', path, '-d', downloadPath, '-c', chunk, '-s3config', s3config, '-b', vdev, '-l', logFile])
+        #process = subprocess.Popen([bin_path, '-s', path, '-d', downloadPath, '-c', chunk, '-s3config', s3config, '-b', vdev, '-l', logFile])
+        process = subprocess.Popen([bin_path, '-s', path, '-d', downloadPath, '-c', chunk, '-l', logFile])
     else:
         process = subprocess.Popen([bin_path, '-s', path, '-d', path, '-c', chunk, '-l', logFile])
 
