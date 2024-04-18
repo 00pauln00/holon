@@ -44,9 +44,9 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
     bin_path = '%s/example' % binary_dir
     jsonPath = get_dir_path(cluster_params, dirName)
     if jsonPath != None:
-        newPath = jsonPath + "DV/" + input_values["chunk"]
+        newPath = jsonPath + "/" + input_values["chunk"] + "/DV"
         json_data = load_json_contents(newPath + "/dummy_generator.json")
-        input_values["vdev"] = str(json_data['BucketName'])
+        input_values["vdev"] = str(json_data['Vdev'])
         input_values["seqStart"] = str(json_data['SeqEnd'] + 1)
 
     # Initialize the command list with common arguments
@@ -69,6 +69,7 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
     if input_values["overlapSeq"] != "" and input_values["numOfSet"] != "":
         cmd.extend(["-se", input_values["overlapSeq"], "-ts", input_values["numOfSet"]])
 
+    print("cmd: ", cmd)
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
     # Wait for the process to finish and get the exit code
@@ -123,10 +124,10 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           bin_path = '%s/example' % binary_dir
           jsonPath = get_dir_path(cluster_params, dirName, params["seed"])
           if jsonPath != None:
-               newPath = jsonPath + "DV/" + params["chunk"]
+               newPath = jsonPath + "/" + params["chunk"] + "/DV"
                json_data = load_json_contents(newPath + "/dummy_generator.json")
                params["seqStart"] = str(json_data['SeqEnd'] + 1)
-               params["vdev"] = str(json_data['BucketName'])
+               params["vdev"] = str(json_data['Vdev'])
           else:
                params["seqStart"] = "0"
                params["vdev"] = ""
@@ -155,8 +156,8 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
        elif operation == "run_gc":
           bin_path = '%s/gcTester' % binary_dir
           get_path = get_dir_path(cluster_params, dirName, params["seed"])
-          json_data = load_json_contents(get_path + "DV/" + params["chunk"] + "/dummy_generator.json")
-          vdev = str(json_data['BucketName'])
+          json_data = load_json_contents(get_path + "/" + params["chunk"] + "/DV" + "/dummy_generator.json")
+          vdev = str(json_data['Vdev'])
           downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
           if s3Support == "true":
                s3DownloadLogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
@@ -170,8 +171,8 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
        elif operation == "run_data_validator":
           bin_path = '%s/dataValidator' % binary_dir
           get_path = get_dir_path(cluster_params, dirName, params["seed"])
-          json_data = load_json_contents(get_path + "DV/" + params["chunk"] + "/dummy_generator.json")
-          vdev = str(json_data['BucketName'])
+          json_data = load_json_contents(get_path + "/" + params["chunk"] + "/DV" + "/dummy_generator.json")
+          vdev = str(json_data['Vdev'])
           downloadPath = "%s/%s/dv-downloaded-obj/" % (base_dir, raft_uuid)
           if s3Support == "true":
                 cmd.extend([bin_path, '-s', get_path, '-d', downloadPath, '-c', params['chunk'],
@@ -319,11 +320,11 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values):
     # Generate random values for the dbi pattern generation
     jsonPath = get_dir_path(cluster_params, dirName)
     if jsonPath != None:
-        newPath = jsonPath + "DV/" + input_values['chunkNumber']
+        newPath = jsonPath + "/" + input_values['chunkNumber'] + "/DV"
         json_data = load_json_contents(newPath + "/dummy_generator.json")
         chunk = str(json_data['TotalChunkSize'])
         seqStart = str(json_data['SeqEnd'] + 1)
-        vdev = str(json_data['BucketName'])
+        vdev = str(json_data['Vdev'])
     else:
         chunk = chunkNum
         seqStart = "0"
@@ -346,7 +347,7 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values):
     cmd = [
         bin_path, "-c", chunk, "-mp", maxPunches, "-mv", maxVblks, "-p", path,
         "-pa", punchAmount, "-pp", punchesPer, "-ps", maxPuncheSize, "-seed", seed,
-        "-ss", seqStart, "-t", genType,
+        "-ss", seqStart, "-t", genType, "-b", "paroscale-test",
         "-bs", blockSize, "-bsm", blockSizeMax, "-vs", startVblk, "-sw", strideWidth
     ]
 
@@ -370,6 +371,7 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values):
     if 'dbiWithPunches' in input_values:
        cmd.extend(['-va', input_values['vbAmount'], '-vp', input_values['vblkPer'],
                         '-e', input_values['dbiWithPunches']])
+    print("cmd: ", cmd)
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
 
@@ -405,16 +407,16 @@ def start_gc_process(cluster_params, dirName, debugMode, chunk):
     bin_path = '%s/gcTester' % binary_dir
     matches = re.findall(r'[\w-]{36}', path)
     vdev_uuid = matches[-1] if matches else None
-
+    modified_path = modify_path(path)
     cmd = []
     if s3Support == "true":
          s3config = '%s/s3.config.example' % binary_dir
          # Prepare path for log file.
          s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
          downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
-         cmd = [bin_path, '-i', path, '-s3config', s3config, '-s3log', s3LogFile, '-v', vdev_uuid, '-c', chunk, '-path', downloadPath]
+         cmd = [bin_path, '-c', chunk, '-v', vdev_uuid, '-s3config', s3config, '-path', downloadPath, '-s3log', s3LogFile, '-b', 'paroscale-test']
     else:
-        cmd = [bin_path, '-i', path, '-v', vdev_uuid, '-c', chunk]
+        cmd = [bin_path, '-i', modified_path, '-v', vdev_uuid, '-c', chunk]
 
     if debugMode:
         cmd.append('-d')
@@ -454,7 +456,7 @@ def start_gcService_process(cluster_params, dirName, dryRun):
     # Prepare path for log file.
     s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
     downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
-    cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120', '-l', '6', '-p', '7500']
+    cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120', '-l', '2', '-p', '7500', '-b', 'paroscale-test']
 
     if dryRun:
         cmd.append('-dr')
@@ -492,6 +494,35 @@ def start_gcService_process(cluster_params, dirName, dryRun):
 
     os.fsync(fp)
 
+def modify_path(path):
+    # Split the path into parts
+    parts = path.split('/')
+
+    # Remove the first element if it's empty due to a leading slash
+    if parts[0] == '':
+        parts.pop(0)
+
+    # Remove the last element if it's empty due to a trailing slash
+    if parts[-1] == '':
+        parts.pop()
+
+    # Find the index of 'dbi-dbo' in the list
+    try:
+        dbi_dbo_index = parts.index('dbi-dbo')
+    except ValueError:
+        # If 'dbi-dbo' is not found, return the original path
+        return path
+
+    # Ensure there's at least one directory after 'dbi-dbo' to remove
+    if dbi_dbo_index < len(parts) - 1:
+        # Remove the directory that comes after 'dbi-dbo'
+        parts.pop(dbi_dbo_index + 1)
+
+    # Rejoin the remaining parts
+    new_path = '/' + '/'.join(parts)
+
+    return new_path
+
 def start_data_validate(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -502,25 +533,28 @@ def start_data_validate(cluster_params, dirName, chunk):
     # Prepare path for log file.
     logFile = "%s/%s/dataValidateResult" % (base_dir, raft_uuid)
     jsonPath = get_dir_path(cluster_params, dirName)
-    newPath = jsonPath + "DV/" + str(chunk) + "/dummy_generator.json"
+
+    newPath = jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json"
     json_data = load_json_contents(newPath)
     dbi_input_path = str(json_data['DbiPath'])
-    vdev = str(json_data['BucketName'])
+    vdev = str(json_data['Vdev'])
 
     path = get_dir_path(cluster_params, dirName)
-    downloadPath = "%s/%s/gc-downloaded-obj/%s" % (base_dir, raft_uuid, vdev)
+    downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
     bin_path = '%s/dataValidator' % binary_dir
     if path != None:
-        newPath = path + "DV/" + chunk
+        newPath = path + "/" + chunk + "/DV"
+        print("newPath: ", newPath)
         json_data = load_json_contents(newPath + "/dummy_generator.json")
-        vdev = str(json_data['BucketName'])
+        vdev = str(json_data['Vdev'])
+
+    modified_path = modify_path(path)
 
     if s3Support == "true":
         s3config = '%s/s3.config.example' % binary_dir
-        #process = subprocess.Popen([bin_path, '-s', path, '-d', downloadPath, '-c', chunk, '-s3config', s3config, '-b', vdev, '-l', logFile])
-        process = subprocess.Popen([bin_path, '-s', path, '-d', downloadPath, '-c', chunk, '-l', logFile])
+        process = subprocess.Popen([bin_path, '-s', modified_path, '-d', downloadPath, '-c', chunk, '-l', logFile, '-v', vdev])
     else:
-        process = subprocess.Popen([bin_path, '-s', path, '-d', path, '-c', chunk, '-l', logFile])
+        process = subprocess.Popen([bin_path, '-s', modified_path, '-d', modified_path, '-c', chunk, '-v', vdev, '-l', logFile])
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
@@ -556,11 +590,11 @@ def uploadAndDeleteCorruptedFile(cluster_params, dirName, operation, chunk):
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
     binary_dir = os.getenv('NIOVA_BIN_PATH')
-    newPath = jsonPath + "DV/" + str(chunk) + "/dummy_generator.json"
+    newPath = jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json"
     json_data = load_json_contents(newPath)
 
     dbi_input_path = str(json_data['DbiPath'])
-    bucketName = str(json_data['BucketName'])
+    vdev = str(json_data['Vdev'])
     logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
 
     # Get a list of files in the source directory
@@ -600,11 +634,11 @@ def uploadAndDeleteCorruptedFile(cluster_params, dirName, operation, chunk):
                  # Write zeroes to the remaining part of the file
                  f.write(b'\x00' * entry_size)
 
-            process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+            process = subprocess.Popen([bin_path, '-vdev', vdev, '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
 
     elif operation == "delete":
 
-            process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+            process = subprocess.Popen([bin_path, '-vdev', vdev, '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
 
 def uploadOrigFile(cluster_params, dirName, operation, chunk):
     base_dir = cluster_params['base_dir']
@@ -612,9 +646,9 @@ def uploadOrigFile(cluster_params, dirName, operation, chunk):
     jsonPath = get_dir_path(cluster_params, dirName)
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
-    json_data = load_json_contents(jsonPath + "DV/" + str(chunk) + "/dummy_generator.json")
+    json_data = load_json_contents(jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json")
     dbi_input_path = str(json_data['DbiPath'])
-    bucketName = str(json_data['BucketName'])
+    vdev = str(json_data['Vdev'])
     logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
 
     # Get a list of files in the source directory
@@ -636,7 +670,7 @@ def uploadOrigFile(cluster_params, dirName, operation, chunk):
         shutil.copy(dest_file_path, source_file_path)
         s3config = '%s/s3.config.example' % binary_dir
         bin_path = '%s/s3Operation' % binary_dir
-        process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+        process = subprocess.Popen([bin_path, '-vdev', vdev, '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
 
 def perform_s3_operation(cluster_params, dirName, operation, chunk):
     base_dir = cluster_params['base_dir']
@@ -644,9 +678,9 @@ def perform_s3_operation(cluster_params, dirName, operation, chunk):
     jsonPath = get_dir_path(cluster_params, dirName)
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
-    json_data = load_json_contents(jsonPath + "DV/" + str(chunk) + "/dummy_generator.json")
+    json_data = load_json_contents(jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json")
     dbi_input_path = str(json_data['DbiPath'])
-    bucketName = str(json_data['BucketName'])
+    vdev = str(json_data['Vdev'])
     logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
 
     # Get a list of files in the source directory
@@ -662,13 +696,13 @@ def perform_s3_operation(cluster_params, dirName, operation, chunk):
 
         s3config = '%s/s3.config.example' % binary_dir
         bin_path = '%s/s3Operation' % binary_dir
-        process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', file_path, '-l', logFile])
+        process = subprocess.Popen([bin_path, '-vdev', vdev, '-operation', operation, '-s3config', s3config, '-filepath', file_path, '-l', logFile])
 
 def get_DBiFileNames(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
-    json_data = load_json_contents(jsonPath + "DV/" + str(chunk) + "/dummy_generator.json")
+    json_data = load_json_contents(jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json")
     dbi_input_path = str(json_data['DbiPath'])
 
     # Initialize a list to store file names
@@ -706,7 +740,7 @@ def search_files_by_string(directory, search_string):
 
 def copy_DBI_file_generatorNum(cluster_params, dirName, chunk):
     jsonPath = get_dir_path(cluster_params, dirName)
-    path = jsonPath + "DV/" + str(chunk) + "/dummy_generator.json"
+    path = jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json"
     json_data = load_json_contents(path)
     dbi_input_path = str(json_data['DbiPath'])
     dbo_input_path = str(json_data['DboPath'])
@@ -746,7 +780,7 @@ def deleteFiles(cluster_params, dirName, chunk):
     json_filename = 'DBIFileNames.json'
 
     jsonPath = get_dir_path(cluster_params, dirName)
-    json_data = load_json_contents(jsonPath + "DV/" + str(chunk) + "/dummy_generator.json")
+    json_data = load_json_contents(jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json")
     dbi_input_path = str(json_data['DbiPath'])
 
     # Read the JSON file to get the list of file names
@@ -770,7 +804,7 @@ def deleteSetFiles(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
-    json_data = load_json_contents(jsonPath + "DV/" + chunk + "/dummy_generator.json")
+    json_data = load_json_contents(jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json")
     dbi_input_path = str(json_data['DbiPath'])
 
     destination_path = jsonPath + "dbisetFname.txt"
@@ -797,10 +831,10 @@ def deleteSetFileS3(cluster_params, dirName, operation, chunk):
     jsonPath = get_dir_path(cluster_params, dirName)
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
-    json_path = jsonPath + "DV/" + chunk + "/" + "dummy_generator.json"
+    json_path = jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json"
     json_data = load_json_contents(jsonPath)
     dbi_input_path = str(json_data['DbiPath'])
-    bucketName = str(json_data['BucketName'])
+    vdev = str(json_data['Vdev'])
     logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
 
     filenames = []
@@ -822,16 +856,16 @@ def deleteSetFileS3(cluster_params, dirName, operation, chunk):
 
     s3config = '%s/s3.config.example' % binary_dir
     bin_path = '%s/s3Operation' % binary_dir
-    process = subprocess.Popen([bin_path, '-bucketName', bucketName, '-operation', operation, '-s3config', s3config, '-filepath', file_path, '-l', logFile])
+    process = subprocess.Popen([bin_path, '-vdev', vdev, '-operation', operation, '-s3config', s3config, '-filepath', file_path, '-l', logFile])
 
 def copyDBIset_NewDir(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
-    json_path = jsonPath + "/DV/" + chunk + "/" + "dummy_generator.json"
+    json_path = jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json"
     json_data = load_json_contents(json_path)
     dbi_input_path = str(json_data['DbiPath'])
-    bucketName = str(json_data['BucketName'])
+    vdev = str(json_data['Vdev'])
 
     newDir = "dbiSetFiles"
     file_path = jsonPath + "dbisetFname.txt"
@@ -854,7 +888,7 @@ def copyDBIFile_changeSeqNum(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
-    json_path = jsonPath + "/DV/" + chunk + "/" + "dummy_generator.json"
+    json_path = jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json"
     json_data = load_json_contents(json_path)
     dbi_input_path = str(json_data['DbiPath'])
     dbo_input_path = str(json_data['DboPath'])
@@ -923,9 +957,9 @@ def isGCMarkerFilePresent(cluster_params, dirName, chunk):
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
     if jsonPath != None:
-        newPath = jsonPath + "DV/" + chunk
+        newPath = jsonPath + "/" + chunk + "/DV"
         json_data = load_json_contents(newPath + "/dummy_generator.json")
-        vdev = str(json_data['BucketName'])
+        vdev = str(json_data['Vdev'])
     downloadPath = "%s/%s/gc-downloaded-obj/%s/marker/%s" % (base_dir, raft_uuid, vdev, chunk)
     files = glob.glob(os.path.join(downloadPath, 'gcmrk*'))
     print("downloadPath: ", downloadPath)
@@ -951,9 +985,9 @@ def getGCMarkerFileSeq(cluster_params, dirName, chunk):
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
     if jsonPath != None:
-        newPath = jsonPath + "DV/" + chunk
+        newPath = jsonPath + "/" + chunk + "/DV"
         json_data = load_json_contents(newPath + "/dummy_generator.json")
-        vdev = str(json_data['BucketName'])
+        vdev = str(json_data['Vdev'])
 
     downloadPath = "%s/%s/gc-downloaded-obj/%s/" % (base_dir, raft_uuid, vdev)
     directory = os.path.join(downloadPath, "marker", chunk)
