@@ -544,7 +544,6 @@ def start_data_validate(cluster_params, dirName, chunk):
     bin_path = '%s/dataValidator' % binary_dir
     if path != None:
         newPath = path + "/" + chunk + "/DV"
-        print("newPath: ", newPath)
         json_data = load_json_contents(newPath + "/dummy_generator.json")
         vdev = str(json_data['Vdev'])
 
@@ -956,29 +955,27 @@ def isGCMarkerFilePresent(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
-    if jsonPath != None:
-        newPath = jsonPath + "/" + chunk + "/DV"
-        json_data = load_json_contents(newPath + "/dummy_generator.json")
-        vdev = str(json_data['Vdev'])
-    downloadPath = "%s/%s/gc-downloaded-obj/%s/marker/%s" % (base_dir, raft_uuid, vdev, chunk)
-    files = glob.glob(os.path.join(downloadPath, 'gcmrk*'))
-    print("downloadPath: ", downloadPath)
-    # Check if any file is found
-    if files:
-        print("Files starting with 'gcmrk' found in the directory:")
-        return True
-    else:
-        print("No files starting with 'gcmrk' found in the directory.")
-        return False
 
-def extract_endSeq(filepath):
-    filename = os.path.basename(filepath)
-    parts = filename.split('.')
-    last_part = parts[-1]  # Get the last part of the filename
-    if last_part.isdigit():
-        return int(last_part)
+    if jsonPath is not None:
+        newPath = os.path.join(jsonPath, chunk, "DV")
+        json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
+        vdev = str(json_data['Vdev'])
+        downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
+
+        file_pattern = os.path.join(downloadPath, '*', '*.gc')
+        files = glob.glob(file_pattern, recursive=True)
+
+        files = glob.glob(file_pattern, recursive=True)
+        # Check if any file is found
+        if files:
+            print("GC Marker file found in a directory.")
+            return True
+        else:
+            print("No GC Marker file found in a directory.")
+            return False
     else:
-        return None
+        print("Invalid path or directory not found.")
+        return False
 
 def getGCMarkerFileSeq(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
@@ -988,11 +985,12 @@ def getGCMarkerFileSeq(cluster_params, dirName, chunk):
         newPath = jsonPath + "/" + chunk + "/DV"
         json_data = load_json_contents(newPath + "/dummy_generator.json")
         vdev = str(json_data['Vdev'])
+    # Define the root path where the search should start
+    downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
 
-    downloadPath = "%s/%s/gc-downloaded-obj/%s/" % (base_dir, raft_uuid, vdev)
-    directory = os.path.join(downloadPath, "marker", chunk)
-    print("GC directory: ", directory)
-    files = glob.glob(os.path.join(directory, 'gcmrk*'))
+    # Use glob.glob to find all .gcmrk files in any subdirectories under the constructed path
+    file_pattern = os.path.join(downloadPath, '**', '*.gc')  # '**' allows recursive search
+    files = glob.glob(file_pattern, recursive=True)
     # Sort files based on creation time (most recent first)
     files.sort(key=lambda f: os.path.getctime(f), reverse=True)
     if files:
@@ -1001,19 +999,38 @@ def getGCMarkerFileSeq(cluster_params, dirName, chunk):
     else:
         return -1
 
-def getNISDMarkerFileSeq(cluster_params, dirName, chunk):
-    jsonPath = get_dir_path(cluster_params, dirName)
-    directory = os.path.join(jsonPath, "marker", chunk)
-    print("NISD directory: ", directory)
-    files = glob.glob(os.path.join(directory, 'nisdmrk*'))
+def extract_endSeq(filepath):
+    filename = os.path.basename(filepath)
+    parts = filename.split('.')
+    last_part = parts[-2]  # Get the last part of the filename
+    if last_part.isdigit():
+        return int(last_part)
+    else:
+        return None
 
+def getNISDMarkerFileSeq(cluster_params, dirName, chunk):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    if jsonPath is not None:
+        newPath = os.path.join(jsonPath, chunk, "DV")
+        json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
+        vdev = str(json_data['Vdev'])
+
+    # Define the root path where the search should start
+    downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
+
+    # Use glob.glob to find all .gcmrk files in any subdirectories under the constructed path
+    file_pattern = os.path.join(downloadPath, '**', '*.nisd')  # '**' allows recursive search
+    files = glob.glob(file_pattern, recursive=True)
+
+    # Sort files based on creation time (most recent first)
+    files.sort(key=lambda f: os.path.getctime(f), reverse=True)
     if files:
-        file_path = files[0]
-        endSeq = extract_endSeq(os.path.basename(file_path))
+        endSeq = extract_endSeq(os.path.basename(files[0]))
         return endSeq
     else:
         return -1
-
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
