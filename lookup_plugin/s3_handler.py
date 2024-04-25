@@ -281,6 +281,8 @@ def get_dir_path(cluster_params, dirName, seed=None):
         directories.sort(key=lambda d: os.path.getctime(os.path.join(dbi_dir, d)), reverse=True)
         # Return the path of the most recently created directory with a trailing slash
         most_recent_directory = directories[0]
+        if len(directories) > 1:
+            most_recent_directory = directories[1]
         directory_path = os.path.join(dbi_dir, most_recent_directory, '')  # Add the trailing slash here
         return directory_path
     else:
