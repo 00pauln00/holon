@@ -833,7 +833,7 @@ def deleteSetFileS3(cluster_params, dirName, operation, chunk):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
     json_path = jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json"
-    json_data = load_json_contents(jsonPath)
+    json_data = load_json_contents(json_path)
     dbi_input_path = str(json_data['DbiPath'])
     vdev = str(json_data['Vdev'])
     logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
@@ -846,7 +846,7 @@ def deleteSetFileS3(cluster_params, dirName, operation, chunk):
 
     file_list = file_contents.rstrip(', ').split(', ')
     filename = random.choice(file_list)
-    file_path = dbi_input_path + "/" + filename
+    file_path = filename
     prefix = filename.split('.')[0]
 
     # Create a list to store files with the same prefix
@@ -854,10 +854,11 @@ def deleteSetFileS3(cluster_params, dirName, operation, chunk):
     with open(destination_path, 'w') as file:
         for item in files_with_same_prefix:
             file.write(item + ", ")
-
+    
     s3config = '%s/s3.config.example' % binary_dir
     bin_path = '%s/s3Operation' % binary_dir
-    process = subprocess.Popen([bin_path, '-vdev', vdev, '-operation', operation, '-s3config', s3config, '-filepath', file_path, '-l', logFile])
+    os.remove(file_path)
+    process = subprocess.Popen([bin_path, '-bucketName', "paroscale-test", '-operation', operation, '-s3config', s3config, '-filepath', file_path, '-l', logFile])
 
 def copyDBIset_NewDir(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
@@ -956,14 +957,17 @@ def extracting_dictionary(cluster_params, operation, dirName):
 def isGCMarkerFilePresent(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
     jsonPath = get_dir_path(cluster_params, dirName)
 
     if jsonPath is not None:
         newPath = os.path.join(jsonPath, chunk, "DV")
         json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
         vdev = str(json_data['Vdev'])
-        downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
-
+        if s3Support == "true":
+            downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
+        else:
+            downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
         file_pattern = os.path.join(downloadPath, '*', '*.gc')
         files = glob.glob(file_pattern, recursive=True)
 
@@ -982,14 +986,17 @@ def isGCMarkerFilePresent(cluster_params, dirName, chunk):
 def getGCMarkerFileSeq(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
     jsonPath = get_dir_path(cluster_params, dirName)
     if jsonPath != None:
         newPath = jsonPath + "/" + chunk + "/DV"
         json_data = load_json_contents(newPath + "/dummy_generator.json")
         vdev = str(json_data['Vdev'])
     # Define the root path where the search should start
-    downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
-
+    if s3Support == "true":
+       downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
+    else:
+       downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
     # Use glob.glob to find all .gcmrk files in any subdirectories under the constructed path
     file_pattern = os.path.join(downloadPath, '**', '*.gc')  # '**' allows recursive search
     files = glob.glob(file_pattern, recursive=True)
@@ -1021,7 +1028,6 @@ def getNISDMarkerFileSeq(cluster_params, dirName, chunk):
 
     # Define the root path where the search should start
     downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
-
     # Use glob.glob to find all .gcmrk files in any subdirectories under the constructed path
     file_pattern = os.path.join(downloadPath, '**', '*.nisd')  # '**' allows recursive search
     files = glob.glob(file_pattern, recursive=True)
