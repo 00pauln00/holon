@@ -67,7 +67,7 @@
   - name: Find directories to delete
     find:
         paths: /home/runner/work/niovad/niovad/holon_log
-        patterns: 'dbi-dbo,gc-downloaded-obj'
+        patterns: 'dbi-dbo,gc-downloaded-obj,dv-downloaded-obj'
         file_type: directory
         recurse: yes  # To search in all subdirectories
     register: found_dirs
