@@ -552,8 +552,9 @@ def start_data_validate(cluster_params, dirName, chunk):
     modified_path = modify_path(path)
 
     if s3Support == "true":
+        dvPath = "%s/%s/dv-downloaded-obj" % (base_dir, raft_uuid)
         s3config = '%s/s3.config.example' % binary_dir
-        process = subprocess.Popen([bin_path, '-s', modified_path, '-d', downloadPath, '-c', chunk, '-l', logFile, '-v', vdev])
+        process = subprocess.Popen([bin_path, '-s', modified_path, '-d', dvPath, '-c', chunk, '-v', vdev, '-s3config', s3config, '-b', 'paroscale-test', '-l', logFile])
     else:
         process = subprocess.Popen([bin_path, '-s', modified_path, '-d', modified_path, '-c', chunk, '-v', vdev, '-l', logFile])
 
@@ -854,7 +855,7 @@ def deleteSetFileS3(cluster_params, dirName, operation, chunk):
     with open(destination_path, 'w') as file:
         for item in files_with_same_prefix:
             file.write(item + ", ")
-    
+
     s3config = '%s/s3.config.example' % binary_dir
     bin_path = '%s/s3Operation' % binary_dir
     os.remove(file_path)
