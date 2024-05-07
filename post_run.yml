@@ -77,7 +77,7 @@
         path: "{{ item.path }}"
         state: absent
     loop: "{{ found_dirs.files }}"
-    when: found_dirs.matched > 0
+    when: found_dirs.matched > 0 and recipe_result == False
 
   - name: Check if minio data directory exists
     stat:
@@ -90,7 +90,7 @@
       state: absent
       force: yes
     #ignore_errors: yes
-    when: directory_stat.stat.exists
+    when: directory_stat.stat.exists and recipe_result == False
 
   - name: "Check status post run"
     debug:
