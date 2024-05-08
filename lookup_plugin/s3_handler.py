@@ -157,14 +157,15 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           bin_path = '%s/gcTester' % binary_dir
           get_path = get_dir_path(cluster_params, dirName, params["seed"])
           json_data = load_json_contents(get_path + "/" + params["chunk"] + "/DV" + "/dummy_generator.json")
+          modified_path = modify_path(get_path, params["seed"])
           vdev = str(json_data['Vdev'])
           downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
           if s3Support == "true":
                s3DownloadLogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
-               cmd.extend([bin_path, "-i", get_path, '-v', vdev, '-c', params["chunk"], "-s3config", params["s3configPath"],
-                       "-s3log", s3DownloadLogFile, "-path", downloadPath])
+               cmd.extend([bin_path, '-v', vdev, '-c', params["chunk"], "-s3config", params["s3configPath"],
+                       "-s3log", s3DownloadLogFile, "-path", downloadPath, '-b', 'paroscale-test'])
           else:
-              cmd.extend([bin_path, "-i", get_path, '-v', vdev, '-c', params["chunk"]])
+              cmd.extend([bin_path, "-i", modified_path, '-v', vdev, '-c', params["chunk"]])
           if params["debugMode"]:
               cmd.append('-d')
 
@@ -172,14 +173,15 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           bin_path = '%s/dataValidator' % binary_dir
           get_path = get_dir_path(cluster_params, dirName, params["seed"])
           json_data = load_json_contents(get_path + "/" + params["chunk"] + "/DV" + "/dummy_generator.json")
+          modified_path = modify_path(get_path, params["seed"])
           vdev = str(json_data['Vdev'])
           downloadPath = "%s/%s/dv-downloaded-obj/" % (base_dir, raft_uuid)
           if s3Support == "true":
-                cmd.extend([bin_path, '-s', get_path, '-d', downloadPath, '-c', params['chunk'],
-                    '-b', vdev, '-s3config', params["s3configPath"], '-l', data_validator_log])
+                cmd.extend([bin_path, '-s', modified_path, '-d', downloadPath, '-c', params['chunk'],
+                    '-b', 'paroscale-test', '-s3config', params["s3configPath"], '-l', data_validator_log])
           else:
-             cmd.extend([bin_path, '-s', get_path, '-d', get_path, '-c', params['chunk'],
-                    '-l', data_validator_log])
+             cmd.extend([bin_path, '-s', modified_path, '-d', modified_path, '-c', params['chunk'],
+                    '-v', vdev, '-l', data_validator_log])
        fp = open(dbiLogFile if operation == "run_example" else gcLogFile, "a+")
        process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
        # Wait for the process to finish and get the exit code
@@ -500,7 +502,7 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO):
 
     os.fsync(fp)
 
-def modify_path(path):
+def modify_path(path, seed=None):
     # Split the path into parts
     parts = path.split('/')
 
@@ -519,10 +521,18 @@ def modify_path(path):
         # If 'dbi-dbo' is not found, return the original path
         return path
 
-    # Ensure there's at least one directory after 'dbi-dbo' to remove
+    # Ensure there's at least one directory after 'dbi-dbo' to check
     if dbi_dbo_index < len(parts) - 1:
-        # Remove the directory that comes after 'dbi-dbo'
-        parts.pop(dbi_dbo_index + 1)
+        # Get the directory name after 'dbi-dbo'
+        next_directory = parts[dbi_dbo_index + 1]
+
+        # Check if the next directory is seed
+        if next_directory == seed:
+            # Remove the directory that comes after seed
+            parts.pop(dbi_dbo_index + 2)
+        else:
+            # Remove the directory that comes after 'dbi-dbo'
+            parts.pop(dbi_dbo_index + 1)
 
     # Rejoin the remaining parts
     new_path = '/' + '/'.join(parts)
