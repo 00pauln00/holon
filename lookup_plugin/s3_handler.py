@@ -432,7 +432,7 @@ def start_gc_process(cluster_params, dirName, debugMode, chunk):
 
     return exit_code
 
-def start_gcService_process(cluster_params, dirName, dryRun):
+def start_gcService_process(cluster_params, dirName, dryRun, delDBO):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -458,10 +458,14 @@ def start_gcService_process(cluster_params, dirName, dryRun):
     # Prepare path for log file.
     s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
     downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
-    cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120', '-l', '2', '-p', '7500', '-b', 'paroscale-test']
+    cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120',
+              '-l', '2', '-p', '7500', '-b', 'paroscale-test']
 
     if dryRun:
         cmd.append('-dr')
+
+    if delDBO:
+        cmd.append('-dd')
 
     process_popen = subprocess.Popen(cmd, stdout = fp, stderr = fp)
 
@@ -1071,7 +1075,8 @@ class LookupModule(LookupBase):
 
         elif operation == "start_gcService":
             dryRun = terms[1]
-            start_gcService_process(cluster_params, dirName, dryRun)
+            delDBO = terms[2]
+            start_gcService_process(cluster_params, dirName, dryRun, delDBO)
 
         elif operation == "data_validate":
             Chunk = terms[1]

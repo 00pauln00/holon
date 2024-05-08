@@ -46,9 +46,10 @@
     - name: "{{ recipe_name }}: Start GCService"
       vars:
         dryRun: False
+        delDBO: True
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gcService', dryRun, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, wantlist=True) }}"
 
     - name: "Generate Second Iteration DBIs"
       vars:
