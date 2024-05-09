@@ -79,18 +79,18 @@
     loop: "{{ found_dirs.files }}"
     when: found_dirs.matched > 0
 
-  #- name: Check if minio data directory exists
-  #  stat:
-  #     path: /home/runner/work/niovad/niovad/build_dir/minio_data/paroscale-test
-  #  register: directory_stat
+  - name: Check if minio data directory exists
+    stat:
+       path: /home/runner/work/niovad/niovad/build_dir/minio_data/paroscale-test
+    register: directory_stat
 
-  #- name: Delete minio data directory if it exists
-  #  file:
-  #    path: /home/runner/work/niovad/niovad/build_dir/minio_data/paroscale-test
-  #    state: absent
-  #    force: yes
-  #  #ignore_errors: yes
-  #  when: directory_stat.stat.exists
+  - name: Delete minio data directory if it exists
+    file:
+      path: /home/runner/work/niovad/niovad/build_dir/minio_data/paroscale-test
+      state: absent
+      force: yes
+    #ignore_errors: yes
+    when: directory_stat.stat.exists
 
   - name: "Check status post run"
     debug:
