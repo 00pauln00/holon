@@ -41,7 +41,7 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
     fp = open(dbiLogFile, "a+")
 
     #Get dummyDBI example
-    bin_path = '%s/example' % binary_dir
+    bin_path = '%s/dummyData' % binary_dir
     jsonPath = get_dir_path(cluster_params, dirName)
     if jsonPath != None:
         newPath = jsonPath + "/" + input_values["chunk"] + "/DV"
@@ -121,7 +121,7 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
        data_validator_log = "%s/%s/dataValidatorResult_%s" % (base_dir, raft_uuid, params["seed"])
 
        if operation == "run_example":
-          bin_path = '%s/example' % binary_dir
+          bin_path = '%s/dummyData' % binary_dir
           jsonPath = get_dir_path(cluster_params, dirName, params["seed"])
           if jsonPath != None:
                newPath = jsonPath + "/" + params["chunk"] + "/DV"
@@ -313,7 +313,7 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values):
     fp = open(dbiLogFile, "a+")
 
     #Get dummyDBI example
-    bin_path = '%s/example' % binary_dir
+    bin_path = '%s/dummyData' % binary_dir
     vdev = ""
 
     chunkNum = ""
