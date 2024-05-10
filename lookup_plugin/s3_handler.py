@@ -461,7 +461,7 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO):
     s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
     downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
     cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120',
-              '-l', '2', '-p', '7500', '-b', 'paroscale-test']
+              '-l', '4', '-p', '7500', '-b', 'paroscale-test']
 
     if dryRun:
         cmd.append('-dr')
