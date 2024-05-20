@@ -49,7 +49,6 @@
 
   - name: Kill the GC Service process if it was found
     shell: kill -9 {{ gc_process_pid }}
-    #when: jsondata.gcService_process is defined or gc_process_status == "sleeping" or gc_process_status == "disk-sleep" or gc_process_pid != ""
 
   - name: "Kill the processes after recipe execution"
     set_fact:
