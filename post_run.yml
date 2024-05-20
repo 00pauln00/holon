@@ -44,9 +44,6 @@
        gc_process_status: "{{ jsondata.gcService_process.process_status | default('') }}"
     when: jsondata.gcService_process is defined
 
-  - debug:
-      msg: "{{ gc_process_pid }}  {{ gc_process_status }}"
-
   - name: Kill the GC Service process if it was found
     shell: kill -9 {{ gc_process_pid }}
     when: jsondata.gcService_process is defined or gc_process_status == "sleeping" or gc_process_status == "disk-sleep" or gc_process_pid != ""
