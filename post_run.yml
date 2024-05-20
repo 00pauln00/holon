@@ -40,13 +40,13 @@
 
   - name: "{{ recipe_name }}: Get the GC Service process pid and status."
     set_fact:
-       gc_process_pid: "{{ jsondata.gcService_process.process_pid | default('') }}"
-       gc_process_status: "{{ jsondata.gcService_process.process_status | default('') }}"
+      gc_process_pid: "{{ jsondata.gcService_process.process_pid | default('') }}"
+      gc_process_status: "{{ jsondata.gcService_process.process_status | default('') }}"
     when: jsondata.gcService_process is defined
 
   - name: Kill the GC Service process if it was found
     shell: kill -9 {{ gc_process_pid }}
-    when: jsondata.gcService_process is defined or gc_process_status == "sleeping" or gc_process_status == "disk-sleep" or gc_process_pid != ""
+    when: gc_process_pid is defined and gc_process_pid | length > 0 and (gc_process_status == "sleeping" or gc_process_status == "disk-sleep" or gc_process_status == "running")
 
   - name: "Kill the processes after recipe execution"
     set_fact:
