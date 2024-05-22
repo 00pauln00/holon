@@ -54,6 +54,14 @@
     when: raft_processes[item]['process_status'] == "running" or raft_processes[item]['process_status'] == "paused"
     loop: "{{ range(0, raft_processes | length) | list }}"
 
+  - name: Run df -h to get disk usage
+    command: df -h
+    register: df_output
+
+  - name: Print df -h output
+    debug:
+      msg: "{{ df_output.stdout }}"
+
   - name: Find directories to delete
     find:
         paths: /home/runner/work/niovad/niovad/holon_log
