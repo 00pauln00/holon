@@ -22,7 +22,7 @@
 
     - name: "{{ recipe_name }}: copy dbi set files into a new directory."
       vars:
-        Chunk: "{{ chunk['msg'][0] }}" 
+        Chunk: "{{ chunk['msg'][0] }}"
       debug:
          msg: "{{ lookup('s3_handler', 'copyDBIset', Chunk, wantlist=True) }}"
 
@@ -42,17 +42,26 @@
     - name: "{{ recipe_name }}: Marker file present or not."
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
-      debug: 
+      debug:
         msg: "{{ lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, wantlist=True) }}"
       register: marker_check
 
-    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
-      vars:
-         Chunk: "{{ chunk['msg'][0] }}"
+    - name: "{{ recipe_name }}: Initialize Chunk variable"
       set_fact:
-         gcMarkerEndSeq: "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
-         NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
+        Chunk: "{{ chunk['msg'][0] }}"
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets not match here."
+      vars:
+        gcMarkerEndSeq: "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
+        NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
+      debug:
+        msg: "GC Marker End Seq: {{ gcMarkerEndSeq }} | NISD Marker End Seq: {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq != NisdMarkerEndSeq
+      retries: 300
+      delay: 2
       when: marker_check.msg == true
-    - debug:
-         msg: "{{gcMarkerEndSeq}} {{NisdMarkerEndSeq}}"
-      failed_when: gcMarkerEndSeq == NisdMarkerEndSeq 
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
