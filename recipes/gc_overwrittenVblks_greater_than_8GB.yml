@@ -85,7 +85,7 @@
       debug:
         msg: "Waiting for GC Marker File"
       until: lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, wantlist=True) == true
-      retries: 300
+      retries: 500
       delay: 2
 
     - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
@@ -96,7 +96,7 @@
       debug:
         msg: "Wait until marker values gets match"
       until: gcMarkerEndSeq == NisdMarkerEndSeq
-      retries: 300
+      retries: 500
       delay: 2
 
     - name: "{{ recipe_name }}: Start data validation"
