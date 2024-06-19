@@ -393,7 +393,7 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values):
 
     return chunk
 
-def start_gc_process(cluster_params, dirName, debugMode, chunk, crcCheck):
+def start_gc_process(cluster_params, dirName, debugMode, chunk, crcCheck=None):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -1170,12 +1170,16 @@ class LookupModule(LookupBase):
             process = start_minio_server(cluster_params, s3Dir)
 
         elif operation == "start_gc":
-            debugMode = terms[1]
-            chunk = terms[2]
-            crcCheck = terms[3]
-            popen = start_gc_process(cluster_params, dirName, debugMode, chunk, crcCheck)
-
-            return popen
+            # Assume terms is a list with relevant arguments
+            if len(terms) >= 3:
+               debugMode = terms[1]
+               chunk = terms[2]
+               # Check if crcCheck is provided
+               crcCheck = terms[3] if len(terms) > 3 else None
+               popen = start_gc_process(cluster_params, dirName, debugMode, chunk, crcCheck)
+               return popen
+            else:
+               raise ValueError("Not enough arguments provided for start_gc operation")
 
         elif operation == "start_gcService":
             dryRun = terms[1]
