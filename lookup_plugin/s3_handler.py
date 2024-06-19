@@ -424,6 +424,7 @@ def start_gc_process(cluster_params, dirName, debugMode, chunk):
 
     if debugMode:
         cmd.append('-d')
+        #cmd.append('-ec=true')
 
     process = subprocess.Popen(cmd, stdout = fp, stderr = fp)
 
@@ -601,6 +602,64 @@ def load_json_contents(path):
 
     return json_data
 
+def copy_file_to_backup(cluster_params, dirName, operation, chunk):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    newPath = jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json"
+    json_data = load_json_contents(newPath)
+
+    dbi_input_path = str(json_data['DbiPath'])
+    vdev = str(json_data['Vdev'])
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
+    path = get_dir_path(cluster_params, dirName)
+    # Get a list of files in the source directory
+    file_list = os.listdir(dbi_input_path)
+    last_file = ""
+    if len(file_list) > 1:
+        # Sort the file list by modification time (oldest to newest)
+        file_list.sort(key=lambda x: os.path.getmtime(os.path.join(dbi_input_path, x)))
+        # Get the last file in the sorted list
+        last_file = file_list[-1]
+    # Construct the source file path
+    source_file_path = os.path.join(dbi_input_path, last_file)
+    backup_dir = os.path.join(base_dir, raft_uuid, 'orig-dbi')
+    dest_file_path = os.path.join(backup_dir, last_file)
+    s3config = '%s/s3.config.example' % binary_dir
+    bin_path = '%s/s3Operation' % binary_dir
+    if operation == "upload":
+            # Check if the destination directory exists, and create if not
+            if not os.path.exists(backup_dir):
+                os.makedirs(backup_dir, mode=0o777)
+            # Copy the file to the destination directory
+            shutil.copy(source_file_path, dest_file_path)
+            # Read the binary file
+            with open(source_file_path, "rb") as f:
+                data = bytearray(f.read())
+
+	    # Ensure the file is at least 16 bytes long
+            if len(data) < 16:
+                print("File is too small to modify the first 16 bytes")
+                return
+
+	    # Create a new 16-byte entry with Type set to 1 and the rest set to zero
+            new_entry = bytearray(16)
+            new_entry[0] = 0x01  # Set Type to 1
+
+	    # Copy the new entry to the first 16 bytes of the data
+            data[:16] = new_entry
+
+	    # Write the modified data back to the original file
+            with open(source_file_path, "wb") as f:
+               f.write(data)
+
+            process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+
+    elif operation == "delete":
+
+            process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-f', last_file, '-v', vdev, '-c', chunk, '-filepath', source_file_path, '-l', logFile])
+
 def uploadAndDeleteCorruptedFile(cluster_params, dirName, operation, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -650,11 +709,44 @@ def uploadAndDeleteCorruptedFile(cluster_params, dirName, operation, chunk):
                  # Write zeroes to the remaining part of the file
                  f.write(b'\x00' * entry_size)
 
-            process = subprocess.Popen([bin_path, '-vdev', vdev, '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+            process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
 
     elif operation == "delete":
 
-            process = subprocess.Popen([bin_path, '-vdev', vdev, '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+            process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+
+def PushOrigFileToS3(cluster_params, dirName, operation, chunk):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    json_data = load_json_contents(jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json")
+    dbi_input_path = str(json_data['DbiPath'])
+    vdev = str(json_data['Vdev'])
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
+
+    # Construct the destination directory path
+    dest_dir = os.path.join(base_dir, raft_uuid, 'orig-dbi')
+
+    # Get a list of files in the source directory
+    file_list = os.listdir(dest_dir)
+    if len(file_list) >= 1:
+        # Sort the file list by modification time (oldest to newest)
+        file_list.sort(key=lambda x: os.path.getmtime(os.path.join(dest_dir, x)))
+
+        # Get the last file in the sorted list
+        last_file = file_list[0]
+
+        # Construct the source file path
+        source_file_path = os.path.join(dest_dir, last_file)
+        # Construct the destination directory path
+        dest_file_path = os.path.join(dbi_input_path, last_file)
+        # Copy the file to the destination directory
+        shutil.copy(source_file_path, dest_file_path)
+        s3config = '%s/s3.config.example' % binary_dir
+        bin_path = '%s/s3Operation' % binary_dir
+        process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
 
 def uploadOrigFile(cluster_params, dirName, operation, chunk):
     base_dir = cluster_params['base_dir']
@@ -686,7 +778,7 @@ def uploadOrigFile(cluster_params, dirName, operation, chunk):
         shutil.copy(dest_file_path, source_file_path)
         s3config = '%s/s3.config.example' % binary_dir
         bin_path = '%s/s3Operation' % binary_dir
-        process = subprocess.Popen([bin_path, '-vdev', vdev, '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+        process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
 
 def perform_s3_operation(cluster_params, dirName, operation, chunk):
     base_dir = cluster_params['base_dir']
@@ -712,7 +804,7 @@ def perform_s3_operation(cluster_params, dirName, operation, chunk):
 
         s3config = '%s/s3.config.example' % binary_dir
         bin_path = '%s/s3Operation' % binary_dir
-        process = subprocess.Popen([bin_path, '-vdev', vdev, '-operation', operation, '-s3config', s3config, '-filepath', file_path, '-l', logFile])
+        process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', file_path, '-l', logFile])
 
 def get_DBiFileNames(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
@@ -1120,6 +1212,16 @@ class LookupModule(LookupBase):
             s3Operation = terms[1]
             chunk = terms[2]
             uploadOrigFile(cluster_params, dirName, s3Operation, chunk)
+
+        elif operation == "performCorruptedFileOps":
+            s3Operation = terms[1]
+            chunk = terms[2]
+            copy_file_to_backup(cluster_params, dirName, s3Operation, chunk)
+
+        elif operation == "pushOrigFileToS3":
+            s3Operation = terms[1]
+            chunk = terms[2]
+            PushOrigFileToS3(cluster_params, dirName, s3Operation, chunk)
 
         elif operation == "copyDBIset":
             chunk = terms[1]
