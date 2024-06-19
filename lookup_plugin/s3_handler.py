@@ -393,7 +393,7 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values):
 
     return chunk
 
-def start_gc_process(cluster_params, dirName, debugMode, chunk):
+def start_gc_process(cluster_params, dirName, debugMode, chunk, crcCheck):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -424,8 +424,9 @@ def start_gc_process(cluster_params, dirName, debugMode, chunk):
 
     if debugMode:
         cmd.append('-d')
-        #cmd.append('-ec=true')
 
+    if crcCheck:
+        cmd.append('-ec=true')
     process = subprocess.Popen(cmd, stdout = fp, stderr = fp)
 
     # Wait for the process to finish and get the exit code
@@ -1171,7 +1172,8 @@ class LookupModule(LookupBase):
         elif operation == "start_gc":
             debugMode = terms[1]
             chunk = terms[2]
-            popen = start_gc_process(cluster_params, dirName, debugMode, chunk)
+            crcCheck = terms[3]
+            popen = start_gc_process(cluster_params, dirName, debugMode, chunk, crcCheck)
 
             return popen
 
