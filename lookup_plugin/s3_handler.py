@@ -661,6 +661,10 @@ def copy_file_to_backup(cluster_params, dirName, operation, chunk):
 
             process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-f', last_file, '-v', vdev, '-c', chunk, '-filepath', source_file_path, '-l', logFile])
 
+            delete_dir = os.path.join(base_dir, raft_uuid, 'gc-downloaded-obj')
+            if os.path.exists(delete_dir):
+                shutil.rmtree(delete_dir)
+
 def uploadAndDeleteCorruptedFile(cluster_params, dirName, operation, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -747,7 +751,7 @@ def PushOrigFileToS3(cluster_params, dirName, operation, chunk):
         shutil.copy(source_file_path, dest_file_path)
         s3config = '%s/s3.config.example' % binary_dir
         bin_path = '%s/s3Operation' % binary_dir
-        process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+        process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', dest_file_path, '-l', logFile])
 
 def uploadOrigFile(cluster_params, dirName, operation, chunk):
     base_dir = cluster_params['base_dir']
