@@ -33,11 +33,12 @@
 
     - name: "{{ recipe_name }}: Perform GC."
       vars:
-        debugMode: true
+        debugMode: false
         Chunk: "{{ chunk['msg'][0] }}"
+        crcCheck: true
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, crcCheck, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Marker file present or not."
       vars:
@@ -74,10 +75,11 @@
 
     - name: "{{ recipe_name }}: After uploading the original file, perform GC operation."
       vars:
-        debugMode: true
+        debugMode: false
         Chunk: "{{ chunk['msg'][0] }}"
+        crcCheck: true
       debug:
-         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, crcCheck, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Marker file present or not."
       vars:
