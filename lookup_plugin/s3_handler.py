@@ -119,7 +119,7 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
        dbiLogFile = "%s/%s/dbiLog_%s.log" % (base_dir, raft_uuid, params["seed"])
        gcLogFile = "%s/%s/gcLog_%s.log" % (base_dir, raft_uuid, params["seed"])
        data_validator_log = "%s/%s/dataValidatorResult_%s" % (base_dir, raft_uuid, params["seed"])
-
+       s3configPath = '%s/s3.config.example' % binary_dir
        if operation == "run_example":
           bin_path = '%s/dummyData' % binary_dir
           jsonPath = get_dir_path(cluster_params, dirName, params["seed"])
@@ -139,7 +139,7 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
                    "-pp", params["punchesPer"], "-ps", params["maxPunchSize"], "-seed", params["seed"],
                    "-ss", params["seqStart"], "-va", params["vbAmount"], "-vp", params["vblkPer"],
                    "-t", params["genType"], "-bs", params["blockSize"], "-bsm", params["blockSizeMax"],
-                   "-vs", params["startVblk"], "-vdev", params["vdev"], "-s3config", params["s3configPath"],
+                   "-vs", params["startVblk"], "-vdev", params["vdev"], "-s3config", s3configPath,
                    "-s3log", s3UploadLogFile])
           else:
                cmd.extend([bin_path, "-c", params["chunk"], "-mp", params["maxPunches"],
@@ -161,8 +161,8 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           vdev = str(json_data['Vdev'])
           downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
           if s3Support == "true":
-               s3DownloadLogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
-               cmd.extend([bin_path, '-v', vdev, '-c', params["chunk"], "-s3config", params["s3configPath"],
+               s3DownloadLogFile = "%s/%s/s3Download_%s" % (base_dir, raft_uuid, params["seed"])
+               cmd.extend([bin_path, '-v', vdev, '-c', params["chunk"], "-s3config", s3configPath,
                        "-s3log", s3DownloadLogFile, "-path", downloadPath, '-b', 'paroscale-test'])
           else:
               cmd.extend([bin_path, "-i", modified_path, '-v', vdev, '-c', params["chunk"]])
@@ -177,8 +177,8 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           vdev = str(json_data['Vdev'])
           downloadPath = "%s/%s/dv-downloaded-obj/" % (base_dir, raft_uuid)
           if s3Support == "true":
-                cmd.extend([bin_path, '-s', modified_path, '-d', downloadPath, '-c', params['chunk'],
-                    '-b', 'paroscale-test', '-s3config', params["s3configPath"], '-l', data_validator_log])
+                cmd.extend([bin_path, '-s', modified_path, '-d', downloadPath, '-c', params['chunk'], '-v', vdev,
+                    '-b', 'paroscale-test', '-s3config', s3configPath, '-l', data_validator_log, '-ll', '4'])
           else:
              cmd.extend([bin_path, '-s', modified_path, '-d', modified_path, '-c', params['chunk'],
                     '-v', vdev, '-l', data_validator_log])
@@ -290,7 +290,7 @@ def get_dir_path(cluster_params, dirName, seed=None):
     else:
         return None
 
-def start_pattern_generator(cluster_params, genType, dirName, input_values):
+def start_pattern_generator(cluster_params, genType, dirName, input_values, removeFiles=True):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -360,6 +360,9 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values):
         s3config = '%s/s3.config.example' % binary_dir
         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
         cmd.extend(['-s3config', s3config, '-s3log', s3LogFile])
+        if not removeFiles:
+            cmd.append('-r')
+            cmd.append('false')
 
     # Add the -se and -ts option if overlapSeq is provided
     if 'overlapSeq' not in input_values:
@@ -951,7 +954,9 @@ def deleteSetFileS3(cluster_params, dirName, operation, chunk):
     logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
 
     filenames = []
-    destination_path = jsonPath + "dbisetFname.txt"
+    print("jsonPath: ", jsonPath)
+    #destination_path = jsonPath + "dbisetFname.txt"
+    os.path.join(jsonPath, "dbisetFname.txt")
     with open(destination_path, 'r') as file:
         # Read the contents of the file
         file_contents = file.read()
@@ -982,7 +987,9 @@ def copyDBIset_NewDir(cluster_params, dirName, chunk):
     vdev = str(json_data['Vdev'])
 
     newDir = "dbiSetFiles"
-    file_path = jsonPath + "dbisetFname.txt"
+    print("jsonPath:", jsonPath)
+    file_path = os.path.join(jsonPath, "dbisetFname.txt")
+    file_contents = ""
     try:
         with open(file_path, 'r') as file:
             # Read the contents of the file
@@ -1166,7 +1173,7 @@ class LookupModule(LookupBase):
 
         if operation == "generate_pattern":
             input_values = terms[1]
-            popen = start_pattern_generator(cluster_params, input_values['genType'], dirName, input_values)
+            popen = start_pattern_generator(cluster_params, input_values['genType'], dirName, input_values, removeFiles=False)
             return popen
 
         elif operation == "start_s3":
