@@ -354,16 +354,6 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values, remo
         "-ss", seqStart, "-t", genType, "-b", "paroscale-test",
         "-bs", blockSize, "-bsm", blockSizeMax, "-vs", startVblk, "-sw", strideWidth
     ]
-
-    # Add the S3-specific options if s3Support is "true"
-    if s3Support == "true":
-        s3config = '%s/s3.config.example' % binary_dir
-        s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
-        cmd.extend(['-s3config', s3config, '-s3log', s3LogFile])
-        if not removeFiles:
-            cmd.append('-r')
-            cmd.append('false')
-
     # Add the -se and -ts option if overlapSeq is provided
     if 'overlapSeq' not in input_values:
         cmd.extend(['-va', str(vbAmount), '-vp', str(vblkPer)])
@@ -378,6 +368,14 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values, remo
     if 'dbiWithPunches' in input_values:
        cmd.extend(['-va', input_values['vbAmount'], '-vp', input_values['vblkPer'],
                         '-e', input_values['dbiWithPunches']])
+    # Add the S3-specific options if s3Support is "true"
+    if s3Support == "true":
+         s3config = '%s/s3.config.example' % binary_dir
+         s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
+         cmd.extend(['-s3config', s3config, '-s3log', s3LogFile])
+         if not removeFiles:
+              cmd.append('-r=true')
+
     print("cmd: ", cmd)
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
@@ -721,7 +719,7 @@ def uploadAndDeleteCorruptedFile(cluster_params, dirName, operation, chunk):
 
     elif operation == "delete":
 
-            process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+            process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-v', vdev, '-c', chunk, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
 
 def PushOrigFileToS3(cluster_params, dirName, operation, chunk):
     base_dir = cluster_params['base_dir']
@@ -931,7 +929,6 @@ def deleteSetFiles(cluster_params, dirName, chunk):
 
     filename = random.choice(file_list)
     os.remove(filename)
-    print(f"Deleted: {filename}")
 
     prefix = filename.split('.')[0]
 
@@ -954,9 +951,7 @@ def deleteSetFileS3(cluster_params, dirName, operation, chunk):
     logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
 
     filenames = []
-    print("jsonPath: ", jsonPath)
-    #destination_path = jsonPath + "dbisetFname.txt"
-    os.path.join(jsonPath, "dbisetFname.txt")
+    destination_path = os.path.join(jsonPath, "dbisetFname.txt")
     with open(destination_path, 'r') as file:
         # Read the contents of the file
         file_contents = file.read()
@@ -964,6 +959,7 @@ def deleteSetFileS3(cluster_params, dirName, operation, chunk):
     file_list = file_contents.rstrip(', ').split(', ')
     filename = random.choice(file_list)
     file_path = filename
+    fname = os.path.basename(filename)
     prefix = filename.split('.')[0]
 
     # Create a list to store files with the same prefix
@@ -975,7 +971,7 @@ def deleteSetFileS3(cluster_params, dirName, operation, chunk):
     s3config = '%s/s3.config.example' % binary_dir
     bin_path = '%s/s3Operation' % binary_dir
     os.remove(file_path)
-    process = subprocess.Popen([bin_path, '-bucketName', "paroscale-test", '-operation', operation, '-s3config', s3config, '-filepath', file_path, '-l', logFile])
+    process = subprocess.Popen([bin_path, '-bucketName', "paroscale-test", '-operation', operation, '-v', vdev, '-c', chunk, '-s3config', s3config, '-f', fname, '-l', logFile])
 
 def copyDBIset_NewDir(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
