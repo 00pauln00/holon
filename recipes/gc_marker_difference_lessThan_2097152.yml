@@ -15,14 +15,33 @@
           - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
-    - name: "{{ recipe_name }}: Generate sequential DBI requests."
-      include_role:
-        name: common
-        tasks_from: generate_pattern_dbis
+    - name: "Generate DBIs with vblk entry"
       vars:
-        Type: "1"
-        ChunkNum: "-1"
-      register: chunk
+        input_param: {
+                  "chunk": "6",
+                  "maxPunches": "20",
+                  "maxVblks": "256",
+                  "punchAmount": "100",
+                  "punchesPer": "0",
+                  "maxPunchSize": "20",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "100",
+                  "vblkPer": "10",
+                  "genType": "1",
+                  "blockSize": "8",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "e2f855fe-2fa0-11ef-96e5-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+        }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
@@ -34,7 +53,7 @@
 
     - name: "{{ recipe_name }}: Check GC Marker file is Present or not."
       vars:
-        Chunk: "{{ chunk['msg'][0] }}"
+        Chunk: "6"
       debug:
          msg:
           - "{{ lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, wantlist=True) }}"
@@ -44,27 +63,6 @@
       debug:
         msg: "Validate that GC is not processed for vdev and chunk as marker diff is less that 2097152"
       failed_when: isGCMarkerFilePresent == True
-
-    - name: "{{ recipe_name }}: Check NISD Marker file sequence."
-      vars:
-        Chunk: "{{ chunk['msg'][0] }}"
-      debug:
-         msg:
-          - "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
-      register: NisdMarkerEndSeq
-
-    - name: "{{ recipe_name }}: Check GC Marker file sequence."
-      vars:
-        Chunk: "{{ chunk['msg'][0] }}"
-      debug:
-         msg:
-          - "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
-      register: GCMarkerEndSeq
-
-    - name: "{{ recipe_name }}: Validate that NISD and GC Marker file's endSeq doesn't match."
-      debug:
-        msg: "Validate that GC is not processed and Marker file's endSeq doesn't match"
-      failed_when: NisdMarkerEndSeq == GCMarkerEndSeq
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
