@@ -85,6 +85,49 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
 
     return process
 
+def delete_minio_data_directory(directory_path):
+    """
+    Deletes everything in the specified directory if it exists.
+
+    Parameters:
+    directory_path (str): The path to the directory to delete contents from.
+    """
+    # Check if the directory exists
+    if os.path.exists(directory_path):
+        # List all contents
+        for filename in os.listdir(directory_path):
+            file_path = os.path.join(directory_path, filename)
+            try:
+                # Check if it is a file or directory and delete accordingly
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)  # Remove file or symbolic link
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)  # Remove directory
+            except Exception as e:
+                print(f'Failed to delete {file_path}. Reason: {e}')
+
+def delete_contents_of_paths(paths):
+    """
+    Deletes all contents of the specified directories if they exist.
+
+    Parameters:
+    paths (list): A list of directory paths to delete contents from.
+    """
+    for path in paths:
+        # Check if the directory exists
+        if os.path.exists(path):
+            # List all contents
+            for filename in os.listdir(path):
+                file_path = os.path.join(path, filename)
+                try:
+                    # Check if it is a file or directory and delete accordingly
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)  # Remove file or symbolic link
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)  # Remove directory
+                except Exception as e:
+                    print(f'Failed to delete {file_path}. Reason: {e}')
+
 def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operation, params_type):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -120,6 +163,8 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
        gcLogFile = "%s/%s/gcLog_%s.log" % (base_dir, raft_uuid, params["seed"])
        data_validator_log = "%s/%s/dataValidatorResult_%s" % (base_dir, raft_uuid, params["seed"])
        s3configPath = '%s/s3.config.example' % binary_dir
+       gcDownloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
+       dvDownloadPath = "%s/%s/dv-downloaded-obj/" % (base_dir, raft_uuid)
        if operation == "run_example":
           bin_path = '%s/dummyData' % binary_dir
           jsonPath = get_dir_path(cluster_params, dirName, params["seed"])
@@ -159,11 +204,10 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           json_data = load_json_contents(get_path + "/" + params["chunk"] + "/DV" + "/dummy_generator.json")
           modified_path = modify_path(get_path, params["seed"])
           vdev = str(json_data['Vdev'])
-          downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
           if s3Support == "true":
                s3DownloadLogFile = "%s/%s/s3Download_%s" % (base_dir, raft_uuid, params["seed"])
                cmd.extend([bin_path, '-v', vdev, '-c', params["chunk"], "-s3config", s3configPath,
-                       "-s3log", s3DownloadLogFile, "-path", downloadPath, '-b', 'paroscale-test'])
+                       "-s3log", s3DownloadLogFile, "-path", gcDownloadPath, '-b', 'paroscale-test'])
           else:
               cmd.extend([bin_path, "-i", modified_path, '-v', vdev, '-c', params["chunk"]])
           if params["debugMode"]:
@@ -175,9 +219,8 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           json_data = load_json_contents(get_path + "/" + params["chunk"] + "/DV" + "/dummy_generator.json")
           modified_path = modify_path(get_path, params["seed"])
           vdev = str(json_data['Vdev'])
-          downloadPath = "%s/%s/dv-downloaded-obj/" % (base_dir, raft_uuid)
           if s3Support == "true":
-                cmd.extend([bin_path, '-s', modified_path, '-d', downloadPath, '-c', params['chunk'], '-v', vdev,
+                cmd.extend([bin_path, '-s', modified_path, '-d', dvDownloadPath, '-c', params['chunk'], '-v', vdev,
                     '-b', 'paroscale-test', '-s3config', s3configPath, '-l', data_validator_log, '-ll', '4'])
           else:
              cmd.extend([bin_path, '-s', modified_path, '-d', modified_path, '-c', params['chunk'],
@@ -196,6 +239,16 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
        else:
           error_message = f"Process failed with exit code {exit_code}."
           raise RuntimeError(error_message)
+
+
+       # Delete objects from bucket before proceeding to next json ietration
+       MINIO_DATA_PATH = "/home/runner/work/niovad/niovad/build_dir/minio_data"
+
+       # Call the function to delete contents
+       delete_minio_data_directory(MINIO_DATA_PATH)
+
+       # Call the function to delete contents
+       delete_contents_of_paths([gcDownloadPath, dvDownloadPath])
 
 def load_recipe_op_config(cluster_params):
     recipe_conf = {}
