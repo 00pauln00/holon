@@ -57,13 +57,17 @@
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
       loop: "{{ range(0, no_of_leases) | list }}"
 
-    - name: "Get multiple client uuids."
+    - name: "Pause for 40 sec so that TTL gets changed"
+      pause:
+        seconds: 40
+
+    - name: "Get new multiple client uuids."
       include_role:
         name: common
         tasks_from: get_new_clientUUIDs
       loop: "{{ range(0, no_of_leases) | list }}"
 
-    - name: "Get multiple resource uuids."
+    - name: "Get new multiple resource uuids."
       include_role:
         name: common
         tasks_from: get_new_resourceUUIDs
