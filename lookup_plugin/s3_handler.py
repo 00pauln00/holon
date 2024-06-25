@@ -866,9 +866,8 @@ def copy_DBI_file_generatorNum(cluster_params, dirName, chunk):
         # Select a random file from the list
         random_file = random.choice(file_list)
         filename_parts = random_file.split(".")
-        # Extract the 3rd last element after the dots
+        # Extract the 2nd last element after the dots
         third_last_element = filename_parts[-2]
-        print(third_last_element)
         uuid = filename_parts[3]
         # create dbo file with new uuid
         result = search_files_by_string(dbo_input_path, uuid)
