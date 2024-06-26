@@ -85,27 +85,6 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
 
     return process
 
-def delete_minio_data_directory(directory_path):
-    """
-    Deletes everything in the specified directory if it exists.
-
-    Parameters:
-    directory_path (str): The path to the directory to delete contents from.
-    """
-    # Check if the directory exists
-    if os.path.exists(directory_path):
-        # List all contents
-        for filename in os.listdir(directory_path):
-            file_path = os.path.join(directory_path, filename)
-            try:
-                # Check if it is a file or directory and delete accordingly
-                if os.path.isfile(file_path) or os.path.islink(file_path):
-                    os.unlink(file_path)  # Remove file or symbolic link
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)  # Remove directory
-            except Exception as e:
-                print(f'Failed to delete {file_path}. Reason: {e}')
-
 def delete_contents_of_paths(paths):
     """
     Deletes all contents of the specified directories if they exist.
@@ -239,13 +218,6 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
        else:
           error_message = f"Process failed with exit code {exit_code}."
           raise RuntimeError(error_message)
-
-
-       # Delete objects from bucket before proceeding to next json ietration
-       MINIO_DATA_PATH = "/home/runner/work/niovad/niovad/build_dir/minio_data/paroscale-test"
-
-       # Call the function to delete contents
-       delete_minio_data_directory(MINIO_DATA_PATH)
 
        # Call the function to delete contents
        delete_contents_of_paths([gcDownloadPath, dvDownloadPath])
