@@ -185,7 +185,7 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
                    "-ss", params["seqStart"], "-va", params["vbAmount"], "-vp", params["vblkPer"],
                    "-t", params["genType"], "-bs", params["blockSize"], "-bsm", params["blockSizeMax"],
                    "-vs", params["startVblk"], "-vdev", params["vdev"], "-s3config", s3configPath,
-                   "-s3log", s3UploadLogFile])
+                   "-s3log", s3UploadLogFile, '-b=paroscale-test'])
           else:
                cmd.extend([bin_path, "-c", params["chunk"], "-mp", params["maxPunches"],
                    "-mv", params["maxVblks"], "-p", path, "-pa", params["punchAmount"],
@@ -207,7 +207,7 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           if s3Support == "true":
                s3DownloadLogFile = "%s/%s/s3Download_%s" % (base_dir, raft_uuid, params["seed"])
                cmd.extend([bin_path, '-v', vdev, '-c', params["chunk"], "-s3config", s3configPath,
-                       "-s3log", s3DownloadLogFile, "-path", gcDownloadPath, '-b', 'paroscale-test'])
+                       "-s3log", s3DownloadLogFile, "-path", gcDownloadPath, '-b=paroscale-test'])
           else:
               cmd.extend([bin_path, "-i", modified_path, '-v', vdev, '-c', params["chunk"]])
           if params["debugMode"]:
@@ -221,7 +221,7 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           vdev = str(json_data['Vdev'])
           if s3Support == "true":
                 cmd.extend([bin_path, '-s', modified_path, '-d', dvDownloadPath, '-c', params['chunk'], '-v', vdev,
-                    '-b', 'paroscale-test', '-s3config', s3configPath, '-l', data_validator_log, '-ll', '4'])
+                    '-b=paroscale-test', '-s3config', s3configPath, '-l', data_validator_log, '-ll', '4'])
           else:
              cmd.extend([bin_path, '-s', modified_path, '-d', modified_path, '-c', params['chunk'],
                     '-v', vdev, '-l', data_validator_log])
