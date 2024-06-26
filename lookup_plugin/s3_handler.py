@@ -242,7 +242,7 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
 
 
        # Delete objects from bucket before proceeding to next json ietration
-       MINIO_DATA_PATH = "/home/runner/work/niovad/niovad/build_dir/minio_data"
+       MINIO_DATA_PATH = "/home/runner/work/niovad/niovad/build_dir/minio_data/paroscale-test"
 
        # Call the function to delete contents
        delete_minio_data_directory(MINIO_DATA_PATH)
