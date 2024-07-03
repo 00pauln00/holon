@@ -56,7 +56,7 @@
         NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
       debug:
         msg: "GC Marker End Seq: {{ gcMarkerEndSeq }} | NISD Marker End Seq: {{ NisdMarkerEndSeq }}"
-      until: gcMarkerEndSeq != NisdMarkerEndSeq
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
       retries: 10
       delay: 2
       when: marker_check.msg == true
