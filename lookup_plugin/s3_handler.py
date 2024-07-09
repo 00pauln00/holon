@@ -892,17 +892,18 @@ def copy_DBI_file_generatorNum(cluster_params, dirName, chunk):
         random_file = random.choice(file_list)
         filename_parts = random_file.split(".")
         # Extract the 2nd last element after the dots
-        third_last_element = filename_parts[-2]
-        uuid = filename_parts[3]
+        third_last_element = filename_parts[1]
+        uuid = filename_parts[4]
         # create dbo file with new uuid
         result = search_files_by_string(dbo_input_path, uuid)
 
         # Increment the extracted element by 1
-        new_third_last_element = str(int(third_last_element) + 1)
+        # Decrement as the number is inversed
+        new_third_last_element = str(int(third_last_element, 16) - 1)
 
         # Update the filename with the incremented element
-        filename_parts[-2] = new_third_last_element
-        filename_parts[3] = result
+        filename_parts[1] = new_third_last_element
+        filename_parts[4] = result
         new_filename = ".".join(filename_parts)
         # Full path for the copied and renamed file
         source_file_path = os.path.join(dbi_input_path, random_file)
@@ -1056,8 +1057,8 @@ def copyDBIFile_changeSeqNum(cluster_params, dirName, chunk):
     end_seq = old_seq_num.split("_")
 
     # Extract the 3rd last element after the dots
-    Num_of_entries = filename_parts[-4]
-    uuid_str = filename_parts[2]
+    Num_of_entries = filename_parts[-2]
+    uuid_str = filename_parts[4]
 
     # create dbo file with new uuid
     result = search_files_by_string(dbo_input_path, uuid_str)
