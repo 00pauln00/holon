@@ -891,18 +891,18 @@ def copy_DBI_file_generatorNum(cluster_params, dirName, chunk):
         # Select a random file from the list
         random_file = random.choice(file_list)
         filename_parts = random_file.split(".")
-        # Extract the 2nd last element after the dots
-        third_last_element = filename_parts[1]
+        # Extract the generation number
+        genration_num = filename_parts[1]
         uuid = filename_parts[4]
         # create dbo file with new uuid
         result = search_files_by_string(dbo_input_path, uuid)
 
         # Increment the extracted element by 1
         # Decrement as the number is inversed
-        new_third_last_element = str(int(third_last_element, 16) - 1)
+        new_genration_num = str(int(genration_num, 16) - 1)
 
         # Update the filename with the incremented element
-        filename_parts[1] = new_third_last_element
+        filename_parts[1] = new_genration_num
         filename_parts[4] = result
         new_filename = ".".join(filename_parts)
         # Full path for the copied and renamed file
