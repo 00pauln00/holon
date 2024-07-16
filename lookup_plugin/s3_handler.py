@@ -67,7 +67,7 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
     if input_values["strideWidth"] != "":
         cmd.extend(["-sw", input_values["strideWidth"]])
     if input_values["overlapSeq"] != "" and input_values["numOfSet"] != "":
-        cmd.extend(["-se", input_values["overlapSeq"], "-ts", input_values["numOfSet"]])
+        cmd.extend(["-se", input_values["overlapSeq"], "-ts", input_values["numOfSet"], "-r", input_values["removeDBIDBO"]])
 
     print("cmd: ", cmd)
     # Launch the subprocess with the constructed command
@@ -488,7 +488,7 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO):
     # Prepare path for log file.
     s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
     downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
-    cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120',
+    cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '30',
               '-l', '2', '-p', '7500', '-b', 'paroscale-test']
 
     if dryRun:
@@ -999,6 +999,8 @@ def deleteSetFileS3(cluster_params, dirName, operation, chunk):
     os.remove(file_path)
     process = subprocess.Popen([bin_path, '-bucketName', "paroscale-test", '-operation', operation, '-v', vdev, '-c', chunk, '-s3config', s3config, '-f', fname, '-l', logFile])
 
+    return fname
+
 def copyDBIset_NewDir(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -1026,6 +1028,38 @@ def copyDBIset_NewDir(cluster_params, dirName, chunk):
         if not os.path.exists(destination_path):
             os.makedirs(destination_path, mode=0o777)
         shutil.copy2(source_path, destination_path)
+
+def pushOrigSetFile(cluster_params, dirName, chunk, operation, fName):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    newDir = "dbiSetFiles"
+    destination_path = jsonPath + newDir
+    destination_path = os.path.join(destination_path, fName)
+    print("destination_path: ", destination_path)
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    json_path = jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json"
+    print("json_path: ", json_path)
+    json_data = load_json_contents(json_path)
+    print("json_data: ", json_data)
+    dbi_input_path = str(json_data['DbiPath'])
+    vdev = str(json_data['Vdev'])
+    # Construct the dbi input path directory path
+    source_file_path = os.path.join(dbi_input_path, fName)
+    # Copy the file to the destination directory
+    shutil.copy(destination_path, source_file_path)
+
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
+
+    s3config = '%s/s3.config.example' % binary_dir
+    bin_path = '%s/s3Operation' % binary_dir
+    # Upload original file which is deleted from the set
+    process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+
+    gcDownloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
+    # Call the function to delete contents
+    delete_contents_of_paths([gcDownloadPath, ""])
 
 def copyDBIFile_changeSeqNum(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
@@ -1234,7 +1268,8 @@ class LookupModule(LookupBase):
         elif operation == "deleteSetFileS3":
             operation = terms[1]
             chunk = terms[2]
-            popen = deleteSetFileS3(cluster_params, dirName, operation, chunk)
+            fname = deleteSetFileS3(cluster_params, dirName, operation, chunk)
+            return fname
 
         elif operation == "performS3Operation":
             s3Operation = terms[1]
@@ -1269,6 +1304,12 @@ class LookupModule(LookupBase):
         elif operation == "deleteSetFiles":
             chunk = terms[1]
             deleteSetFiles(cluster_params, dirName, chunk)
+
+        elif operation == "pushOrigSetFile":
+            s3Operation = terms[1]
+            chunk = terms[2]
+            fileName = terms[3]
+            pushOrigSetFile(cluster_params, dirName, chunk, s3Operation, fileName)
 
         elif operation == "copy_DBI_file_generatorNum":
             chunk = terms[1]
