@@ -59,9 +59,6 @@
          msg: "{{ lookup('s3_handler', 'deleteSetFileS3', operation, Chunk, wantlist=True) }}"
       register: fileName
 
-    - debug:
-        msg: "Deleted File: {{ fileName.msg }}"
-
     - name: "{{ recipe_name }}: Perform GC."
       vars:
         debugMode: false
@@ -110,7 +107,7 @@
         Chunk: "1"
       debug:
         msg: "{{ lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, wantlist=True) }}"
-      register: marker_check
+      register: get_markers
 
     - name: "{{ recipe_name }}: Initialize Chunk variable"
       set_fact:
@@ -122,4 +119,7 @@
         NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
       debug:
         msg: "GC Marker End Seq: {{ gcMarkerEndSeq }} | NISD Marker End Seq: {{ NisdMarkerEndSeq }}"
-
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 10
+      delay: 2
+      when: get_markers.msg == true
