@@ -1181,6 +1181,30 @@ def getNISDMarkerFileSeq(cluster_params, dirName, chunk):
     else:
         return -1
 
+def monitorDirectorySpace(cluster_params, dirName, chunk):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+
+    directory_path = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj")
+
+    if not os.path.exists(directory_path):
+        raise ValueError(f"The directory {directory_path} does not exist.")
+    start_time = time.time()
+    max_duration = 30 * 60  # 30 minutes in seconds
+    
+    while not isGCMarkerFilePresent(cluster_params, dirName, chunk):
+        total, used, free = shutil.disk_usage(directory_path)
+        
+        # Convert total space from bytes to gigabytes
+        total_gb = total / (2**30)
+        
+        if total_gb > 1.5:
+            return False
+        if time.time() - start_time > max_duration:
+            return False
+        time.sleep(5)
+    return True
+
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
@@ -1300,6 +1324,10 @@ class LookupModule(LookupBase):
             seqNum = getNISDMarkerFileSeq(cluster_params, dirName, chunk)
 
             return seqNum
+
+        elif operation == "monitorDirectorySpace":
+            chunk = terms[1]
+            return monitorDirectorySpace(cluster_params, dirName, chunk)
 
         elif operation == "json_params":
             params_type = terms[1]

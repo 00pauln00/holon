@@ -1,0 +1,112 @@
+- name: "validate_chunk_space_util_less_than_1.5GB"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "validate_chunk_space_util_less_than_1.5GB"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "minio_data"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+    - name: "Generate DBIs with vblk entry"
+      vars:
+        input_param: {
+                  "chunk": "1",
+                  "maxPunches": "1024",
+                  "maxVblks": "2096980",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2096980",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "e7fb3b4d-40b2-4ceb-bc2a-6d49f26d0a97",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+
+    - name: "Generate Second Iteration DBIs"
+      vars:
+        input_param: {
+                  "chunk": "1",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "7000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "e7fb3b4d-40b2-4ceb-bc2a-6d49f26d0a97",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+    
+
+    - name: "{{ recipe_name }}: Start GCService"
+      vars:
+        dryRun: False
+        delDBO: True
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present."
+      vars:
+         Chunk: "1"
+      debug:
+        msg: "Waiting for GC Marker File"
+      until: lookup('s3_handler', 'monitorDirectorySpace', Chunk, wantlist=True) == true
+      retries: 500
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
+      vars:
+         Chunk: "1"
+         gcMarkerEndSeq: "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
+         NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
+      debug:
+        msg: "Wait until marker values gets match"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 500
+      delay: 2
+
+    - name: "{{ recipe_name }}: Start data validation"
+      vars:
+        Chunk: "1"
+      debug:
+         msg: "{{ lookup('s3_handler', 'data_validate',  Chunk, wantlist=True) }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
