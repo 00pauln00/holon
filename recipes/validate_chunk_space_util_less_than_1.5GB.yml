@@ -80,14 +80,12 @@
          msg:
           - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: Wait until GC marker file present."
+    - name: "{{ recipe_name }}: Monitor the space utilized by the directory, Until the gcMarker get's created."
       vars:
          Chunk: "1"
       debug:
-        msg: "Waiting for GC Marker File"
-      until: lookup('s3_handler', 'monitorDirectorySpace', Chunk, wantlist=True) == true
-      retries: 500
-      delay: 2
+        msg:
+         - "{{ lookup('s3_handler', 'monitorDirectorySpace',  Chunk, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
       vars:
@@ -98,6 +96,15 @@
         msg: "Wait until marker values gets match"
       until: gcMarkerEndSeq == NisdMarkerEndSeq
       retries: 500
+      delay: 2
+
+    - name: "{{ recipe_name }}: Check if gc directory is empty"
+      vars:
+         Chunk: "1"
+      debug:
+        msg: "Check if gc directory is cleaned"
+      until: lookup('s3_handler', 'checkDirectoryIsEmpty', Chunk, wantlist=True) == true
+      retries: 50
       delay: 2
 
     - name: "{{ recipe_name }}: Start data validation"
