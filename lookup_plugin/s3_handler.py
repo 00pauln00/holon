@@ -1205,11 +1205,11 @@ def monitorDirectorySpace(cluster_params, dirName, chunk):
 
     while (time.time() - start_time) < max_duration:
         dir_size = get_directory_size(directory_path)
-        total_gb = dir_size / (1024 * 1024)
-        print("total_gb : ", total_gb)
-        if isGCMarkerFilePresent(cluster_params, dirName, chunk) and total_gb <= 1536:
+        total_mb = dir_size / (1024 * 1024)
+        print("directory_space : ", total_mb)
+        if isGCMarkerFilePresent(cluster_params, dirName, chunk) and total_mb <= 1536:
             return True
-        elif total_gb > 1536:
+        elif total_mb > 1536:
             return False
         time.sleep(5)
     return False
@@ -1226,9 +1226,9 @@ def checkDirectoryIsEmpty(cluster_params):
        
     dir_size = get_directory_size(directory_path)
 
-    total_gb = dir_size / (1024 * 1024)
-    print("total_gb : ", total_gb)
-    if total_gb == 0:
+    total_mb = dir_size / (1024 * 1024)
+    print("directory_space : ", total_mb)
+    if total_mb == 0:
         return True
     return False
 
