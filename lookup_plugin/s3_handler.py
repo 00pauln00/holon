@@ -1228,7 +1228,7 @@ def checkDirectoryIsEmpty(cluster_params):
 
     total_mb = dir_size / (1024 * 1024)
     print("directory_space : ", total_mb)
-    if total_mb == 0:
+    if int(total_mb) == 0:
         return True
     return False
 
