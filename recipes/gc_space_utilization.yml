@@ -1,0 +1,95 @@
+- name: "gc_space_utilization"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "gc_space_utilization"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Create Partition"
+      debug:
+        msg: "{{ lookup('s3_handler', 'createPartition', wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "minio_data"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+   
+
+    - name: "Generate DBIs with vblk entry"
+      vars:
+         input_param: {
+                  "chunk": "1",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Start GCService"
+      vars:
+        dryRun: False
+        delDBO: True
+        partition: True  
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present."
+      vars:
+         Chunk: "1"
+         stage: "wait_for_gc_marker"
+         partition: True
+      debug:
+        msg: "Waiting for GC Marker File"
+      until: lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, partition, wantlist=True) == true
+      retries: 500
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
+      vars:
+         Chunk: "1"
+         partition: True
+         gcMarkerEndSeq: "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, partition, wantlist=True) }}"
+         NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
+      debug:
+        msg: "Wait until marker values gets match"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 500
+      delay: 2
+  
+    - name: "{{ recipe_name }}: create a 8GB file."
+      vars:
+         size: 8589934592
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'createFile', size, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: delete the partition."
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'deletePartition', wantlist=True) }}"
+
+

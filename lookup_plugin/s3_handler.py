@@ -10,6 +10,8 @@ import glob
 from genericcmd import *
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
+import pwd
+import grp
 
 Marker_vdev = 0
 Marker_chunk = 1
@@ -21,6 +23,103 @@ def load_parameters_from_json(filename):
     with open(filename, 'r') as json_file:
         params = json.load(json_file)
     return params
+
+def create_gc_partition(cluster_params):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    log_dir = "%s/%s/" % (base_dir, raft_uuid)
+    disk_ipath = os.path.join(log_dir, 'GC.img')
+    mount_pt = os.path.join(log_dir, 'gc')
+    dir_name = os.path.join(mount_pt, 'gc_download')
+
+    uid = os.geteuid()
+
+    # Get the current user's info
+    user_info = pwd.getpwuid(uid)
+    username = user_info.pw_name
+
+    # Get the current GID
+    gid = user_info.pw_gid
+
+    # Get the group information
+    group_info = grp.getgrgid(gid)
+    groupname = group_info.gr_name
+
+    try:
+        result = subprocess.run(f"dd if=/dev/zero of={disk_ipath} bs=100M count=103", check=True, shell=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+    try:
+        result = subprocess.run(["sudo", "losetup", "-fP", disk_ipath], check=True, shell=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+    try:
+        result = subprocess.run(["sudo", "mkfs.btrfs", disk_ipath], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+    os.mkdir(mount_pt, 0o777)
+
+    try:
+        result = subprocess.run(["sudo", "mount", disk_ipath, mount_pt], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+    try:
+        result = subprocess.run(["sudo", "mkdir", dir_name], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+    try:
+        result = subprocess.run(["sudo", "chown", username, dir_name], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+    try:
+        result = subprocess.run(["sudo", "chown", groupname, dir_name], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+
+    try:
+        result = subprocess.run(["sudo", "chmod", "777", dir_name], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+def create_file(cluster_params, size):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    log_dir = "%s/%s/" % (base_dir, raft_uuid)
+    filename = os.path.join(log_dir, 'gc/gc_download/file.txt');
+
+    try:
+        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=4M count=2048", check=True, shell=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+def delete_partition(cluster_params):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    log_dir = "%s/%s/" % (base_dir, raft_uuid)
+    disk_ipath = os.path.join(log_dir, 'GC.img')
+    mount_pt = os.path.join(log_dir, 'gc')
+
+    try:
+        result = subprocess.run(["sudo", "umount", mount_pt], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+    output = subprocess.check_output(["losetup", "-a"], text=True)
+    for line in output.splitlines():
+        if disk_ipath in line:
+            loop_dev = line.split(':')[0]
+            try:
+                result = subprocess.run(["sudo", "losetup", "-d", loop_dev], check=True)
+            except subprocess.CalledProcessError as e:
+                print(f"Error: {e}")
+            break
 
 def multiple_iteration_params(cluster_params, dirName, input_values):
     base_dir = cluster_params['base_dir']
@@ -254,7 +353,7 @@ def start_minio_server(cluster_params, dirName):
             os.makedirs(os.path.expanduser(f'/local/{dirName}'), mode=0o777)
 
         command = f"minio server /local/{dirName} --console-address ':2000' --address ':2090'"
-
+        
         process_popen = subprocess.Popen(command, shell=True, stdout=fp, stderr=fp)
 
         # Check if MinIO process started successfully
@@ -467,7 +566,7 @@ def start_gc_process(cluster_params, dirName, debugMode, chunk, crcCheck=None):
 
     return exit_code
 
-def start_gcService_process(cluster_params, dirName, dryRun, delDBO):
+def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -492,7 +591,12 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO):
     s3config = '%s/s3.config.example' % binary_dir
     # Prepare path for log file.
     s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
-    downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
+    
+    if partition:
+        downloadPath = "%s/%s/gc/gc_download" % (base_dir, raft_uuid)
+    else:
+        downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
+    
     cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120',
               '-l', '2', '-p', '7500', '-b', 'paroscale-test']
 
@@ -1106,7 +1210,7 @@ def check_if_mType_Present(vdev, chunk, mList, mType):
             return parts[2]
     return None
 
-def GetSeqOfMarker(cluster_params, dirName, chunk, value):
+def GetSeqOfMarker(cluster_params, dirName, chunk, value, partition):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -1119,6 +1223,22 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value):
         newPath = os.path.join(jsonPath, chunk, "DV")
         json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
         vdev = str(json_data['Vdev'])
+
+        if not partition and s3Support == "true":
+            downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
+        elif partition and s3Support == "true":
+            downloadPath = os.path.join(base_dir, raft_uuid, "gc/gc_download", vdev, "m")
+        else:
+            downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
+
+        file_pattern = os.path.join(downloadPath, '*', '*.gc')
+        files = glob.glob(file_pattern, recursive=True)
+
+        files = glob.glob(file_pattern, recursive=True)
+        # Check if any file is found
+        if files:
+            print("GC Marker file found in a directory.")
+            return True
 
         cmd = [bin_path, '-bucketName', 'paroscale-test', '-operation', 'list', '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', 'm', '-l', logFile]
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -1146,6 +1266,47 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value):
             case 'Both':
                 MSeq.extend([GcSeq, NisdSeq])
                 return MSeq
+            print("No GC Marker file found in a directory.")
+            return False
+    else:
+        print("Invalid path or directory not found.")
+        return False
+
+def getGCMarkerFileSeq(cluster_params, dirName, chunk, partition):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
+    jsonPath = get_dir_path(cluster_params, dirName)
+    if jsonPath != None:
+        newPath = jsonPath + "/" + chunk + "/DV"
+        json_data = load_json_contents(newPath + "/dummy_generator.json")
+        vdev = str(json_data['Vdev'])
+
+    # Define the root path where the search should start
+    if not partition and s3Support == "true":
+       downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
+    elif partition and s3Support == "true":
+       downloadPath = os.path.join(base_dir, raft_uuid, "gc/gc_download", vdev, "m")
+    else:
+       downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
+
+    # Use glob.glob to find all .gcmrk files in any subdirectories under the constructed path
+    file_pattern = os.path.join(downloadPath, '**', '*.gc')  # '**' allows recursive search
+    files = glob.glob(file_pattern, recursive=True)
+    # Sort files based on creation time (most recent first)
+    files.sort(key=lambda f: os.path.getctime(f), reverse=True)
+    if files:
+        endSeq = extract_endSeq(os.path.basename(files[0]))
+        return endSeq
+    else:
+        return -1
+
+def extract_endSeq(filepath):
+    filename = os.path.basename(filepath)
+    parts = filename.split('.')
+    last_part = parts[-2]  # Get the last part of the filename
+    if last_part.isdigit():
+        return int(last_part)
     else:
         print("Invalid path or directory not found.")
         return None
@@ -1186,11 +1347,22 @@ class LookupModule(LookupBase):
         elif operation == "start_gcService":
             dryRun = terms[1]
             delDBO = terms[2]
-            start_gcService_process(cluster_params, dirName, dryRun, delDBO)
+            partition = terms[3]
+            start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition)
 
         elif operation == "data_validate":
             Chunk = terms[1]
             popen = start_data_validate(cluster_params, dirName, Chunk)
+
+        elif operation == "createPartition":
+            create_gc_partition(cluster_params)
+
+        elif operation == "createFile":
+            size = terms[1]
+            create_file(cluster_params, size)
+
+        elif operation == "deletePartition":
+            delete_partition(cluster_params)
 
         elif operation == "get_DBI_fileNames":
             Chunk = terms[1]
