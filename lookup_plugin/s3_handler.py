@@ -1100,21 +1100,22 @@ def isGCMarkerFilePresent(cluster_params, dirName, chunk):
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
     jsonPath = get_dir_path(cluster_params, dirName)
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/s3Operation' % binary_dir
+    s3config = '%s/s3.config.example' % binary_dir
 
     if jsonPath is not None:
         newPath = os.path.join(jsonPath, chunk, "DV")
         json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
         vdev = str(json_data['Vdev'])
-        if s3Support == "true":
-            downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
-        else:
-            downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
-        file_pattern = os.path.join(downloadPath, '*', '*.gc')
-        files = glob.glob(file_pattern, recursive=True)
-
-        files = glob.glob(file_pattern, recursive=True)
+        cmd = [bin_path, '-bucketName', "paroscale-test", '-operation', "list", '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', "m", '-l', logFile]
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # Read the output and error
+        stdout, stderr = process.communicate()
+        Markerlistoutput = stdout
         # Check if any file is found
-        if files:
+        if len(Markerlistoutput) > 0:
             print("GC Marker file found in a directory.")
             return True
         else:
@@ -1129,23 +1130,25 @@ def getGCMarkerFileSeq(cluster_params, dirName, chunk):
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
     jsonPath = get_dir_path(cluster_params, dirName)
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/s3Operation' % binary_dir
+    s3config = '%s/s3.config.example' % binary_dir
     if jsonPath != None:
         newPath = jsonPath + "/" + chunk + "/DV"
         json_data = load_json_contents(newPath + "/dummy_generator.json")
         vdev = str(json_data['Vdev'])
-    # Define the root path where the search should start
-    if s3Support == "true":
-       downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
-    else:
-       downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
-    # Use glob.glob to find all .gcmrk files in any subdirectories under the constructed path
-    file_pattern = os.path.join(downloadPath, '**', '*.gc')  # '**' allows recursive search
-    files = glob.glob(file_pattern, recursive=True)
-    # Sort files based on creation time (most recent first)
-    files.sort(key=lambda f: os.path.getctime(f), reverse=True)
-    if files:
-        endSeq = extract_endSeq(os.path.basename(files[0]))
-        return endSeq
+        cmd = [bin_path, '-bucketName', "paroscale-test", '-operation', "list", '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', "m", '-l', logFile]
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # Read the output and error
+        stdout, stderr = process.communicate()
+        Markerlistoutput = stdout
+    if len(Markerlistoutput) > 0:
+        for line in (Markerlistoutput.splitlines()):
+            if "gc" in line:
+               print(f"Line with 'gc': {line.strip()}")
+               endSeq = extract_endSeq(os.path.basename(line.strip()))
+               return endSeq
     else:
         return -1
 
@@ -1162,22 +1165,25 @@ def getNISDMarkerFileSeq(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/s3Operation' % binary_dir
+    s3config = '%s/s3.config.example' % binary_dir
     if jsonPath is not None:
         newPath = os.path.join(jsonPath, chunk, "DV")
         json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
         vdev = str(json_data['Vdev'])
-
-    # Define the root path where the search should start
-    downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
-    # Use glob.glob to find all .gcmrk files in any subdirectories under the constructed path
-    file_pattern = os.path.join(downloadPath, '**', '*.nisd')  # '**' allows recursive search
-    files = glob.glob(file_pattern, recursive=True)
-
-    # Sort files based on creation time (most recent first)
-    files.sort(key=lambda f: os.path.getctime(f), reverse=True)
-    if files:
-        endSeq = extract_endSeq(os.path.basename(files[0]))
-        return endSeq
+        cmd = [bin_path, '-bucketName', "paroscale-test", '-operation', "list", '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', "m", '-l', logFile]
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # Read the output and error
+        stdout, stderr = process.communicate()
+        Markerlistoutput = stdout
+    if len(Markerlistoutput) > 0:
+        for line in (Markerlistoutput.splitlines()):
+            if "nisd" in line:
+               print(f"Line with 'nisd': {line.strip()}")
+               endSeq = extract_endSeq(os.path.basename(line.strip()))
+               return endSeq
     else:
         return -1
 
