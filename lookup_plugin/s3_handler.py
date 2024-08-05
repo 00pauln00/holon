@@ -46,7 +46,7 @@ def create_gc_partition(cluster_params):
     groupname = group_info.gr_name
 
     try:
-        result = subprocess.run(f"dd if=/dev/zero of={disk_ipath} bs=100M count=103", check=True, shell=True)
+        result = subprocess.run(f"dd if=/dev/zero of={disk_ipath} bs=32M count=144", check=True, shell=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
@@ -88,14 +88,14 @@ def create_gc_partition(cluster_params):
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
-def create_file(cluster_params, size):
+def create_file(cluster_params):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     log_dir = "%s/%s/" % (base_dir, raft_uuid)
     filename = os.path.join(log_dir, 'gc/gc_download/file.txt');
 
     try:
-        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=4M count=2048", check=True, shell=True)
+        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=32M count=64", check=True, shell=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
@@ -127,6 +127,7 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
     s3Support = cluster_params['s3Support']
 
     path = "%s/%s/%s/" % (base_dir, raft_uuid, dirName)
+
     # Create the new directory
     if not os.path.exists(path):
         # Create the directory path
@@ -140,18 +141,24 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
 
     # Prepare path for log file.
     dbiLogFile = "%s/%s/dbiLog.log" % (base_dir, raft_uuid)
-
+    
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(dbiLogFile, "a+")
 
     #Get dummyDBI example
     bin_path = '%s/dummyData' % binary_dir
     jsonPath = get_dir_path(cluster_params, dirName)
+
     if jsonPath != None:
-        newPath = jsonPath + "/" + input_values["chunk"] + "/DV"
-        json_data = load_json_contents(newPath + "/dummy_generator.json")
-        input_values["vdev"] = str(json_data['Vdev'])
-        input_values["seqStart"] = str(json_data['SeqEnd'] + 1)
+        entries = os.listdir(jsonPath)
+        chunk_no = input_values["chunk"]
+        if chunk_no not in entries:
+            jsonPath = None
+        else:
+            newPath = jsonPath + "/" + input_values["chunk"] + "/DV"
+            json_data = load_json_contents(newPath + "/dummy_generator.json")
+            input_values["vdev"] = str(json_data['Vdev'])
+            input_values["seqStart"] = str(json_data['SeqEnd'] + 1)
 
     # Initialize the command list with common arguments
     cmd = [
@@ -160,6 +167,7 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
         "-ss", input_values['seqStart'], "-t", input_values['genType'], '-va', input_values['vbAmount'], '-vp', input_values['vblkPer'],
         "-vdev", input_values["vdev"], "-bs", input_values['blockSize'], "-bsm", input_values['blockSizeMax'], "-vs", input_values['startVblk']
     ]
+
     # Add the S3-specific options if s3Support is "true"
     if s3Support == "true":
         s3configPath = '%s/s3.config.example' % binary_dir
@@ -598,7 +606,7 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition):
         downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
     
     cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120',
-              '-l', '2', '-p', '7500', '-b', 'paroscale-test']
+              '-l', '4', '-p', '7500', '-b', 'paroscale-test']
 
     if dryRun:
         cmd.append('-dr')
@@ -1358,8 +1366,7 @@ class LookupModule(LookupBase):
             create_gc_partition(cluster_params)
 
         elif operation == "createFile":
-            size = terms[1]
-            create_file(cluster_params, size)
+            create_file(cluster_params)
 
         elif operation == "deletePartition":
             delete_partition(cluster_params)
