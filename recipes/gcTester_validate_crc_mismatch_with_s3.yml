@@ -43,20 +43,20 @@
     - name: "{{ recipe_name }}: Marker file present or not."
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
+        mType: "Both"
       debug:
-         msg: "{{ lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
       register: marker_check
 
-    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
-      vars:
-        Chunk: "{{ chunk['msg'][0] }}"
+    - name: "{{ recipe_name }}: Compare Gc And Nisd EndSeq"
       set_fact:
-        gcMarkerEndSeq: "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
-        NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
-      when: marker_check.msg == true
+        gcMarkerEndSeq: "{{ marker_check.msg[0] }}"
+        NisdMarkerEndSeq: "{{ marker_check.msg[1] }}"
+      when: marker_check.msg is defined and marker_check.msg[0] | selectattr('!=', 'none') 
 
     - debug:
          msg: "{{gcMarkerEndSeq}} and {{NisdMarkerEndSeq}}"
+      when: cMarkerEndSeq is defined and NisdMarkerEndSeq is defined
       failed_when: gcMarkerEndSeq != NisdMarkerEndSeq
 
     - name: "{{ recipe_name }}: Delete the corrupted file from s3."
@@ -84,19 +84,19 @@
     - name: "{{ recipe_name }}: Marker file present or not."
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
+        mType: "Both"
       debug:
-         msg: "{{ lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
       register: marker_check
 
-    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
-      vars:
-        Chunk: "{{ chunk['msg'][0] }}"
+    - name: "{{ recipe_name }}: Compare Gc and Nisd EndSeq"
       set_fact:
-        gcMarkerEndSeq: "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
-        NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
-      when: marker_check.msg == true
+        gcMarkerEndSeq: "{{ marker_check.msg[0] }}"
+        NisdMarkerEndSeq: "{{ marker_check.msg[1] }}"
+      when: marker_check.msg is defined and marker_check.msg[0] | selectattr('!=', 'none') | length > 0
 
     - debug:
          msg: "{{gcMarkerEndSeq}} and {{NisdMarkerEndSeq}}"
+      when: cMarkerEndSeq is defined and NisdMarkerEndSeq is defined
       failed_when: gcMarkerEndSeq != NisdMarkerEndSeq
 
