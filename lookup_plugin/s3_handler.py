@@ -11,6 +11,11 @@ from genericcmd import *
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
 
+Marker_vdev = 0
+Marker_chunk = 1
+Marker_seq = 2
+Marker_type = 3
+
 def load_parameters_from_json(filename):
     # Load parameters from a JSON file
     with open(filename, 'r') as json_file:
@@ -1095,91 +1100,48 @@ def extracting_dictionary(cluster_params, operation, dirName):
         data = load_json_contents(input_values['path'])
         return data
 
-def isGCMarkerFilePresent(cluster_params, dirName, chunk):
+def check_if_mType_Present(vdev, chunk, mList, mType):
+    for line in (mList.splitlines()):
+        parts = line.split(".")
+        if vdev in parts[Marker_vdev] and chunk in parts[Marker_chunk] and mType in parts[Marker_type]:
+            return parts[2]
+    return None
+
+def GetSeqOfMarker(cluster_params, dirName, chunk, value):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
     jsonPath = get_dir_path(cluster_params, dirName)
-
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/s3Operation' % binary_dir
+    s3config = '%s/s3.config.example' % binary_dir
     if jsonPath is not None:
         newPath = os.path.join(jsonPath, chunk, "DV")
         json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
         vdev = str(json_data['Vdev'])
-        if s3Support == "true":
-            downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
-        else:
-            downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
-        file_pattern = os.path.join(downloadPath, '*', '*.gc')
-        files = glob.glob(file_pattern, recursive=True)
-
-        files = glob.glob(file_pattern, recursive=True)
+        cmd = [bin_path, '-bucketName', "paroscale-test", '-operation', "list", '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', "m", '-l', logFile]
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # Read the output and error
+        stdout, stderr = process.communicate()
+        
         # Check if any file is found
-        if files:
-            print("GC Marker file found in a directory.")
-            return True
-        else:
-            print("No GC Marker file found in a directory.")
-            return False
+        GcSeq = check_if_mType_Present(vdev, chunk, stdout, "gc")
+        NisdSeq = check_if_mType_Present(vdev, chunk, stdout, "nisd")
+        MSeq = []
+        match value:
+            case 'gc':
+                MSeq.extend([GcSeq, None])
+                return MSeq
+            case 'nisd':
+                MSeq.extend([None, NisdSeq])
+                return MSeq
+            case 'Both':
+                MSeq.extend([GcSeq, NisdSeq])
+                return MSeq
     else:
         print("Invalid path or directory not found.")
-        return False
-
-def getGCMarkerFileSeq(cluster_params, dirName, chunk):
-    base_dir = cluster_params['base_dir']
-    raft_uuid = cluster_params['raft_uuid']
-    s3Support = cluster_params['s3Support']
-    jsonPath = get_dir_path(cluster_params, dirName)
-    if jsonPath != None:
-        newPath = jsonPath + "/" + chunk + "/DV"
-        json_data = load_json_contents(newPath + "/dummy_generator.json")
-        vdev = str(json_data['Vdev'])
-    # Define the root path where the search should start
-    if s3Support == "true":
-       downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
-    else:
-       downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
-    # Use glob.glob to find all .gcmrk files in any subdirectories under the constructed path
-    file_pattern = os.path.join(downloadPath, '**', '*.gc')  # '**' allows recursive search
-    files = glob.glob(file_pattern, recursive=True)
-    # Sort files based on creation time (most recent first)
-    files.sort(key=lambda f: os.path.getctime(f), reverse=True)
-    if files:
-        endSeq = extract_endSeq(os.path.basename(files[0]))
-        return endSeq
-    else:
-        return -1
-
-def extract_endSeq(filepath):
-    filename = os.path.basename(filepath)
-    parts = filename.split('.')
-    last_part = parts[-2]  # Get the last part of the filename
-    if last_part.isdigit():
-        return int(last_part)
-    else:
         return None
-
-def getNISDMarkerFileSeq(cluster_params, dirName, chunk):
-    base_dir = cluster_params['base_dir']
-    raft_uuid = cluster_params['raft_uuid']
-    jsonPath = get_dir_path(cluster_params, dirName)
-    if jsonPath is not None:
-        newPath = os.path.join(jsonPath, chunk, "DV")
-        json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
-        vdev = str(json_data['Vdev'])
-
-    # Define the root path where the search should start
-    downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
-    # Use glob.glob to find all .gcmrk files in any subdirectories under the constructed path
-    file_pattern = os.path.join(downloadPath, '**', '*.nisd')  # '**' allows recursive search
-    files = glob.glob(file_pattern, recursive=True)
-
-    # Sort files based on creation time (most recent first)
-    files.sort(key=lambda f: os.path.getctime(f), reverse=True)
-    if files:
-        endSeq = extract_endSeq(os.path.basename(files[0]))
-        return endSeq
-    else:
-        return -1
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
@@ -1284,22 +1246,12 @@ class LookupModule(LookupBase):
 
             return popen
 
-        elif operation == "isGCMarkerFilePresent":
-            chunk = terms[1]
-            isPresent = isGCMarkerFilePresent(cluster_params, dirName, chunk)
-            return isPresent
+        elif operation == "GetSeqOfMarker":
+            chunk = terms[2]
+            value = terms[1]
+            MarkerSeq = GetSeqOfMarker(cluster_params, dirName, chunk, value)
 
-        elif operation == "getGCMarkerFileSeq":
-            chunk = terms[1]
-            seqNum = getGCMarkerFileSeq(cluster_params, dirName, chunk)
-
-            return seqNum
-
-        elif operation == "getNISDMarkerFileSeq":
-            chunk = terms[1]
-            seqNum = getNISDMarkerFileSeq(cluster_params, dirName, chunk)
-
-            return seqNum
+            return MarkerSeq
 
         elif operation == "json_params":
             params_type = terms[1]
