@@ -288,6 +288,16 @@ def start_minio_server(cluster_params, dirName):
             genericcmdobj.recipe_json_dump(recipe_conf)
         else:
             logging.info("MinIO server process not found")
+     # Run the command
+    result = subprocess.run(['ps', '-ef'], stdout=subprocess.PIPE, text=True)
+    
+    # Filter the output for the keyword 'minio'
+    processes = result.stdout.splitlines()
+    filtered_processes = [line for line in processes if 'minio' in line]
+    
+    # Print the filtered output
+    for process in filtered_processes:
+        print(process)
 
     return process_popen
 
@@ -1121,11 +1131,18 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value):
         newPath = os.path.join(jsonPath, chunk, "DV")
         json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
         vdev = str(json_data['Vdev'])
-        for i in range(30):
+        for i in range(10):
             cmd = [bin_path, '-bucketName', "paroscale-test", '-operation', "list", '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', "m", '-l', logFile]
             print("command To list Marker Files ", cmd)
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            process.wait()
+
+            exit_code = process.wait()
+            if exit_code == 0:
+                f"Process completed successfully."
+            else:
+                error_message = f"Process failed with exit code {exit_code}."
+                raise RuntimeError(error_message)
+
             # Read the output and error
             stdout, stderr = process.communicate()
             print("List output : ", stdout)
