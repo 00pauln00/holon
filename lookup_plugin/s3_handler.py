@@ -407,6 +407,7 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values, remo
               cmd.append('-r=true')
 
     print("cmd: ", cmd)
+
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
 
@@ -414,7 +415,7 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values, remo
     exit_code = process.wait()
     # Close the log file
     fp.close()
-
+    print(" Command to run dummygenerator ", cmd)
     # Check if the process finished successfully (exit code 0)
     if exit_code == 0:
         print("Process completed successfully.")
@@ -501,7 +502,7 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO):
 
     if delDBO:
         cmd.append('-dd')
-
+    print("GCservice Command ", cmd)
     process_popen = subprocess.Popen(cmd, stdout = fp, stderr = fp)
 
     #Check if gcService process exited with error
