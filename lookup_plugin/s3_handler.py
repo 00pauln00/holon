@@ -1124,7 +1124,7 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value):
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         # Read the output and error
         stdout, stderr = process.communicate()
-        
+        print("List output : ", stdout)    
         # Check if any file is found
         GcSeq = check_if_mType_Present(vdev, chunk, stdout, "gc")
         NisdSeq = check_if_mType_Present(vdev, chunk, stdout, "nisd")
@@ -1132,12 +1132,15 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value):
         match value:
             case 'gc':
                 MSeq.extend([GcSeq, None])
+                print(" Marker For gc : ",MSeq)
                 return MSeq
             case 'nisd':
                 MSeq.extend([None, NisdSeq])
+                print(" Marker For nisd : ",MSeq)
                 return MSeq
             case 'Both':
                 MSeq.extend([GcSeq, NisdSeq])
+                print(" Marker For Both : ",MSeq)
                 return MSeq
     else:
         print("Invalid path or directory not found.")
