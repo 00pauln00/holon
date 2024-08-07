@@ -64,7 +64,7 @@
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq }}"
       until: marker_seq[0] is not none
-      retries: 500
+      retries: 100
       delay: 2
 
     - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
@@ -77,7 +77,7 @@
       debug:
         msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
       until: gcMarkerEndSeq == NisdMarkerEndSeq
-      retries: 500
+      retries: 100
       delay: 2
 
     - name: "{{ recipe_name }}: Start data validation"
