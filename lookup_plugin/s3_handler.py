@@ -1132,7 +1132,7 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value):
         json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
         vdev = str(json_data['Vdev'])
         for i in range(10):
-            cmd = [bin_path, '-bucketName', 'paroscale-test', '-operation', "list", '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', 'm', '-l', logFile]
+            cmd = [bin_path, '-bucketName', 'paroscale-test', '-operation', 'list', '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', 'm', '-l', logFile]
             print("command To list Marker Files ", cmd)
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
