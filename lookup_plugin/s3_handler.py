@@ -1120,13 +1120,21 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value):
         newPath = os.path.join(jsonPath, chunk, "DV")
         json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
         vdev = str(json_data['Vdev'])
-        cmd = [bin_path, '-bucketName', "paroscale-test", '-operation', "list", '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', "m", '-l', logFile]
-        print("command To list Marker Files ", cmd)
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        process.wait()
-        # Read the output and error
-        stdout, stderr = process.communicate()
-        print("List output : ", stdout)    
+        for i in range(30):
+            cmd = [bin_path, '-bucketName', "paroscale-test", '-operation', "list", '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', "m", '-l', logFile]
+            print("command To list Marker Files ", cmd)
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            process.wait()
+            # Read the output and error
+            stdout, stderr = process.communicate()
+            print("List output : ", stdout)
+            if stdout:
+                print(" stdout in if Loop  ", stdout)
+                break
+            else:
+                print(" stdout in else Loop  ", stdout)
+                time.sleep(1)
+        print("Going to get Sequence ") 
         # Check if any file is found
         GcSeq = check_if_mType_Present(vdev, chunk, stdout, "gc")
         NisdSeq = check_if_mType_Present(vdev, chunk, stdout, "nisd")
