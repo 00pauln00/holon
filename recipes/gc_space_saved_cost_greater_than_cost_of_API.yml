@@ -60,13 +60,12 @@
          Chunk: "1"
          mType: "Both"
          stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq[0] }}"
       until: marker_seq[0] is not none
       retries: 500
       delay: 2
-      vars:
-        marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
       vars:
