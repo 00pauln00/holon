@@ -1131,7 +1131,6 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value):
 
         # Read the output and error
         stdout, stderr = process.communicate()
-        print("List output : ", stdout)
 
         # Check if any file is found
         GcSeq = check_if_mType_Present(vdev, chunk, stdout, "gc")
