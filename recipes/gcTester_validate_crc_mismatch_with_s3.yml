@@ -97,6 +97,6 @@
 
     - debug:
          msg: "{{gcMarkerEndSeq}} and {{NisdMarkerEndSeq}}"
-      when: cMarkerEndSeq is defined and NisdMarkerEndSeq is defined
-      failed_when: gcMarkerEndSeq != NisdMarkerEndSeq
+      when: gcMarkerEndSeq is defined and NisdMarkerEndSeq is defined
+      failed_when: (gcMarkerEndSeq != NisdMarkerEndSeq) or (gcMarkerEndSeq is none)
 

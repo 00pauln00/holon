@@ -501,7 +501,6 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO):
 
     if delDBO:
         cmd.append('-dd')
-
     process_popen = subprocess.Popen(cmd, stdout = fp, stderr = fp)
 
     #Check if gcService process exited with error
@@ -1120,11 +1119,19 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value):
         newPath = os.path.join(jsonPath, chunk, "DV")
         json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
         vdev = str(json_data['Vdev'])
-        cmd = [bin_path, '-bucketName', "paroscale-test", '-operation', "list", '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', "m", '-l', logFile]
+
+        cmd = [bin_path, '-bucketName', 'paroscale-test', '-operation', 'list', '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', 'm', '-l', logFile]
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        exit_code = process.wait()
+        if exit_code == 0:
+            print("Process completed successfully.")
+        else:
+            error_message = print("Process failed with exit code {exit_code}.")
+            raise RuntimeError(error_message)
+
         # Read the output and error
         stdout, stderr = process.communicate()
-        
+
         # Check if any file is found
         GcSeq = check_if_mType_Present(vdev, chunk, stdout, "gc")
         NisdSeq = check_if_mType_Present(vdev, chunk, stdout, "nisd")
