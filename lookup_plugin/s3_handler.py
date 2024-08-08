@@ -288,16 +288,6 @@ def start_minio_server(cluster_params, dirName):
             genericcmdobj.recipe_json_dump(recipe_conf)
         else:
             logging.info("MinIO server process not found")
-     # Run the command
-    result = subprocess.run(['ps', '-ef'], stdout=subprocess.PIPE, text=True)
-    
-    # Filter the output for the keyword 'minio'
-    processes = result.stdout.splitlines()
-    filtered_processes = [line for line in processes if 'minio' in line]
-    
-    # Print the filtered output
-    for process in filtered_processes:
-        print(process)
 
     return process_popen
 
@@ -417,7 +407,6 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values, remo
               cmd.append('-r=true')
 
     print("cmd: ", cmd)
-
     # Launch the subprocess with the constructed command
     process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
 
@@ -425,7 +414,7 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values, remo
     exit_code = process.wait()
     # Close the log file
     fp.close()
-    print(" Command to run dummygenerator ", cmd)
+
     # Check if the process finished successfully (exit code 0)
     if exit_code == 0:
         print("Process completed successfully.")
@@ -505,14 +494,13 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO):
     s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
     downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
     cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120',
-              '-l', '4', '-p', '7500', '-b', 'paroscale-test']
+              '-l', '2', '-p', '7500', '-b', 'paroscale-test']
 
     if dryRun:
         cmd.append('-dr')
 
     if delDBO:
         cmd.append('-dd')
-    print("GCservice Command ", cmd)
     process_popen = subprocess.Popen(cmd, stdout = fp, stderr = fp)
 
     #Check if gcService process exited with error
@@ -1131,28 +1119,20 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value):
         newPath = os.path.join(jsonPath, chunk, "DV")
         json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
         vdev = str(json_data['Vdev'])
-        for i in range(10):
-            cmd = [bin_path, '-bucketName', 'paroscale-test', '-operation', 'list', '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', 'm', '-l', logFile]
-            print("command To list Marker Files ", cmd)
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-            exit_code = process.wait()
-            if exit_code == 0:
-                print("Process completed successfully.")
-            else:
-                error_message = print("Process failed with exit code {exit_code}.")
-                raise RuntimeError(error_message)
+        cmd = [bin_path, '-bucketName', 'paroscale-test', '-operation', 'list', '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', 'm', '-l', logFile]
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        exit_code = process.wait()
+        if exit_code == 0:
+            print("Process completed successfully.")
+        else:
+            error_message = print("Process failed with exit code {exit_code}.")
+            raise RuntimeError(error_message)
 
-            # Read the output and error
-            stdout, stderr = process.communicate()
-            print("List output : ", stdout)
-            if stdout:
-                print(" stdout in if Loop  ", stdout)
-                break
-            else:
-                print(" stdout in else Loop  ", stdout)
-                time.sleep(1)
-        print("Going to get Sequence ") 
+        # Read the output and error
+        stdout, stderr = process.communicate()
+        print("List output : ", stdout)
+
         # Check if any file is found
         GcSeq = check_if_mType_Present(vdev, chunk, stdout, "gc")
         NisdSeq = check_if_mType_Present(vdev, chunk, stdout, "nisd")
@@ -1160,15 +1140,12 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value):
         match value:
             case 'gc':
                 MSeq.extend([GcSeq, None])
-                print(" Marker For gc : ",MSeq)
                 return MSeq
             case 'nisd':
                 MSeq.extend([None, NisdSeq])
-                print(" Marker For nisd : ",MSeq)
                 return MSeq
             case 'Both':
                 MSeq.extend([GcSeq, NisdSeq])
-                print(" Marker For Both : ",MSeq)
                 return MSeq
     else:
         print("Invalid path or directory not found.")
