@@ -7,7 +7,7 @@
 
   tasks:
   - block:
-    - name: "{{ recipe_name }}: Create 4.5GB Partition"
+    - name: "{{ recipe_name }}: Create 20GB Partition"
       debug:
         msg: "{{ lookup('s3_handler', 'createPartition', wantlist=True) }}"
 
@@ -76,6 +76,286 @@
          msg:
           - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
 
+    - name: "create DBIs with vblk entry for chunk 3"
+      vars:
+         input_param: {
+                  "chunk": "3",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+    
+    - name: "create DBIs with vblk entry for chunk 4"
+      vars:
+         input_param: {
+                  "chunk": "4",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+    
+    - name: "create DBIs with vblk entry for chunk 5"
+      vars:
+         input_param: {
+                  "chunk": "5",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+    
+    - name: "create DBIs with vblk entry for chunk 6"
+      vars:
+         input_param: {
+                  "chunk": "6",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+
+    - name: "create DBIs with vblk entry for chunk 7"
+      vars:
+         input_param: {
+                  "chunk": "7",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+
+    - name: "create DBIs with vblk entry for chunk 8"
+      vars:
+         input_param: {
+                  "chunk": "8",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+
+    - name: "create DBIs with vblk entry for chunk 9"
+      vars:
+         input_param: {
+                  "chunk": "9",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+
+    - name: "create DBIs with vblk entry for chunk 10"
+      vars:
+         input_param: {
+                  "chunk": "10",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+
+    - name: "create DBIs with vblk entry for chunk 11"
+      vars:
+         input_param: {
+                  "chunk": "11",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+
+    - name: "create DBIs with vblk entry for chunk 12"
+      vars:
+         input_param: {
+                  "chunk": "12",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+
     - name: "{{ recipe_name }}: Start GCService"
       vars:
         dryRun: False
@@ -85,50 +365,304 @@
          msg:
           - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 1"
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 1."
       vars:
          Chunk: "1"
+         mType: "Both"
          stage: "wait_for_gc_marker"
-         partition: True
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
       debug:
-        msg: "Waiting for GC Marker File"
-      until: lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, partition, wantlist=True) == true
-      retries: 500
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
       delay: 2
 
-    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 2"
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 2."
       vars:
          Chunk: "2"
+         mType: "Both"
          stage: "wait_for_gc_marker"
-         partition: True
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
       debug:
-        msg: "Waiting for GC Marker File"
-      until: lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, partition, wantlist=True) == true
-      retries: 500
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 3"
+      vars:
+         Chunk: "3"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 4"
+      vars:
+         Chunk: "4"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 5"
+      vars:
+         Chunk: "5"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 6"
+      vars:
+         Chunk: "6"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 7"
+      vars:
+         Chunk: "7"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+    
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 8"
+      vars:
+         Chunk: "8"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+    
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 9"
+      vars:
+         Chunk: "9"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 10"
+      vars:
+         Chunk: "10"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+    
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 11"
+      vars:
+         Chunk: "11"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 12"
+      vars:
+         Chunk: "12"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
       delay: 2
 
     - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 1"
       vars:
          Chunk: "1"
-         partition: True
-         gcMarkerEndSeq: "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, partition, wantlist=True) }}"
-         NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
       debug:
-        msg: "Wait until marker values gets match"
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
       until: gcMarkerEndSeq == NisdMarkerEndSeq
-      retries: 500
+      retries: 300
       delay: 2
 
-    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 2"
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 2."
       vars:
          Chunk: "2"
-         partition: True
-         gcMarkerEndSeq: "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, partition, wantlist=True) }}"
-         NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
       debug:
-        msg: "Wait until marker values gets match"
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
       until: gcMarkerEndSeq == NisdMarkerEndSeq
-      retries: 500
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 3."
+      vars:
+         Chunk: "3"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 4."
+      vars:
+         Chunk: "4"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 5."
+      vars:
+         Chunk: "5"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+    
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 6."
+      vars:
+         Chunk: "6"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 7."
+      vars:
+         Chunk: "7"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 8."
+      vars:
+         Chunk: "8"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 9."
+      vars:
+         Chunk: "9"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 10."
+      vars:
+         Chunk: "10"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 11."
+      vars:
+         Chunk: "11"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 12."
+      vars:
+         Chunk: "12"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
       delay: 2
 
     - name: "Get the json path"
@@ -150,11 +684,13 @@
         gc_process_status: "{{ jsondata.gcService_process.process_status | default('') }}"
       when: jsondata.gcService_process is defined
 
-    - name: Kill the GC Service process if it was found
-      shell: kill -9 {{ gc_process_pid }}
-      when: gc_process_pid is defined and gc_process_pid | length > 0 and (gc_process_status == "sleeping" or gc_process_status == "disk-sleep" or gc_process_status == "running")
+    - name: "{{ recipe_name }}: pause the GC process."
+      vars:
+         pid : "{{ gc_process_pid | int }}"
+      debug:
+        msg: "{{ lookup('s3_handler', 'pauseGCProcess', pid, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: create a 2GB file."
+    - name: "{{ recipe_name }}: create a 18GB file."
       debug:
          msg:
           - "{{ lookup('s3_handler', 'createFile', wantlist=True) }}"
@@ -215,62 +751,588 @@
          msg:
           - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: Start GCService"
+    - name: "update DBIs with vblk entry for chunk 3"
       vars:
-        dryRun: False
-        delDBO: True
-        partition: True
+         input_param: {
+                  "chunk": "3",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+    
+    - name: "unpdate DBIs with vblk entry for chunk 4"
+      vars:
+         input_param: {
+                  "chunk": "4",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+    
+    - name: "update DBIs with vblk entry for chunk 5"
+      vars:
+         input_param: {
+                  "chunk": "5",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+    
+    - name: "update DBIs with vblk entry for chunk 6"
+      vars:
+         input_param: {
+                  "chunk": "6",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+    
+    - name: "create DBIs with vblk entry for chunk 7"
+      vars:
+         input_param: {
+                  "chunk": "7",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 1"
+    - name: "create DBIs with vblk entry for chunk 8"
+      vars:
+         input_param: {
+                  "chunk": "8",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+
+    - name: "create DBIs with vblk entry for chunk 9"
+      vars:
+         input_param: {
+                  "chunk": "9",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+
+    - name: "create DBIs with vblk entry for chunk 10"
+      vars:
+         input_param: {
+                  "chunk": "10",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+
+    - name: "create DBIs with vblk entry for chunk 11"
+      vars:
+         input_param: {
+                  "chunk": "11",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+
+    - name: "create DBIs with vblk entry for chunk 12"
+      vars:
+         input_param: {
+                  "chunk": "12",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "strideWidth": "",
+                  "overlapSeq": "",
+                  "numOfSet": "",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "s3configPath": "",
+                  "punchwholechunk": "false",
+                 }
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Resume the GC process."
+      vars:
+         pid : "{{ gc_process_pid | int }}"
+      debug:
+        msg: "{{ lookup('s3_handler', 'resumeGCProcess', pid, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 1."
       vars:
          Chunk: "1"
+         mType: "Both"
          stage: "wait_for_gc_marker"
-         partition: True
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
       debug:
-        msg: "Waiting for GC Marker File"
-      until: lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, partition, wantlist=True) == true
-      retries: 500
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
       delay: 2
 
     - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 2"
       vars:
          Chunk: "2"
+         mType: "Both"
          stage: "wait_for_gc_marker"
-         partition: True
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
       debug:
-        msg: "Waiting for GC Marker File"
-      until: lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, partition, wantlist=True) == true
-      retries: 500
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+    
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 3"
+      vars:
+         Chunk: "3"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
       delay: 2
 
-    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 1"
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 4"
+      vars:
+         Chunk: "4"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 5"
+      vars:
+         Chunk: "5"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 6"
+      vars:
+         Chunk: "6"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 7"
+      vars:
+         Chunk: "7"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+    
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 8"
+      vars:
+         Chunk: "8"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+    
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 9"
+      vars:
+         Chunk: "9"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 10"
+      vars:
+         Chunk: "10"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+    
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 11"
+      vars:
+         Chunk: "11"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present for chunk 12"
+      vars:
+         Chunk: "12"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 1."
       vars:
          Chunk: "1"
-         partition: True
-         gcMarkerEndSeq: "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, partition, wantlist=True) }}"
-         NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
       debug:
-        msg: "Wait until marker values gets match"
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
       until: gcMarkerEndSeq == NisdMarkerEndSeq
-      retries: 500
+      retries: 300
       delay: 2
 
-    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 2"
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 2."
       vars:
          Chunk: "2"
-         partition: True
-         gcMarkerEndSeq: "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, partition, wantlist=True) }}"
-         NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
       debug:
-        msg: "Wait until marker values gets match"
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
       until: gcMarkerEndSeq == NisdMarkerEndSeq
-      retries: 500
+      retries: 300
       delay: 2
 
-    - name: "{{ recipe_name }}: delete the partition."
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 3."
+      vars:
+         Chunk: "3"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
       debug:
-         msg:
-          - "{{ lookup('s3_handler', 'deletePartition', wantlist=True) }}"
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 4."
+      vars:
+         Chunk: "4"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 5."
+      vars:
+         Chunk: "5"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+    
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 6."
+      vars:
+         Chunk: "6"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 7."
+      vars:
+         Chunk: "7"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 8."
+      vars:
+         Chunk: "8"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 9."
+      vars:
+         Chunk: "9"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 10."
+      vars:
+         Chunk: "10"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 11."
+      vars:
+         Chunk: "11"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match for chunk 12."
+      vars:
+         Chunk: "12"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2

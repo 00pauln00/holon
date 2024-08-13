@@ -12,6 +12,9 @@ from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
 import pwd
 import grp
+import psutil
+import signal
+import logging
 
 Marker_vdev = 0
 Marker_chunk = 1
@@ -46,7 +49,7 @@ def create_gc_partition(cluster_params):
     groupname = group_info.gr_name
 
     try:
-        result = subprocess.run(f"dd if=/dev/zero of={disk_ipath} bs=32M count=144", check=True, shell=True)
+        result = subprocess.run(f"dd if=/dev/zero of={disk_ipath} bs=64M count=320", check=True, shell=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
@@ -92,10 +95,10 @@ def create_file(cluster_params):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     log_dir = "%s/%s/" % (base_dir, raft_uuid)
-    filename = os.path.join(log_dir, 'gc/gc_download/file.txt');
+    filename = os.path.join(log_dir, 'gc/gc_download/file.txt')
 
     try:
-        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=32M count=64", check=True, shell=True)
+        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=64M count=288", check=True, shell=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
@@ -120,6 +123,62 @@ def delete_partition(cluster_params):
             except subprocess.CalledProcessError as e:
                 print(f"Error: {e}")
             break
+
+def pause_gcProcess(pid):
+    try:
+        pid = int(pid)  # Convert string pid to integer
+    except ValueError:
+        logging.error(f"pause_gc_process: Invalid PID format: {pid}")
+        return -1
+
+    try:
+        process_obj = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        logging.error(f"pause_process: Process with PID {pid} not found")
+        return -1
+
+    logging.info(f"Pausing process {pid} by sending SIGSTOP")
+    try:
+        process_obj.send_signal(signal.SIGSTOP)
+        return 0
+    except PermissionError as e:
+        logging.error(f"resume_process: Insufficient permissions to send signal: {e}")
+        return -1
+    except psutil.NoSuchProcess:  # Handle cases where process terminates during resume
+        logging.error(f"resume_process: Process {pid} terminated unexpectedly")
+        return -1
+    except Exception as e:  # Catch unexpected errors
+        logging.error(f"resume_process: Unexpected error: {e}")
+        return -1
+
+def resume_gcProcess(pid):
+    try:
+        pid = int(pid)  # Convert string pid to integer
+    except ValueError:
+        logging.error(f"pause_gc_process: Invalid PID format: {pid}")
+        return -1
+
+    try:
+        process = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        logging.error(f"pause_process: Process with PID {pid} not found")
+        return -1
+
+    logging.info(f"Resuming process {pid} by sending SIGCONT")
+
+    try:
+        process.send_signal(signal.SIGCONT)
+        return 0
+    except PermissionError as e:
+        logging.error(f"resume_process: Insufficient permissions to send signal: {e}")
+        return -1
+    except psutil.NoSuchProcess:  # Handle cases where process terminates during resume
+        logging.error(f"resume_process: Process {pid} terminated unexpectedly")
+        return -1
+    except Exception as e:  # Catch unexpected errors
+        logging.error(f"resume_process: Unexpected error: {e}")
+        return -1
+
 
 def multiple_iteration_params(cluster_params, dirName, input_values):
     base_dir = cluster_params['base_dir']
@@ -1218,7 +1277,7 @@ def check_if_mType_Present(vdev, chunk, mList, mType):
             return parts[2]
     return None
 
-def GetSeqOfMarker(cluster_params, dirName, chunk, value, partition):
+def GetSeqOfMarker(cluster_params, dirName, chunk, value):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -1231,22 +1290,6 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value, partition):
         newPath = os.path.join(jsonPath, chunk, "DV")
         json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
         vdev = str(json_data['Vdev'])
-
-        if not partition and s3Support == "true":
-            downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
-        elif partition and s3Support == "true":
-            downloadPath = os.path.join(base_dir, raft_uuid, "gc/gc_download", vdev, "m")
-        else:
-            downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
-
-        file_pattern = os.path.join(downloadPath, '*', '*.gc')
-        files = glob.glob(file_pattern, recursive=True)
-
-        files = glob.glob(file_pattern, recursive=True)
-        # Check if any file is found
-        if files:
-            print("GC Marker file found in a directory.")
-            return True
 
         cmd = [bin_path, '-bucketName', 'paroscale-test', '-operation', 'list', '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', 'm', '-l', logFile]
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -1263,6 +1306,8 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value, partition):
         # Check if any file is found
         GcSeq = check_if_mType_Present(vdev, chunk, stdout, "gc")
         NisdSeq = check_if_mType_Present(vdev, chunk, stdout, "nisd")
+        print("GcSeq : ", GcSeq)
+        print("NisdSeq : ", NisdSeq)
         MSeq = []
         match value:
             case 'gc':
@@ -1274,50 +1319,9 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value, partition):
             case 'Both':
                 MSeq.extend([GcSeq, NisdSeq])
                 return MSeq
-            print("No GC Marker file found in a directory.")
-            return False
     else:
         print("Invalid path or directory not found.")
         return False
-
-def getGCMarkerFileSeq(cluster_params, dirName, chunk, partition):
-    base_dir = cluster_params['base_dir']
-    raft_uuid = cluster_params['raft_uuid']
-    s3Support = cluster_params['s3Support']
-    jsonPath = get_dir_path(cluster_params, dirName)
-    if jsonPath != None:
-        newPath = jsonPath + "/" + chunk + "/DV"
-        json_data = load_json_contents(newPath + "/dummy_generator.json")
-        vdev = str(json_data['Vdev'])
-
-    # Define the root path where the search should start
-    if not partition and s3Support == "true":
-       downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
-    elif partition and s3Support == "true":
-       downloadPath = os.path.join(base_dir, raft_uuid, "gc/gc_download", vdev, "m")
-    else:
-       downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
-
-    # Use glob.glob to find all .gcmrk files in any subdirectories under the constructed path
-    file_pattern = os.path.join(downloadPath, '**', '*.gc')  # '**' allows recursive search
-    files = glob.glob(file_pattern, recursive=True)
-    # Sort files based on creation time (most recent first)
-    files.sort(key=lambda f: os.path.getctime(f), reverse=True)
-    if files:
-        endSeq = extract_endSeq(os.path.basename(files[0]))
-        return endSeq
-    else:
-        return -1
-
-def extract_endSeq(filepath):
-    filename = os.path.basename(filepath)
-    parts = filename.split('.')
-    last_part = parts[-2]  # Get the last part of the filename
-    if last_part.isdigit():
-        return int(last_part)
-    else:
-        print("Invalid path or directory not found.")
-        return None
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
@@ -1370,6 +1374,14 @@ class LookupModule(LookupBase):
 
         elif operation == "deletePartition":
             delete_partition(cluster_params)
+
+        elif operation == "pauseGCProcess":
+            pid = terms[1]
+            pause_gcProcess(pid)
+        
+        elif operation == "resumeGCProcess":
+            pid = terms[1]
+            resume_gcProcess(pid)
 
         elif operation == "get_DBI_fileNames":
             Chunk = terms[1]
