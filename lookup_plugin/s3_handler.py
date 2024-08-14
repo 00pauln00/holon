@@ -15,6 +15,7 @@ import grp
 import psutil
 import signal
 import logging
+from multiprocessing import Pool
 
 Marker_vdev = 0
 Marker_chunk = 1
@@ -98,7 +99,7 @@ def create_file(cluster_params):
     filename = os.path.join(log_dir, 'gc/gc_download/file.txt')
 
     try:
-        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=64M count=288", check=True, shell=True)
+        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=64M count=287", check=True, shell=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
@@ -178,6 +179,46 @@ def resume_gcProcess(pid):
     except Exception as e:  # Catch unexpected errors
         logging.error(f"resume_process: Unexpected error: {e}")
         return -1
+
+def run_dummyData_cmd(command):
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    return result.stdout, result.stderr
+
+def generate_dbi_dbo_concurrently(cluster_params, dirName):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/dummyData' % binary_dir
+    path = "%s/%s/%s/" % (base_dir, raft_uuid, dirName)
+    if not os.path.exists(path):
+        # Create the directory path
+        try:
+            os.makedirs(path, mode=0o777)
+        except Exception as e:
+            print(f"An error occurred while creating '{path}': {e}")
+
+    s3configPath = '%s/s3.config.example' % binary_dir
+    s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
+    
+    commands = [                                                                                                                  
+        ["bin_path -c 2 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
+        ["bin_path -c 3 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
+        ["bin_path -c 4 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
+        ["bin_path -c 5 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
+        ["bin_path -c 6 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
+        ["bin_path -c 7 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
+        ["bin_path -c 8 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
+        ["bin_path -c 9 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
+        ["bin_path -c 10 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
+        ["bin_path -c 11 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
+    ]
+    
+    with Pool() as pool:
+        results = pool.map(run_dummyData_cmd, commands)
+        for stdout, stderr in results:
+            print(f"stdout: {stdout}")
+            print(f"stderr: {stderr}")
 
 
 def multiple_iteration_params(cluster_params, dirName, input_values):
@@ -1382,6 +1423,9 @@ class LookupModule(LookupBase):
         elif operation == "resumeGCProcess":
             pid = terms[1]
             resume_gcProcess(pid)
+
+        elif operation == "parallel_data_generation":
+            generate_dbi_dbo_concurrently(cluster_params, dirName)
 
         elif operation == "get_DBI_fileNames":
             Chunk = terms[1]
