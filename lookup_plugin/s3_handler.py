@@ -96,10 +96,10 @@ def create_file(cluster_params):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     log_dir = "%s/%s/" % (base_dir, raft_uuid)
-    filename = os.path.join(log_dir, 'gc/gc_download/file.txt')
+    filename = os.path.join(log_dir, 'gc/gc_download/file.img')
 
     try:
-        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=64M count=287", check=True, shell=True)
+        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=32M count=575", check=True, shell=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
@@ -181,8 +181,11 @@ def resume_gcProcess(pid):
         return -1
 
 def run_dummyData_cmd(command):
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    return result.stdout, result.stderr
+    print("command", command)
+    try:
+        result = subprocess.run(command, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
 
 def generate_dbi_dbo_concurrently(cluster_params, dirName):
     base_dir = cluster_params['base_dir']
@@ -200,26 +203,17 @@ def generate_dbi_dbo_concurrently(cluster_params, dirName):
 
     s3configPath = '%s/s3.config.example' % binary_dir
     s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
-    
-    commands = [                                                                                                                  
-        ["bin_path -c 2 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
-        ["bin_path -c 3 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
-        ["bin_path -c 4 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
-        ["bin_path -c 5 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
-        ["bin_path -c 6 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
-        ["bin_path -c 7 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
-        ["bin_path -c 8 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
-        ["bin_path -c 9 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
-        ["bin_path -c 10 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
-        ["bin_path -c 11 -mp 1024 -mv 2097152 -p path -pa 6000 -pp 0 -ps 2048 -seed 1 -ss 2097205 -t 1 -va 2097152 -vp 100000 -vdev 643eef86-e42b-11ee-8678-22abb648e432 -bs 4 -bsm 32 -vs 0 -s3config s3configPath -s3log s3LogFile"],
-    ]
-    
-    with Pool() as pool:
-        results = pool.map(run_dummyData_cmd, commands)
-        for stdout, stderr in results:
-            print(f"stdout: {stdout}")
-            print(f"stderr: {stderr}")
 
+    commands = []
+    for chunk in range(2, 14):
+        command = [bin_path, "-c", str(chunk), "-mp", "1024", "-mv", "2097152", "-p", path, "-pa", "6000", 
+                   "-pp", "0", "-ps", "2048", "-seed", "1", "-ss", "0", "-t", "1", "-va", "2097152", 
+                   "-vp", "100000", "-vdev", "643eef86-e42b-11ee-8678-22abb648e432", "-bs", "4", "-bsm", "32", 
+                   "-vs", "0", "-s3config", s3configPath, "-s3log", s3LogFile]
+        commands.append(command)
+
+    with Pool(processes=12) as pool:
+        results = pool.map(run_dummyData_cmd, commands)
 
 def multiple_iteration_params(cluster_params, dirName, input_values):
     base_dir = cluster_params['base_dir']
@@ -689,11 +683,7 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition):
 
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(gcLogFile, "a+")
-
-    path = get_dir_path(cluster_params, dirName)
     bin_path = '%s/GCService' % binary_dir
-    matches = re.findall(r'[\w-]{36}', path)
-    vdev_uuid = matches[-1] if matches else None
 
     cmd = []
     s3config = '%s/s3.config.example' % binary_dir
@@ -704,6 +694,12 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition):
         downloadPath = "%s/%s/gc/gc_download" % (base_dir, raft_uuid)
     else:
         downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
+        if not os.path.exists(downloadPath):
+            # Create the directory path
+            try:
+                os.mkdir(downloadPath, 0o777)
+            except Exception as e:
+                print(f"An error occurred while creating '{downloadPath}': {e}")
     
     cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120',
               '-l', '4', '-p', '7500', '-b', 'paroscale-test']
@@ -796,7 +792,6 @@ def start_data_validate(cluster_params, dirName, chunk):
 
     newPath = jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json"
     json_data = load_json_contents(newPath)
-    dbi_input_path = str(json_data['DbiPath'])
     vdev = str(json_data['Vdev'])
 
     path = get_dir_path(cluster_params, dirName)

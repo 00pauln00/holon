@@ -75,9 +75,10 @@
       vars:
         dryRun: False
         delDBO: True
+        partition: False
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Wait until GC marker file present."
       vars:
