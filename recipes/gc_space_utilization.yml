@@ -103,3 +103,8 @@
       until: gcMarkerEndSeq == NisdMarkerEndSeq
       retries: 300
       delay: 2
+
+    - name: "{{ recipe_name }}: delete the partition."
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'deletePartition', wantlist=True) }}"
