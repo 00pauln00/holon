@@ -99,7 +99,7 @@ def create_file(cluster_params):
     filename = os.path.join(log_dir, 'gc/gc_download/file.img')
 
     try:
-        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=32M count=575", check=True, shell=True)
+        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=64M count=287", check=True, shell=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
@@ -205,7 +205,7 @@ def generate_dbi_dbo_concurrently(cluster_params, dirName):
     s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
 
     commands = []
-    for chunk in range(2, 14):
+    for chunk in range(1, 13):
         command = [bin_path, "-c", str(chunk), "-mp", "1024", "-mv", "2097152", "-p", path, "-pa", "6000", 
                    "-pp", "0", "-ps", "2048", "-seed", "1", "-ss", "0", "-t", "1", "-va", "2097152", 
                    "-vp", "100000", "-vdev", "643eef86-e42b-11ee-8678-22abb648e432", "-bs", "4", "-bsm", "32", 
