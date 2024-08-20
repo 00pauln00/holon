@@ -187,7 +187,7 @@ def run_dummyData_cmd(command):
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
-def generate_dbi_dbo_concurrently(cluster_params, dirName):
+def generate_dbi_dbo_concurrently(cluster_params, dirName, no_of_chunks):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -205,14 +205,14 @@ def generate_dbi_dbo_concurrently(cluster_params, dirName):
     s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
 
     commands = []
-    for chunk in range(1, 13):
+    for chunk in range(1, no_of_chunks + 1):
         command = [bin_path, "-c", str(chunk), "-mp", "1024", "-mv", "2097152", "-p", path, "-pa", "6000", 
                    "-pp", "0", "-ps", "2048", "-seed", "1", "-ss", "0", "-t", "1", "-va", "2097152", 
                    "-vp", "100000", "-vdev", "643eef86-e42b-11ee-8678-22abb648e432", "-bs", "4", "-bsm", "32", 
                    "-vs", "0", "-s3config", s3configPath, "-s3log", s3LogFile]
         commands.append(command)
 
-    with Pool(processes=12) as pool:
+    with Pool(processes = no_of_chunks) as pool:
         results = pool.map(run_dummyData_cmd, commands)
 
 def multiple_iteration_params(cluster_params, dirName, input_values):
@@ -702,7 +702,7 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition):
                 print(f"An error occurred while creating '{downloadPath}': {e}")
     
     cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120',
-              '-l', '4', '-p', '7500', '-b', 'paroscale-test']
+              '-l', '2', '-p', '7500', '-b', 'paroscale-test']
 
     if dryRun:
         cmd.append('-dr')
@@ -1420,7 +1420,8 @@ class LookupModule(LookupBase):
             resume_gcProcess(pid)
 
         elif operation == "parallel_data_generation":
-            generate_dbi_dbo_concurrently(cluster_params, dirName)
+            no_of_chunks = terms[1]
+            generate_dbi_dbo_concurrently(cluster_params, dirName, no_of_chunks)
 
         elif operation == "get_DBI_fileNames":
             Chunk = terms[1]

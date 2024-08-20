@@ -54,18 +54,19 @@
 
     - name: "{{ recipe_name }}: pause the GC process."
       vars:
-         pid : "{{ gc_process_pid | int }}"
+        pid : "{{ gc_process_pid | int }}"
       debug:
         msg: "{{ lookup('s3_handler', 'pauseGCProcess', pid, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: create a 18GB file."
       debug:
-         msg:
-          - "{{ lookup('s3_handler', 'createFile', wantlist=True) }}"
+        msg: "{{ lookup('s3_handler', 'createFile', wantlist=True) }}"
 
     - name: "{{ recipe_name }}: generate data for 12 chunks parallely"
+      vars:
+        no_of_chunks : 12
       debug:
-        msg: "{{ lookup('s3_handler', 'parallel_data_generation', wantlist=True) }}"
+        msg: "{{ lookup('s3_handler', 'parallel_data_generation', no_of_chunks, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Resume the GC process."
       vars:
