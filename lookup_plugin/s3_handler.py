@@ -50,7 +50,7 @@ def create_gc_partition(cluster_params):
     groupname = group_info.gr_name
 
     try:
-        result = subprocess.run(f"dd if=/dev/zero of={disk_ipath} bs=64M count=320", check=True, shell=True)
+        result = subprocess.run(f"dd if=/dev/zero of={disk_ipath} bs=64M count=250", check=True, shell=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
@@ -99,7 +99,7 @@ def create_file(cluster_params):
     filename = os.path.join(log_dir, 'gc/gc_download/file.img')
 
     try:
-        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=64M count=287", check=True, shell=True)
+        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=64M count=217", check=True, shell=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
@@ -702,7 +702,7 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition):
                 print(f"An error occurred while creating '{downloadPath}': {e}")
     
     cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120',
-              '-l', '2', '-p', '7500', '-b', 'paroscale-test']
+              '-l', '4', '-p', '7500', '-b', 'paroscale-test']
 
     if dryRun:
         cmd.append('-dr')
