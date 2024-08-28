@@ -50,7 +50,7 @@ def create_gc_partition(cluster_params):
     groupname = group_info.gr_name
 
     try:
-        result = subprocess.run(f"dd if=/dev/zero of={disk_ipath} bs=64M count=250", check=True, shell=True)
+        result = subprocess.run(f"dd if=/dev/zero of={disk_ipath} bs=64M count=225", check=True, shell=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
@@ -99,7 +99,7 @@ def create_file(cluster_params):
     filename = os.path.join(log_dir, 'gc/gc_download/file.img')
 
     try:
-        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=64M count=217", check=True, shell=True)
+        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=64M count=192", check=True, shell=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
@@ -807,9 +807,9 @@ def start_data_validate(cluster_params, dirName, chunk):
     if s3Support == "true":
         dvPath = "%s/%s/dv-downloaded-obj" % (base_dir, raft_uuid)
         s3config = '%s/s3.config.example' % binary_dir
-        process = subprocess.Popen([bin_path, '-s', modified_path, '-d', dvPath, '-c', chunk, '-v', vdev, '-s3config', s3config, '-b', 'paroscale-test', '-l', logFile, '-ll', '4'])
+        process = subprocess.Popen([bin_path, '-d', dvPath, '-c', chunk, '-v', vdev, '-s3config', s3config, '-b', 'paroscale-test', '-l', logFile, '-ll', '4'])
     else:
-        process = subprocess.Popen([bin_path, '-s', modified_path, '-d', modified_path, '-c', chunk, '-v', vdev, '-l', logFile, '-ll', '4'])
+        process = subprocess.Popen([bin_path, '-d', modified_path, '-c', chunk, '-v', vdev, '-l', logFile, '-ll', '4'])
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()

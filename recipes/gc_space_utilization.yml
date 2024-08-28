@@ -4,7 +4,7 @@
   vars:
      recipe_name: "gc_space_utilization"
      parent: None
-     chunks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+     chunks: [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
   tasks:
   - block:
@@ -64,7 +64,7 @@
 
     - name: "{{ recipe_name }}: generate data for 10 chunks parallely"
       vars:
-        no_of_chunks : 10
+        no_of_chunks : 9
       debug:
         msg: "{{ lookup('s3_handler', 'parallel_data_generation', no_of_chunks, wantlist=True) }}"
 
