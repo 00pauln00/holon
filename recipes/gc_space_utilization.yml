@@ -8,7 +8,7 @@
 
   tasks:
   - block:
-    - name: "{{ recipe_name }}: Create 15GB Partition"
+    - name: "{{ recipe_name }}: Create 13.5GB Partition"
       debug:
         msg: "{{ lookup('s3_handler', 'createPartition', wantlist=True) }}"
 
@@ -58,11 +58,11 @@
       debug:
         msg: "{{ lookup('s3_handler', 'pauseGCProcess', pid, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: create a 13GB file."
+    - name: "{{ recipe_name }}: create a 11.5GB file."
       debug:
         msg: "{{ lookup('s3_handler', 'createFile', wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: generate data for 10 chunks parallely"
+    - name: "{{ recipe_name }}: generate data for 9 chunks parallely"
       vars:
         no_of_chunks : 9
       debug:
