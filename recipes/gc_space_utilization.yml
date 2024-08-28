@@ -4,11 +4,11 @@
   vars:
      recipe_name: "gc_space_utilization"
      parent: None
-     chunks: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+     chunks: [1, 2, 3, 4, 5, 6, 7, 8]
 
   tasks:
   - block:
-    - name: "{{ recipe_name }}: Create 13.5GB Partition"
+    - name: "{{ recipe_name }}: Create 12GB Partition"
       debug:
         msg: "{{ lookup('s3_handler', 'createPartition', wantlist=True) }}"
 
@@ -58,13 +58,13 @@
       debug:
         msg: "{{ lookup('s3_handler', 'pauseGCProcess', pid, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: create a 11.5GB file."
+    - name: "{{ recipe_name }}: create a 10GB file."
       debug:
         msg: "{{ lookup('s3_handler', 'createFile', wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: generate data for 9 chunks parallely"
+    - name: "{{ recipe_name }}: generate data for 8 chunks parallely"
       vars:
-        no_of_chunks : 9
+        no_of_chunks : 8
       debug:
         msg: "{{ lookup('s3_handler', 'parallel_data_generation', no_of_chunks, wantlist=True) }}"
 
