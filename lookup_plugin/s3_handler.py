@@ -258,7 +258,7 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
     cmd = [
         bin_path, "-c", input_values['chunk'], "-mp", input_values['maxPunches'], "-mv", input_values['maxVblks'], "-p", path,
         "-pa", input_values['punchAmount'], "-pp", input_values['punchesPer'], "-ps", input_values['maxPunchSize'], "-seed", input_values['seed'],
-        "-ss", input_values['seqStart'], "-t", input_values['genType'], '-va', input_values['vbAmount'], '-vp', input_values['vblkPer'],
+        "-ss", input_values['seqStart'], "-t", input_values['genType'], '-va', input_values['vbAmount'], '-vp', input_values['vblkPer'], '-l', '2',
         "-vdev", input_values["vdev"], "-bs", input_values['blockSize'], "-bsm", input_values['blockSizeMax'], "-vs", input_values['startVblk']
     ]
 
