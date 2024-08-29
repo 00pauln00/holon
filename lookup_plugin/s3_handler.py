@@ -702,7 +702,7 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition):
                 print(f"An error occurred while creating '{downloadPath}': {e}")
     
     cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120',
-              '-l', '3', '-p', '7500', '-b', 'paroscale-test']
+              '-l', '4', '-p', '7500', '-b', 'paroscale-test']
 
     if dryRun:
         cmd.append('-dr')
@@ -807,9 +807,9 @@ def start_data_validate(cluster_params, dirName, chunk):
     if s3Support == "true":
         dvPath = "%s/%s/dv-downloaded-obj" % (base_dir, raft_uuid)
         s3config = '%s/s3.config.example' % binary_dir
-        process = subprocess.Popen([bin_path, '-s', modified_path, '-d', dvPath, '-c', chunk, '-v', vdev, '-s3config', s3config, '-b', 'paroscale-test', '-l', logFile, '-ll', '2'])
+        process = subprocess.Popen([bin_path, '-d', dvPath, '-c', chunk, '-v', vdev, '-s3config', s3config, '-b', 'paroscale-test', '-l', logFile, '-ll', '2'])
     else:
-        process = subprocess.Popen([bin_path, '-s', modified_path, '-d', modified_path, '-c', chunk, '-v', vdev, '-l', logFile, '-ll', '2'])
+        process = subprocess.Popen([bin_path, '-d', modified_path, '-c', chunk, '-v', vdev, '-l', logFile, '-ll', '2'])
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
