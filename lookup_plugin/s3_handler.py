@@ -99,9 +99,21 @@ def create_file(cluster_params):
     filename = os.path.join(log_dir, 'gc/gc_download/file.img')
 
     try:
-        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=64M count=172", check=True, shell=True)
+        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=64M count=25", check=True, shell=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
+
+def delete_file(cluster_params):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    log_dir = "%s/%s/" % (base_dir, raft_uuid)
+    filename = os.path.join(log_dir, 'gc/gc_download/file.img')
+
+    if os.path.exists(filename):
+        os.remove(filename)
+        print(f"The file {filename} has been deleted successfully.")
+    else:
+        print(f"The file {filename} does not exist.")
 
 def delete_partition(cluster_params):
     base_dir = cluster_params['base_dir']
@@ -1408,6 +1420,9 @@ class LookupModule(LookupBase):
 
         elif operation == "createFile":
             create_file(cluster_params)
+
+        elif operation == "deleteFile":
+            delete_file(cluster_params)
 
         elif operation == "deletePartition":
             delete_partition(cluster_params)

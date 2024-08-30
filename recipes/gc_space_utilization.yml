@@ -4,7 +4,7 @@
   vars:
      recipe_name: "gc_space_utilization"
      parent: None
-     chunks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+     chunks: [1, 2]
 
   tasks:
   - block:
@@ -25,7 +25,7 @@
         dryRun: False
         delDBO: True
         partition: True 
-        no_of_chunks: 10 
+        no_of_chunks: 2 
       debug:
          msg:
           - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, wantlist=True) }}"
@@ -59,9 +59,13 @@
       debug:
         msg: "{{ lookup('s3_handler', 'pauseGCProcess', pid, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: generate data for 10 chunks parallely"
+    - name: "{{ recipe_name }}: Create 1.5GB file"
+      debug:
+        msg: "{{ lookup('s3_handler', 'createFile', wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: generate data for 2 chunks parallely"
       vars:
-        no_of_chunks : 10
+        no_of_chunks : 2
       debug:
         msg: "{{ lookup('s3_handler', 'parallel_data_generation', no_of_chunks, wantlist=True) }}"
 
@@ -70,6 +74,10 @@
          pid : "{{ gc_process_pid | int }}"
       debug:
         msg: "{{ lookup('s3_handler', 'resumeGCProcess', pid, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Delete the file from partition to get available space"
+      debug:
+        msg: "{{ lookup('s3_handler', 'deleteFile', wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Wait for GC marker files"
       loop: "{{ chunks }}"
