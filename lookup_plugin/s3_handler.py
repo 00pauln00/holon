@@ -50,7 +50,7 @@ def create_gc_partition(cluster_params):
     groupname = group_info.gr_name
 
     try:
-        result = subprocess.run(f"dd if=/dev/zero of={disk_ipath} bs=64M count=205", check=True, shell=True)
+        result = subprocess.run(f"dd if=/dev/zero of={disk_ipath} bs=64M count=27", check=True, shell=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
@@ -668,7 +668,7 @@ def start_gc_process(cluster_params, dirName, debugMode, chunk, crcCheck=None):
 
     return exit_code
 
-def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition):
+def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, no_of_chunks):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -702,7 +702,7 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition):
                 print(f"An error occurred while creating '{downloadPath}': {e}")
     
     cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120',
-              '-l', '4', '-p', '7500', '-b', 'paroscale-test']
+              '-l', '4', '-p', '7500', '-b', 'paroscale-test', '-mp', str(no_of_chunks)]
 
     if dryRun:
         cmd.append('-dr')
@@ -807,9 +807,9 @@ def start_data_validate(cluster_params, dirName, chunk):
     if s3Support == "true":
         dvPath = "%s/%s/dv-downloaded-obj" % (base_dir, raft_uuid)
         s3config = '%s/s3.config.example' % binary_dir
-        process = subprocess.Popen([bin_path, '-d', dvPath, '-c', chunk, '-v', vdev, '-s3config', s3config, '-b', 'paroscale-test', '-l', logFile, '-ll', '2'])
+        process = subprocess.Popen([bin_path, '-s', modified_path, '-d', dvPath, '-c', chunk, '-v', vdev, '-s3config', s3config, '-b', 'paroscale-test', '-l', logFile, '-ll', '2'])
     else:
-        process = subprocess.Popen([bin_path, '-d', modified_path, '-c', chunk, '-v', vdev, '-l', logFile, '-ll', '2'])
+        process = subprocess.Popen([bin_path, '-s', modified_path, '-d', modified_path, '-c', chunk, '-v', vdev, '-l', logFile, '-ll', '2'])
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
@@ -1396,7 +1396,8 @@ class LookupModule(LookupBase):
             dryRun = terms[1]
             delDBO = terms[2]
             partition = terms[3]
-            start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition)
+            no_of_chunks = terms[4]
+            start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, no_of_chunks)
 
         elif operation == "data_validate":
             Chunk = terms[1]
