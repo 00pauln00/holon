@@ -35,7 +35,7 @@
                   "strideWidth": "",
                   "overlapSeq": "",
                   "numOfSet": "",
-                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "vdev": "7d3f6156-16db-4635-9d94-8adb68aae169",
                   "s3configPath": "",
                   "punchwholechunk": "false",
                  }
@@ -47,9 +47,11 @@
       vars:
         dryRun: False
         delDBO: True
+        partition: False
+        no_of_chunks: 0  
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: pause for 3 seconds."
       pause:

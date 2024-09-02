@@ -47,9 +47,11 @@
       vars:
         dryRun: False
         delDBO: True
+        partition: False
+        no_of_chunks: 0
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: pause for 1 seconds."
       pause:
