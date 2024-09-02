@@ -417,10 +417,10 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           modified_path = modify_path(get_path, params["seed"])
           vdev = str(json_data['Vdev'])
           if s3Support == "true":
-                cmd.extend([bin_path, '-s', modified_path, '-d', dvDownloadPath, '-c', params['chunk'], '-v', vdev,
+                cmd.extend([bin_path, '-d', dvDownloadPath, '-c', params['chunk'], '-v', vdev,
                     '-b=paroscale-test', '-s3config', s3configPath, '-l', data_validator_log, '-ll', '4'])
           else:
-             cmd.extend([bin_path, '-s', modified_path, '-d', modified_path, '-c', params['chunk'],
+             cmd.extend([bin_path, '-d', modified_path, '-c', params['chunk'],
                     '-v', vdev, '-l', data_validator_log])
        fp = open(dbiLogFile if operation == "run_example" else gcLogFile, "a+")
        process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
