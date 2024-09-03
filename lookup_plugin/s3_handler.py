@@ -417,10 +417,10 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           modified_path = modify_path(get_path, params["seed"])
           vdev = str(json_data['Vdev'])
           if s3Support == "true":
-                cmd.extend([bin_path, '-s', modified_path, '-d', dvDownloadPath, '-c', params['chunk'], '-v', vdev,
+                cmd.extend([bin_path, '-d', dvDownloadPath, '-c', params['chunk'], '-v', vdev,
                     '-b=paroscale-test', '-s3config', s3configPath, '-l', data_validator_log, '-ll', '4'])
           else:
-             cmd.extend([bin_path, '-s', modified_path, '-d', modified_path, '-c', params['chunk'],
+             cmd.extend([bin_path, '-d', modified_path, '-c', params['chunk'],
                     '-v', vdev, '-l', data_validator_log])
        fp = open(dbiLogFile if operation == "run_example" else gcLogFile, "a+")
        process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
@@ -819,9 +819,9 @@ def start_data_validate(cluster_params, dirName, chunk):
     if s3Support == "true":
         dvPath = "%s/%s/dv-downloaded-obj" % (base_dir, raft_uuid)
         s3config = '%s/s3.config.example' % binary_dir
-        process = subprocess.Popen([bin_path, '-s', modified_path, '-d', dvPath, '-c', chunk, '-v', vdev, '-s3config', s3config, '-b', 'paroscale-test', '-l', logFile, '-ll', '2'])
+        process = subprocess.Popen([bin_path, '-d', dvPath, '-c', chunk, '-v', vdev, '-s3config', s3config, '-b', 'paroscale-test', '-l', logFile, '-ll', '2'])
     else:
-        process = subprocess.Popen([bin_path, '-s', modified_path, '-d', modified_path, '-c', chunk, '-v', vdev, '-l', logFile, '-ll', '2'])
+        process = subprocess.Popen([bin_path, '-d', modified_path, '-c', chunk, '-v', vdev, '-l', logFile, '-ll', '2'])
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
