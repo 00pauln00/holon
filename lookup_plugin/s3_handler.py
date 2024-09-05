@@ -20,7 +20,8 @@ from multiprocessing import Pool
 Marker_vdev = 0
 Marker_chunk = 1
 Marker_seq = 2
-Marker_type = 3
+Marker_type_gc = 3
+Marker_type_nisd =4
 
 def load_parameters_from_json(filename):
     # Load parameters from a JSON file
@@ -1319,9 +1320,14 @@ def extracting_dictionary(cluster_params, operation, dirName):
         return data
 
 def check_if_mType_Present(vdev, chunk, mList, mType):
+    ext = ""
     for line in (mList.splitlines()):
         parts = line.split(".")
-        if vdev in parts[Marker_vdev] and chunk in parts[Marker_chunk] and mType in parts[Marker_type]:
+        if mType == "nisd":
+            ext = Marker_type_nisd
+        else:
+            ext = Marker_type_gc
+        if vdev in parts[Marker_vdev] and chunk in parts[Marker_chunk] and mType in parts[ext]:
             return parts[2]
     return None
 
