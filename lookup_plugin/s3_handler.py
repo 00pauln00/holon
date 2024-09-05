@@ -1323,7 +1323,7 @@ def check_if_mType_Present(vdev, chunk, mList, mType):
     ext = ""
     for line in (mList.splitlines()):
         parts = line.split(".")
-        if mType == "nisd":
+        if parts[len(parts)-1] == "nisd":
             ext = Marker_type_nisd
         else:
             ext = Marker_type_gc
