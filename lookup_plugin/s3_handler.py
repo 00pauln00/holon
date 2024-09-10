@@ -20,7 +20,7 @@ from multiprocessing import Pool
 Marker_vdev = 0
 Marker_chunk = 1
 Marker_seq = 2
-Marker_type = 3
+Marker_type = 4
 
 def load_parameters_from_json(filename):
     # Load parameters from a JSON file
