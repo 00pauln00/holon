@@ -1371,6 +1371,57 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value):
         print("Invalid path or directory not found.")
         return False
 
+
+def get_directory_size(directory):
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(directory):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            if os.path.exists(fp):
+                total_size += os.path.getsize(fp)
+    return total_size
+
+def monitorDirectorySpace(cluster_params, dirName, chunk):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+
+    directory_path = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj")
+
+    if not os.path.exists(directory_path):
+        raise ValueError(f"The directory {directory_path} does not exist.")
+    
+    start_time = time.time()
+    max_duration = 20 * 60 
+
+    while (time.time() - start_time) < max_duration:
+        dir_size = get_directory_size(directory_path)
+        total_mb = dir_size / (1024 * 1024)
+        print("directory_space : ", total_mb)
+        if isGCMarkerFilePresent(cluster_params, dirName, chunk) and total_mb <= 1536:
+            return True
+        elif total_mb > 1536:
+            return False
+        time.sleep(5)
+    return False
+
+
+def checkDirectoryIsEmpty(cluster_params):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+
+    directory_path = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj")
+
+    if not os.path.exists(directory_path):
+        raise ValueError(f"The directory {directory_path} does not exist.")
+       
+    dir_size = get_directory_size(directory_path)
+
+    total_mb = dir_size / (1024 * 1024)
+    print("directory_space : ", total_mb)
+    if int(total_mb) == 0:
+        return True
+    return False
+
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
@@ -1500,12 +1551,37 @@ class LookupModule(LookupBase):
 
             return popen
 
+        elif operation == "isGCMarkerFilePresent":
+            chunk = terms[1]
+            isPresent = isGCMarkerFilePresent(cluster_params, dirName, chunk)
+            return isPresent
+
+        elif operation == "getGCMarkerFileSeq":
+            chunk = terms[1]
+            seqNum = getGCMarkerFileSeq(cluster_params, dirName, chunk)
+
+            return seqNum
+        
+
+        elif operation == "getNISDMarkerFileSeq":
+            chunk = terms[1]
+            seqNum = getNISDMarkerFileSeq(cluster_params, dirName, chunk)
+
+            return seqNum
+
         elif operation == "GetSeqOfMarker":
             chunk = terms[2]
             value = terms[1]
             MarkerSeq = GetSeqOfMarker(cluster_params, dirName, chunk, value)
 
             return MarkerSeq
+
+        elif operation == "monitorDirectorySpace":
+            chunk = terms[1]
+            return monitorDirectorySpace(cluster_params, dirName, chunk)
+        
+        elif operation == "checkDirectoryIsEmpty":
+            return checkDirectoryIsEmpty(cluster_params)
 
         elif operation == "json_params":
             params_type = terms[1]
