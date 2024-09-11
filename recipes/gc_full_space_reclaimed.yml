@@ -75,24 +75,29 @@
       vars:
         dryRun: False
         delDBO: True
+        partition: False
+        no_of_chunks: 0
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Wait until GC marker file present."
       vars:
          Chunk: "1"
+         mType: "Both"
       debug:
         msg: "Waiting for GC Marker File"
-      until: lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, wantlist=True) == true
+      until: lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True)[0] is not none
       retries: 500
       delay: 2
 
     - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
       vars:
          Chunk: "1"
-         gcMarkerEndSeq: "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
-         NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
       debug:
         msg: "Wait until marker values gets match"
       until: gcMarkerEndSeq == NisdMarkerEndSeq

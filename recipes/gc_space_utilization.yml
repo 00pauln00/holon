@@ -1,0 +1,116 @@
+- name: "gc_space_utilization"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "gc_space_utilization"
+     parent: None
+     chunks: [1, 2]
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Create 1.5GB Partition"
+      debug:
+        msg: "{{ lookup('s3_handler', 'createPartition', wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "minio_data"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+    - name: "{{ recipe_name }}: Start GCService"
+      vars:
+        dryRun: False
+        delDBO: True
+        partition: True 
+        no_of_chunks: 2 
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: pause for 5 seconds."
+      pause:
+        seconds: 5
+
+    - name: "Get the json path"
+      set_fact:
+        base_dir="{{ recipe_params['base_dir']}}"
+        raft_uuid="{{ recipe_params['raft_uuid']}}"
+
+    - name: "prepare path to read recipe JSON file"
+      shell: cat "{{base_dir}}"/"{{raft_uuid}}"/"{{raft_uuid}}".json
+      register: result
+
+    - name: "Convert output to JSON format"
+      set_fact:
+        jsondata: "{{ result.stdout | from_json | default({}) }}"
+
+    - name: "{{ recipe_name }}: Get the GC Service process pid and status."
+      set_fact:
+        gc_process_pid: "{{ jsondata.gcService_process.process_pid | default('') }}"
+        gc_process_status: "{{ jsondata.gcService_process.process_status | default('') }}"
+      when: jsondata.gcService_process is defined
+
+    - name: "{{ recipe_name }}: pause the GC process."
+      vars:
+        pid : "{{ gc_process_pid | int }}"
+      debug:
+        msg: "{{ lookup('s3_handler', 'pauseGCProcess', pid, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Create 1.5GB file"
+      debug:
+        msg: "{{ lookup('s3_handler', 'createFile', wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: generate data for 2 chunks parallely"
+      vars:
+        no_of_chunks : 2
+      debug:
+        msg: "{{ lookup('s3_handler', 'parallel_data_generation', no_of_chunks, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Resume the GC process."
+      vars:
+         pid : "{{ gc_process_pid | int }}"
+      debug:
+        msg: "{{ lookup('s3_handler', 'resumeGCProcess', pid, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Delete the file from partition to get available space"
+      debug:
+        msg: "{{ lookup('s3_handler', 'deleteFile', wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Wait for GC marker files"
+      loop: "{{ chunks }}"
+      loop_control:
+        index_var: chunk_index
+      vars:
+        Chunk: "{{ item | string }}"
+        mType: "Both"
+        stage: "wait_for_gc_marker"
+        marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }} for chunk {{ chunk_index + 1 }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+ 
+    - name: "{{ recipe_name }}: Wait for GC and NISD marker match"
+      loop: "{{ chunks }}"
+      loop_control:
+        index_var: chunk_index
+      vars:
+        Chunk: "{{ item | string }}"
+        mType: "Both"
+        Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+        gcMarkerEndSeq: "{{ Sequence[0] }}"
+        NisdMarkerEndSeq: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }} for chunk {{ chunk_index + 1 }}"
+      until: gcMarkerEndSeq == NisdMarkerEndSeq
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: delete the partition."
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'deletePartition', wantlist=True) }}"

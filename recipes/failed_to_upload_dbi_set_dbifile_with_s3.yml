@@ -52,21 +52,15 @@
     - name: "{{ recipe_name }}: Marker file present or not."
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
+        mType: "Both"
       debug:
-        msg: "{{ lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, wantlist=True) }}"
+        msg: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
       register: marker_check
 
-    - name: "{{ recipe_name }}: Initialize Chunk variable"
-      set_fact:
-        Chunk: "{{ chunk['msg'][0] }}"
-
-    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets not match here."
+    - name: "{{ recipe_name }}: Validate GC and Nisd Marker Sequence Equal or Not."
       vars:
-        gcMarkerEndSeq: "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
-        NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
+        gcMarkerEndSeq: "{{ marker_check.msg[0] }}"
+        NisdMarkerEndSeq: "{{ marker_check.msg[1] }}"
       debug:
         msg: "GC Marker End Seq: {{ gcMarkerEndSeq }} | NISD Marker End Seq: {{ NisdMarkerEndSeq }}"
-      until: gcMarkerEndSeq == NisdMarkerEndSeq
-      retries: 10
-      delay: 2
-      when: marker_check.msg == true
+      failed_when: (gcMarkerEndSeq != NisdMarkerEndSeq) or (gcMarkerEndSeq is none)

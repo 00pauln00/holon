@@ -10,6 +10,17 @@ import glob
 from genericcmd import *
 from func_timeout import func_timeout, FunctionTimedOut
 import time as time_global
+import pwd
+import grp
+import psutil
+import signal
+import logging
+from multiprocessing import Pool
+
+Marker_vdev = 0
+Marker_chunk = 1
+Marker_seq = 2
+Marker_type = 4
 
 def load_parameters_from_json(filename):
     # Load parameters from a JSON file
@@ -17,12 +28,212 @@ def load_parameters_from_json(filename):
         params = json.load(json_file)
     return params
 
+def create_gc_partition(cluster_params):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    log_dir = "%s/%s/" % (base_dir, raft_uuid)
+    disk_ipath = os.path.join(log_dir, 'GC.img')
+    mount_pt = os.path.join(log_dir, 'gc')
+    dir_name = os.path.join(mount_pt, 'gc_download')
+
+    uid = os.geteuid()
+
+    # Get the current user's info
+    user_info = pwd.getpwuid(uid)
+    username = user_info.pw_name
+
+    # Get the current GID
+    gid = user_info.pw_gid
+
+    # Get the group information
+    group_info = grp.getgrgid(gid)
+    groupname = group_info.gr_name
+
+    try:
+        result = subprocess.run(f"dd if=/dev/zero of={disk_ipath} bs=64M count=27", check=True, shell=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+    try:
+        result = subprocess.run(["sudo", "losetup", "-fP", disk_ipath], check=True, shell=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+    try:
+        result = subprocess.run(["sudo", "mkfs.btrfs", disk_ipath], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+    os.mkdir(mount_pt, 0o777)
+
+    try:
+        result = subprocess.run(["sudo", "mount", disk_ipath, mount_pt], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+    try:
+        result = subprocess.run(["sudo", "mkdir", dir_name], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+    try:
+        result = subprocess.run(["sudo", "chown", username, dir_name], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+    try:
+        result = subprocess.run(["sudo", "chown", groupname, dir_name], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+
+    try:
+        result = subprocess.run(["sudo", "chmod", "777", dir_name], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+def create_file(cluster_params):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    log_dir = "%s/%s/" % (base_dir, raft_uuid)
+    filename = os.path.join(log_dir, 'gc/gc_download/file.img')
+
+    try:
+        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=64M count=25", check=True, shell=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+def delete_file(cluster_params):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    log_dir = "%s/%s/" % (base_dir, raft_uuid)
+    filename = os.path.join(log_dir, 'gc/gc_download/file.img')
+
+    if os.path.exists(filename):
+        os.remove(filename)
+        print(f"The file {filename} has been deleted successfully.")
+    else:
+        print(f"The file {filename} does not exist.")
+
+def delete_partition(cluster_params):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    log_dir = "%s/%s/" % (base_dir, raft_uuid)
+    disk_ipath = os.path.join(log_dir, 'GC.img')
+    mount_pt = os.path.join(log_dir, 'gc')
+
+    try:
+        result = subprocess.run(["sudo", "umount", mount_pt], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+    output = subprocess.check_output(["losetup", "-a"], text=True)
+    for line in output.splitlines():
+        if disk_ipath in line:
+            loop_dev = line.split(':')[0]
+            try:
+                result = subprocess.run(["sudo", "losetup", "-d", loop_dev], check=True)
+            except subprocess.CalledProcessError as e:
+                print(f"Error: {e}")
+            break
+
+def pause_gcProcess(pid):
+    try:
+        pid = int(pid)  # Convert string pid to integer
+    except ValueError:
+        logging.error(f"pause_gc_process: Invalid PID format: {pid}")
+        return -1
+
+    try:
+        process_obj = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        logging.error(f"pause_process: Process with PID {pid} not found")
+        return -1
+
+    logging.info(f"Pausing process {pid} by sending SIGSTOP")
+    try:
+        process_obj.send_signal(signal.SIGSTOP)
+        return 0
+    except PermissionError as e:
+        logging.error(f"resume_process: Insufficient permissions to send signal: {e}")
+        return -1
+    except psutil.NoSuchProcess:  # Handle cases where process terminates during resume
+        logging.error(f"resume_process: Process {pid} terminated unexpectedly")
+        return -1
+    except Exception as e:  # Catch unexpected errors
+        logging.error(f"resume_process: Unexpected error: {e}")
+        return -1
+
+def resume_gcProcess(pid):
+    try:
+        pid = int(pid)  # Convert string pid to integer
+    except ValueError:
+        logging.error(f"pause_gc_process: Invalid PID format: {pid}")
+        return -1
+
+    try:
+        process = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        logging.error(f"pause_process: Process with PID {pid} not found")
+        return -1
+
+    logging.info(f"Resuming process {pid} by sending SIGCONT")
+
+    try:
+        process.send_signal(signal.SIGCONT)
+        return 0
+    except PermissionError as e:
+        logging.error(f"resume_process: Insufficient permissions to send signal: {e}")
+        return -1
+    except psutil.NoSuchProcess:  # Handle cases where process terminates during resume
+        logging.error(f"resume_process: Process {pid} terminated unexpectedly")
+        return -1
+    except Exception as e:  # Catch unexpected errors
+        logging.error(f"resume_process: Unexpected error: {e}")
+        return -1
+
+def run_dummyData_cmd(command):
+    print("command", command)
+    try:
+        result = subprocess.run(command, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
+
+def generate_dbi_dbo_concurrently(cluster_params, dirName, no_of_chunks):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/dummyData' % binary_dir
+    path = "%s/%s/%s/" % (base_dir, raft_uuid, dirName)
+    if not os.path.exists(path):
+        # Create the directory path
+        try:
+            os.makedirs(path, mode=0o777)
+        except Exception as e:
+            print(f"An error occurred while creating '{path}': {e}")
+
+    s3configPath = '%s/s3.config.example' % binary_dir
+    s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
+
+    commands = []
+    for chunk in range(1, no_of_chunks + 1):
+        command = [bin_path, "-c", str(chunk), "-mp", "1024", "-mv", "2097152", "-p", path, "-pa", "6000", 
+                   "-pp", "0", "-ps", "2048", "-seed", "1", "-ss", "0", "-t", "1", "-va", "2097152", "-l", "2",
+                   "-vp", "100000", "-vdev", "643eef86-e42b-11ee-8678-22abb648e432", "-bs", "4", "-bsm", "32", 
+                   "-vs", "0", "-s3config", s3configPath, "-s3log", s3LogFile]
+        commands.append(command)
+
+    with Pool(processes = no_of_chunks) as pool:
+        results = pool.map(run_dummyData_cmd, commands)
+
 def multiple_iteration_params(cluster_params, dirName, input_values):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
 
     path = "%s/%s/%s/" % (base_dir, raft_uuid, dirName)
+
     # Create the new directory
     if not os.path.exists(path):
         # Create the directory path
@@ -36,26 +247,33 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
 
     # Prepare path for log file.
     dbiLogFile = "%s/%s/dbiLog.log" % (base_dir, raft_uuid)
-
+    
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(dbiLogFile, "a+")
 
     #Get dummyDBI example
     bin_path = '%s/dummyData' % binary_dir
     jsonPath = get_dir_path(cluster_params, dirName)
+
     if jsonPath != None:
-        newPath = jsonPath + "/" + input_values["chunk"] + "/DV"
-        json_data = load_json_contents(newPath + "/dummy_generator.json")
-        input_values["vdev"] = str(json_data['Vdev'])
-        input_values["seqStart"] = str(json_data['SeqEnd'] + 1)
+        entries = os.listdir(jsonPath)
+        chunk_no = input_values["chunk"]
+        if chunk_no not in entries:
+            jsonPath = None
+        else:
+            newPath = jsonPath + "/" + input_values["chunk"] + "/DV"
+            json_data = load_json_contents(newPath + "/dummy_generator.json")
+            input_values["vdev"] = str(json_data['Vdev'])
+            input_values["seqStart"] = str(json_data['SeqEnd'] + 1)
 
     # Initialize the command list with common arguments
     cmd = [
         bin_path, "-c", input_values['chunk'], "-mp", input_values['maxPunches'], "-mv", input_values['maxVblks'], "-p", path,
         "-pa", input_values['punchAmount'], "-pp", input_values['punchesPer'], "-ps", input_values['maxPunchSize'], "-seed", input_values['seed'],
-        "-ss", input_values['seqStart'], "-t", input_values['genType'], '-va', input_values['vbAmount'], '-vp', input_values['vblkPer'],
+        "-ss", input_values['seqStart'], "-t", input_values['genType'], '-va', input_values['vbAmount'], '-vp', input_values['vblkPer'], '-l', '2',
         "-vdev", input_values["vdev"], "-bs", input_values['blockSize'], "-bsm", input_values['blockSizeMax'], "-vs", input_values['startVblk']
     ]
+
     # Add the S3-specific options if s3Support is "true"
     if s3Support == "true":
         s3configPath = '%s/s3.config.example' % binary_dir
@@ -199,10 +417,10 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
           modified_path = modify_path(get_path, params["seed"])
           vdev = str(json_data['Vdev'])
           if s3Support == "true":
-                cmd.extend([bin_path, '-s', modified_path, '-d', dvDownloadPath, '-c', params['chunk'], '-v', vdev,
+                cmd.extend([bin_path, '-d', dvDownloadPath, '-c', params['chunk'], '-v', vdev,
                     '-b=paroscale-test', '-s3config', s3configPath, '-l', data_validator_log, '-ll', '4'])
           else:
-             cmd.extend([bin_path, '-s', modified_path, '-d', modified_path, '-c', params['chunk'],
+             cmd.extend([bin_path, '-d', modified_path, '-c', params['chunk'],
                     '-v', vdev, '-l', data_validator_log])
        fp = open(dbiLogFile if operation == "run_example" else gcLogFile, "a+")
        process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
@@ -249,7 +467,7 @@ def start_minio_server(cluster_params, dirName):
             os.makedirs(os.path.expanduser(f'/local/{dirName}'), mode=0o777)
 
         command = f"minio server /local/{dirName} --console-address ':2000' --address ':2090'"
-
+        
         process_popen = subprocess.Popen(command, shell=True, stdout=fp, stderr=fp)
 
         # Check if MinIO process started successfully
@@ -462,7 +680,7 @@ def start_gc_process(cluster_params, dirName, debugMode, chunk, crcCheck=None):
 
     return exit_code
 
-def start_gcService_process(cluster_params, dirName, dryRun, delDBO):
+def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, no_of_chunks):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -477,26 +695,32 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO):
 
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(gcLogFile, "a+")
-
-    path = get_dir_path(cluster_params, dirName)
     bin_path = '%s/GCService' % binary_dir
-    matches = re.findall(r'[\w-]{36}', path)
-    vdev_uuid = matches[-1] if matches else None
 
     cmd = []
     s3config = '%s/s3.config.example' % binary_dir
     # Prepare path for log file.
     s3LogFile = "%s/%s/s3Download" % (base_dir, raft_uuid)
-    downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
+    
+    if partition:
+        downloadPath = "%s/%s/gc/gc_download" % (base_dir, raft_uuid)
+    else:
+        downloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
+        if not os.path.exists(downloadPath):
+            # Create the directory path
+            try:
+                os.mkdir(downloadPath, 0o777)
+            except Exception as e:
+                print(f"An error occurred while creating '{downloadPath}': {e}")
+    
     cmd = [bin_path, '-path', downloadPath, '-s3config', s3config, '-s3log', s3LogFile, '-t', '120',
-              '-l', '6', '-p', '7500', '-b', 'paroscale-test']
+              '-l', '4', '-p', '7500', '-b', 'paroscale-test', '-mp', str(no_of_chunks)]
 
     if dryRun:
         cmd.append('-dr')
 
     if delDBO:
         cmd.append('-dd')
-
     process_popen = subprocess.Popen(cmd, stdout = fp, stderr = fp)
 
     #Check if gcService process exited with error
@@ -580,7 +804,6 @@ def start_data_validate(cluster_params, dirName, chunk):
 
     newPath = jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json"
     json_data = load_json_contents(newPath)
-    dbi_input_path = str(json_data['DbiPath'])
     vdev = str(json_data['Vdev'])
 
     path = get_dir_path(cluster_params, dirName)
@@ -596,9 +819,9 @@ def start_data_validate(cluster_params, dirName, chunk):
     if s3Support == "true":
         dvPath = "%s/%s/dv-downloaded-obj" % (base_dir, raft_uuid)
         s3config = '%s/s3.config.example' % binary_dir
-        process = subprocess.Popen([bin_path, '-s', modified_path, '-d', dvPath, '-c', chunk, '-v', vdev, '-s3config', s3config, '-b', 'paroscale-test', '-l', logFile, '-ll', '4'])
+        process = subprocess.Popen([bin_path, '-d', dvPath, '-c', chunk, '-v', vdev, '-s3config', s3config, '-b', 'paroscale-test', '-l', logFile, '-ll', '2'])
     else:
-        process = subprocess.Popen([bin_path, '-s', modified_path, '-d', modified_path, '-c', chunk, '-v', vdev, '-l', logFile, '-ll', '4'])
+        process = subprocess.Popen([bin_path, '-d', modified_path, '-c', chunk, '-v', vdev, '-l', logFile, '-ll', '2'])
 
     # Wait for the process to finish and get the exit code
     exit_code = process.wait()
@@ -1095,91 +1318,58 @@ def extracting_dictionary(cluster_params, operation, dirName):
         data = load_json_contents(input_values['path'])
         return data
 
-def isGCMarkerFilePresent(cluster_params, dirName, chunk):
+def check_if_mType_Present(vdev, chunk, mList, mType):
+    for line in (mList.splitlines()):
+        parts = line.split(".")
+        if vdev in parts[Marker_vdev] and chunk in parts[Marker_chunk] and mType in parts[Marker_type]:
+            return parts[2]
+    return None
+
+def GetSeqOfMarker(cluster_params, dirName, chunk, value):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
     jsonPath = get_dir_path(cluster_params, dirName)
-
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/s3Operation' % binary_dir
+    s3config = '%s/s3.config.example' % binary_dir
     if jsonPath is not None:
         newPath = os.path.join(jsonPath, chunk, "DV")
         json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
         vdev = str(json_data['Vdev'])
-        if s3Support == "true":
-            downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
-        else:
-            downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
-        file_pattern = os.path.join(downloadPath, '*', '*.gc')
-        files = glob.glob(file_pattern, recursive=True)
 
-        files = glob.glob(file_pattern, recursive=True)
-        # Check if any file is found
-        if files:
-            print("GC Marker file found in a directory.")
-            return True
+        cmd = [bin_path, '-bucketName', 'paroscale-test', '-operation', 'list', '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', 'm', '-l', logFile]
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        exit_code = process.wait()
+        if exit_code == 0:
+            print("Process completed successfully.")
         else:
-            print("No GC Marker file found in a directory.")
-            return False
+            error_message = print("Process failed with exit code {exit_code}.")
+            raise RuntimeError(error_message)
+
+        # Read the output and error
+        stdout, stderr = process.communicate()
+
+        # Check if any file is found
+        GcSeq = check_if_mType_Present(vdev, chunk, stdout, "gc")
+        NisdSeq = check_if_mType_Present(vdev, chunk, stdout, "nisd")
+        print("GcSeq : ", GcSeq)
+        print("NisdSeq : ", NisdSeq)
+        MSeq = []
+        match value:
+            case 'gc':
+                MSeq.extend([GcSeq, None])
+                return MSeq
+            case 'nisd':
+                MSeq.extend([None, NisdSeq])
+                return MSeq
+            case 'Both':
+                MSeq.extend([GcSeq, NisdSeq])
+                return MSeq
     else:
         print("Invalid path or directory not found.")
         return False
-
-def getGCMarkerFileSeq(cluster_params, dirName, chunk):
-    base_dir = cluster_params['base_dir']
-    raft_uuid = cluster_params['raft_uuid']
-    s3Support = cluster_params['s3Support']
-    jsonPath = get_dir_path(cluster_params, dirName)
-    if jsonPath != None:
-        newPath = jsonPath + "/" + chunk + "/DV"
-        json_data = load_json_contents(newPath + "/dummy_generator.json")
-        vdev = str(json_data['Vdev'])
-    # Define the root path where the search should start
-    if s3Support == "true":
-       downloadPath = os.path.join(base_dir, raft_uuid, "gc-downloaded-obj", vdev, "m")
-    else:
-       downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
-    # Use glob.glob to find all .gcmrk files in any subdirectories under the constructed path
-    file_pattern = os.path.join(downloadPath, '**', '*.gc')  # '**' allows recursive search
-    files = glob.glob(file_pattern, recursive=True)
-    # Sort files based on creation time (most recent first)
-    files.sort(key=lambda f: os.path.getctime(f), reverse=True)
-    if files:
-        endSeq = extract_endSeq(os.path.basename(files[0]))
-        return endSeq
-    else:
-        return -1
-
-def extract_endSeq(filepath):
-    filename = os.path.basename(filepath)
-    parts = filename.split('.')
-    last_part = parts[-2]  # Get the last part of the filename
-    if last_part.isdigit():
-        return int(last_part)
-    else:
-        return None
-
-def getNISDMarkerFileSeq(cluster_params, dirName, chunk):
-    base_dir = cluster_params['base_dir']
-    raft_uuid = cluster_params['raft_uuid']
-    jsonPath = get_dir_path(cluster_params, dirName)
-    if jsonPath is not None:
-        newPath = os.path.join(jsonPath, chunk, "DV")
-        json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
-        vdev = str(json_data['Vdev'])
-
-    # Define the root path where the search should start
-    downloadPath = os.path.join(base_dir, raft_uuid, "dbi-dbo", vdev, "m")
-    # Use glob.glob to find all .gcmrk files in any subdirectories under the constructed path
-    file_pattern = os.path.join(downloadPath, '**', '*.nisd')  # '**' allows recursive search
-    files = glob.glob(file_pattern, recursive=True)
-
-    # Sort files based on creation time (most recent first)
-    files.sort(key=lambda f: os.path.getctime(f), reverse=True)
-    if files:
-        endSeq = extract_endSeq(os.path.basename(files[0]))
-        return endSeq
-    else:
-        return -1
 
 
 def get_directory_size(directory):
@@ -1268,11 +1458,37 @@ class LookupModule(LookupBase):
         elif operation == "start_gcService":
             dryRun = terms[1]
             delDBO = terms[2]
-            start_gcService_process(cluster_params, dirName, dryRun, delDBO)
+            partition = terms[3]
+            no_of_chunks = terms[4]
+            start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, no_of_chunks)
 
         elif operation == "data_validate":
             Chunk = terms[1]
             popen = start_data_validate(cluster_params, dirName, Chunk)
+
+        elif operation == "createPartition":
+            create_gc_partition(cluster_params)
+
+        elif operation == "createFile":
+            create_file(cluster_params)
+
+        elif operation == "deleteFile":
+            delete_file(cluster_params)
+
+        elif operation == "deletePartition":
+            delete_partition(cluster_params)
+
+        elif operation == "pauseGCProcess":
+            pid = terms[1]
+            pause_gcProcess(pid)
+        
+        elif operation == "resumeGCProcess":
+            pid = terms[1]
+            resume_gcProcess(pid)
+
+        elif operation == "parallel_data_generation":
+            no_of_chunks = terms[1]
+            generate_dbi_dbo_concurrently(cluster_params, dirName, no_of_chunks)
 
         elif operation == "get_DBI_fileNames":
             Chunk = terms[1]
@@ -1345,12 +1561,20 @@ class LookupModule(LookupBase):
             seqNum = getGCMarkerFileSeq(cluster_params, dirName, chunk)
 
             return seqNum
+        
 
         elif operation == "getNISDMarkerFileSeq":
             chunk = terms[1]
             seqNum = getNISDMarkerFileSeq(cluster_params, dirName, chunk)
 
             return seqNum
+
+        elif operation == "GetSeqOfMarker":
+            chunk = terms[2]
+            value = terms[1]
+            MarkerSeq = GetSeqOfMarker(cluster_params, dirName, chunk, value)
+
+            return MarkerSeq
 
         elif operation == "monitorDirectorySpace":
             chunk = terms[1]

@@ -35,7 +35,7 @@
                   "strideWidth": "",
                   "overlapSeq": "",
                   "numOfSet": "",
-                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "vdev": "7d3f6156-16db-4635-9d94-8adb68aae169",
                   "s3configPath": "",
                   "punchwholechunk": "false",
                  }
@@ -47,9 +47,11 @@
       vars:
         dryRun: False
         delDBO: True
+        partition: False
+        no_of_chunks: 0  
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: pause for 3 seconds."
       pause:
@@ -58,22 +60,26 @@
     - name: "{{ recipe_name }}: Wait until GC marker file present."
       vars:
          Chunk: "1"
+         mType: "Both"
          stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
       debug:
-        msg: "Waiting for GC Marker File"
-      until: lookup('s3_handler', 'isGCMarkerFilePresent', Chunk, wantlist=True) == true
-      retries: 500
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
       delay: 2
 
     - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
       vars:
          Chunk: "1"
-         gcMarkerEndSeq: "{{ lookup('s3_handler', 'getGCMarkerFileSeq', Chunk, wantlist=True) }}"
-         NisdMarkerEndSeq: "{{ lookup('s3_handler', 'getNISDMarkerFileSeq', Chunk, wantlist=True) }}"
+         mType: "Both"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         gcMarkerEndSeq: "{{ Sequence[0] }}"
+         NisdMarkerEndSeq: "{{ Sequence[1] }}"
       debug:
-        msg: "Wait until marker values gets match"
+        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }}"
       until: gcMarkerEndSeq == NisdMarkerEndSeq
-      retries: 500
+      retries: 300
       delay: 2
 
     - name: "{{ recipe_name }}: Start data validation"
