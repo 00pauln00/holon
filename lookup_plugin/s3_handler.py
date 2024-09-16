@@ -221,7 +221,7 @@ def generate_dbi_dbo_concurrently(cluster_params, dirName, no_of_chunks):
         command = [bin_path, "-c", str(chunk), "-mp", "1024", "-mv", "2097152", "-p", path, "-pa", "6000", 
                    "-pp", "0", "-ps", "2048", "-seed", "1", "-ss", "0", "-t", "1", "-va", "2097152", "-l", "2",
                    "-vp", "100000", "-vdev", "643eef86-e42b-11ee-8678-22abb648e432", "-bs", "4", "-bsm", "32", 
-                   "-vs", "0", "-s3config", s3configPath, "-s3log", s3LogFile]
+                   "-vs", "0", "-s3config", s3configPath, "-s3log", s3LogFile, "-dbic", "0"]
         commands.append(command)
 
     with Pool(processes = no_of_chunks) as pool:
@@ -253,6 +253,7 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
 
     #Get dummyDBI example
     bin_path = '%s/dummyData' % binary_dir
+    dbicount = "0"
     jsonPath = get_dir_path(cluster_params, dirName)
 
     if jsonPath != None:
@@ -265,13 +266,15 @@ def multiple_iteration_params(cluster_params, dirName, input_values):
             json_data = load_json_contents(newPath + "/dummy_generator.json")
             input_values["vdev"] = str(json_data['Vdev'])
             input_values["seqStart"] = str(json_data['SeqEnd'] + 1)
+            dbicount = str(json_data['TMinDbiFileForForceGC'])
 
     # Initialize the command list with common arguments
     cmd = [
         bin_path, "-c", input_values['chunk'], "-mp", input_values['maxPunches'], "-mv", input_values['maxVblks'], "-p", path,
         "-pa", input_values['punchAmount'], "-pp", input_values['punchesPer'], "-ps", input_values['maxPunchSize'], "-seed", input_values['seed'],
         "-ss", input_values['seqStart'], "-t", input_values['genType'], '-va', input_values['vbAmount'], '-vp', input_values['vblkPer'], '-l', '2',
-        "-vdev", input_values["vdev"], "-bs", input_values['blockSize'], "-bsm", input_values['blockSizeMax'], "-vs", input_values['startVblk']
+        "-vdev", input_values["vdev"], "-bs", input_values['blockSize'], "-bsm", input_values['blockSizeMax'], "-vs", input_values['startVblk'],
+        "-dbic", dbicount
     ]
 
     # Add the S3-specific options if s3Support is "true"
@@ -363,6 +366,7 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
        gcDownloadPath = "%s/%s/gc-downloaded-obj" % (base_dir, raft_uuid)
        dvDownloadPath = "%s/%s/dv-downloaded-obj/" % (base_dir, raft_uuid)
        if operation == "run_example":
+          dbicount = "0" 
           bin_path = '%s/dummyData' % binary_dir
           jsonPath = get_dir_path(cluster_params, dirName, params["seed"])
           if jsonPath != None:
@@ -370,10 +374,11 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
                json_data = load_json_contents(newPath + "/dummy_generator.json")
                params["seqStart"] = str(json_data['SeqEnd'] + 1)
                params["vdev"] = str(json_data['Vdev'])
+               dbicount = str(json_data['TMinDbiFileForForceGC']) 
           else:
                params["seqStart"] = "0"
                params["vdev"] = ""
-
+               dbicount = "0"
           if s3Support == "true":
                s3UploadLogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
                cmd.extend([bin_path, "-c", params["chunk"], "-mp", params["maxPunches"],
@@ -382,7 +387,7 @@ def prepare_command_from_parameters(cluster_params, jsonParams, dirName, operati
                    "-ss", params["seqStart"], "-va", params["vbAmount"], "-vp", params["vblkPer"],
                    "-t", params["genType"], "-bs", params["blockSize"], "-bsm", params["blockSizeMax"],
                    "-vs", params["startVblk"], "-vdev", params["vdev"], "-s3config", s3configPath,
-                   "-s3log", s3UploadLogFile, '-b=paroscale-test'])
+                   "-s3log", s3UploadLogFile, '-b=paroscale-test', "-dbic", dbicount])
           else:
                cmd.extend([bin_path, "-c", params["chunk"], "-mp", params["maxPunches"],
                    "-mv", params["maxVblks"], "-p", path, "-pa", params["punchAmount"],
@@ -572,9 +577,11 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values, remo
         chunk = str(json_data['TotalChunkSize'])
         seqStart = str(json_data['SeqEnd'] + 1)
         vdev = str(json_data['Vdev'])
+        dbicount = str(json_data['TMinDbiFileForForceGC'])
     else:
         chunk = chunkNum
         seqStart = "0"
+        dbicount = "0"
 
     maxPunches = str(random.randint(1, 50))
     maxVblks = str(random.randint(100, 1000))
@@ -595,7 +602,8 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values, remo
         bin_path, "-c", chunk, "-mp", maxPunches, "-mv", maxVblks, "-p", path,
         "-pa", punchAmount, "-pp", punchesPer, "-ps", maxPuncheSize, "-seed", seed,
         "-ss", seqStart, "-t", genType, "-b", "paroscale-test",
-        "-bs", blockSize, "-bsm", blockSizeMax, "-vs", startVblk, "-sw", strideWidth
+        "-bs", blockSize, "-bsm", blockSizeMax, "-vs", startVblk, "-sw", strideWidth,
+        "-dbic", dbicount
     ]
     # Add the -se and -ts option if overlapSeq is provided
     if 'overlapSeq' not in input_values:
