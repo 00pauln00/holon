@@ -912,7 +912,7 @@ def copy_file_to_backup(cluster_params, dirName, operation, chunk):
             with open(source_file_path, "wb") as f:
                f.write(data)
 
-            process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+            process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-v', vdev, '-l', logFile])
 
     elif operation == "delete":
 
@@ -1008,7 +1008,8 @@ def PushOrigFileToS3(cluster_params, dirName, operation, chunk):
         shutil.copy(source_file_path, dest_file_path)
         s3config = '%s/s3.config.example' % binary_dir
         bin_path = '%s/s3Operation' % binary_dir
-        process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', dest_file_path, '-l', logFile])
+        print("cmd ", bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', dest_file_path, '-v', vdev, '-l', logFile)
+        process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', dest_file_path,'-v', vdev, '-l', logFile])
 
 def uploadOrigFile(cluster_params, dirName, operation, chunk):
     base_dir = cluster_params['base_dir']
