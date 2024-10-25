@@ -878,6 +878,8 @@ def copy_file_to_backup(cluster_params, dirName, operation, chunk):
     if len(file_list) > 1:
         # Sort the file list by modification time (oldest to newest)
         file_list.sort(key=lambda x: os.path.getmtime(os.path.join(dbi_input_path, x)))
+        #removing directories from list
+        file_list = [f for f in file_list if not os.path.isdir(os.path.join(dbi_input_path, f))]
         # Get the last file in the sorted list
         last_file = file_list[-1]
     # Construct the source file path
