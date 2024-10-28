@@ -28,6 +28,31 @@ def load_parameters_from_json(filename):
         params = json.load(json_file)
     return params
 
+def create_directory(path):
+    """
+    Creates a directory if it doesn't exist.
+
+    :param path: str, path of the directory to create
+    """
+    try:
+        os.makedirs(path, exist_ok=True)
+        print(f"Directory created successfully at: {path}")
+    except OSError as e:
+        print(f"Error creating directory at {path}: {e}")
+
+def start_s3_data_validator(cluster_params, device_path, vdev_uuid):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/s3DataValidator' % binary_dir
+    log_dir = "%s/%s/s3DV" % (base_dir, raft_uuid)
+    s3_config = '%s/s3.config.example' % binary_dir
+    create_directory(log_dir)
+    cmd = [bin_path, '-v', vdev_uuid, '-c', s3_config, '-p', log_dir, '-b', 'paroscale-test' -d, device_path]
+
+    return exit_code
+
 def create_gc_partition(cluster_params):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -92,14 +117,31 @@ def create_gc_partition(cluster_params):
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
-def create_file(cluster_params):
+
+def create_file(cluster_params, filename, bs, count):
+    """
+    Creates a file with specified parameters using the 'dd' command.
+
+    :param cluster_params: dict, dictionary containing 'base_dir' and 'raft_uuid'
+    :param filename: str, name of the file to create within the log directory
+    :param bs: str, block size for 'dd' command
+    :param count: int, count of blocks for 'dd' command
+    """
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
-    log_dir = "%s/%s/" % (base_dir, raft_uuid)
-    filename = os.path.join(log_dir, 'gc/gc_download/file.img')
+    log_dir = os.path.join(base_dir, raft_uuid)
+    full_path = os.path.join(log_dir, filename)
 
     try:
-        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=64M count=25", check=True, shell=True)
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+
+        # Run 'dd' command with specified parameters
+        result = subprocess.run(
+            f"dd if=/dev/zero of={full_path} bs={bs} count={count}",
+            check=True, shell=True
+        )
+        print(f"File created successfully at: {full_path}")
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
