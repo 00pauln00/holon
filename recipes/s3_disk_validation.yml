@@ -1,0 +1,62 @@
+- name: "s3_disk_validation"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "s3_disk_validation"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "minio_data"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+    - name: "{{ recipe_name }}: Start GCService"
+      vars:
+        dryRun: False
+        delDBO: True
+        partition: False
+        no_of_chunks: 0
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: pause for 1 seconds."
+      pause:
+        seconds: 1
+
+    - name: "{{ recipe_name }}: Check GC Marker file is Present or not."
+      vars:
+        Chunk: "0"
+        mType: "Both"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      register: marker_check
+
+    - name: "{{ recipe_name }}: Validate that GC Marker file is Present."
+      debug:
+        msg: "Validate that GC is not processed for vdev and chunk as space saved cost is less that cost of APIs"
+      failed_when: marker_check.msg is defined and marker_check.msg[0] | selectattr('!=', 'none') | length > 0
+
+    - name: "{{ recipe_name }}: Check NISD and GC Marker file End sequence."
+      vars:
+        Chunk: "0"
+        mType: "Both"
+      debug:
+         msg: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+      register: marker_check
+
+    - name: "{{ recipe_name }}: Validate that NISD and GC Marker file's endSeq doesn't match."
+      debug:
+        msg: "Validate that GC is not processed and Marker file's endSeq doesn't match  {{ marker_check.msg[1] }} and {{ marker_check.msg[0] }} "
+      failed_when: marker_check.msg[1] == marker_check.msg[0]
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
