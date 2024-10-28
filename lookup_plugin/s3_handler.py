@@ -40,6 +40,44 @@ def create_directory(path):
     except OSError as e:
         print(f"Error creating directory at {path}: {e}")
 
+def load_kernel_module(module_name="ublk_drv"):
+    try:
+        # Run the modprobe command to load the kernel module
+        subprocess.run(["modprobe", module_name], check=True)
+        print(f"Module '{module_name}' loaded successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to load module '{module_name}': {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
+
+# start a ublk device of size 8GB
+def run_niova_ublk(cntl_uuid, ublk_uuid):
+    command = [
+        "sudo",
+        "LD_LIBRARY_PATH=/home/runner/work/niovad/niovad/build_dir/lib", 
+        "/home/runner/work/niovad/niovad/build_dir/bin/niova-ublk",
+        "-s", "8589934592",
+        "-t", cntl_uuid,
+        "-v", ublk_uuid,
+        "-u", ublk_uuid,
+        "-q", "128",
+        "-b", "1048576"
+    ]
+    
+    # Combine the environment variable and command into a single string
+    full_command = " ".join(command)
+    print(f"ublk command: {full_command}")
+    try:
+        # Run the command
+        subprocess.run(full_command, shell=True, check=True, executable="/bin/bash")
+        print("Command executed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Command failed with error: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
 def start_s3_data_validator(cluster_params, device_path, vdev_uuid):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
