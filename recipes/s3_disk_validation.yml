@@ -47,6 +47,19 @@
 
       register: ublk_uuid
 
+    - name: "{{ recipe_name }}: mount btrfs on the ublk device"
+      vars:
+          mount_dir: "ci_data_btrfs"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'setup_btrfs', mount_dir, wantlist=True) }}"
+      register: mount_path
+
+    - name: "{{ recipe_name }}: run the script"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'generate_data', mount_path, wantlist=True) }}"
+
     - name: "{{ recipe_name }}: Start GCService"
       vars:
         dryRun: False

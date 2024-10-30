@@ -40,6 +40,33 @@ def create_directory(path):
     except OSError as e:
         print(f"Error creating directory at {path}: {e}")
 
+# generate data using fio command
+def run_fio_test(directory_path):
+    fio_command = [
+        "/usr/bin/fio",
+        f"--filename={directory_path}/gc0.tf",
+        "--direct=1",
+        "--ioengine=io_uring",
+        "--iodepth=128",
+        "--numjobs=1",
+        "--group_reporting",
+        "--name=iops-test-job",
+        "--size=10m",
+        "--bs=4k",
+        "--fixedbufs",
+        "--buffer_compress_percentage=50",
+        "--rw=randwrite"
+    ]
+    
+    try:
+        print("Running fio test...")
+        result = subprocess.run(fio_command, capture_output=True, text=True, check=True)
+        print("Output:\n", result.stdout)
+        print("Errors:\n", result.stderr)
+    except subprocess.CalledProcessError as e:
+        print("Error running fio test:", e)
+        print("Error output:\n", e.stderr)
+
 def start_s3_data_validator(cluster_params, device_path, ublk_uuid, nisd_uuid):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -132,7 +159,29 @@ def create_gc_partition(cluster_params):
         print(f"Error: {e}")
 
 
-def setup_btrfs(device: str, mount_point: str):
+def get_unmounted_ublk_device():
+    try:
+        # Run lsblk to get details of block devices
+        result = subprocess.run(
+            ["lsblk", "-o", "NAME,MOUNTPOINT", "-dn"],  # "-d" to avoid children, "-n" for no headings
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        # Parse output and find the first unmounted ublk device
+        for line in result.stdout.splitlines():
+            name, mountpoint = line.split()
+            if name.startswith("ublkb") and mountpoint == "":
+                return name  # Return the first unmounted ublk device found
+
+        return None  # No unmounted ublk device found
+
+    except subprocess.CalledProcessError as e:
+        print("Error retrieving unmounted ublk devices:", e)
+        return None
+
+def setup_btrfs(cluster_params, mount_point):
     """
     Automates the setup of a Btrfs filesystem:
     1. Formats the specified device with Btrfs.
@@ -146,6 +195,12 @@ def setup_btrfs(device: str, mount_point: str):
     Raises:
         RuntimeError: If any command fails during the setup.
     """
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    mount_path = "%s/%s/%s" % (base_dir, raft_uuid, mount_point)
+
+    device = get_unmounted_ublk_device()
+    #TODO Add check to see if the value is none or not
     try:
         # Step 1: Format the device with Btrfs
         print(f"Formatting {device} with Btrfs...")
@@ -153,18 +208,19 @@ def setup_btrfs(device: str, mount_point: str):
         print(f"Formatted {device} successfully.")
 
         # Step 2: Create the mount point directory if it doesn't exist
-        if not os.path.exists(mount_point):
-            print(f"Creating mount point directory {mount_point}...")
-            os.makedirs(mount_point)
-            print(f"Directory {mount_point} created.")
+        if not os.path.exists(mount_path):
+            print(f"Creating mount point directory {mount_path}...")
+            os.makedirs(mount_path)
+            print(f"Directory {mount_path} created.")
 
         # Step 3: Mount the device to the mount point
-        print(f"Mounting {device} to {mount_point}...")
-        subprocess.run(["mount", device, mount_point], check=True)
-        print(f"Mounted {device} to {mount_point} successfully.")
+        print(f"Mounting {device} to {mount_path}...")
+        subprocess.run(["mount", device, mount_path], check=True)
+        print(f"Mounted {device} to {mount_path} successfully.")
 
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"An error occurred while setting up Btrfs: {e}")
+    return mount_path
 
 
 def create_file(cluster_params, filename, bs, count):
@@ -1527,6 +1583,15 @@ class LookupModule(LookupBase):
 
         elif operation == "deletePartition":
             delete_partition(cluster_params)
+
+        elif operation == "generate_data":
+            device_path = terms[1]
+            run_fio_test(device_path)
+
+        elif operation == "setup_btrfs": 
+            mount = term[1]
+            mount_path =  setup_btrfs(cluster_params, mount)
+            return mount_path
 
         elif operation == "pauseGCProcess":
             pid = terms[1]
