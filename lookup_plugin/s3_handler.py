@@ -50,15 +50,13 @@ def load_kernel_module(module_name="ublk_drv"):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-
-
 # start a ublk device of size 8GB
 def run_niova_ublk(cntl_uuid, ublk_uuid):
     command = [
         "sudo",
         "LD_LIBRARY_PATH=/home/runner/work/niovad/niovad/build_dir/lib", 
         "/home/runner/work/niovad/niovad/build_dir/bin/niova-ublk",
-        "-s", "8589934592",
+        "-s", "12884901888",
         "-t", cntl_uuid,
         "-v", ublk_uuid,
         "-u", ublk_uuid,
@@ -78,6 +76,7 @@ def run_niova_ublk(cntl_uuid, ublk_uuid):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
 
+
 def start_s3_data_validator(cluster_params, device_path, vdev_uuid):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -86,9 +85,22 @@ def start_s3_data_validator(cluster_params, device_path, vdev_uuid):
     bin_path = '%s/s3DataValidator' % binary_dir
     log_dir = "%s/%s/s3DV" % (base_dir, raft_uuid)
     s3_config = '%s/s3.config.example' % binary_dir
+    
+    # Ensure log directory exists
     create_directory(log_dir)
-    cmd = [bin_path, '-v', vdev_uuid, '-c', s3_config, '-p', log_dir, '-b', 'paroscale-test' -d, device_path]
-
+    
+    # Build command to run
+    cmd = [bin_path, '-v', vdev_uuid, '-c', s3_config, '-p', log_dir, '-b', 'paroscale-test', '-d', device_path]
+    
+    print(f"s3 dv cmd {cmd}")
+    # # Run the command and capture the exit code
+    # try:
+    #     result = subprocess.run(cmd, check=True)
+    #     exit_code = result.returncode
+    # except subprocess.CalledProcessError as e:
+    #     exit_code = e.returncode
+    #     print(f"Command failed with exit code {exit_code}")
+    
     return exit_code
 
 def create_gc_partition(cluster_params):
@@ -154,6 +166,41 @@ def create_gc_partition(cluster_params):
         result = subprocess.run(["sudo", "chmod", "777", dir_name], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
+
+
+def setup_btrfs(device: str, mount_point: str):
+    """
+    Automates the setup of a Btrfs filesystem:
+    1. Formats the specified device with Btrfs.
+    2. Creates the mount point directory if it doesn't exist.
+    3. Mounts the device to the specified mount point.
+
+    Parameters:
+        device (str): The device name (e.g., /dev/ublkb0).
+        mount_point (str): The directory to mount the filesystem (e.g., /ci_btrfs).
+
+    Raises:
+        RuntimeError: If any command fails during the setup.
+    """
+    try:
+        # Step 1: Format the device with Btrfs
+        print(f"Formatting {device} with Btrfs...")
+        subprocess.run(["mkfs.btrfs", device], check=True)
+        print(f"Formatted {device} successfully.")
+
+        # Step 2: Create the mount point directory if it doesn't exist
+        if not os.path.exists(mount_point):
+            print(f"Creating mount point directory {mount_point}...")
+            os.makedirs(mount_point)
+            print(f"Directory {mount_point} created.")
+
+        # Step 3: Mount the device to the mount point
+        print(f"Mounting {device} to {mount_point}...")
+        subprocess.run(["mount", device, mount_point], check=True)
+        print(f"Mounted {device} to {mount_point} successfully.")
+
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"An error occurred while setting up Btrfs: {e}")
 
 
 def create_file(cluster_params, filename, bs, count):
@@ -1594,6 +1641,13 @@ class LookupModule(LookupBase):
             MarkerSeq = GetSeqOfMarker(cluster_params, dirName, chunk, value)
 
             return MarkerSeq
+        elif operation == "load_ublk_drv":
+            load_kernel_module()
+        
+        elif operation == "run_s3DV":
+            device_path = terms[1]
+            ublk_vdev   = terms[2]
+            start_s3_data_validator(cluster_params,device_path, ublk_vdev)
 
         elif operation == "json_params":
             params_type = terms[1]

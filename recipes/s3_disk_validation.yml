@@ -15,6 +15,15 @@
           - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
+    - name: "{{ recipe_name }}: create nisd device"
+      vars:
+          img_dir: "/s3DV.img"
+          bs: "1G"
+          count: 15
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'createFile', img_dir, bs, count wantlist=True) }}"
+
     - name: "{{ recipe_name }}: Start GCService"
       vars:
         dryRun: False
@@ -55,6 +64,14 @@
       debug:
         msg: "Validate that GC is not processed and Marker file's endSeq doesn't match  {{ marker_check.msg[1] }} and {{ marker_check.msg[0] }} "
       failed_when: marker_check.msg[1] == marker_check.msg[0]
+
+    - name: "{{ recipe_name }}: Check NISD and GC Marker file End sequence."
+      vars:
+        disk_path: ""
+        ublk_vdev: ""
+      debug:
+         msg: "{{ lookup('s3_handler', 'run_s3DV', disk_path, ublk_vdev, wantlist=True)}}"
+      register: marker_check
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
