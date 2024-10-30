@@ -40,44 +40,7 @@ def create_directory(path):
     except OSError as e:
         print(f"Error creating directory at {path}: {e}")
 
-def load_kernel_module(module_name="ublk_drv"):
-    try:
-        # Run the modprobe command to load the kernel module
-        subprocess.run(["modprobe", module_name], check=True)
-        print(f"Module '{module_name}' loaded successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to load module '{module_name}': {e}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-# start a ublk device of size 8GB
-def run_niova_ublk(cntl_uuid, ublk_uuid):
-    command = [
-        "sudo",
-        "LD_LIBRARY_PATH=/home/runner/work/niovad/niovad/build_dir/lib", 
-        "/home/runner/work/niovad/niovad/build_dir/bin/niova-ublk",
-        "-s", "12884901888",
-        "-t", cntl_uuid,
-        "-v", ublk_uuid,
-        "-u", ublk_uuid,
-        "-q", "128",
-        "-b", "1048576"
-    ]
-    
-    # Combine the environment variable and command into a single string
-    full_command = " ".join(command)
-    print(f"ublk command: {full_command}")
-    try:
-        # Run the command
-        subprocess.run(full_command, shell=True, check=True, executable="/bin/bash")
-        print("Command executed successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Command failed with error: {e}")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-
-
-def start_s3_data_validator(cluster_params, device_path, vdev_uuid):
+def start_s3_data_validator(cluster_params, device_path, ublk_uuid, nisd_uuid):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -85,12 +48,13 @@ def start_s3_data_validator(cluster_params, device_path, vdev_uuid):
     bin_path = '%s/s3DataValidator' % binary_dir
     log_dir = "%s/%s/s3DV" % (base_dir, raft_uuid)
     s3_config = '%s/s3.config.example' % binary_dir
+    nisd_cmdintf_path = "/tmp/.niova/{%s}" % nisd_uuid
     
     # Ensure log directory exists
     create_directory(log_dir)
     
     # Build command to run
-    cmd = [bin_path, '-v', vdev_uuid, '-c', s3_config, '-p', log_dir, '-b', 'paroscale-test', '-d', device_path]
+    cmd = [bin_path, '-v', vdev_uuid, '-c', s3_config, '-p', log_dir, '-b', 'paroscale-test', '-d', device_path, '-nisdP', nisd_cmdintf_path]
     
     print(f"s3 dv cmd {cmd}")
     # # Run the command and capture the exit code
@@ -229,6 +193,8 @@ def create_file(cluster_params, filename, bs, count):
         print(f"File created successfully at: {full_path}")
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
+    
+    return full_path
 
 def delete_file(cluster_params):
     base_dir = cluster_params['base_dir']
@@ -1641,13 +1607,12 @@ class LookupModule(LookupBase):
             MarkerSeq = GetSeqOfMarker(cluster_params, dirName, chunk, value)
 
             return MarkerSeq
-        elif operation == "load_ublk_drv":
-            load_kernel_module()
         
         elif operation == "run_s3DV":
             device_path = terms[1]
-            ublk_vdev   = terms[2]
-            start_s3_data_validator(cluster_params,device_path, ublk_vdev)
+            ublk_uuid   = terms[2]
+            nisd_uuid   = terms[3]
+            start_s3_data_validator(cluster_params, device_path, ublk_uuid, nisd_uuid)
 
         elif operation == "json_params":
             params_type = terms[1]

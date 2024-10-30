@@ -27,6 +27,100 @@ def initialize_logger(log_file):
 
     return logger
 
+def load_kernel_module(module_name="ublk_drv"):
+    try:
+        # Run the modprobe command to load the kernel module
+        subprocess.run(["modprobe", module_name], check=True)
+        print(f"Module '{module_name}' loaded successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to load module '{module_name}': {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# start a ublk device of size 8GB
+def run_niova_ublk(cntl_uuid):
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    
+    #format and run the niova-block-ctl
+    bin_path = '%s/niova-ublk' % binary_dir
+
+    # generate ublk uuid
+    genericcmdobj = GenericCmds()
+    ublk_uuid = genericcmdobj.generate_uuid()
+
+    command = [
+        "sudo",
+        "LD_LIBRARY_PATH=/home/runner/work/niovad/niovad/build_dir/lib", 
+        bin_path,
+        "-s", "12884901888",
+        "-t", cntl_uuid,
+        "-v", ublk_uuid,
+        "-u", ublk_uuid,
+        "-q", "128",
+        "-b", "1048576"
+    ]
+    
+    # Combine the environment variable and command into a single string
+    full_command = " ".join(command)
+    print(f"ublk command: {full_command}")
+    try:
+        # Run the command
+        subprocess.run(full_command, shell=True, check=True, executable="/bin/bash")
+        print("Command executed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Command failed with error: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+    return ublk_uuid
+
+
+# this method is similar to start_niova_block_ctl_process but the difference is it doesn't create the device internally
+def run_niova_block_ctl(cluster_params, input_value):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+
+    genericcmdobj = GenericCmds()
+    nisd_uuid = genericcmdobj.generate_uuid()
+
+    # Prepare path for log file.
+    log_file = "%s/%s/niovablockctl_%s_log.txt" % (base_dir, raft_uuid, nisd_uuid)
+
+    # Initialize the logger
+    logger = initialize_logger(log_file)
+
+    # Open the log file to pass the fp to subprocess.Popen
+    fp = open(log_file, "a+")
+
+    # Prepare path for executables.
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    #format and run the niova-block-ctl
+    bin_path = '%s/niova-block-ctl' % binary_dir
+
+    nisd_dict = { nisd_uuid : 0 }
+
+    nisd_dict[nisd_uuid] = 0
+
+    ## TODO check if we need to write info to the lookout
+
+    logger.debug("nisd-uuid: %s", nisd_uuid)
+
+    process_popen = subprocess.Popen([bin_path,'-d', input_value["nisd_device_path"], '-f', '-i', '-u', nisd_uuid], stdout = fp, stderr = fp)
+
+    logger.info("niova-block-ctl args: %s", process_popen.args)
+    #Check if niova-block-ctl process exited with error
+    if process_popen.poll() is None:
+        logger.info("niova-block-ctl process started successfully")
+    else:
+        logger.error("niova-block-ctl process failed to start")
+        raise subprocess.SubprocessError(process_popen.returncode)
+
+    # Sync the log file so all the logs from niova-block-ctl gets written to log file.
+    os.fsync(fp)
+
+    return nisd_uuid
+
+
 def start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -394,7 +488,22 @@ class LookupModule(LookupBase):
 
         cluster_params = kwargs['variables']['ClusterParams']
 
-        if process_type == "niova-block-ctl":
+        if process_type == "run-niova-block-ctl":
+               # controlplane_environment_variables(cluster_params, input_values['lookout_uuid'])
+               niova_block_ctl_process = run_niova_block_ctl(cluster_params, input_values)
+
+               return niova_block_ctl_process
+
+        elif process_type == "load_ublk_drv":
+            
+            load_kernel_module()
+        
+        elif process_type == "run_ublk_device":
+
+            nisd_uuid = term[1]
+            run_niova_ublk(cluster_params, nisd_uuid)
+
+        elif process_type == "niova-block-ctl":
 
                controlplane_environment_variables(cluster_params, input_values['lookout_uuid'])
                niova_block_ctl_process = start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values)
