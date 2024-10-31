@@ -84,13 +84,13 @@ def start_s3_data_validator(cluster_params, device_path, ublk_uuid, nisd_uuid):
     cmd = [bin_path, '-v', vdev_uuid, '-c', s3_config, '-p', log_dir, '-b', 'paroscale-test', '-d', device_path, '-nisdP', nisd_cmdintf_path]
     
     print(f"s3 dv cmd {cmd}")
-    # # Run the command and capture the exit code
-    # try:
-    #     result = subprocess.run(cmd, check=True)
-    #     exit_code = result.returncode
-    # except subprocess.CalledProcessError as e:
-    #     exit_code = e.returncode
-    #     print(f"Command failed with exit code {exit_code}")
+    # Run the command and capture the exit code
+    try:
+        result = subprocess.run(cmd, check=True)
+        exit_code = result.returncode
+    except subprocess.CalledProcessError as e:
+        exit_code = e.returncode
+        print(f"Command failed with exit code {exit_code}")
     
     return exit_code
 
@@ -1576,7 +1576,7 @@ class LookupModule(LookupBase):
             create_gc_partition(cluster_params)
 
         elif operation == "createFile":
-            create_file(cluster_params)
+            return create_file(cluster_params)
 
         elif operation == "deleteFile":
             delete_file(cluster_params)

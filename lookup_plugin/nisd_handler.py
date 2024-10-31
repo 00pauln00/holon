@@ -50,10 +50,14 @@ def set_nisd_environ_variables(minio_config_path):
     print("NIOVA_BLOCK_AWS_AUTH =", os.environ["NIOVA_BLOCK_AWS_AUTH"])
 
 
-def run_nid_command(cluster_params, nisd_uuid, device_path):
-    # TODO pass the config path
-    set_nisd_environ_variables()
-    command = ["./nisd", "-u", nisd_uuid, "-d", device_path, "-s", "curl", "2"]
+def run_nisd_command(cluster_params, nisd_uuid, device_path):
+
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/nisd' % binary_dir
+    s3config = '%s/s3.config.example' % binary_dir
+
+    set_nisd_environ_variables(s3config)
+    command = [bin_path, "-u", nisd_uuid, "-d", device_path, "-s", "curl", "2"]
     try:
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         print("Command output:", result.stdout)
@@ -524,9 +528,9 @@ class LookupModule(LookupBase):
 
         if process_type == "run-niova-block-ctl":
                # controlplane_environment_variables(cluster_params, input_values['lookout_uuid'])
-               niova_block_ctl_process = run_niova_block_ctl(cluster_params, input_values)
+               nisd_uuid = run_niova_block_ctl(cluster_params, input_values)
 
-               return niova_block_ctl_process
+               return nisd_uuid
 
         elif process_type == "load_ublk_drv":
 
@@ -535,12 +539,12 @@ class LookupModule(LookupBase):
         elif process_type == "run_ublk_device":
 
             nisd_uuid = term[1]
-            run_niova_ublk(cluster_params, nisd_uuid)
+            return run_niova_ublk(cluster_params, nisd_uuid)
 
         elif process_type == "run_nisd":
             nisd_uuid = term[1]
             device_path = term[2]
-            run_niova_ublk(cluster_params, nisd_uuid, device_path)
+            run_nisd(cluster_params, nisd_uuid, device_path)
 
         elif process_type == "niova-block-ctl":
 
