@@ -34,6 +34,11 @@
          msg:
           - "{{ lookup('nisd_handler', 'run_niova_block_ctl', input_param, wantlist=True) }}"
       register: nisd_uuid
+    
+     - name: "{{ recipe_name }}: Start nisd"
+      debug:
+         msg:
+          - "{{ lookup('nisd_handler', 'run_nisd', nisd_uuid, nisd_device_path, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: load ublk drive module"
       debug:
