@@ -232,15 +232,27 @@ def create_file(cluster_params, filename, bs, count):
     :param bs: str, block size for 'dd' command
     :param count: int, count of blocks for 'dd' command
     """
-    base_dir = cluster_params['base_dir']
-    raft_uuid = cluster_params['raft_uuid']
+        
+    # Get base directory and raft UUID from cluster parameters
+    base_dir = cluster_params.get('base_dir', '').rstrip('/')  # Remove trailing slash from base_dir if present
+    raft_uuid = cluster_params.get('raft_uuid', '')
+
+    # Remove leading slash from filename, ensuring it won't override the path
+    filename = filename.lstrip('/')
+
+    # Construct log directory path using os.path.join for platform independence
     log_dir = os.path.join(base_dir, raft_uuid)
+
+    # Construct the full path by joining log_dir with the filename
     full_path = os.path.join(log_dir, filename)
+
+    # Normalize the path to remove redundant slashes, if any
+    full_path = os.path.normpath(full_path)
 
     try:
         # Ensure the directory exists
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
-
+        print("nisd file path: ", full_path)
         # Run 'dd' command with specified parameters
         result = subprocess.run(
             f"dd if=/dev/zero of={full_path} bs={bs} count={count}",
@@ -1576,7 +1588,10 @@ class LookupModule(LookupBase):
             create_gc_partition(cluster_params)
 
         elif operation == "createFile":
-            return create_file(cluster_params)
+            img_dir = terms[1]
+            bs = terms[2]
+            count = terms[3]
+            return create_file(cluster_params, img_dir, bs, count)
 
         elif operation == "deleteFile":
             delete_file(cluster_params)
