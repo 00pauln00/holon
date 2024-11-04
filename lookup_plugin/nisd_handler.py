@@ -111,10 +111,10 @@ def run_niova_ublk(cntl_uuid):
 
     # TODO temp changes to pass the binary
     lib_path = replace_last_path_segment(binary_dir+"/bin", "bin", "lib")
+    os.environ["LD_LIBRARY_PATH"] = lib_path
+    print(f"LD_LIBRARY_PATH set to: {os.environ['LD_LIBRARY_PATH']}")
 
     command = [
-        "sudo",
-        "LD_LIBRARY_PATH", lib_path, 
         bin_path,
         "-s", "12884901888",
         "-t", cntl_uuid,
@@ -131,7 +131,7 @@ def run_niova_ublk(cntl_uuid):
         # Run the command
         subprocess.Popen(full_command, shell=True, executable="/bin/bash")
         print("Command executed successfully.")
-    except Exception as e:
+    except Exception as e
         print(f"An unexpected error occurred: {e}")
     return ublk_uuid
 
