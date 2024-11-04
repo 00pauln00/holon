@@ -53,7 +53,7 @@ def set_nisd_environ_variables(minio_config_path):
 def run_nisd_command(cluster_params, nisd_uuid, device_path):
 
     binary_dir = os.getenv('NIOVA_BIN_PATH')
-    bin_path = '/%s/nisd' % binary_dir
+    bin_path = '/%s/bin/nisd' % binary_dir
     s3config = '/%s/s3.config.example' % binary_dir
     bin_path = os.path.normpath(bin_path)
     set_nisd_environ_variables(s3config)
@@ -94,14 +94,15 @@ def run_niova_ublk(cntl_uuid):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
     
     #format and run the niova-block-ctl
-    bin_path = '%s/niova-ublk' % binary_dir
+    bin_path = '%s/bin/niova-ublk' % binary_dir
     bin_path = os.path.normpath(bin_path)
 
     # generate ublk uuid
     genericcmdobj = GenericCmds()
     ublk_uuid = genericcmdobj.generate_uuid()
 
-    lib_path = replace_last_path_segment(binary_dir, "bin", "lib")
+    # TODO temp changes to pass the binary
+    lib_path = replace_last_path_segment(binary_dir+"/bin", "bin", "lib")
 
     command = [
         "sudo",
@@ -150,7 +151,8 @@ def run_niova_block_ctl(cluster_params, input_value):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
     #format and run the niova-block-ctl
-    bin_path = '%s/niova-block-ctl' % binary_dir
+    # TODO check how the bin can be passed
+    bin_path = '%s/bin/niova-block-ctl' % binary_dir
 
     nisd_dict = { nisd_uuid : 0 }
 
@@ -544,7 +546,6 @@ class LookupModule(LookupBase):
         cluster_params = kwargs['variables']['ClusterParams']
 
         if process_type == "run-niova-block-ctl":
-               # controlplane_environment_variables(cluster_params, input_values['lookout_uuid'])
                nisd_uuid = run_niova_block_ctl(cluster_params, input_values)
 
                return nisd_uuid
