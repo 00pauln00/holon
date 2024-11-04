@@ -45,6 +45,7 @@ def run_fio_test(directory_path):
     fio_command = [
         "/usr/bin/fio",
         f"--filename={directory_path}/gc0.tf",
+        f"--filename={directory_path}/gc1.tf",
         "--direct=1",
         "--ioengine=io_uring",
         "--iodepth=128",
@@ -59,7 +60,7 @@ def run_fio_test(directory_path):
     ]
     
     try:
-        print("Running fio test...")
+        print("Running fio test...", fio_command)
         result = subprocess.run(fio_command, capture_output=True, text=True, check=True)
         print("Output:\n", result.stdout)
         print("Errors:\n", result.stderr)
@@ -171,7 +172,12 @@ def get_unmounted_ublk_device():
         
         # Parse output and find the first unmounted ublk device
         for line in result.stdout.splitlines():
-            name, mountpoint = line.split()
+            parts = line.split()
+            if len(parts) < 2:
+                # Skip lines that don’t have both NAME and MOUNTPOINT
+                continue
+
+            name, mountpoint = parts
             if name.startswith("ublkb") and mountpoint == "":
                 return name  # Return the first unmounted ublk device found
 
@@ -864,7 +870,8 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, 
 
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(gcLogFile, "a+")
-    bin_path = '%s/GCService' % binary_dir
+    bin_path = '/%s/GCService' % binary_dir
+    bin_path = os.path.normpath(bin_path)
 
     cmd = []
     s3config = '%s/s3.config.example' % binary_dir
@@ -1605,7 +1612,7 @@ class LookupModule(LookupBase):
             run_fio_test(device_path)
 
         elif operation == "setup_btrfs": 
-            mount = term[1]
+            mount = terms[1]
             mount_path =  setup_btrfs(cluster_params, mount)
             return mount_path
 

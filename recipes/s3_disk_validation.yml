@@ -28,7 +28,7 @@
     - name: "{{ recipe_name }}: run niova ctl cmd on device"
       vars:
         input_param: {
-            'nisd_device_path': nisd_dev_path,
+            'nisd_device_path':  "{{ nisd_dev_path.msg[0] }}"
           }
       debug:
          msg:
@@ -38,7 +38,7 @@
     - name: "{{ recipe_name }}: Start nisd"
       debug:
          msg:
-          - "{{ lookup('nisd_handler', 'run_nisd', nisd_uuid, nisd_dev_path, wantlist=True) }}"
+          - "{{ lookup('nisd_handler', 'run_nisd', nisd_uuid.msg[0], nisd_dev_path.msg[0], wantlist=True) }}"
 
     - name: "{{ recipe_name }}: load ublk drive module"
       vars:
@@ -50,7 +50,7 @@
     - name: "{{ recipe_name }}: Start ublk device"
       debug:
          msg:
-          - "{{ lookup('nisd_handler', 'run_ublk_device', nisd_uuid, wantlist=True) }}"
+          - "{{ lookup('nisd_handler', 'run_ublk_device', nisd_uuid.msg[0], wantlist=True) }}"
 
       register: ublk_uuid
 
@@ -65,7 +65,7 @@
     - name: "{{ recipe_name }}: run the script"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'generate_data', mount_path, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'generate_data', mount_path.msg[0], wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
@@ -110,7 +110,7 @@
 
     - name: "{{ recipe_name }}: start the validator utility"
       debug:
-         msg: "{{ lookup('s3_handler', 'run_s3DV', nisd_dev_path, ublk_uuid, nisd_uuid, wantlist=True)}}"
+         msg: "{{ lookup('s3_handler', 'run_s3DV', nisd_dev_path.msg[0], ublk_uuid.msg[0], nisd_uuid.msg[0], wantlist=True)}}"
       register: status
 
     rescue:
