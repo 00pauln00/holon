@@ -73,8 +73,20 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
     # Return the process to allow further handling if needed
     return process
 
+def install_linux_modules():
+    try:
+        # Run the command using subprocess
+        command = f"sudo apt install linux-modules-extra-$(uname -r)"
+        result = subprocess.run(command, shell=True, check=True, text=True, capture_output=True)
+
+        # Return the output if successful
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        # Return the error output if the command fails
+        return f"An error occurred: {e.stderr}"
 
 def load_kernel_module(module_name):
+    install_linux_modules()
     try:
         # Run the modprobe command to load the kernel module
         subprocess.run(["modprobe", module_name], check=True)

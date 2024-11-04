@@ -40,8 +40,17 @@ def create_directory(path):
     except OSError as e:
         print(f"Error creating directory at {path}: {e}")
 
+def install_fio():
+    try:
+        subprocess.run(["sudo", "apt", "update"], check=True)
+        subprocess.run(["sudo", "apt", "install", "-y", "fio"], check=True)
+        print("fio installation completed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred during fio installation: {e}")
+
 # generate data using fio command
 def run_fio_test(directory_path):
+    install_fio()
     fio_command = [
         "/usr/bin/fio",
         f"--filename={directory_path}/gc0.tf",
