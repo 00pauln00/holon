@@ -59,11 +59,19 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
     set_nisd_environ_variables(s3config)
     command = [bin_path, "-u", nisd_uuid, "-d", device_path, "-s", "curl", "2"]
     print("nisd command :", command)
-    try:
-        result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        print("Command output:", result.stdout)
-    except subprocess.CalledProcessError as e:
-        print("Error occurred:", e.stderr)
+     # Prepare log file path with a timestamp for uniqueness
+    log_file_path = f'nisd_command_log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+    
+    # Open log file in append mode
+    with open(log_file_path, 'a') as log_file:
+        # Launch the command as a non-blocking subprocess
+        process = subprocess.Popen(command, stdout=log_file, stderr=log_file, text=True)
+        
+        # Log the process ID for reference
+        print(f"Nisd command started with PID {process.pid}. Logs will be written to {log_file_path}")
+
+    # Return the process to allow further handling if needed
+    return process
 
 
 def load_kernel_module(module_name):
@@ -121,10 +129,8 @@ def run_niova_ublk(cntl_uuid):
     print(f"ublk command: {full_command}")
     try:
         # Run the command
-        subprocess.run(full_command, shell=True, check=True, executable="/bin/bash")
+        subprocess.Popen(full_command, shell=True, executable="/bin/bash")
         print("Command executed successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Command failed with error: {e}")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
     return ublk_uuid
