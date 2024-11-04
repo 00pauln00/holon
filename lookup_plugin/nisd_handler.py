@@ -69,6 +69,22 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
         
         # Log the process ID for reference
         print(f"Nisd command started with PID {process.pid}. Logs will be written to {log_file_path}")
+    
+    recipe_conf = load_recipe_op_config(cluster_params)
+
+    pid = process.pid
+    ps = psutil.Process(pid)
+
+    if not "nisd_process" in recipe_conf:
+        recipe_conf['nisd_process'] = {}
+
+    recipe_conf['nisd_process']['process_pid'] = pid
+    recipe_conf['nisd_process']['process_type'] = "nisd_process"
+    recipe_conf['nisd_process']['process_app_type'] = app_name
+    recipe_conf['nisd_process']['process_status'] = ps.status()
+
+    genericcmdobj = GenericCmds()
+    genericcmdobj.recipe_json_dump(recipe_conf)
 
     # Return the process to allow further handling if needed
     return process
@@ -145,6 +161,23 @@ def run_niova_ublk(cntl_uuid):
         print("Command executed successfully.")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+    
+    recipe_conf = load_recipe_op_config(cluster_params)
+
+    pid = process.pid
+    ps = psutil.Process(pid)
+
+    if not "ublk_process" in recipe_conf:
+        recipe_conf['ublk_process'] = {}
+
+    recipe_conf['ublk_process']['process_pid'] = pid
+    recipe_conf['ublk_process']['process_type'] = "ublk_process"
+    recipe_conf['ublk_process']['process_app_type'] = app_name
+    recipe_conf['ublk_process']['process_status'] = ps.status()
+
+    genericcmdobj = GenericCmds()
+    genericcmdobj.recipe_json_dump(recipe_conf)
+
     return ublk_uuid
 
 
@@ -580,7 +613,7 @@ class LookupModule(LookupBase):
         elif process_type == "run_nisd":
             nisd_uuid = terms[1]
             device_path = terms[2]
-            run_nisd_command(cluster_params, nisd_uuid, device_path)
+            return run_nisd_command(cluster_params, nisd_uuid, device_path)
 
         elif process_type == "niova-block-ctl":
 
