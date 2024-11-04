@@ -29,7 +29,7 @@ def initialize_logger(log_file):
 
 def set_nisd_environ_variables(minio_config_path):
     # Read the JSON file
-    with open(minio_config_path, 'r') as file:
+    with open(os.path.normpath(minio_config_path), 'r') as file:
         config = json.load(file)
     
     # Extract values
@@ -53,11 +53,12 @@ def set_nisd_environ_variables(minio_config_path):
 def run_nisd_command(cluster_params, nisd_uuid, device_path):
 
     binary_dir = os.getenv('NIOVA_BIN_PATH')
-    bin_path = '%s/nisd' % binary_dir
-    s3config = '%s/s3.config.example' % binary_dir
-
+    bin_path = '/%s/nisd' % binary_dir
+    s3config = '/%s/s3.config.example' % binary_dir
+    bin_path = os.path.normpath(bin_path)
     set_nisd_environ_variables(s3config)
     command = [bin_path, "-u", nisd_uuid, "-d", device_path, "-s", "curl", "2"]
+    print("nisd command :", command)
     try:
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         print("Command output:", result.stdout)
@@ -65,7 +66,7 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
         print("Error occurred:", e.stderr)
 
 
-def load_kernel_module(module_name="ublk_drv"):
+def load_kernel_module(module_name):
     try:
         # Run the modprobe command to load the kernel module
         subprocess.run(["modprobe", module_name], check=True)
@@ -75,20 +76,36 @@ def load_kernel_module(module_name="ublk_drv"):
     except Exception as e:
         print(f"An error occurred: {e}")
 
+
+def replace_last_path_segment(path, old_segment, new_segment):
+    # Split the path into head and tail
+    head, tail = os.path.split(path)
+    
+    # Check if the last segment matches the old_segment to replace
+    if tail == old_segment:
+        # Replace it with the new segment
+        return os.path.join(head, new_segment)
+    else:
+        # Return the path unchanged if the last segment doesn't match
+        return path
+
 # start a ublk device of size 8GB
 def run_niova_ublk(cntl_uuid):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
     
     #format and run the niova-block-ctl
     bin_path = '%s/niova-ublk' % binary_dir
+    bin_path = os.path.normpath(bin_path)
 
     # generate ublk uuid
     genericcmdobj = GenericCmds()
     ublk_uuid = genericcmdobj.generate_uuid()
 
+    lib_path = replace_last_path_segment(binary_dir, "bin", "lib")
+
     command = [
         "sudo",
-        "LD_LIBRARY_PATH=/home/runner/work/niovad/niovad/build_dir/lib", 
+        "LD_LIBRARY_PATH", lib_path, 
         bin_path,
         "-s", "12884901888",
         "-t", cntl_uuid,
@@ -99,7 +116,7 @@ def run_niova_ublk(cntl_uuid):
     ]
     
     # Combine the environment variable and command into a single string
-    full_command = " ".join(command)
+    full_command = " ".join(str(item) for item in command)
     print(f"ublk command: {full_command}")
     try:
         # Run the command
@@ -144,8 +161,8 @@ def run_niova_block_ctl(cluster_params, input_value):
     logger.debug("nisd-uuid: %s", nisd_uuid)
 
     process_popen = subprocess.Popen([bin_path,'-d', input_value["nisd_device_path"], '-f', '-i', '-u', nisd_uuid], stdout = fp, stderr = fp)
+    logger.info("niova-block-ctl args: %s -d %s -f -i -u %s", bin_path, input_value["nisd_device_path"], nisd_uuid)
 
-    logger.info("niova-block-ctl args: %s", process_popen.args)
     #Check if niova-block-ctl process exited with error
     if process_popen.poll() is None:
         logger.info("niova-block-ctl process started successfully")
@@ -532,19 +549,19 @@ class LookupModule(LookupBase):
 
                return nisd_uuid
 
-        elif process_type == "load_ublk_drv":
+        elif process_type == "load_module":
 
-            load_kernel_module()
+            load_kernel_module(input_values)
         
         elif process_type == "run_ublk_device":
 
-            nisd_uuid = term[1]
-            return run_niova_ublk(cluster_params, nisd_uuid)
+            nisd_uuid = terms[1]
+            return run_niova_ublk(nisd_uuid)
 
         elif process_type == "run_nisd":
-            nisd_uuid = term[1]
-            device_path = term[2]
-            run_nisd(cluster_params, nisd_uuid, device_path)
+            nisd_uuid = terms[1]
+            device_path = terms[2]
+            run_nisd_command(cluster_params, nisd_uuid, device_path)
 
         elif process_type == "niova-block-ctl":
 

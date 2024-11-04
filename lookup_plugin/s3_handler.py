@@ -51,7 +51,7 @@ def run_fio_test(directory_path):
         "--numjobs=1",
         "--group_reporting",
         "--name=iops-test-job",
-        "--size=10m",
+        "--size=4G",
         "--bs=4k",
         "--fixedbufs",
         "--buffer_compress_percentage=50",
@@ -1591,7 +1591,8 @@ class LookupModule(LookupBase):
             img_dir = terms[1]
             bs = terms[2]
             count = terms[3]
-            return create_file(cluster_params, img_dir, bs, count)
+            device_path = create_file(cluster_params, img_dir, bs, count)
+            return device_path
 
         elif operation == "deleteFile":
             delete_file(cluster_params)
