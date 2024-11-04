@@ -131,7 +131,7 @@ def run_niova_ublk(cntl_uuid):
         # Run the command
         subprocess.Popen(full_command, shell=True, executable="/bin/bash")
         print("Command executed successfully.")
-    except Exception as e
+    except Exception as e:
         print(f"An unexpected error occurred: {e}")
     return ublk_uuid
 

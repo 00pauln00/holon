@@ -58,7 +58,7 @@ def run_fio_test(directory_path):
         "--buffer_compress_percentage=50",
         "--rw=randwrite"
     ]
-    
+
     try:
         print("Running fio test...", fio_command)
         result = subprocess.run(fio_command, capture_output=True, text=True, check=True)
@@ -206,6 +206,8 @@ def setup_btrfs(cluster_params, mount_point):
     mount_path = "%s/%s/%s" % (base_dir, raft_uuid, mount_point)
 
     device = get_unmounted_ublk_device()
+    if device == None: 
+        return
     #TODO Add check to see if the value is none or not
     try:
         # Step 1: Format the device with Btrfs
