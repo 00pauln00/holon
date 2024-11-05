@@ -54,6 +54,8 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
 
     binary_dir = os.getenv('NIOVA_BIN_PATH')
     bin_path = '/%s/bin/nisd' % binary_dir
+    app_name = cluster_params['app_type']
+
     s3config = '/%s/s3.config.example' % binary_dir
     bin_path = os.path.normpath(bin_path)
     set_nisd_environ_variables(s3config)
@@ -126,12 +128,13 @@ def replace_last_path_segment(path, old_segment, new_segment):
         return path
 
 # start a ublk device of size 8GB
-def run_niova_ublk(cntl_uuid):
+def run_niova_ublk(cluster_params, cntl_uuid):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
     
     #format and run the niova-block-ctl
     bin_path = '%s/bin/niova-ublk' % binary_dir
     bin_path = os.path.normpath(bin_path)
+    app_name = cluster_params['app_type']
 
     # generate ublk uuid
     genericcmdobj = GenericCmds()
@@ -608,7 +611,7 @@ class LookupModule(LookupBase):
         elif process_type == "run_ublk_device":
 
             nisd_uuid = terms[1]
-            return run_niova_ublk(nisd_uuid)
+            return run_niova_ublk(cluster_params, nisd_uuid)
 
         elif process_type == "run_nisd":
             nisd_uuid = terms[1]
