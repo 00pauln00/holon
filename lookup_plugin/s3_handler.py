@@ -2,7 +2,6 @@ from ansible.plugins.lookup import LookupBase
 import json
 import os, random, psutil
 from datetime import datetime
-import time
 import subprocess ,re
 import uuid, random
 import shutil
@@ -168,33 +167,48 @@ def create_gc_partition(cluster_params):
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
+def get_unmounted_ublk_device(cluster_params):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    output_file = "%s/%s/%s" % (base_dir, raft_uuid, "lsblk_output.txt")
+    timeout = 3 * 60  # Total timeout in seconds (3 minutes)
+    interval = 30  # Interval in seconds between retries
 
-def get_unmounted_ublk_device():
-    try:
-        # Run lsblk to get details of block devices
-        result = subprocess.run(
-            ["lsblk", "-o", "NAME,MOUNTPOINT", "-dn"],  # "-d" to avoid children, "-n" for no headings
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        
-        # Parse output and find the first unmounted ublk device
-        for line in result.stdout.splitlines():
-            parts = line.split()
-            if len(parts) < 2:
-                # Skip lines that don’t have both NAME and MOUNTPOINT
-                continue
+    start_time = time.time()
+    
+    while time.time() - start_time < timeout:
+        try:
+            result = subprocess.run(
+                ["lsblk", "-o", "NAME,MOUNTPOINT", "-n"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            
+            # Store output to a file
+            with open(output_file, 'w') as file:
+                file.write(result.stdout)
 
-            name, mountpoint = parts
-            if name.startswith("ublkb") and mountpoint == "":
-                return name  # Return the first unmounted ublk device found
+            # Parse output and find the first unmounted ublk device
+            for line in result.stdout.splitlines():
+                parts = line.split()
+                if len(parts) < 2:
+                    continue
 
-        return None  # No unmounted ublk device found
+                name, mountpoint = parts
+                if name.startswith("ublkb") and mountpoint == "":
+                    return name  # Return the first unmounted ublk device found
 
-    except subprocess.CalledProcessError as e:
-        print("Error retrieving unmounted ublk devices:", e)
-        return None
+            print("No unmounted ublk device found. Retrying in 30 seconds...")
+
+        except subprocess.CalledProcessError as e:
+            print("Error retrieving unmounted ublk devices:", e)
+
+        time.sleep(interval)  # Wait for 30 seconds before retrying
+
+    print("No unmounted ublk device found after 3 minutes.")
+    return None  # No unmounted ublk device found after retries
+
 
 def setup_btrfs(cluster_params, mount_point):
     """
@@ -214,7 +228,7 @@ def setup_btrfs(cluster_params, mount_point):
     raft_uuid = cluster_params['raft_uuid']
     mount_path = "%s/%s/%s" % (base_dir, raft_uuid, mount_point)
 
-    device = get_unmounted_ublk_device()
+    device = get_unmounted_ublk_device(cluster_params)
     if device == None: 
         raise RuntimeError(f"no ublk device available")
 
