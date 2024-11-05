@@ -192,12 +192,15 @@ def get_unmounted_ublk_device(cluster_params):
             # Parse output and find the first unmounted ublk device
             for line in result.stdout.splitlines():
                 parts = line.split()
-                if len(parts) < 2:
-                    continue
 
-                name, mountpoint = parts
+                if not parts:
+                    continue
+                    
+                name = parts[0]
+                mountpoint = parts[1] if len(parts) > 1 else ""
+
                 if name.startswith("ublkb") and mountpoint == "":
-                    return name  # Return the first unmounted ublk device found
+                    return name
 
             print("No unmounted ublk device found. Retrying in 30 seconds...")
 
