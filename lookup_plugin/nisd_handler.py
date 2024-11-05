@@ -140,10 +140,19 @@ def run_niova_ublk(cluster_params, cntl_uuid):
     genericcmdobj = GenericCmds()
     ublk_uuid = genericcmdobj.generate_uuid()
 
+    # Prepare path for log file.
+    log_file = "%s/%s/ublk_%s_log.txt" % (base_dir, raft_uuid, nisd_uuid)
+
+    # Initialize the logger
+    logger = initialize_logger(log_file)
+
+    # Open the log file to pass the fp to subprocess.Popen
+    fp = open(log_file, "a+")
+
     # TODO temp changes to pass the binary
-    lib_path = replace_last_path_segment(binary_dir+"/bin", "bin", "lib")
-    os.environ["LD_LIBRARY_PATH"] = lib_path
-    print(f"LD_LIBRARY_PATH set to: {os.environ['LD_LIBRARY_PATH']}")
+    lib_path = os.path.normpath(f'/{binary_dir}/lib')
+    os.environ["LD_LIBRARY_PATH"] = f"{lib_path}:{os.environ.get('LD_LIBRARY_PATH', '')}"
+    logger.info(f"LD_LIBRARY_PATH set to: {os.environ['LD_LIBRARY_PATH']}")
 
     command = [
         bin_path,
@@ -157,13 +166,13 @@ def run_niova_ublk(cluster_params, cntl_uuid):
     
     # Combine the environment variable and command into a single string
     full_command = " ".join(str(item) for item in command)
-    print(f"ublk command: {full_command}")
+    logger.info(f"ublk command: {full_command}")
     try:
         # Run the command
         subprocess.Popen(full_command, shell=True, executable="/bin/bash")
-        print("Command executed successfully.")
+        logger.info("Command executed successfully.")
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        logger.error(f"An unexpected error occurred: {e}")
     
     recipe_conf = load_recipe_op_config(cluster_params)
 
@@ -181,6 +190,8 @@ def run_niova_ublk(cluster_params, cntl_uuid):
     genericcmdobj = GenericCmds()
     genericcmdobj.recipe_json_dump(recipe_conf)
 
+    # Sync the log file so all the logs from run_niova_ublk gets written to log file.
+    os.fsync(fp)
     return ublk_uuid
 
 
