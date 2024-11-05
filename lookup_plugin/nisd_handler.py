@@ -143,7 +143,7 @@ def run_niova_ublk(cluster_params, cntl_uuid):
     ublk_uuid = genericcmdobj.generate_uuid()
 
     # Prepare path for log file.
-    log_file = "%s/%s/ublk_%s_log.txt" % (base_dir, raft_uuid, nisd_uuid)
+    log_file = "%s/%s/ublk_%s_log.txt" % (base_dir, raft_uuid, ublk_uuid)
 
     # Initialize the logger
     logger = initialize_logger(log_file)
@@ -171,7 +171,7 @@ def run_niova_ublk(cluster_params, cntl_uuid):
     logger.info(f"ublk command: {full_command}")
     try:
         # Run the command
-        subprocess.Popen(full_command, shell=True, executable="/bin/bash")
+        process = subprocess.Popen(full_command, shell=True, executable="/bin/bash")
         logger.info("Command executed successfully.")
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}")

@@ -216,7 +216,8 @@ def setup_btrfs(cluster_params, mount_point):
 
     device = get_unmounted_ublk_device()
     if device == None: 
-        return
+        raise RuntimeError(f"no ublk device available")
+
     #TODO Add check to see if the value is none or not
     try:
         # Step 1: Format the device with Btrfs
