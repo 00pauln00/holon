@@ -151,9 +151,9 @@ def run_niova_ublk(cluster_params, cntl_uuid):
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(log_file, "a+")
 
-    # TODO temp changes to pass the binary
-    lib_path = os.path.normpath(f'/{binary_dir}/lib')
-    os.environ["LD_LIBRARY_PATH"] = f"{lib_path}:{os.environ.get('LD_LIBRARY_PATH', '')}"
+    niova_lib_path = os.path.normpath(f'{binary_dir}/lib')
+    default_lib_path = "/usr/local/lib"
+    os.environ["LD_LIBRARY_PATH"] = f"{niova_lib_path}:{default_lib_path}:{os.environ.get('LD_LIBRARY_PATH', '')}"
     logger.info(f"LD_LIBRARY_PATH set to: {os.environ['LD_LIBRARY_PATH']}")
 
     command = [
