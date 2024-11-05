@@ -129,6 +129,8 @@ def replace_last_path_segment(path, old_segment, new_segment):
 
 # start a ublk device of size 8GB
 def run_niova_ublk(cluster_params, cntl_uuid):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
     binary_dir = os.getenv('NIOVA_BIN_PATH')
     
     #format and run the niova-block-ctl
