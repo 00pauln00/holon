@@ -88,7 +88,7 @@
          Chunk: "0"
          mType: "Both"
          stage: "wait_for_gc_marker"
-         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarkerWithVdev', mType, Chunk, ublk_uuid.msg[0], wantlist=True) }}"
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq }}"
       until: marker_seq[0] is not none
@@ -99,7 +99,7 @@
       vars:
          Chunk: "0"
          mType: "Both"
-         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarkerWithVdev', mType, Chunk, ublk_uuid.msg[0], wantlist=True) }}"
          gcMarkerEndSeq: "{{ Sequence[0] }}"
          NisdMarkerEndSeq: "{{ Sequence[1] }}"
       debug:

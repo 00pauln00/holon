@@ -1575,6 +1575,45 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value):
         print("Invalid path or directory not found.")
         return False
 
+
+# TODO check for all chunks
+def GetSeqOfMarkerWithVdev(cluster_params, vdev, chunk, value):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/s3Operation' % binary_dir
+    s3config = '%s/s3.config.example' % binary_dir
+    cmd = [bin_path, '-bucketName', 'paroscale-test', '-operation', 'list', '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', 'm', '-l', logFile]
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    exit_code = process.wait()
+    if exit_code == 0:
+        print("Process completed successfully.")
+    else:
+        error_message = print("Process failed with exit code {exit_code}.")
+        raise RuntimeError(error_message)
+
+    # Read the output and error
+    stdout, stderr = process.communicate()
+
+    # Check if any file is found
+    GcSeq = check_if_mType_Present(vdev, chunk, stdout, "gc")
+    NisdSeq = check_if_mType_Present(vdev, chunk, stdout, "nisd")
+    print("GcSeq : ", GcSeq)
+    print("NisdSeq : ", NisdSeq)
+    MSeq = []
+    match value:
+        case 'gc':
+            MSeq.extend([GcSeq, None])
+            return MSeq
+        case 'nisd':
+            MSeq.extend([None, NisdSeq])
+            return MSeq
+        case 'Both':
+            MSeq.extend([GcSeq, NisdSeq])
+            return MSeq
+
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
@@ -1721,6 +1760,14 @@ class LookupModule(LookupBase):
             chunk = terms[2]
             value = terms[1]
             MarkerSeq = GetSeqOfMarker(cluster_params, dirName, chunk, value)
+
+            return MarkerSeq
+
+        elif operation == "GetSeqOfMarkerWithVdev":
+            chunk = terms[2]
+            value = terms[1]
+            vdev = terms[3]
+            MarkerSeq = GetSeqOfMarkerWithVdev(cluster_params, vdev, chunk, value)
 
             return MarkerSeq
         

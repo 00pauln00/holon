@@ -51,6 +51,8 @@ def set_nisd_environ_variables(minio_config_path):
 
 
 def run_nisd_command(cluster_params, nisd_uuid, device_path):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
 
     binary_dir = os.getenv('NIOVA_BIN_PATH')
     bin_path = '/%s/bin/nisd' % binary_dir
@@ -60,9 +62,13 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
     bin_path = os.path.normpath(bin_path)
     set_nisd_environ_variables(s3config)
     command = [bin_path, "-u", nisd_uuid, "-d", device_path, "-s", "curl", "2"]
-    print("nisd command :", command)
-     # Prepare log file path with a timestamp for uniqueness
-    log_file_path = f'nisd_command_log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+
+    # Prepare nisd log file path
+    log_file_path = "%s/%s/nisd_%s.log" % (base_dir, raft_uuid, nisd_uuid)
+    logger = initialize_logger(log_file_path)
+
+    logger.info("nisd command :", command)
+
     
     # Open log file in append mode
     with open(log_file_path, 'a') as log_file:
@@ -70,7 +76,7 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
         process = subprocess.Popen(command, stdout=log_file, stderr=log_file, text=True)
         
         # Log the process ID for reference
-        print(f"Nisd command started with PID {process.pid}. Logs will be written to {log_file_path}")
+        logger.info(f"Nisd command started with PID {process.pid}. Logs will be written to {log_file_path}")
     
     recipe_conf = load_recipe_op_config(cluster_params)
 
