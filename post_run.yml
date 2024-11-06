@@ -48,16 +48,6 @@
     shell: kill -9 {{ gc_process_pid }}
     when: gc_process_pid is defined and gc_process_pid | length > 0 and (gc_process_status == "sleeping" or gc_process_status == "disk-sleep" or gc_process_status == "running")
 
-  - name: "{{ recipe_name }}: Get the nisd Service process pid and status."
-    set_fact:
-      nisd_process_pid: "{{ jsondata.nisd_process.process_pid | default('') }}"
-      nisd_process_status: "{{ jsondata.nisd_process.process_status | default('') }}"
-    when: jsondata.nisd_process is defined
-
-  - name: Kill the GC Service process if it was found
-    shell: kill -9 {{ nisd_process_pid }}
-    when: nisd_process_pid is defined and nisd_process_pid | length > 0 and (nisd_process_status == "sleeping" or nisd_process_status == "disk-sleep" or nisd_process_status == "running")
-  
   - name: "{{ recipe_name }}: Unmount filesystem if mounted"
     when: jsondata.btrfs_process is defined
     command: umount {{ jsondata.btrfs_process.mount_point }}
@@ -74,7 +64,17 @@
   - name: Kill the ublk Service process if it was found
     shell: kill -9 {{ ublk_process_pid }}
     when: ublk_process_pid is defined and ublk_process_pid | length > 0 and (ublk_process_status == "sleeping" or ublk_process_status == "disk-sleep" or ublk_process_status == "running")
+  
+  - name: "{{ recipe_name }}: Get the nisd Service process pid and status."
+    set_fact:
+      nisd_process_pid: "{{ jsondata.nisd_process.process_pid | default('') }}"
+      nisd_process_status: "{{ jsondata.nisd_process.process_status | default('') }}"
+    when: jsondata.nisd_process is defined
 
+  - name: Kill the nisd process if it was found
+    shell: kill -9 {{ nisd_process_pid }}
+    when: nisd_process_pid is defined and nisd_process_pid | length > 0 and (nisd_process_status == "sleeping" or nisd_process_status == "disk-sleep" or nisd_process_status == "running")
+  
   - name: "Kill the processes after recipe execution"
     set_fact:
        kill_peer="{{lookup('niova_raftprocess', 'kill', raft_processes[item]['process_uuid'], wantlist=True)}}"
