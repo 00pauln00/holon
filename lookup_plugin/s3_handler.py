@@ -200,7 +200,7 @@ def get_unmounted_ublk_device(cluster_params):
                 mountpoint = parts[1] if len(parts) > 1 else ""
 
                 if name.startswith("ublkb") and mountpoint == "":
-                    return name
+                    return f"/dev/{name}" 
 
             print("No unmounted ublk device found. Retrying in 30 seconds...")
 
@@ -234,7 +234,6 @@ def setup_btrfs(cluster_params, mount_point):
     device = get_unmounted_ublk_device(cluster_params)
     if device == None: 
         raise RuntimeError(f"no ublk device available")
-
     #TODO Add check to see if the value is none or not
     try:
         # Step 1: Format the device with Btrfs
