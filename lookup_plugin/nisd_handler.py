@@ -67,17 +67,14 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
     log_file_path = "%s/%s/nisd_%s.log" % (base_dir, raft_uuid, nisd_uuid)
     logger = initialize_logger(log_file_path)
 
-    logger.info("nisd command :", command)
-
-    
+    logger.info("Executing nisd command: %s", command)    
     # Open log file in append mode
     with open(log_file_path, 'a') as log_file:
         # Launch the command as a non-blocking subprocess
         process = subprocess.Popen(command, stdout=log_file, stderr=log_file, text=True)
         
         # Log the process ID for reference
-        logger.info(f"Nisd command started with PID {process.pid}. Logs will be written to {log_file_path}")
-    
+        logger.info("NISD command started with PID %d. Logs will be written to %s", process.pid, log_file_path)    
     recipe_conf = load_recipe_op_config(cluster_params)
 
     pid = process.pid

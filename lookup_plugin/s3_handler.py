@@ -254,6 +254,16 @@ def setup_btrfs(cluster_params, mount_point):
 
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"An error occurred while setting up Btrfs: {e}")
+
+    recipe_conf = load_recipe_op_config(cluster_params)
+    
+    if not "btrfs_process" in recipe_conf:
+        recipe_conf['btrfs_process'] = {}
+
+    recipe_conf['btrfs_process']['mount_point'] = mount_path
+
+    genericcmdobj = GenericCmds()
+    genericcmdobj.recipe_json_dump(recipe_conf)
     return mount_path
 
 

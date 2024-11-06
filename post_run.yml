@@ -58,6 +58,13 @@
     shell: kill -9 {{ nisd_process_pid }}
     when: nisd_process_pid is defined and nisd_process_pid | length > 0 and (nisd_process_status == "sleeping" or nisd_process_status == "disk-sleep" or nisd_process_status == "running")
   
+  - name: "{{ recipe_name }}: Unmount filesystem if mounted"
+    when: jsondata.btrfs_process is defined
+    command: umount {{ jsondata.btrfs_process.mount_point }}
+    register: unmount_result
+    ignore_errors: true
+    changed_when: unmount_result.rc == 0
+
   - name: "{{ recipe_name }}: Get the ublk Service process pid and status."
     set_fact:
       ublk_process_pid: "{{ jsondata.ublk_process.process_pid | default('') }}"
