@@ -1084,6 +1084,8 @@ def copy_file_to_backup(cluster_params, dirName, operation, chunk):
     if len(file_list) > 1:
         # Sort the file list by modification time (oldest to newest)
         file_list.sort(key=lambda x: os.path.getmtime(os.path.join(dbi_input_path, x)))
+        #removing directories from list
+        file_list = [f for f in file_list if not os.path.isdir(os.path.join(dbi_input_path, f))]
         # Get the last file in the sorted list
         last_file = file_list[-1]
     # Construct the source file path
@@ -1118,7 +1120,7 @@ def copy_file_to_backup(cluster_params, dirName, operation, chunk):
             with open(source_file_path, "wb") as f:
                f.write(data)
 
-            process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-l', logFile])
+            process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-v', vdev, '-l', logFile])
 
     elif operation == "delete":
 
@@ -1214,7 +1216,8 @@ def PushOrigFileToS3(cluster_params, dirName, operation, chunk):
         shutil.copy(source_file_path, dest_file_path)
         s3config = '%s/s3.config.example' % binary_dir
         bin_path = '%s/s3Operation' % binary_dir
-        process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', dest_file_path, '-l', logFile])
+        print("cmd ", bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', dest_file_path, '-v', vdev, '-l', logFile)
+        process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', dest_file_path,'-v', vdev, '-l', logFile])
 
 def uploadOrigFile(cluster_params, dirName, operation, chunk):
     base_dir = cluster_params['base_dir']
@@ -1295,31 +1298,12 @@ def get_DBiFileNames(cluster_params, dirName, chunk):
     with open(path, 'w') as json_file:
         json.dump(file_names, json_file)
 
-def search_files_by_string(directory, search_string):
-        filename=search_string + ".dbo"
-        file_part = filename.split(".")
-        old_uuid = file_part[0]
-        new_uuid = str(uuid.uuid4())  # Generate a new UUID as a string
-        file_part[0] = new_uuid
-
-        # Create the new filename by joining the parts with '.'
-        newfile = ".".join(file_part)
-
-        # Create the full paths for the source and destination files
-        source_path = os.path.join(directory, filename)
-        destination_path = os.path.join(directory, newfile)
-
-        # Copy the file with the new filename
-        shutil.copyfile(source_path, destination_path)
-
-        return new_uuid
-
 def copy_DBI_file_generatorNum(cluster_params, dirName, chunk):
     jsonPath = get_dir_path(cluster_params, dirName)
     path = jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json"
     json_data = load_json_contents(path)
     dbi_input_path = str(json_data['DbiPath'])
-    dbo_input_path = str(json_data['DboPath'])
+    
     # Get a list of files in the source directory
     file_list = os.listdir(dbi_input_path)
 
@@ -1330,9 +1314,6 @@ def copy_DBI_file_generatorNum(cluster_params, dirName, chunk):
         filename_parts = random_file.split(".")
         # Extract the generation number
         genration_num = filename_parts[1]
-        uuid = filename_parts[4]
-        # create dbo file with new uuid
-        result = search_files_by_string(dbo_input_path, uuid)
 
         # Increment the extracted element by 1
         # Decrement as the number is inversed
@@ -1340,7 +1321,6 @@ def copy_DBI_file_generatorNum(cluster_params, dirName, chunk):
 
         # Update the filename with the incremented element
         filename_parts[1] = new_genration_num
-        filename_parts[4] = result
         new_filename = ".".join(filename_parts)
         # Full path for the copied and renamed file
         source_file_path = os.path.join(dbi_input_path, random_file)
@@ -1471,7 +1451,6 @@ def copyDBIFile_changeSeqNum(cluster_params, dirName, chunk):
     json_path = jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json"
     json_data = load_json_contents(json_path)
     dbi_input_path = str(json_data['DbiPath'])
-    dbo_input_path = str(json_data['DboPath'])
 
     # Check if the path is a directory
     if not os.path.isdir(dbi_input_path):
@@ -1491,41 +1470,17 @@ def copyDBIFile_changeSeqNum(cluster_params, dirName, chunk):
 
     filename_parts = last_file.split(".")
     old_seq_num = filename_parts[0]
-    end_seq = old_seq_num.split("_")
-
-    # Extract the 3rd last element after the dots
-    Num_of_entries = filename_parts[-2]
-    uuid_str = filename_parts[4]
-
-    # create dbo file with new uuid
-    result = search_files_by_string(dbo_input_path, uuid_str)
-    new_uuid = str(uuid.uuid4())  # Generate a new UUID
-
-    # Full path for the copied and renamed file
-    old_DBO_file_path = os.path.join(dbo_input_path, f"{result}.dbo")
-    new_DBO_file_path = os.path.join(dbo_input_path, f"{new_uuid}.dbo")
-
-    # Copy the contents of old_DBO_file_path to new_DBO_file_path
-    with open(old_DBO_file_path, 'rb') as old_file:
-        content = old_file.read()
-        with open(new_DBO_file_path, 'wb') as new_file:
-            new_file.write(content)
+    seq_num = old_seq_num.split("_")
 
     # Increment the extracted element by 1
-    new_firstSeqNum = str(int(end_seq[1]) + 1)
-    new_endSeqNum = str(int(end_seq[1]) + int(Num_of_entries))
-    joined_seq = "_".join([new_firstSeqNum, new_endSeqNum])
+    new_end_seq = str(int(seq_num[0]) + 1)
+    new_start_seq = str(int(seq_num[1]) + 1)
+    joined_seq = "_".join([new_end_seq, new_start_seq])
 
     filename_parts[0] = joined_seq
-    filename_parts[2] = str(new_uuid)
     new_filename = ".".join(filename_parts)
 
-    # Full path for the copied and renamed file
-    source_file_path = os.path.join(dbi_input_path, last_file)
-    new_file_path = os.path.join(dbi_input_path, new_filename)
-
-    # Copy the file and rename the copy
-    shutil.copy(source_file_path, new_file_path)
+    os.rename(dbi_input_path, new_filename)
 
 def extracting_dictionary(cluster_params, operation, dirName):
     if operation == "load_contents":
