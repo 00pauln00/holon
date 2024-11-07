@@ -1,8 +1,6 @@
 - name: "s3_disk_validation"
   hosts: localhost
   connection: local
-  become: true         
-  become_user: root  
   vars:
      recipe_name: "s3_disk_validation"
      parent: None
