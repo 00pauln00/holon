@@ -96,14 +96,14 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
 
 def install_linux_modules():
     try:
-        # Run the command using subprocess
-        command = f"sudo apt install linux-modules-extra-$(uname -r)"
-        result = subprocess.run(command, shell=True, check=True, text=True, capture_output=True)
+        update_command = "sudo apt update"
+        update_result = subprocess.run(update_command, shell=True, check=True, text=True, capture_output=True)
 
-        # Return the output if successful
-        return result.stdout
+        install_command = "sudo apt install linux-modules-extra-$(uname -r)"
+        install_result = subprocess.run(install_command, shell=True, check=True, text=True, capture_output=True)
+
+        return update_result.stdout + install_result.stdout
     except subprocess.CalledProcessError as e:
-        # Return the error output if the command fails
         return f"An error occurred: {e.stderr}"
 
 def load_kernel_module(module_name):
