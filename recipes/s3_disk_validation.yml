@@ -18,8 +18,8 @@
     - name: "{{ recipe_name }}: create nisd device"
       vars:
           img_dir: "/s3DV_nisd.device"
-          bs: "1G"
-          count: 15
+          bs: "64M"
+          count: 125
       debug:
          msg:
           - "{{ lookup('s3_handler', 'createFile', img_dir, bs, count, wantlist=True) }}"
@@ -39,13 +39,6 @@
       debug:
          msg:
           - "{{ lookup('nisd_handler', 'run_nisd', nisd_uuid.msg[0], nisd_dev_path.msg[0], wantlist=True) }}"
-
-    - name: "{{ recipe_name }}: load ublk drive module"
-      vars:
-         module: "ublk_drv"
-      debug:
-         msg:
-          - "{{ lookup('nisd_handler', 'load_module', module,  wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start ublk device"
       debug:

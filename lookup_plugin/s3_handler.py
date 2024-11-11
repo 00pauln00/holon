@@ -299,9 +299,13 @@ def create_file(cluster_params, filename, bs, count):
         # Ensure the directory exists
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         print("nisd file path: ", full_path)
-        # Run 'dd' command with specified parameters
+
+        dd_command = f"sudo dd if=/dev/zero of={full_path} bs={bs} count={count}"
+
+        print(f"Running command: {dd_command}")
+
         result = subprocess.run(
-            f"sudo dd if=/dev/zero of={full_path} bs={bs} count={count}",
+            dd_command,
             check=True, shell=True
         )
         print(f"File created successfully at: {full_path}")
