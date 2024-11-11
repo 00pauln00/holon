@@ -56,7 +56,7 @@ def create_bucket(cluster_params, bucket):
     s3_config = '%s/s3.config.example' % binary_dir
 
     command = [
-        bin_path
+        bin_path,
         "-s3config", s3_config,
         "-bucketName", bucket,
         "-operation", "create_bucket"
@@ -73,7 +73,6 @@ def create_bucket(cluster_params, bucket):
 
 # generate data using fio command
 def run_fio_test(directory_path):
-    install_fio()
     fio_command = [
         "sudo",
         "/usr/bin/fio",
