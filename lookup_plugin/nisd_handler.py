@@ -57,6 +57,8 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
     bin_path = '/%s/bin/nisd' % binary_dir
     app_name = cluster_params['app_type']
+    
+    base_path = "%s/%s/" % (base_dir, raft_uuid)
 
     s3config = '/%s/s3.config.example' % binary_dir
     bin_path = os.path.normpath(bin_path)
@@ -71,7 +73,7 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
     # Open log file in append mode
     with open(log_file_path, 'a') as log_file:
         # Launch the command as a non-blocking subprocess
-        process = subprocess.Popen(command, stdout=log_file, stderr=log_file, text=True)
+        process = subprocess.Popen(command, stdout=log_file, stderr=log_file, text=True, cwd=base_path)
         
         # Log the process ID for reference
         logger.info("NISD command started with PID %d. Logs will be written to %s", process.pid, log_file_path)    
@@ -140,6 +142,7 @@ def run_niova_ublk(cluster_params, cntl_uuid):
     bin_path = '%s/bin/niova-ublk' % binary_dir
     bin_path = os.path.normpath(bin_path)
     app_name = cluster_params['app_type']
+    base_path = "%s/%s" % (base_dir, raft_uuid)
 
     # generate ublk uuid
     genericcmdobj = GenericCmds()
@@ -179,7 +182,7 @@ def run_niova_ublk(cluster_params, cntl_uuid):
     logger.info(f"ublk command: {full_command}")
     try:
         # Run the command
-        process = subprocess.Popen(full_command, shell=True, executable="/bin/bash")
+        process = subprocess.Popen(full_command, shell=True, executable="/bin/bash",cwd=base_path)
         logger.info("Command executed successfully.")
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}")
@@ -214,6 +217,7 @@ def run_niova_block_ctl(cluster_params, input_value):
     nisd_uuid = genericcmdobj.generate_uuid()
 
     # Prepare path for log file.
+    base_path = "%s/%s" % (base_dir, raft_uuid)
     log_file = "%s/%s/niovablockctl_%s_log.txt" % (base_dir, raft_uuid, nisd_uuid)
 
     # Initialize the logger
@@ -237,7 +241,7 @@ def run_niova_block_ctl(cluster_params, input_value):
 
     logger.debug("nisd-uuid: %s", nisd_uuid)
 
-    process_popen = subprocess.Popen(['sudo', "-E", bin_path,'-d', input_value["nisd_device_path"], '-f', '-i', '-u', nisd_uuid], stdout = fp, stderr = fp)
+    process_popen = subprocess.Popen(['sudo', "-E", bin_path,'-d', input_value["nisd_device_path"], '-f', '-i', '-u', nisd_uuid], stdout = fp, stderr = fp, cwd=base_path)
     logger.info("niova-block-ctl args: %s -d %s -f -i -u %s", bin_path, input_value["nisd_device_path"], nisd_uuid)
 
     #Check if niova-block-ctl process exited with error
