@@ -25,6 +25,12 @@
           - "{{ lookup('s3_handler', 'createFile', img_dir, bs, count, wantlist=True) }}"
       register: nisd_dev_path
 
+    - name: "{{ recipe_name }}: create bucket on minio"
+      vars:
+          bucket: "paroscale-test"
+      debug:
+         msg: "{{ lookup('s3_handler', 'create_bucket', bucket, wantlist=True)}}"
+
     - name: "{{ recipe_name }}: run niova ctl cmd on device"
       vars:
         input_param: {

@@ -47,6 +47,30 @@ def install_fio():
     except subprocess.CalledProcessError as e:
         print(f"An error occurred during fio installation: {e}")
 
+def create_bucket(cluster_params, bucket):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/s3Operation' % binary_dir
+    s3_config = '%s/s3.config.example' % binary_dir
+
+    command = [
+        bin_path
+        "-s3config", s3_config,
+        "-bucketName", bucket,
+        "-operation", "create_bucket"
+    ]
+
+    try:
+        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        print("Output:", result.stdout)
+        print("Errors:", result.stderr)
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        print("An error occurred:", e.stderr)
+        return None
+
 # generate data using fio command
 def run_fio_test(directory_path):
     install_fio()
@@ -1747,6 +1771,10 @@ class LookupModule(LookupBase):
             ublk_uuid   = terms[2]
             nisd_uuid   = terms[3]
             start_s3_data_validator(cluster_params, device_path, ublk_uuid, nisd_uuid)
+
+        elif operation == "create_bucket":
+            bucket = terms[1]
+            create_bucket(cluster_params, bucket)
 
         elif operation == "json_params":
             params_type = terms[1]

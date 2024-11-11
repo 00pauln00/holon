@@ -57,7 +57,7 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
     bin_path = '/%s/bin/nisd' % binary_dir
     app_name = cluster_params['app_type']
-    
+
     base_path = "%s/%s/" % (base_dir, raft_uuid)
 
     s3config = '/%s/s3.config.example' % binary_dir
@@ -182,7 +182,7 @@ def run_niova_ublk(cluster_params, cntl_uuid):
     logger.info(f"ublk command: {full_command}")
     try:
         # Run the command
-        process = subprocess.Popen(full_command, shell=True, executable="/bin/bash",cwd=base_path)
+        process = subprocess.Popen(full_command, stdout=fp, stderr=fp, shell=True, executable="/bin/bash",cwd=base_path)
         logger.info("Command executed successfully.")
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}")
