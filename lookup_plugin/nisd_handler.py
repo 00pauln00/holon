@@ -61,7 +61,7 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
     s3config = '/%s/s3.config.example' % binary_dir
     bin_path = os.path.normpath(bin_path)
     set_nisd_environ_variables(s3config)
-    command = [bin_path, "-u", nisd_uuid, "-d", device_path, "-s", "curl", "2"]
+    command = ["sudo", bin_path, "-u", nisd_uuid, "-d", device_path, "-s", "curl", "2"]
 
     # Prepare nisd log file path
     log_file_path = "%s/%s/nisd_%s.log" % (base_dir, raft_uuid, nisd_uuid)
@@ -110,7 +110,7 @@ def load_kernel_module(module_name):
     install_linux_modules()
     try:
         # Run the modprobe command to load the kernel module
-        subprocess.run(["modprobe", module_name], check=True)
+        subprocess.run(["sudo", "modprobe", module_name], check=True)
         print(f"Module '{module_name}' loaded successfully.")
     except subprocess.CalledProcessError as e:
         print(f"Failed to load module '{module_name}': {e}")
@@ -160,6 +160,7 @@ def run_niova_ublk(cluster_params, cntl_uuid):
     logger.info(f"LD_LIBRARY_PATH set to: {os.environ['LD_LIBRARY_PATH']}")
 
     command = [
+        "sudo",
         bin_path,
         "-s", "12884901888",
         "-t", cntl_uuid,
@@ -232,7 +233,7 @@ def run_niova_block_ctl(cluster_params, input_value):
 
     logger.debug("nisd-uuid: %s", nisd_uuid)
 
-    process_popen = subprocess.Popen([bin_path,'-d', input_value["nisd_device_path"], '-f', '-i', '-u', nisd_uuid], stdout = fp, stderr = fp)
+    process_popen = subprocess.Popen(['sudo', bin_path,'-d', input_value["nisd_device_path"], '-f', '-i', '-u', nisd_uuid], stdout = fp, stderr = fp)
     logger.info("niova-block-ctl args: %s -d %s -f -i -u %s", bin_path, input_value["nisd_device_path"], nisd_uuid)
 
     #Check if niova-block-ctl process exited with error

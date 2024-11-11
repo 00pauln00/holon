@@ -51,6 +51,7 @@ def install_fio():
 def run_fio_test(directory_path):
     install_fio()
     fio_command = [
+        "sudo",
         "/usr/bin/fio",
         f"--filename={directory_path}/gc0.tf",
         f"--filename={directory_path}/gc1.tf",
@@ -90,7 +91,7 @@ def start_s3_data_validator(cluster_params, device_path, ublk_uuid, nisd_uuid):
     create_directory(log_dir)
     
     # Build command to run
-    cmd = [bin_path, '-v', vdev_uuid, '-c', s3_config, '-p', log_dir, '-b', 'paroscale-test', '-d', device_path, '-nisdP', nisd_cmdintf_path]
+    cmd = ["sudo", bin_path, '-v', vdev_uuid, '-c', s3_config, '-p', log_dir, '-b', 'paroscale-test', '-d', device_path, '-nisdP', nisd_cmdintf_path]
     
     print(f"s3 dv cmd {cmd}")
     # Run the command and capture the exit code
@@ -238,18 +239,19 @@ def setup_btrfs(cluster_params, mount_point):
     try:
         # Step 1: Format the device with Btrfs
         print(f"Formatting {device} with Btrfs...")
-        subprocess.run(["mkfs.btrfs", device], check=True)
+        subprocess.run(["sudo","mkfs.btrfs", device], check=True)
         print(f"Formatted {device} successfully.")
 
         # Step 2: Create the mount point directory if it doesn't exist
         if not os.path.exists(mount_path):
             print(f"Creating mount point directory {mount_path}...")
             os.makedirs(mount_path)
+            subprocess.run(["sudo", "chmod", "777", mount_path], check=True)
             print(f"Directory {mount_path} created.")
 
         # Step 3: Mount the device to the mount point
         print(f"Mounting {device} to {mount_path}...")
-        subprocess.run(["mount", device, mount_path], check=True)
+        subprocess.run(["sudo", "mount", device, mount_path], check=True)
         print(f"Mounted {device} to {mount_path} successfully.")
 
     except subprocess.CalledProcessError as e:
@@ -299,7 +301,7 @@ def create_file(cluster_params, filename, bs, count):
         print("nisd file path: ", full_path)
         # Run 'dd' command with specified parameters
         result = subprocess.run(
-            f"dd if=/dev/zero of={full_path} bs={bs} count={count}",
+            f"sudo dd if=/dev/zero of={full_path} bs={bs} count={count}",
             check=True, shell=True
         )
         print(f"File created successfully at: {full_path}")
