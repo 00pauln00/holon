@@ -156,12 +156,15 @@ def run_niova_ublk(cluster_params, cntl_uuid):
 
     niova_lib_path = os.path.normpath(f'{binary_dir}/lib')
     default_lib_path = "/usr/local/lib"
-    os.environ["LD_LIBRARY_PATH"] = f"{niova_lib_path}:{default_lib_path}:{os.environ.get('LD_LIBRARY_PATH', '')}"
+    ld_library_path = f"{niova_lib_path}:{default_lib_path}:{os.environ.get('LD_LIBRARY_PATH', '')}"
+    os.environ["LD_LIBRARY_PATH"] = ld_library_path
     logger.info(f"LD_LIBRARY_PATH set to: {os.environ['LD_LIBRARY_PATH']}")
 
     command = [
         "sudo",
         "-E",
+        "env", 
+        f"LD_LIBRARY_PATH={ld_library_path}",
         bin_path,
         "-s", "12884901888",
         "-t", cntl_uuid,
