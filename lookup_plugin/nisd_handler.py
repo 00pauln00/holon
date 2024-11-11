@@ -160,7 +160,7 @@ def run_niova_ublk(cluster_params, cntl_uuid):
     logger.info(f"LD_LIBRARY_PATH set to: {os.environ['LD_LIBRARY_PATH']}")
 
     command = [
-        "sudo",
+        "sudo -E",
         bin_path,
         "-s", "12884901888",
         "-t", cntl_uuid,

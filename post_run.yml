@@ -50,7 +50,7 @@
 
   - name: "{{ recipe_name }}: Unmount filesystem if mounted"
     when: jsondata.btrfs_process is defined
-    command: umount {{ jsondata.btrfs_process.mount_point }}
+    command: sudo umount {{ jsondata.btrfs_process.mount_point }}
     register: unmount_result
     ignore_errors: true
     changed_when: unmount_result.rc == 0
@@ -62,7 +62,7 @@
     when: jsondata.ublk_process is defined
 
   - name: Kill the ublk Service process if it was found
-    shell: kill -9 {{ ublk_process_pid }}
+    shell: sudo kill -9 {{ ublk_process_pid }}
     when: ublk_process_pid is defined and ublk_process_pid | length > 0 and (ublk_process_status == "sleeping" or ublk_process_status == "disk-sleep" or ublk_process_status == "running")
   
   - name: "{{ recipe_name }}: Get the nisd Service process pid and status."
@@ -72,7 +72,7 @@
     when: jsondata.nisd_process is defined
 
   - name: Kill the nisd process if it was found
-    shell: kill -9 {{ nisd_process_pid }}
+    shell: sudo kill -9 {{ nisd_process_pid }}
     when: nisd_process_pid is defined and nisd_process_pid | length > 0 and (nisd_process_status == "sleeping" or nisd_process_status == "disk-sleep" or nisd_process_status == "running")
   
   - name: "Kill the processes after recipe execution"
