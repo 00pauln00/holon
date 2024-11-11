@@ -234,7 +234,7 @@ def run_niova_block_ctl(cluster_params, input_value):
 
     logger.debug("nisd-uuid: %s", nisd_uuid)
 
-    process_popen = subprocess.Popen(['sudo',"-E" bin_path,'-d', input_value["nisd_device_path"], '-f', '-i', '-u', nisd_uuid], stdout = fp, stderr = fp)
+    process_popen = subprocess.Popen(['sudo', "-E", bin_path,'-d', input_value["nisd_device_path"], '-f', '-i', '-u', nisd_uuid], stdout = fp, stderr = fp)
     logger.info("niova-block-ctl args: %s -d %s -f -i -u %s", bin_path, input_value["nisd_device_path"], nisd_uuid)
 
     #Check if niova-block-ctl process exited with error
