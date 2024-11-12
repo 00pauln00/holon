@@ -108,13 +108,13 @@ def start_s3_data_validator(cluster_params, device_path, ublk_uuid, nisd_uuid):
     bin_path = '%s/s3DataValidator' % binary_dir
     log_dir = "%s/%s/s3DV" % (base_dir, raft_uuid)
     s3_config = '%s/s3.config.example' % binary_dir
-    nisd_cmdintf_path = "/tmp/.niova/{%s}" % nisd_uuid
+    nisd_cmdintf_path = "/tmp/.niova/%s" % nisd_uuid
     
     # Ensure log directory exists
     create_directory(log_dir)
     
     # Build command to run
-    cmd = ["sudo", bin_path, '-v', vdev_uuid, '-c', s3_config, '-p', log_dir, '-b', 'paroscale-test', '-d', device_path, '-nisdP', nisd_cmdintf_path]
+    cmd = ["sudo", bin_path, '-v', ublk_uuid, '-c', s3_config, '-p', log_dir, '-b', 'paroscale-test', '-d', device_path, '-nisdP', nisd_cmdintf_path]
     
     print(f"s3 dv cmd {cmd}")
     # Run the command and capture the exit code
