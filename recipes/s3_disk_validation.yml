@@ -46,9 +46,9 @@
          msg:
           - "{{ lookup('nisd_handler', 'run_nisd', nisd_uuid.msg[0], nisd_dev_path.msg[0], wantlist=True) }}"
 
-    - name: Wait for 2 minutes
+    - name: "{{ recipe_name }}: wait for 1 minute"
       pause:
-        minutes: 2
+        minutes: 1
 
     - name: "{{ recipe_name }}: Start ublk device"
       debug:
@@ -70,23 +70,24 @@
          msg:
           - "{{ lookup('s3_handler', 'generate_data', mount_path.msg[0], wantlist=True) }}"
     
-    - name: "{{ recipe_name }}: pause for 60 seconds."
+    - name: "{{ recipe_name }}: wait for 2 minute"
       pause:
-        seconds: 60
+        minutes: 2
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
         dryRun: False
         delDBO: True
         partition: False
-        no_of_chunks: 0  
+        no_of_chunks: 2
+        force_gc: True
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, force_gc, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: pause for 3 seconds."
       pause:
-        seconds: 2
+        seconds: 3
 
     - name: "{{ recipe_name }}: Wait until GC marker file present."
       vars:
@@ -100,10 +101,6 @@
       retries: 300
       delay: 2
 
-    - name: "{{ recipe_name }}: pause for 60 seconds."
-      pause:
-        seconds: 60
-
     - name: "{{ recipe_name }}: run sync"
       command: sudo sync 
     
@@ -112,6 +109,10 @@
       ignore_errors: true
       register: unmount_result
       failed_when: "'not mounted' not in unmount_result.stderr"
+
+    - name: "{{ recipe_name }}: wait for 4 minutes"
+      pause:
+        minutes: 4
 
     - name: "{{ recipe_name }}: start the validator utility"
       debug:

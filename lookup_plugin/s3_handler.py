@@ -911,7 +911,7 @@ def start_gc_process(cluster_params, dirName, debugMode, chunk, crcCheck=None):
 
     return exit_code
 
-def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, no_of_chunks):
+def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, force_gc, no_of_chunks):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -953,6 +953,10 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, 
 
     if delDBO:
         cmd.append('-dd')
+    
+    if force_gc:
+        cmd.append('-f')
+        
     process_popen = subprocess.Popen(cmd, stdout = fp, stderr = fp)
 
     #Check if gcService process exited with error
@@ -1635,7 +1639,8 @@ class LookupModule(LookupBase):
             delDBO = terms[2]
             partition = terms[3]
             no_of_chunks = terms[4]
-            start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, no_of_chunks)
+            force_gc = terms[5]
+            start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, force_gc, no_of_chunks)
 
         elif operation == "data_validate":
             Chunk = terms[1]
