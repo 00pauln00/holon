@@ -39,14 +39,6 @@ def create_directory(path):
     except OSError as e:
         print(f"Error creating directory at {path}: {e}")
 
-def install_fio():
-    try:
-        subprocess.run(["sudo", "apt", "update"], check=True)
-        subprocess.run(["sudo", "apt", "install", "-y", "fio"], check=True)
-        print("fio installation completed successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"An error occurred during fio installation: {e}")
-
 def create_bucket(cluster_params, bucket):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -69,7 +61,7 @@ def create_bucket(cluster_params, bucket):
         return result.stdout
     except subprocess.CalledProcessError as e:
         print("An error occurred:", e.stderr)
-        return None
+        raise e
 
 # generate data using fio command
 def run_fio_test(directory_path):
@@ -120,12 +112,9 @@ def start_s3_data_validator(cluster_params, device_path, ublk_uuid, nisd_uuid):
     # Run the command and capture the exit code
     try:
         result = subprocess.run(cmd, check=True)
-        exit_code = result.returncode
     except subprocess.CalledProcessError as e:
-        exit_code = e.returncode
-        print(f"Command failed with exit code {exit_code}")
-    
-    return exit_code
+        raise e 
+
 
 def create_gc_partition(cluster_params):
     base_dir = cluster_params['base_dir']

@@ -69,6 +69,10 @@
       debug:
          msg:
           - "{{ lookup('s3_handler', 'generate_data', mount_path.msg[0], wantlist=True) }}"
+    
+    - name: "{{ recipe_name }}: pause for 60 seconds."
+      pause:
+        seconds: 60
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
@@ -100,10 +104,18 @@
       pause:
         seconds: 60
 
+    - name: "{{ recipe_name }}: run sync"
+      command: sudo sync 
+    
+    - name: "{{ recipe_name }}: Unmount filesystem if mounted"
+      command: sudo umount {{  nisd_dev_path.msg[0] }}
+      ignore_errors: true
+      register: unmount_result
+      failed_when: "'not mounted' not in unmount_result.stderr"
+
     - name: "{{ recipe_name }}: start the validator utility"
       debug:
          msg: "{{ lookup('s3_handler', 'run_s3DV', nisd_dev_path.msg[0], ublk_uuid.msg[0], nisd_uuid.msg[0], wantlist=True)}}"
-      register: status
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
