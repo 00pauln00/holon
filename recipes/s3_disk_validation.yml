@@ -18,8 +18,8 @@
     - name: "{{ recipe_name }}: create nisd device"
       vars:
           img_dir: "/s3DV_nisd.device"
-          bs: "64M"
-          count: 125
+          bs: "4K"
+          count: 3145728
       debug:
          msg:
           - "{{ lookup('s3_handler', 'createFile', img_dir, bs, count, wantlist=True) }}"
@@ -110,9 +110,9 @@
       register: unmount_result
       failed_when: "'not mounted' not in unmount_result.stderr"
 
-    - name: "{{ recipe_name }}: wait for 4 minutes"
+    - name: "{{ recipe_name }}: wait for 3 minutes"
       pause:
-        minutes: 4
+        minutes: 3
 
     - name: "{{ recipe_name }}: start the validator utility"
       debug:

@@ -263,7 +263,7 @@ def setup_btrfs(cluster_params, mount_point):
 
         # Step 3: Mount the device to the mount point
         print(f"Mounting {device} to {mount_path}...")
-        subprocess.run(["sudo", "mount", device, mount_path], check=True)
+        subprocess.run(["sudo", "mount", "-o", "sync", device, mount_path], check=True)
         print(f"Mounted {device} to {mount_path} successfully.")
 
     except subprocess.CalledProcessError as e:
