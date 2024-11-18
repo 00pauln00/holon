@@ -68,7 +68,7 @@
     - name: "{{ recipe_name }}: run the script"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'generate_data', device_paths.msg[0], wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'generate_data', device_paths.msg[0][0], wantlist=True) }}"
     
     - name: "{{ recipe_name }}: wait for 2 minute"
       pause:
@@ -116,7 +116,7 @@
 
     - name: "{{ recipe_name }}: start the validator utility"
       debug:
-         msg: "{{ lookup('s3_handler', 'run_s3DV', device_paths.msg[1], ublk_uuid.msg[0], nisd_uuid.msg[0], wantlist=True)}}"
+         msg: "{{ lookup('s3_handler', 'run_s3DV', device_paths.msg[0][1], ublk_uuid.msg[0], nisd_uuid.msg[0], wantlist=True)}}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
