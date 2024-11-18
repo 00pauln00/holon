@@ -278,7 +278,7 @@ def setup_btrfs(cluster_params, mount_point):
 
     genericcmdobj = GenericCmds()
     genericcmdobj.recipe_json_dump(recipe_conf)
-    return mount_path, device
+    return [mount_path, device]
 
 
 def create_file(cluster_params, filename, bs, count):
