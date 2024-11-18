@@ -169,7 +169,7 @@ def run_niova_ublk(cluster_params, cntl_uuid):
         "env", 
         f"LD_LIBRARY_PATH={ld_library_path}",
         bin_path,
-        "-s", "10737418240",
+        "-s", "8589934592",
         "-t", cntl_uuid,
         "-v", ublk_uuid,
         "-u", ublk_uuid,

@@ -18,8 +18,8 @@
     - name: "{{ recipe_name }}: create nisd device"
       vars:
           img_dir: "/s3DV_nisd.device"
-          bs: "4K"
-          count: 3145728
+          bs: "64M"
+          count: 160
       debug:
          msg:
           - "{{ lookup('s3_handler', 'createFile', img_dir, bs, count, wantlist=True) }}"
