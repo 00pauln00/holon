@@ -63,9 +63,9 @@ def create_bucket(cluster_params, bucket):
         print("An error occurred:", e.stderr)
         raise e
 
-# generate data using fio command
+
 def run_fio_test(directory_path):
-    fio_command = [
+    fio_command_base = [
         "sudo",
         "/usr/bin/fio",
         f"--filename={directory_path}/gc0.tf",
@@ -76,21 +76,22 @@ def run_fio_test(directory_path):
         "--numjobs=1",
         "--group_reporting",
         "--name=iops-test-job",
-        "--size=4G",
+        "--size=100M",  # Generate 100MB of data
         "--bs=4k",
         "--fixedbufs",
         "--buffer_compress_percentage=50",
         "--rw=randwrite"
     ]
 
-    try:
-        print("Running fio test...", fio_command)
-        result = subprocess.run(fio_command, capture_output=True, text=True, check=True)
-        print("Output:\n", result.stdout)
-        print("Errors:\n", result.stderr)
-    except subprocess.CalledProcessError as e:
-        print("Error running fio test:", e)
-        print("Error output:\n", e.stderr)
+    for i in range(10):  # Repeat 10 times
+        print(f"Running fio test iteration {i+1}...")
+        try:
+            result = subprocess.run(fio_command_base, capture_output=True, text=True, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error running fio test on iteration {i+1}:", e)
+            raise e
+        
+        time.sleep(30)
 
 def start_s3_data_validator(cluster_params, device_path, ublk_uuid, nisd_uuid):
     base_dir = cluster_params['base_dir']
@@ -185,7 +186,7 @@ def get_unmounted_ublk_device(cluster_params):
     raft_uuid = cluster_params['raft_uuid']
     output_file = "%s/%s/%s" % (base_dir, raft_uuid, "lsblk_output.txt")
     timeout = 3 * 60  # Total timeout in seconds (3 minutes)
-    interval = 30  # Interval in seconds between retries
+    interval = 5  # Interval in seconds between retries
 
     start_time = time.time()
     

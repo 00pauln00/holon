@@ -46,9 +46,9 @@
          msg:
           - "{{ lookup('nisd_handler', 'run_nisd', nisd_uuid.msg[0], nisd_dev_path.msg[0], wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: wait for 1 minute"
+    - name: "{{ recipe_name }}: wait for 5 seconds"
       pause:
-        minutes: 1
+        seconds: 5
 
     - name: "{{ recipe_name }}: Start ublk device"
       debug:
