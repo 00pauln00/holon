@@ -2,7 +2,6 @@ from ansible.plugins.lookup import LookupBase
 import json
 import os, random, psutil
 from datetime import datetime
-import time
 import subprocess ,re
 import uuid, random
 import shutil
@@ -27,6 +26,96 @@ def load_parameters_from_json(filename):
     with open(filename, 'r') as json_file:
         params = json.load(json_file)
     return params
+
+def create_directory(path):
+    """
+    Creates a directory if it doesn't exist.
+
+    :param path: str, path of the directory to create
+    """
+    try:
+        os.makedirs(path, exist_ok=True)
+        print(f"Directory created successfully at: {path}")
+    except OSError as e:
+        print(f"Error creating directory at {path}: {e}")
+
+def create_bucket(cluster_params, bucket):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/s3Operation' % binary_dir
+    s3_config = '%s/s3.config.example' % binary_dir
+
+    command = [
+        bin_path,
+        "-s3config", s3_config,
+        "-bucketName", bucket,
+        "-operation", "create_bucket"
+    ]
+
+    try:
+        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        print("Output:", result.stdout)
+        print("Errors:", result.stderr)
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        print("An error occurred:", e.stderr)
+        raise e
+
+
+def run_fio_test(directory_path):
+    fio_command_base = [
+        "sudo",
+        "/usr/bin/fio",
+        f"--filename={directory_path}/gc0.tf",
+        f"--filename={directory_path}/gc1.tf",
+        "--direct=1",
+        "--ioengine=io_uring",
+        "--iodepth=128",
+        "--numjobs=1",
+        "--group_reporting",
+        "--name=iops-test-job",
+        "--size=100M",  # Generate 100MB of data
+        "--bs=4k",
+        "--fixedbufs",
+        "--buffer_compress_percentage=50",
+        "--rw=randwrite"
+    ]
+
+    for i in range(10):  # Repeat 10 times
+        print(f"Running fio test iteration {i+1}...")
+        try:
+            result = subprocess.run(fio_command_base, capture_output=True, text=True, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error running fio test on iteration {i+1}:", e)
+            raise e
+        
+        time.sleep(30)
+
+def start_s3_data_validator(cluster_params, device_path, ublk_uuid, nisd_uuid):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/s3DataValidator' % binary_dir
+    log_dir = "%s/%s/s3DV" % (base_dir, raft_uuid)
+    s3_config = '%s/s3.config.example' % binary_dir
+    nisd_cmdintf_path = "/tmp/.niova/%s" % nisd_uuid
+    
+    # Ensure log directory exists
+    create_directory(log_dir)
+    
+    # Build command to run
+    cmd = ["sudo", bin_path, '-v', ublk_uuid, '-c', s3_config, '-p', log_dir, '-b', 'paroscale-test', '-d', device_path, '-nisdP', nisd_cmdintf_path]
+    
+    print(f"s3 dv cmd {cmd}")
+    # Run the command and capture the exit code
+    try:
+        result = subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        raise e 
+
 
 def create_gc_partition(cluster_params):
     base_dir = cluster_params['base_dir']
@@ -92,16 +181,151 @@ def create_gc_partition(cluster_params):
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
-def create_file(cluster_params):
+def get_unmounted_ublk_device(cluster_params):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
-    log_dir = "%s/%s/" % (base_dir, raft_uuid)
-    filename = os.path.join(log_dir, 'gc/gc_download/file.img')
+    output_file = "%s/%s/%s" % (base_dir, raft_uuid, "lsblk_output.txt")
+    timeout = 3 * 60  # Total timeout in seconds (3 minutes)
+    interval = 5  # Interval in seconds between retries
+
+    start_time = time.time()
+    
+    while time.time() - start_time < timeout:
+        try:
+            result = subprocess.run(
+                ["lsblk", "-o", "NAME,MOUNTPOINT", "-n"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            
+            # Store output to a file
+            with open(output_file, 'w') as file:
+                file.write(result.stdout)
+
+            # Parse output and find the first unmounted ublk device
+            for line in result.stdout.splitlines():
+                parts = line.split()
+
+                if not parts:
+                    continue
+                    
+                name = parts[0]
+                mountpoint = parts[1] if len(parts) > 1 else ""
+
+                if name.startswith("ublkb") and mountpoint == "":
+                    return f"/dev/{name}" 
+
+            print("No unmounted ublk device found. Retrying in 30 seconds...")
+
+        except subprocess.CalledProcessError as e:
+            print("Error retrieving unmounted ublk devices:", e)
+
+        time.sleep(interval)  # Wait for 30 seconds before retrying
+
+    print("No unmounted ublk device found after 3 minutes.")
+    return None  # No unmounted ublk device found after retries
+
+
+def setup_btrfs(cluster_params, mount_point):
+    """
+    Automates the setup of a Btrfs filesystem:
+    1. Formats the specified device with Btrfs.
+    2. Creates the mount point directory if it doesn't exist.
+    3. Mounts the device to the specified mount point.
+
+    Parameters:
+        device (str): The device name (e.g., /dev/ublkb0).
+        mount_point (str): The directory to mount the filesystem (e.g., /ci_btrfs).
+
+    Raises:
+        RuntimeError: If any command fails during the setup.
+    """
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    mount_path = "%s/%s/%s" % (base_dir, raft_uuid, mount_point)
+
+    device = get_unmounted_ublk_device(cluster_params)
+    if device == None: 
+        raise RuntimeError(f"no ublk device available")
+    #TODO Add check to see if the value is none or not
+    try:
+        # Step 1: Format the device with Btrfs
+        print(f"Formatting {device} with Btrfs...")
+        subprocess.run(["sudo","mkfs.btrfs", device], check=True)
+        print(f"Formatted {device} successfully.")
+
+        # Step 2: Create the mount point directory if it doesn't exist
+        if not os.path.exists(mount_path):
+            print(f"Creating mount point directory {mount_path}...")
+            os.makedirs(mount_path)
+            subprocess.run(["sudo", "chmod", "777", mount_path], check=True)
+            print(f"Directory {mount_path} created.")
+
+        # Step 3: Mount the device to the mount point
+        print(f"Mounting {device} to {mount_path}...")
+        subprocess.run(["sudo", "mount", device, mount_path], check=True)
+        print(f"Mounted {device} to {mount_path} successfully.")
+
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"An error occurred while setting up Btrfs: {e}")
+
+    recipe_conf = load_recipe_op_config(cluster_params)
+    
+    if not "btrfs_process" in recipe_conf:
+        recipe_conf['btrfs_process'] = {}
+
+    recipe_conf['btrfs_process']['mount_point'] = mount_path
+
+    genericcmdobj = GenericCmds()
+    genericcmdobj.recipe_json_dump(recipe_conf)
+    return [mount_path, device]
+
+
+def create_file(cluster_params, filename, bs, count):
+    """
+    Creates a file with specified parameters using the 'dd' command.
+
+    :param cluster_params: dict, dictionary containing 'base_dir' and 'raft_uuid'
+    :param filename: str, name of the file to create within the log directory
+    :param bs: str, block size for 'dd' command
+    :param count: int, count of blocks for 'dd' command
+    """
+        
+    # Get base directory and raft UUID from cluster parameters
+    base_dir = cluster_params.get('base_dir', '').rstrip('/')  # Remove trailing slash from base_dir if present
+    raft_uuid = cluster_params.get('raft_uuid', '')
+
+    # Remove leading slash from filename, ensuring it won't override the path
+    filename = filename.lstrip('/')
+
+    # Construct log directory path using os.path.join for platform independence
+    log_dir = os.path.join(base_dir, raft_uuid)
+
+    # Construct the full path by joining log_dir with the filename
+    full_path = os.path.join(log_dir, filename)
+
+    # Normalize the path to remove redundant slashes, if any
+    full_path = os.path.normpath(full_path)
 
     try:
-        result = subprocess.run(f"dd if=/dev/zero of={filename} bs=64M count=25", check=True, shell=True)
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        print("nisd file path: ", full_path)
+
+        dd_command = f"sudo dd if=/dev/zero of={full_path} bs={bs} count={count}"
+
+        print(f"Running command: {dd_command}")
+
+        result = subprocess.run(
+            dd_command,
+            check=True, shell=True
+        )
+        print(f"File created successfully at: {full_path}")
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
+    
+    return full_path
 
 def delete_file(cluster_params):
     base_dir = cluster_params['base_dir']
@@ -688,7 +912,7 @@ def start_gc_process(cluster_params, dirName, debugMode, chunk, crcCheck=None):
 
     return exit_code
 
-def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, no_of_chunks):
+def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, force_gc, no_of_chunks):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -703,7 +927,8 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, 
 
     # Open the log file to pass the fp to subprocess.Popen
     fp = open(gcLogFile, "a+")
-    bin_path = '%s/GCService' % binary_dir
+    bin_path = '/%s/GCService' % binary_dir
+    bin_path = os.path.normpath(bin_path)
 
     cmd = []
     s3config = '%s/s3.config.example' % binary_dir
@@ -729,6 +954,10 @@ def start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, 
 
     if delDBO:
         cmd.append('-dd')
+    
+    if force_gc:
+        cmd.append('-f')
+        
     process_popen = subprocess.Popen(cmd, stdout = fp, stderr = fp)
 
     #Check if gcService process exited with error
@@ -1334,6 +1563,45 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value):
         print("Invalid path or directory not found.")
         return False
 
+
+# TODO check for all chunks
+def GetSeqOfMarkerWithVdev(cluster_params, vdev, chunk, value):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/s3Operation' % binary_dir
+    s3config = '%s/s3.config.example' % binary_dir
+    cmd = [bin_path, '-bucketName', 'paroscale-test', '-operation', 'list', '-v', vdev, '-c', chunk, '-s3config', s3config, '-p', 'm', '-l', logFile]
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    exit_code = process.wait()
+    if exit_code == 0:
+        print("Process completed successfully.")
+    else:
+        error_message = print("Process failed with exit code {exit_code}.")
+        raise RuntimeError(error_message)
+
+    # Read the output and error
+    stdout, stderr = process.communicate()
+
+    # Check if any file is found
+    GcSeq = check_if_mType_Present(vdev, chunk, stdout, "gc")
+    NisdSeq = check_if_mType_Present(vdev, chunk, stdout, "nisd")
+    print("GcSeq : ", GcSeq)
+    print("NisdSeq : ", NisdSeq)
+    MSeq = []
+    match value:
+        case 'gc':
+            MSeq.extend([GcSeq, None])
+            return MSeq
+        case 'nisd':
+            MSeq.extend([None, NisdSeq])
+            return MSeq
+        case 'Both':
+            MSeq.extend([GcSeq, NisdSeq])
+            return MSeq
+
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
@@ -1372,7 +1640,8 @@ class LookupModule(LookupBase):
             delDBO = terms[2]
             partition = terms[3]
             no_of_chunks = terms[4]
-            start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, no_of_chunks)
+            force_gc = terms[5]
+            start_gcService_process(cluster_params, dirName, dryRun, delDBO, partition, force_gc, no_of_chunks)
 
         elif operation == "data_validate":
             Chunk = terms[1]
@@ -1382,13 +1651,26 @@ class LookupModule(LookupBase):
             create_gc_partition(cluster_params)
 
         elif operation == "createFile":
-            create_file(cluster_params)
+            img_dir = terms[1]
+            bs = terms[2]
+            count = terms[3]
+            device_path = create_file(cluster_params, img_dir, bs, count)
+            return device_path
 
         elif operation == "deleteFile":
             delete_file(cluster_params)
 
         elif operation == "deletePartition":
             delete_partition(cluster_params)
+
+        elif operation == "generate_data":
+            device_path = terms[1]
+            run_fio_test(device_path)
+
+        elif operation == "setup_btrfs": 
+            mount = terms[1]
+            mount_path =  setup_btrfs(cluster_params, mount)
+            return mount_path
 
         elif operation == "pauseGCProcess":
             pid = terms[1]
@@ -1469,6 +1751,24 @@ class LookupModule(LookupBase):
             MarkerSeq = GetSeqOfMarker(cluster_params, dirName, chunk, value)
 
             return MarkerSeq
+
+        elif operation == "GetSeqOfMarkerWithVdev":
+            chunk = terms[2]
+            value = terms[1]
+            vdev = terms[3]
+            MarkerSeq = GetSeqOfMarkerWithVdev(cluster_params, vdev, chunk, value)
+
+            return MarkerSeq
+        
+        elif operation == "run_s3DV":
+            device_path = terms[1]
+            ublk_uuid   = terms[2]
+            nisd_uuid   = terms[3]
+            start_s3_data_validator(cluster_params, device_path, ublk_uuid, nisd_uuid)
+
+        elif operation == "create_bucket":
+            bucket = terms[1]
+            create_bucket(cluster_params, bucket)
 
         elif operation == "json_params":
             params_type = terms[1]

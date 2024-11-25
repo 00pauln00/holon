@@ -49,9 +49,10 @@
         delDBO: True
         partition: False
         no_of_chunks: 0
+        force_gc: False
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, force_gc, wantlist=True) }}"
 
     - name: "Generate Second Iteration DBIs"
       vars:

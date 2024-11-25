@@ -26,9 +26,10 @@
         delDBO: True
         partition: True 
         no_of_chunks: 2 
+        force_gc: False
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, force_gc, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: pause for 5 seconds."
       pause:
@@ -60,8 +61,12 @@
         msg: "{{ lookup('s3_handler', 'pauseGCProcess', pid, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Create 1.5GB file"
+      vars:
+        img_dir: "gc/gc_download/file.img"
+        bs: "64M"
+        count: 25
       debug:
-        msg: "{{ lookup('s3_handler', 'createFile', wantlist=True) }}"
+        msg: "{{ lookup('s3_handler', 'createFile', img_dir, bs, count, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: generate data for 2 chunks parallely"
       vars:

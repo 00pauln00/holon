@@ -1,0 +1,124 @@
+- name: "s3_disk_validation"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "s3_disk_validation"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "minio_data"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+    - name: "{{ recipe_name }}: create nisd device"
+      vars:
+          img_dir: "/s3DV_nisd.device"
+          bs: "64M"
+          count: 160
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'createFile', img_dir, bs, count, wantlist=True) }}"
+      register: nisd_dev_path
+
+    - name: "{{ recipe_name }}: create bucket on minio"
+      vars:
+          bucket: "paroscale-test"
+      debug:
+         msg: "{{ lookup('s3_handler', 'create_bucket', bucket, wantlist=True)}}"
+
+    - name: "{{ recipe_name }}: run niova ctl cmd on device"
+      vars:
+        input_param: {
+            'nisd_device_path':  "{{ nisd_dev_path.msg[0] }}"
+          }
+      debug:
+         msg:
+          - "{{ lookup('nisd_handler', 'run-niova-block-ctl', input_param, wantlist=True) }}"
+      register: nisd_uuid
+    
+    - name: "{{ recipe_name }}: Start nisd"
+      debug:
+         msg:
+          - "{{ lookup('nisd_handler', 'run_nisd', nisd_uuid.msg[0], nisd_dev_path.msg[0], wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: wait for 5 seconds"
+      pause:
+        seconds: 5
+
+    - name: "{{ recipe_name }}: Start ublk device"
+      debug:
+         msg:
+          - "{{ lookup('nisd_handler', 'run_ublk_device', nisd_uuid.msg[0], wantlist=True) }}"
+
+      register: ublk_uuid
+
+    - name: "{{ recipe_name }}: mount btrfs on the ublk device"
+      vars:
+          mount_dir: "ci_data_btrfs"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'setup_btrfs', mount_dir, wantlist=True) }}"
+      register: device_paths
+
+    - name: "{{ recipe_name }}: run the script"
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'generate_data', device_paths.msg[0][0], wantlist=True) }}"
+    
+    - name: "{{ recipe_name }}: wait for 2 minute"
+      pause:
+        minutes: 2
+
+    - name: "{{ recipe_name }}: Start GCService"
+      vars:
+        dryRun: False
+        delDBO: True
+        partition: False
+        no_of_chunks: 2
+        force_gc: True
+      debug:
+         msg:
+          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, force_gc, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: pause for 3 seconds."
+      pause:
+        seconds: 3
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present."
+      vars:
+         Chunk: "0"
+         mType: "Both"
+         stage: "wait_for_gc_marker"
+         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarkerWithVdev', mType, Chunk, ublk_uuid.msg[0], wantlist=True) }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: run sync"
+      command: sudo sync 
+    
+    - name: "{{ recipe_name }}: Unmount filesystem if mounted"
+      command: sudo umount {{  nisd_dev_path.msg[0] }}
+      ignore_errors: true
+      register: unmount_result
+      failed_when: "'not mounted' not in unmount_result.stderr"
+
+    - name: "{{ recipe_name }}: wait for 3 minutes"
+      pause:
+        minutes: 3
+
+    - name: "{{ recipe_name }}: start the validator utility"
+      debug:
+         msg: "{{ lookup('s3_handler', 'run_s3DV', device_paths.msg[0][1], ublk_uuid.msg[0], nisd_uuid.msg[0], wantlist=True)}}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
