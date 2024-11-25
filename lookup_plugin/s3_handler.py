@@ -860,7 +860,10 @@ def load_json_contents(path):
 
     return json_data
 
-def copy_file_to_backup(cluster_params, dirName, operation, chunk):
+def copy_file(source_path, dest_path):
+    shutil.copy(source_path, dest_path)
+
+def corrupt_file(cluster_params, dirName, operation, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
@@ -886,43 +889,32 @@ def copy_file_to_backup(cluster_params, dirName, operation, chunk):
     source_file_path = os.path.join(dbi_input_path, last_file)
     backup_dir = os.path.join(base_dir, raft_uuid, 'orig-dbi')
     dest_file_path = os.path.join(backup_dir, last_file)
-    s3config = '%s/s3.config.example' % binary_dir
-    bin_path = '%s/s3Operation' % binary_dir
-    if operation == "upload":
-            # Check if the destination directory exists, and create if not
-            if not os.path.exists(backup_dir):
-                os.makedirs(backup_dir, mode=0o777)
-            # Copy the file to the destination directory
-            shutil.copy(source_file_path, dest_file_path)
-            # Read the binary file
-            with open(source_file_path, "rb") as f:
-                data = bytearray(f.read())
 
-	    # Ensure the file is at least 16 bytes long
-            if len(data) < 16:
-                print("File is too small to modify the first 16 bytes")
-                return
+    # Copy the file to the destination directory
+    copy_file(source_file_path, dest_file_path)
 
-	    # Create a new 16-byte entry with Type set to 1 and the rest set to zero
-            new_entry = bytearray(16)
-            new_entry[0] = 0x01  # Set Type to 1
+    # Read the binary file
+    with open(source_file_path, "rb") as f:
+        data = bytearray(f.read())
 
-	    # Copy the new entry to the first 16 bytes of the data
-            data[:16] = new_entry
+    # Ensure the file is at least 16 bytes long
+    if len(data) < 16:
+        print("File is too small to modify the first 16 bytes")
+        return
 
-	    # Write the modified data back to the original file
-            with open(source_file_path, "wb") as f:
-               f.write(data)
+    # Create a new 16-byte entry with Type set to 1 and the rest set to zero
+    new_entry = bytearray(16)
+    new_entry[0] = 0x01  # Set Type to 1
 
-            process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', source_file_path, '-v', vdev, '-l', logFile])
+    # Copy the new entry to the first 16 bytes of the data
+    data[:16] = new_entry
 
-    elif operation == "delete":
+    # Write the modified data back to the original file
+    with open(source_file_path, "wb") as f:
+        f.write(data)
 
-            process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-f', last_file, '-v', vdev, '-c', chunk, '-filepath', source_file_path, '-l', logFile])
-
-            delete_dir = os.path.join(base_dir, raft_uuid, 'gc-downloaded-obj')
-            if os.path.exists(delete_dir):
-                shutil.rmtree(delete_dir)
+	# upload the file 
+    Perform_S3_Operation(cluster_params, source_file_path, "upload", vdev, chunk, "") 
 
 def uploadAndDeleteCorruptedFile(cluster_params, dirName, operation, chunk):
     base_dir = cluster_params['base_dir']
@@ -1070,6 +1062,26 @@ def perform_s3_operation(cluster_params, dirName, operation, chunk):
         s3config = '%s/s3.config.example' % binary_dir
         bin_path = '%s/s3Operation' % binary_dir
         process = subprocess.Popen([bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-s3config', s3config, '-filepath', file_path, '-l', logFile])
+
+def Perform_S3_Operation(cluster_params, filename, operation, vdev, chunk, list_prefix):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/s3Operation' % binary_dir
+    s3config = '%s/s3.config.example' % binary_dir
+    logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
+    cmd = [(bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-v', vdev, '-c', chunk, '-s3config', s3config, '-l', logFile)]
+
+    match operation:
+        case "list":
+            cmd.extend[( "-p", prefix)]
+        case "upload":
+            cmd.extend[( "-filepath", filename)]
+        case "delete":
+            cmd.extend[( "-f", filename, "-filepath", filename)]
+
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
 
 def get_DBiFileNames(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
