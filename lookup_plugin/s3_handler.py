@@ -869,6 +869,103 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values, remo
 
     return chunk
 
+def generate_dummy_data(cluster_params, dirName, input_values, no_of_chunks, is_random, removeFiles=True):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    s3Support = cluster_params['s3Support']
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/dummyData' % binary_dir
+    path = "%s/%s/%s/" % (base_dir, raft_uuid, dirName)
+    s3configPath = '%s/s3.config.example' % binary_dir
+    s3LogFile = "%s/%s/s3Upload" % (base_dir, raft_uuid)
+
+    # Create the new directory
+    if not os.path.exists(path):
+        # Create the directory path
+        try:
+            os.makedirs(path, mode=0o777)
+        except Exception as e:
+            print(f"An error occurred while creating '{path}': {e}")
+
+    dbicount = "0"
+    jsonPath = get_dir_path(cluster_params, dirName)
+
+    if is_random:
+        #chunkNum = ""
+        if input_values['chunk'] == "-1":
+            # Generate a random chunkNumber
+            input_values['chunk'] = str(random.randint(1, 200))
+
+        if jsonPath != None:
+            newPath = jsonPath + "/" + input_values['chunk'] + "/DV"
+            json_data = load_json_contents(newPath + "/dummy_generator.json")
+            input_values['chunk'] = str(json_data['TotalChunkSize'])
+            input_values["seqStart"] = str(json_data['SeqEnd'] + 1)
+            input_values["vdev"] = str(json_data['Vdev'])
+            dbicount = str(json_data['TMinDbiFileForForceGC'])
+        else:
+            input_values["seqStart"] = "0"
+            dbicount = "0"
+
+        input_values['maxPunches'] = str(random.randint(1, 50))
+        input_values['maxVblks'] = str(random.randint(100, 1000))
+        input_values['punchAmount'] = str(random.randint(51, 100))
+        input_values['punchesPer'] = "0"
+        input_values['maxPunchSize'] = str(random.randint(1, 1024))
+        input_values['seed'] = str(random.randint(1, 100))
+        input_values['vbAmount'] =  str(random.randint(1000, 10000))
+        input_values['vblkPer'] = str(random.randint(1, 20))
+        input_values['blockSize'] = str(random.randint(1, 32))
+        input_values['blockSizeMax'] = str(random.randint(1, 32))
+        input_values['startVblk'] = "0"
+        input_values["strideWidth"] = str(random.randint(1, 50))
+        input_values["numOfSet"] = str(random.randint(1, 10))
+
+    else:
+        if jsonPath != None:
+            entries = os.listdir(jsonPath)
+            chunk_no = input_values["chunk"]
+            if chunk_no not in entries:
+                jsonPath = None
+            else:
+                newPath = jsonPath + "/" + input_values["chunk"] + "/DV"
+                json_data = load_json_contents(newPath + "/dummy_generator.json")
+                input_values["vdev"] = str(json_data['Vdev'])
+                input_values["seqStart"] = str(json_data['SeqEnd'] + 1)
+                dbicount = str(json_data['TMinDbiFileForForceGC'])
+
+    commands = []
+    for chunk in range(1, no_of_chunks + 1):
+        command = [bin_path, "-c", input_values['chunk'], "-mp", input_values['maxPunches'], "-mv", input_values['maxVblks'], 
+                   "-p", path, "-pa", input_values['punchAmount'], "-pp", input_values['punchesPer'], "-ps", input_values['maxPunchSize'], 
+                   "-seed", input_values['seed'], "-ss", input_values['seqStart'], "-t", input_values['genType'], "-va", input_values['vbAmount'], 
+                   "-l", "2", "-vp", input_values['vblkPer'], "-bs", input_values['blockSize'], "-bsm", input_values['blockSizeMax'], 
+                   "-vs", input_values['startVblk'], "-s3config", s3configPath, "-s3log", s3LogFile, "-dbic", dbicount]
+        commands.append(command)
+
+    for cmd in commands:
+        if input_values["punchwholechunk"] == "=true":
+            cmd.extend(["-pc", input_values["punchwholechunk"]])
+        if input_values["strideWidth"] != "":
+            cmd.extend(["-sw", input_values["strideWidth"]])
+        if input_values["overlapSeq"] != "" and input_values["numOfSet"] != "":
+            cmd.extend(["-se", input_values["overlapSeq"], "-ts", input_values["numOfSet"]])
+
+    if is_random:
+        cmd.extend(['-sw', input_values["strideWidth"], '-b', 'paroscale-test'])
+        if 'overlapSeq' in input_values:
+            cmd.extend(['-se', input_values['overlapSeq'], '-ts', input_values["numOfSet"]])
+        if 'dbiWithPunches' in input_values:
+            cmd.extend(['-e', input_values['dbiWithPunches']])
+        if not removeFiles:
+            cmd.append('-r=true')
+
+    if 'vdev' in input_values:
+        cmd.extend(['-vdev', input_values['vdev']])
+
+    with Pool(processes = no_of_chunks) as pool:
+        results = pool.map(run_dummyData_cmd, commands)
+
 def start_gc_process(cluster_params, dirName, debugMode, chunk, crcCheck=None):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
