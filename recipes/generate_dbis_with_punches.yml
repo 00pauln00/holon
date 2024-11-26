@@ -19,7 +19,7 @@
       vars:
          input_param: {
                   'genType' : '0',
-                  'chunkNumber' : '-1',
+                  'chunk' : '-1',
                   'vbAmount' : '0',
                   'vblkPer' : '1',
                   'dbiWithPunches' : '1'

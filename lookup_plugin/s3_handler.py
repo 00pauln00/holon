@@ -347,7 +347,7 @@ def delete_partition(cluster_params):
     mount_pt = os.path.join(log_dir, 'gc')
 
     try:
-        result = subprocess.run(["sudo", "umount", mount_pt], check=True)
+        result = subprocess.run(["sudo", "umount", "-l", mount_pt], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 
@@ -869,7 +869,7 @@ def start_pattern_generator(cluster_params, genType, dirName, input_values, remo
 
     return chunk
 
-def generate_dummy_data(cluster_params, dirName, input_values, no_of_chunks, is_random, removeFiles=True):
+def generate_dummy_data(cluster_params, dirName, input_values, no_of_chunks, is_random, removeFiles):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     s3Support = cluster_params['s3Support']
@@ -889,9 +889,7 @@ def generate_dummy_data(cluster_params, dirName, input_values, no_of_chunks, is_
 
     dbicount = "0"
     jsonPath = get_dir_path(cluster_params, dirName)
-
     if is_random:
-        #chunkNum = ""
         if input_values['chunk'] == "-1":
             # Generate a random chunkNumber
             input_values['chunk'] = str(random.randint(1, 200))
@@ -913,13 +911,16 @@ def generate_dummy_data(cluster_params, dirName, input_values, no_of_chunks, is_
         input_values['punchesPer'] = "0"
         input_values['maxPunchSize'] = str(random.randint(1, 1024))
         input_values['seed'] = str(random.randint(1, 100))
-        input_values['vbAmount'] =  str(random.randint(1000, 10000))
-        input_values['vblkPer'] = str(random.randint(1, 20))
         input_values['blockSize'] = str(random.randint(1, 32))
         input_values['blockSizeMax'] = str(random.randint(1, 32))
         input_values['startVblk'] = "0"
         input_values["strideWidth"] = str(random.randint(1, 50))
         input_values["numOfSet"] = str(random.randint(1, 10))
+        input_values["punchwholechunk"] = False
+      
+        if 'vbAmount' not in input_values and 'vblkPer' not in input_values:
+            input_values['vbAmount'] =  str(random.randint(1000, 10000))
+            input_values['vblkPer'] = str(random.randint(1, 20))
 
     else:
         if jsonPath != None:
@@ -936,35 +937,37 @@ def generate_dummy_data(cluster_params, dirName, input_values, no_of_chunks, is_
 
     commands = []
     for chunk in range(1, no_of_chunks + 1):
+        if no_of_chunks > 1:
+            input_values['chunk'] = str(chunk)
         command = [bin_path, "-c", input_values['chunk'], "-mp", input_values['maxPunches'], "-mv", input_values['maxVblks'], 
                    "-p", path, "-pa", input_values['punchAmount'], "-pp", input_values['punchesPer'], "-ps", input_values['maxPunchSize'], 
                    "-seed", input_values['seed'], "-ss", input_values['seqStart'], "-t", input_values['genType'], "-va", input_values['vbAmount'], 
-                   "-l", "2", "-vp", input_values['vblkPer'], "-bs", input_values['blockSize'], "-bsm", input_values['blockSizeMax'], 
+                   "-l", "5", "-vp", input_values['vblkPer'], "-bs", input_values['blockSize'], "-bsm", input_values['blockSizeMax'], 
                    "-vs", input_values['startVblk'], "-s3config", s3configPath, "-s3log", s3LogFile, "-dbic", dbicount]
         commands.append(command)
-
+    
     for cmd in commands:
         if input_values["punchwholechunk"] == "=true":
             cmd.extend(["-pc", input_values["punchwholechunk"]])
-        if input_values["strideWidth"] != "":
+        if 'strideWidth' in input_values:
             cmd.extend(["-sw", input_values["strideWidth"]])
-        if input_values["overlapSeq"] != "" and input_values["numOfSet"] != "":
+        if 'overlapSeq' in input_values and 'numOfSet' in input_values:
             cmd.extend(["-se", input_values["overlapSeq"], "-ts", input_values["numOfSet"]])
+        if 'vdev' in input_values:
+            cmd.extend(['-vdev', input_values['vdev']])
 
     if is_random:
-        cmd.extend(['-sw', input_values["strideWidth"], '-b', 'paroscale-test'])
-        if 'overlapSeq' in input_values:
-            cmd.extend(['-se', input_values['overlapSeq'], '-ts', input_values["numOfSet"]])
+        cmd.extend(['-b', 'paroscale-test'])
         if 'dbiWithPunches' in input_values:
             cmd.extend(['-e', input_values['dbiWithPunches']])
         if not removeFiles:
             cmd.append('-r=true')
 
-    if 'vdev' in input_values:
-        cmd.extend(['-vdev', input_values['vdev']])
-
     with Pool(processes = no_of_chunks) as pool:
         results = pool.map(run_dummyData_cmd, commands)
+
+    if is_random:
+        return input_values['chunk']
 
 def start_gc_process(cluster_params, dirName, debugMode, chunk, crcCheck=None):
     base_dir = cluster_params['base_dir']
@@ -1713,8 +1716,9 @@ class LookupModule(LookupBase):
 
         if operation == "generate_pattern":
             input_values = terms[1]
-            popen = start_pattern_generator(cluster_params, input_values['genType'], dirName, input_values, removeFiles=False)
-            return popen
+            chunk = generate_dummy_data(cluster_params, dirName, input_values, 1, True, False)
+            # popen = start_pattern_generator(cluster_params, input_values['genType'], dirName, input_values, removeFiles=False)
+            return chunk
 
         elif operation == "start_s3":
             s3Dir = terms[1]
@@ -1723,14 +1727,15 @@ class LookupModule(LookupBase):
         elif operation == "start_gc":
             # Assume terms is a list with relevant arguments
             if len(terms) >= 3:
-               debugMode = terms[1]
-               chunk = terms[2]
-               # Check if crcCheck is provided
-               crcCheck = terms[3] if len(terms) > 3 else None
-               popen = start_gc_process(cluster_params, dirName, debugMode, chunk, crcCheck)
-               return popen
+                debugMode = terms[1]
+                chunk = terms[2]
+                     
+                # Check if crcCheck is provided
+                crcCheck = terms[3] if len(terms) > 3 else None
+                popen = start_gc_process(cluster_params, dirName, debugMode,  chunk, crcCheck)
+                return popen
             else:
-               raise ValueError("Not enough arguments provided for start_gc operation")
+                raise ValueError("Not enough arguments provided for start_gc operation")
 
         elif operation == "start_gcService":
             dryRun = terms[1]
@@ -1778,8 +1783,10 @@ class LookupModule(LookupBase):
             resume_gcProcess(pid)
 
         elif operation == "parallel_data_generation":
-            no_of_chunks = terms[1]
-            generate_dbi_dbo_concurrently(cluster_params, dirName, no_of_chunks)
+            input_values = terms[1]
+            no_of_chunks = terms[2]
+            generate_dummy_data(cluster_params, dirName, input_values, no_of_chunks, False, False)
+            #generate_dbi_dbo_concurrently(cluster_params, dirName, no_of_chunks)
 
         elif operation == "get_DBI_fileNames":
             Chunk = terms[1]

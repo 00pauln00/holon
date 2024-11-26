@@ -70,9 +70,27 @@
 
     - name: "{{ recipe_name }}: generate data for 2 chunks parallely"
       vars:
+        input_param: {
+                  "chunk": "1",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "punchwholechunk": "false",
+                 }
         no_of_chunks : 2
       debug:
-        msg: "{{ lookup('s3_handler', 'parallel_data_generation', no_of_chunks, wantlist=True) }}"
+        msg: "{{ lookup('s3_handler', 'parallel_data_generation', input_param, no_of_chunks, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Resume the GC process."
       vars:
