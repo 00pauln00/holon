@@ -914,7 +914,7 @@ def corrupt_file(cluster_params, dirName, operation, chunk):
         f.write(data)
 
 	# upload the file 
-    Perform_S3_Operation(cluster_params, source_file_path, "upload", chunk, "") 
+    Perform_S3_Operation(cluster_params, source_file_path, "upload", chunk) 
 
 def uploadAndDeleteCorruptedFile(cluster_params, dirName, operation, chunk):
     base_dir = cluster_params['base_dir']
@@ -1051,7 +1051,7 @@ def get_latest_modified_file(cluster_params, dirName, chunk):
         file_path = dbi_input_path + "/" + last_file
         return file_path
 
-def Perform_S3_Operation(cluster_params, filename, operation, chunk, list_prefix):
+def Perform_S3_Operation(cluster_params, path, operation, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
     jsonPath = get_dir_path(cluster_params, dirName)
@@ -1061,13 +1061,7 @@ def Perform_S3_Operation(cluster_params, filename, operation, chunk, list_prefix
     bin_path = '%s/s3Operation' % binary_dir
     s3config = '%s/s3.config.example' % binary_dir
     logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
-    cmd = [(bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-v', vdev, '-c', chunk, '-s3config', s3config, '-l', logFile)]
-
-    match operation:
-        case "list":
-            cmd.extend[( "-p", prefix)]
-        case "upload" | "delete":
-            cmd.extend[( "-filepath", filename )]
+    cmd = [(bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-v', vdev, '-c', chunk, '-s3config', s3config, '-l', logFile "-p", path)]
 
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     return process
@@ -1179,7 +1173,7 @@ def deleteSetFileS3(cluster_params, dirName, operation, chunk):
             file.write(item + ", ")
     # Delete file locally
     os.remove(file_path)
-    process = Perform_S3_Operation(cluster_params, fname, operation, chunk, "")
+    process = Perform_S3_Operation(cluster_params, fname, operation, chunk)
 
 def copyDBIset_NewDir(cluster_params, dirName, chunk):
     base_dir = cluster_params['base_dir']
@@ -1266,7 +1260,7 @@ def GetSeqOfMarker(cluster_params, dirName, chunk, value):
         json_data = load_json_contents(os.path.join(newPath, "dummy_generator.json"))
         vdev = str(json_data['Vdev'])
 
-        process = Perform_S3_Operation(cluster_params, "", "list", chunk, "m")
+        process = Perform_S3_Operation(cluster_params, "m", "list", chunk)
         exit_code = process.wait()
         if exit_code == 0:
             print("Process completed successfully.")
@@ -1383,7 +1377,7 @@ class LookupModule(LookupBase):
             chunk = terms[2]
             filename = terms[4]
             list_prefix = terms[5]
-            Perform_S3_Operation(cluster_params, filename, s3Operation, chunk, list_prefix)
+            Perform_S3_Operation(cluster_params, path, s3Operation, chunk)
 
         elif operation == "get_latest_modified_file":
             chunk = terms[1]
