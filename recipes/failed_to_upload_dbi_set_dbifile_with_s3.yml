@@ -28,18 +28,17 @@
         ChunkNum: "-1"
       register: chunk
 
-    - name: "{{ recipe_name }}: copy dbi set files into a new directory."
+    - name: "{{ recipe_name }}: copy dbi set files into a dbisetfiles directory"
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'copyDBIset', Chunk, wantlist=True) }}"
+         msg: "{{ lookup('helper', 'clone_dbi_set', Chunk, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: delete file from the dbi set from s3."
+    - name: "{{ recipe_name }}: delete any dbi set file from s3."
       vars:
-        operation: "delete"
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'deleteSetFileS3', operation, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'delete_set_file', Chunk, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Perform GC."
       vars:

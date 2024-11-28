@@ -16,6 +16,7 @@ import psutil
 import signal
 import logging
 from multiprocessing import Pool
+from lookup_plugin.helper import *
 
 Marker_vdev = 0
 Marker_chunk = 1
@@ -1047,21 +1048,21 @@ def get_latest_modified_file(cluster_params, dirName, chunk):
         # Sort the file list by modification time (oldest to newest)
         file_list.sort(key=lambda x: os.path.getmtime(os.path.join(dbi_input_path, x)))
         # Get the last file in the sorted list
-        last_file = file_list[-2
+        last_file = file_list[-2]
         file_path = dbi_input_path + "/" + last_file
         return file_path
 
 def Perform_S3_Operation(cluster_params, path, operation, chunk):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
-    jsonPath = get_dir_path(cluster_params, dirName)
+    jsonPath = get_dir_path(cluster_params, DBI_DIR)
     json_data = load_json_contents(jsonPath + "/" + str(chunk) + "/DV/" + "dummy_generator.json")
     vdev = str(json_data['Vdev'])
     binary_dir = os.getenv('NIOVA_BIN_PATH')
     bin_path = '%s/s3Operation' % binary_dir
     s3config = '%s/s3.config.example' % binary_dir
     logFile = "%s/%s/s3operation" % (base_dir, raft_uuid)
-    cmd = [(bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-v', vdev, '-c', chunk, '-s3config', s3config, '-l', logFile "-p", path)]
+    cmd = [bin_path, '-bucketName', 'paroscale-test', '-operation', operation, '-v', vdev, '-c', chunk, '-s3config', s3config, '-l', logFile, "-p", path]
 
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     return process

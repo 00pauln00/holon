@@ -1,19 +1,18 @@
 from ansible.plugins.lookup import LookupBase
-import os
+import os, random
 import subprocess
 import logging
 import psutil
 import time
 from genericcmd import GenericCmds
-import helper
+from lookup_plugin.helper import *
 
-DBI_DIR = "dbi-dbo"
 
 class Minio:
     def __init__(self, cluster_params, minio_path):
         self.cluster_params = cluster_params
         self.minio_path = minio_path
-        self.base_path = f"{cluster_params['base_dir']/cluster_params['raft_uuid']/"
+        self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/"
         self.s3_server_log = f"{self.base_path}/s3_server.log"
 
     def start(self):
@@ -66,13 +65,32 @@ class s3_operations:
     def __init__(self, cluster_params):
         self.cluster_params = cluster_params
         self.bin_dir =  os.getenv('NIOVA_BIN_PATH')
-        self.base_path = f"{cluster_params['base_dir']/cluster_params['raft_uuid']/"
+        self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/"
         self.s3_operations_log = f"{self.base_path}/s3_operations.log"
 
+    def delete_dbi_set_s3(self, chunk):
+        dir_path = get_dir_path(self.cluster_params, DBI_DIR)
+        #TODO change the dbi dir and file name
+        destination_dir = "dbiSetFiles"
+        dbi_list_path = os.path.join(dir_path, "dbisetFname.txt")
+        dbi_list = read_file_list(dbi_list_path)
+
+        rand_dbi_path = random.choice(dbi_list)
+        rand_dbi = os.path.basename(rand_dbi_path)
+        dbi_prefix = rand_dbi.split('.')[0]
+
+        # Create a list to store files with the same prefix
+        dbi_set_files = [file for file in dbi_list if file.startswith(dbi_prefix)]
+        with open(dbi_list_path, 'w') as file:
+            for item in dbi_set_files:
+                file.write(item + ", ")
+        # Delete file locally
+        os.remove(rand_dbi_path)
+        process = self.perform_operations("delete", chunk, rand_dbi)
 
     def perform_operations(self, operation, chunk, path):
         dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
-        json_data = load_json_contents(f"{dbi_path}/{chunk}/DV/dummy_generator.json")
+        json_data = load_parameters_from_json(f"{dbi_path}/{chunk}/DV/dummy_generator.json")
         vdev = str(json_data['Vdev'])
         bin_path = f'{self.bin_dir}/s3Operation'
         s3_config = f'{self.bin_dir}/s3.config.example'
@@ -100,7 +118,7 @@ class LookupModule(LookupBase):
         elif operation == "stop_minio":
             minio = Minio(cluster_params, "")
             minio.stop()
-
+        
         elif operation == "s3_operation":
             operation = terms[1]
             chunk = terms[2]
@@ -108,6 +126,12 @@ class LookupModule(LookupBase):
             s3 = s3_operations(cluster_params)
             process = s3.perform_operations(operation, chunk, path)
             return process
+        
+        elif operation == "delete_set_file":
+            s3 = s3_operations(cluster_params)
+            chunk = terms[1]
+            s3.delete_dbi_set_s3(chunk)
+
 
         else:
             raise ValueError(f"Unsupported operation: {operation}")
