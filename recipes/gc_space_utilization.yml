@@ -89,8 +89,10 @@
                   "punchwholechunk": "false",
                  }
         no_of_chunks : 2
+        is_random : False
+        remove_files: False
       debug:
-        msg: "{{ lookup('s3_handler', 'parallel_data_generation', input_param, no_of_chunks, wantlist=True) }}"
+        msg: "{{ lookup('mock_data', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Resume the GC process."
       vars:
