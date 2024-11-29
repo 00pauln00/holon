@@ -25,7 +25,7 @@
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'copy_DBI_file_generatorNum', Chunk, wantlist=True) }}"
+          - "{{ lookup('helper', 'copy_DBI_file_generatorNum', Chunk, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:

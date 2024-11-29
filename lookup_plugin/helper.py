@@ -1,9 +1,11 @@
 import json
 import os  
 import shutil
+import random
 from ansible.plugins.lookup import LookupBase
 
 DBI_DIR = "dbi-dbo"
+GEN_NUM = 1
 
 def load_parameters_from_json(filename):
     with open(filename, 'r') as json_file:
@@ -55,6 +57,10 @@ def read_file_list(file_path):
         return []
 
 def copy_files(file_list, destination_path):
+    # If a single file is passed, wrap it in a list
+    if isinstance(file_list, str):
+        file_list = [file_list]
+
     for file_name in file_list:
         shutil.copy2(file_name, destination_path)
 
@@ -86,6 +92,38 @@ def get_dir_path(cluster_params, dirName, seed=None):
     else:
         return None
 
+def list_files_from_dir(dir_path):
+    return os.listdir(dir_path)    
+
+def copy_DBI_file_generatorNum(cluster_params, dirName, chunk):
+    jsonPath = get_dir_path(cluster_params, dirName)
+    jsonfile = get_dummy_gen_config_path(jsonPath, chunk)
+    json_data = load_parameters_from_json(jsonfile)
+    dbi_input_path = str(json_data['DbiPath'])
+    # List files from dbipath
+    files_list = list_files_from_dir(dbi_input_path)
+    
+    if files_list:
+        # Select a random file from the list
+        random_file = random.choice(files_list)
+        filename_parts = random_file.split(".")
+        # Extract the generation number
+        genration_num = filename_parts[GEN_NUM]
+        # Increment the extracted element by 1
+        # Decrement as the number is inversed
+        new_genration_num = str(int(genration_num, 16) - 1)
+        # Update the filename with the incremented element
+        filename_parts[GEN_NUM] = new_genration_num
+        new_filename = ".".join(filename_parts)
+        source_file_path = os.path.join(dbi_input_path, random_file)
+        new_file_path = os.path.join(dbi_input_path, new_filename)
+        print(f"Copying {source_file_path} to {new_file_path}") 
+        # Copy the file and rename the copy
+        copy_files(source_file_path, new_file_path)
+    else:
+        print("No files found in the directory.")
+     
+
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
@@ -95,6 +133,9 @@ class LookupModule(LookupBase):
         if operation == "clone_dbi_set":
             chunk = terms[1]
             clone_dbi_files(cluster_params, chunk)
+        if operation == "copy_DBI_file_generatorNum":
+            chunk = terms[1]
+            copy_DBI_file_generatorNum(cluster_params, DBI_DIR, chunk)
     
         else:
             raise ValueError(f"Unsupported operation: {operation}")
