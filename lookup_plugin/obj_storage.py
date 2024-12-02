@@ -123,8 +123,7 @@ class s3_operations:
             # Check if any file is found
             gc_seq = check_if_mType_present(vdev, chunk, stdout, "gc")
             nisd_seq = check_if_mType_present(vdev, chunk, stdout, "nisd")
-            print("gc_seq : ", gc_seq)
-            print("nisd_seq : ", nisd_seq)
+            print("gc_seq : ", gc_seq, "nisd_seq : ", nisd_seq)
             marker_seq = []
             marker_seq.extend([gc_seq, nisd_seq])
             return marker_seq
@@ -146,7 +145,7 @@ class LookupModule(LookupBase):
             minio = Minio(cluster_params, "")
             minio.stop()
         
-        elif operation == "s3_operation":
+        elif operation == "operation":
             operation = terms[1]
             chunk = terms[2]
             path = terms[3]
@@ -159,9 +158,9 @@ class LookupModule(LookupBase):
             chunk = terms[1]
             s3.delete_dbi_set_s3(chunk)
 
-        elif operation == "get_marker_seq":
-            s3 = s3_operations(cluster_params)
+        elif operation == "get_markers":
             chunk = terms[1]
+            s3 = s3_operations(cluster_params)
             marker_seq = s3.get_markers(chunk)
             return marker_seq
 

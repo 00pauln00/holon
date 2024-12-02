@@ -1,4 +1,4 @@
-- name: "gcTester_validate_crc_mismatc_with_s3"
+- name: "gcTester_validate_crc_mismatch_with_s3"
   hosts: localhost
   connection: local
   vars:
@@ -9,10 +9,10 @@
   - block:
     - name: "{{ recipe_name }}: Start minio server"
       vars:
-        s3_dir: "minio_data"
+        s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'start_minio', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
     - name: "{{ recipe_name }}: Generate random DBI requests."
@@ -24,12 +24,18 @@
         ChunkNum: "-1"
       register: chunk
 
-    - name: "{{ recipe_name }}: Upload Corrupted File."
+    - name: "{{ recipe_name }}: corrupt last dbi file"
       vars:
-        operation: "upload"
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'performCorruptedFileOps', operation, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('helper', 'corrupt_last_file', Chunk, wantlist=True) }}"
+      register: paths
+
+    - name: "{{ recipe_name }}: upload corrupted file"
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('obj_storage', 'operation', 'upload', Chunk, paths['msg'][0], wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Perform GC."
       vars:
@@ -40,38 +46,35 @@
          msg:
           - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, crcCheck, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: Marker file present or not."
+    - name: "{{ recipe_name }}: get gc and nisd markers"
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
-        mType: "Both"
       debug:
-         msg: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'get_markers', Chunk, wantlist=True) }}"
       register: marker_check
 
-    - name: "{{ recipe_name }}: Compare Gc And Nisd EndSeq"
+    - name: "{{ recipe_name }}: compare gc and nisd markers"
       set_fact:
-        gcMarkerEndSeq: "{{ marker_check.msg[0] }}"
-        NisdMarkerEndSeq: "{{ marker_check.msg[1] }}"
+        gc_marker: "{{ marker_check.msg[0] }}"
+        nisd_marker: "{{ marker_check.msg[1] }}"
       when: marker_check.msg is defined and marker_check.msg[0] | selectattr('!=', 'none') 
 
     - debug:
-         msg: "{{gcMarkerEndSeq}} and {{NisdMarkerEndSeq}}"
-      when: cMarkerEndSeq is defined and NisdMarkerEndSeq is defined
-      failed_when: gcMarkerEndSeq != NisdMarkerEndSeq
-
-    - name: "{{ recipe_name }}: Delete the corrupted file from s3."
+         msg: "{{gc_marker}} and {{nisd_marker}}"
+      when: gc_marker is defined and nisd_marker is defined
+      failed_when: gc_marker != nisd_marker
+    
+    - name: "{{ recipe_name }}: delete corrupted file"
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
-        operation: "delete"
       debug:
-         msg: "{{ lookup('s3_handler', 'performCorruptedFileOps', operation, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'operation', 'delete', Chunk, paths['msg'][0], wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: Now upload original file to s3."
+    - name: "{{ recipe_name }}: upload original file"
       vars:
-        operation: "upload"
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'pushOrigFileToS3', operation, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'operation', 'upload', Chunk, paths['msg'][1], wantlist=True) }}"
 
     - name: "{{ recipe_name }}: After uploading the original file, perform GC operation."
       vars:
@@ -81,22 +84,21 @@
       debug:
          msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, crcCheck, wantlist=True) }}"
 
-    - name: "{{ recipe_name }}: Marker file present or not."
+    - name: "{{ recipe_name }}: get gc and nisd markers"
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
-        mType: "Both"
       debug:
-         msg: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'get_markers', Chunk, wantlist=True) }}"
       register: marker_check
 
     - name: "{{ recipe_name }}: Compare Gc and Nisd EndSeq"
       set_fact:
-        gcMarkerEndSeq: "{{ marker_check.msg[0] }}"
-        NisdMarkerEndSeq: "{{ marker_check.msg[1] }}"
+        gc_marker: "{{ marker_check.msg[0] }}"
+        nisd_marker: "{{ marker_check.msg[1] }}"
       when: marker_check.msg is defined and marker_check.msg[0] | selectattr('!=', 'none') | length > 0
 
     - debug:
-         msg: "{{gcMarkerEndSeq}} and {{NisdMarkerEndSeq}}"
-      when: gcMarkerEndSeq is defined and NisdMarkerEndSeq is defined
-      failed_when: (gcMarkerEndSeq != NisdMarkerEndSeq) or (gcMarkerEndSeq is none)
+         msg: "{{gc_marker}} and {{nisd_marker}}"
+      when: gc_marker is defined and nisd_marker is defined
+      failed_when: (gc_marker != nisd_marker) or (gc_marker is none)
 

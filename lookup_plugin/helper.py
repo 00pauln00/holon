@@ -63,9 +63,12 @@ def copy_files(file_list, destination_path):
     # If a single file is passed, wrap it in a list
     if isinstance(file_list, str):
         file_list = [file_list]
+    
+    os.makedirs(destination_path, exist_ok=True)
 
     for file_name in file_list:
-        shutil.copy2(file_name, destination_path)
+        if not os.path.isdir(file_name):
+            shutil.copy2(file_name, destination_path)
 
 def get_dir_path(cluster_params, dirName, seed=None):
     base_dir = cluster_params['base_dir']
@@ -96,7 +99,7 @@ def get_dir_path(cluster_params, dirName, seed=None):
         return None
 
 def list_files_from_dir(dir_path):
-    return os.listdir(dir_path)    
+    return [os.path.abspath(os.path.join(dir_path, file)) for file in os.listdir(dir_path)]   
 
 def check_if_mType_present(vdev, chunk, mList, mType):
     for line in (mList.splitlines()):
@@ -111,7 +114,7 @@ def copy_DBI_file_generatorNum(cluster_params, dirName, chunk):
     json_data = load_parameters_from_json(jsonfile)
     dbi_input_path = str(json_data['DbiPath'])
     # List files from dbipath
-    files_list = list_files_from_dir(dbi_input_path)
+    files_list = os.listdir(dbi_input_path)
     
     if files_list:
         # Select a random file from the list
@@ -132,8 +135,44 @@ def copy_DBI_file_generatorNum(cluster_params, dirName, chunk):
         copy_files(source_file_path, new_file_path)
     else:
         print("No files found in the directory.")
-     
 
+def get_last_file_from_dir(dir_path):
+    # Get a list of files in the source directory
+    file_list = list_files_from_dir(dir_path)
+    if len(file_list) > 1:
+        # Sort the file list by modification time (oldest to newest)
+        file_list.sort(key=lambda x: os.path.getmtime(os.path.join(dir_path, x)))
+        # Remove directories from list
+        file_list = [f for f in file_list if not os.path.isdir(os.path.join(dir_path, f))]
+        # Get the last file in the sorted list
+        return file_list[-1]
+    return None
+
+def corrupt_last_file(cluster_params, chunk):
+    dbi_path = get_dir_path(cluster_params, DBI_DIR)
+    dummy_config = load_parameters_from_json(get_dummy_gen_config_path(dbi_path, chunk))
+    dbi_input_path = str(dummy_config['DbiPath'])
+    dbi_list = list_files_from_dir(dbi_input_path)
+    copy_files(dbi_list, f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi")
+    orig_file_path = get_last_file_from_dir(f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi")
+    corrupt_file_path = get_last_file_from_dir(dbi_input_path)
+    if not corrupt_file_path:
+        print("No files found in the directory.")
+        return None
+    with open(corrupt_file_path, "rb") as f:
+        data = bytearray(f.read())
+    
+    if len(data) < 16: # Ensure the file is at least 16 bytes long
+        print("File is too small to modify the first 16 bytes")
+        return None
+
+    new_entry = bytearray(16)  # Create a new 16-byte entry with Type set to 1 and the rest set to zero
+    new_entry[0] = 0x01  # Set Type to 1
+    data[:16] = new_entry # Copy the new entry to the first 16 bytes of the data
+    with open(corrupt_file_path, "wb") as f: # Write the modified data back to the original file
+        f.write(data)
+
+    return corrupt_file_path 
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
@@ -143,6 +182,11 @@ class LookupModule(LookupBase):
         if operation == "clone_dbi_set":
             chunk = terms[1]
             clone_dbi_files(cluster_params, chunk)
+            
+        if operation == "corrupt_last_file":
+            chunk = terms[1]
+            return corrupt_last_file(cluster_params, chunk)
+
         if operation == "copy_DBI_file_generatorNum":
             chunk = terms[1]
             copy_DBI_file_generatorNum(cluster_params, DBI_DIR, chunk)
