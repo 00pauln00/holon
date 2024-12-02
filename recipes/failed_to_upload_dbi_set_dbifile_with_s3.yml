@@ -7,13 +7,12 @@
 
   tasks:
   - block:
-
     - name: "{{ recipe_name }}: Start minio server"
       vars:
-        s3_dir: "minio_data"
+        s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'start_minio', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
     - name: "{{ recipe_name }}: Generate overlapping seq range and unique DBIs."
@@ -51,15 +50,14 @@
     - name: "{{ recipe_name }}: Marker file present or not."
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
-        mType: "Both"
       debug:
-        msg: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+        msg: "{{ lookup('obj_storage', 'get_markers', Chunk, wantlist=True) }}"
       register: marker_check
 
-    - name: "{{ recipe_name }}: Validate GC and Nisd Marker Sequence Equal or Not."
+    - name: "{{ recipe_name }}: Validate GC and Nisd Marker "
       vars:
-        gcMarkerEndSeq: "{{ marker_check.msg[0] }}"
-        NisdMarkerEndSeq: "{{ marker_check.msg[1] }}"
+        gc_marker: "{{ marker_check.msg[0] }}"
+        nisd_marker: "{{ marker_check.msg[1] }}"
       debug:
-        msg: "GC Marker End Seq: {{ gcMarkerEndSeq }} | NISD Marker End Seq: {{ NisdMarkerEndSeq }}"
-      failed_when: (gcMarkerEndSeq != NisdMarkerEndSeq) or (gcMarkerEndSeq is none)
+        msg: "GC Marker : {{ gc_marker }} | NISD Marker : {{ nisd_marker }}"
+      failed_when: (gc_marker != nisd_marker) or (gc_marker is none)
