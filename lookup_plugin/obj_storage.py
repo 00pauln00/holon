@@ -103,7 +103,34 @@ class s3_operations:
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         return process
 
+    def get_markers(self, chunk):
+        dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
+        if dbi_path is not None:
+            json_data = load_parameters_from_json(f"{dbi_path}/{chunk}/DV/dummy_generator.json")
+            vdev = str(json_data['Vdev'])
 
+            process = self.perform_operations("list", chunk, "m")
+            exit_code = process.wait()
+            if exit_code == 0:
+                print("Process completed successfully.")
+            else:
+                error_message = print("Process failed with exit code {exit_code}.")
+                raise RuntimeError(error_message)
+
+            # Read the output and error
+            stdout, stderr = process.communicate()
+
+            # Check if any file is found
+            gc_seq = check_if_mType_present(vdev, chunk, stdout, "gc")
+            nisd_seq = check_if_mType_present(vdev, chunk, stdout, "nisd")
+            print("gc_seq : ", gc_seq)
+            print("nisd_seq : ", nisd_seq)
+            marker_seq = []
+            marker_seq.extend([gc_seq, nisd_seq])
+            return marker_seq
+        else:
+            print("Invalid path or directory not found.")
+            return False
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
@@ -132,6 +159,11 @@ class LookupModule(LookupBase):
             chunk = terms[1]
             s3.delete_dbi_set_s3(chunk)
 
+        elif operation == "get_marker_seq":
+            s3 = s3_operations(cluster_params)
+            chunk = terms[1]
+            marker_seq = s3.get_markers(chunk)
+            return marker_seq
 
         else:
             raise ValueError(f"Unsupported operation: {operation}")

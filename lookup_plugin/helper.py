@@ -6,6 +6,9 @@ from ansible.plugins.lookup import LookupBase
 
 DBI_DIR = "dbi-dbo"
 GEN_NUM = 1
+Marker_vdev = 0
+Marker_chunk = 1
+Marker_type = 4
 
 def load_parameters_from_json(filename):
     with open(filename, 'r') as json_file:
@@ -94,6 +97,13 @@ def get_dir_path(cluster_params, dirName, seed=None):
 
 def list_files_from_dir(dir_path):
     return os.listdir(dir_path)    
+
+def check_if_mType_present(vdev, chunk, mList, mType):
+    for line in (mList.splitlines()):
+        parts = line.split(".")
+        if vdev in parts[Marker_vdev] and chunk in parts[Marker_chunk] and mType in parts[Marker_type]:
+            return parts[2]
+    return None   
 
 def copy_DBI_file_generatorNum(cluster_params, dirName, chunk):
     jsonPath = get_dir_path(cluster_params, dirName)
