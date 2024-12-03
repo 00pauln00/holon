@@ -70,6 +70,7 @@ def copy_files(file_list, destination_path):
         if not os.path.isdir(file_name):
             # cleaning if any additional quotes are present
             src = file_name.strip("'")
+            os.chmod(src, 0o777)
             shutil.copy2(src, destination_path)
 
 def get_dir_path(cluster_params, dir_name, seed=None):
