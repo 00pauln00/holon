@@ -27,6 +27,236 @@ def initialize_logger(log_file):
 
     return logger
 
+def set_nisd_environ_variables(minio_config_path):
+    # Read the JSON file
+    with open(os.path.normpath(minio_config_path), 'r') as file:
+        config = json.load(file)
+    
+    # Extract values
+    endpoint = config.get("endpoint", "")
+    access_key = config.get("accessKey", "")
+    secret_key = config.get("secretKey", "")
+    region = config.get("region", "")
+    
+    # Set environment variables
+    os.environ["NIOVA_BLOCK_AWS_URL"] = f"http://{endpoint}/paroscale-test"
+    os.environ["NIOVA_BLOCK_AWS_OPTS"] = f"aws:amz:{region}:s3"
+    os.environ["NIOVA_BLOCK_AWS_AUTH"] = f"{access_key}:{secret_key}"
+    
+    # Print environment variable values to verify
+    print("Environment variables have been set:")
+    print("NIOVA_BLOCK_AWS_URL =", os.environ["NIOVA_BLOCK_AWS_URL"])
+    print("NIOVA_BLOCK_AWS_OPTS =", os.environ["NIOVA_BLOCK_AWS_OPTS"])
+    print("NIOVA_BLOCK_AWS_AUTH =", os.environ["NIOVA_BLOCK_AWS_AUTH"])
+
+
+def run_nisd_command(cluster_params, nisd_uuid, device_path):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '/%s/bin/nisd' % binary_dir
+    app_name = cluster_params['app_type']
+
+    base_path = "%s/%s/" % (base_dir, raft_uuid)
+
+    s3config = '/%s/s3.config.example' % binary_dir
+    bin_path = os.path.normpath(bin_path)
+    set_nisd_environ_variables(s3config)
+    command = ["sudo", "-E", bin_path, "-u", nisd_uuid, "-d", device_path, "-s", "curl", "2"]
+
+    # Prepare nisd log file path
+    log_file_path = "%s/%s/nisd_%s.log" % (base_dir, raft_uuid, nisd_uuid)
+    logger = initialize_logger(log_file_path)
+
+    logger.info("Executing nisd command: %s", command)    
+    # Open log file in append mode
+    with open(log_file_path, 'a') as log_file:
+        # Launch the command as a non-blocking subprocess
+        process = subprocess.Popen(command, stdout=log_file, stderr=log_file, text=True, cwd=base_path)
+        
+        # Log the process ID for reference
+        logger.info("NISD command started with PID %d. Logs will be written to %s", process.pid, log_file_path)    
+    recipe_conf = load_recipe_op_config(cluster_params)
+
+    pid = process.pid
+    ps = psutil.Process(pid)
+
+    if not "nisd_process" in recipe_conf:
+        recipe_conf['nisd_process'] = {}
+
+    recipe_conf['nisd_process']['process_pid'] = pid
+    recipe_conf['nisd_process']['process_type'] = "nisd_process"
+    recipe_conf['nisd_process']['process_app_type'] = app_name
+    recipe_conf['nisd_process']['process_status'] = ps.status()
+
+    genericcmdobj = GenericCmds()
+    genericcmdobj.recipe_json_dump(recipe_conf)
+
+    # Return the process to allow further handling if needed
+    return process
+
+def install_linux_modules():
+    try:
+        update_command = "sudo apt update"
+        update_result = subprocess.run(update_command, shell=True, check=True, text=True, capture_output=True)
+
+        install_command = "sudo apt install linux-modules-extra-$(uname -r)"
+        install_result = subprocess.run(install_command, shell=True, check=True, text=True, capture_output=True)
+
+        return update_result.stdout + install_result.stdout
+    except subprocess.CalledProcessError as e:
+        return f"An error occurred: {e.stderr}"
+
+def load_kernel_module(module_name):
+    install_linux_modules()
+    try:
+        # Run the modprobe command to load the kernel module
+        subprocess.run(["sudo", "modprobe", module_name], check=True)
+        print(f"Module '{module_name}' loaded successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to load module '{module_name}': {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
+def replace_last_path_segment(path, old_segment, new_segment):
+    # Split the path into head and tail
+    head, tail = os.path.split(path)
+    
+    # Check if the last segment matches the old_segment to replace
+    if tail == old_segment:
+        # Replace it with the new segment
+        return os.path.join(head, new_segment)
+    else:
+        # Return the path unchanged if the last segment doesn't match
+        return path
+
+# start a ublk device of size 8GB
+def run_niova_ublk(cluster_params, cntl_uuid):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    
+    #format and run the niova-block-ctl
+    bin_path = '%s/bin/niova-ublk' % binary_dir
+    bin_path = os.path.normpath(bin_path)
+    app_name = cluster_params['app_type']
+    base_path = "%s/%s" % (base_dir, raft_uuid)
+
+    # generate ublk uuid
+    genericcmdobj = GenericCmds()
+    ublk_uuid = genericcmdobj.generate_uuid()
+
+    # Prepare path for log file.
+    log_file = "%s/%s/ublk_%s_log.txt" % (base_dir, raft_uuid, ublk_uuid)
+
+    # Initialize the logger
+    logger = initialize_logger(log_file)
+
+    # Open the log file to pass the fp to subprocess.Popen
+    fp = open(log_file, "a+")
+
+    niova_lib_path = os.path.normpath(f'{binary_dir}/lib')
+    default_lib_path = "/usr/local/lib"
+    ld_library_path = f"{niova_lib_path}:{default_lib_path}:{os.environ.get('LD_LIBRARY_PATH', '')}"
+    os.environ["LD_LIBRARY_PATH"] = ld_library_path
+    logger.info(f"LD_LIBRARY_PATH set to: {os.environ['LD_LIBRARY_PATH']}")
+
+    command = [
+        "sudo",
+        "-E",
+        "env", 
+        f"LD_LIBRARY_PATH={ld_library_path}",
+        bin_path,
+        "-s", "8589934592",
+        "-t", cntl_uuid,
+        "-v", ublk_uuid,
+        "-u", ublk_uuid,
+        "-q", "128",
+        "-b", "1048576"
+    ]
+    
+    # Combine the environment variable and command into a single string
+    full_command = " ".join(str(item) for item in command)
+    logger.info(f"ublk command: {full_command}")
+    try:
+        # Run the command
+        process = subprocess.Popen(full_command, stdout=fp, stderr=fp, shell=True, executable="/bin/bash",cwd=base_path)
+        logger.info("Command executed successfully.")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
+    
+    recipe_conf = load_recipe_op_config(cluster_params)
+
+    pid = process.pid
+    ps = psutil.Process(pid)
+
+    if not "ublk_process" in recipe_conf:
+        recipe_conf['ublk_process'] = {}
+
+    recipe_conf['ublk_process']['process_pid'] = pid
+    recipe_conf['ublk_process']['process_type'] = "ublk_process"
+    recipe_conf['ublk_process']['process_app_type'] = app_name
+    recipe_conf['ublk_process']['process_status'] = ps.status()
+
+    genericcmdobj = GenericCmds()
+    genericcmdobj.recipe_json_dump(recipe_conf)
+
+    # Sync the log file so all the logs from run_niova_ublk gets written to log file.
+    os.fsync(fp)
+    return ublk_uuid
+
+
+# this method is similar to start_niova_block_ctl_process but the difference is it doesn't create the device internally
+def run_niova_block_ctl(cluster_params, input_value):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+
+    genericcmdobj = GenericCmds()
+    nisd_uuid = genericcmdobj.generate_uuid()
+
+    # Prepare path for log file.
+    base_path = "%s/%s" % (base_dir, raft_uuid)
+    log_file = "%s/%s/niovablockctl_%s_log.txt" % (base_dir, raft_uuid, nisd_uuid)
+
+    # Initialize the logger
+    logger = initialize_logger(log_file)
+
+    # Open the log file to pass the fp to subprocess.Popen
+    fp = open(log_file, "a+")
+
+    # Prepare path for executables.
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+
+    #format and run the niova-block-ctl
+    # TODO check how the bin can be passed
+    bin_path = '%s/bin/niova-block-ctl' % binary_dir
+
+    nisd_dict = { nisd_uuid : 0 }
+
+    nisd_dict[nisd_uuid] = 0
+
+    ## TODO check if we need to write info to the lookout
+
+    logger.debug("nisd-uuid: %s", nisd_uuid)
+
+    process_popen = subprocess.Popen(['sudo', "-E", bin_path,'-d', input_value["nisd_device_path"], '-f', '-i', '-u', nisd_uuid], stdout = fp, stderr = fp, cwd=base_path)
+    logger.info("niova-block-ctl args: %s -d %s -f -i -u %s", bin_path, input_value["nisd_device_path"], nisd_uuid)
+
+    #Check if niova-block-ctl process exited with error
+    if process_popen.poll() is None:
+        logger.info("niova-block-ctl process started successfully")
+    else:
+        logger.error("niova-block-ctl process failed to start")
+        raise subprocess.SubprocessError(process_popen.returncode)
+
+    # Sync the log file so all the logs from niova-block-ctl gets written to log file.
+    os.fsync(fp)
+
+    return nisd_uuid
+
+
 def start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -394,7 +624,26 @@ class LookupModule(LookupBase):
 
         cluster_params = kwargs['variables']['ClusterParams']
 
-        if process_type == "niova-block-ctl":
+        if process_type == "run-niova-block-ctl":
+               nisd_uuid = run_niova_block_ctl(cluster_params, input_values)
+
+               return nisd_uuid
+
+        elif process_type == "load_module":
+
+            load_kernel_module(input_values)
+        
+        elif process_type == "run_ublk_device":
+
+            nisd_uuid = terms[1]
+            return run_niova_ublk(cluster_params, nisd_uuid)
+
+        elif process_type == "run_nisd":
+            nisd_uuid = terms[1]
+            device_path = terms[2]
+            return run_nisd_command(cluster_params, nisd_uuid, device_path)
+
+        elif process_type == "niova-block-ctl":
 
                controlplane_environment_variables(cluster_params, input_values['lookout_uuid'])
                niova_block_ctl_process = start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values)

@@ -48,6 +48,33 @@
     shell: kill -9 {{ gc_process_pid }}
     when: gc_process_pid is defined and gc_process_pid | length > 0 and (gc_process_status == "sleeping" or gc_process_status == "disk-sleep" or gc_process_status == "running")
 
+  - name: "{{ recipe_name }}: Unmount filesystem if mounted"
+    when: jsondata.btrfs_process is defined
+    command: sudo umount {{ jsondata.btrfs_process.mount_point }}
+    register: unmount_result
+    ignore_errors: true
+    changed_when: unmount_result.rc == 0
+
+  - name: "{{ recipe_name }}: Get the ublk Service process pid and status."
+    set_fact:
+      ublk_process_pid: "{{ jsondata.ublk_process.process_pid | default('') }}"
+      ublk_process_status: "{{ jsondata.ublk_process.process_status | default('') }}"
+    when: jsondata.ublk_process is defined
+
+  - name: Kill the ublk Service process if it was found
+    shell: sudo kill -9 {{ ublk_process_pid }}
+    when: ublk_process_pid is defined and ublk_process_pid | length > 0 and (ublk_process_status == "sleeping" or ublk_process_status == "disk-sleep" or ublk_process_status == "running")
+  
+  - name: "{{ recipe_name }}: Get the nisd Service process pid and status."
+    set_fact:
+      nisd_process_pid: "{{ jsondata.nisd_process.process_pid | default('') }}"
+      nisd_process_status: "{{ jsondata.nisd_process.process_status | default('') }}"
+    when: jsondata.nisd_process is defined
+
+  - name: Kill the nisd process if it was found
+    shell: sudo kill -9 {{ nisd_process_pid }}
+    when: nisd_process_pid is defined and nisd_process_pid | length > 0 and (nisd_process_status == "sleeping" or nisd_process_status == "disk-sleep" or nisd_process_status == "running")
+  
   - name: "Kill the processes after recipe execution"
     set_fact:
        kill_peer="{{lookup('niova_raftprocess', 'kill', raft_processes[item]['process_uuid'], wantlist=True)}}"
@@ -71,6 +98,21 @@
 
   - pause:
       seconds: 2
+
+  - name: Find s3DV_nisd.device file
+    find:
+      paths: /home/runner/work/niovad/niovad/holon_log
+      patterns: 's3DV_nisd.device'
+      file_type: file
+      recurse: yes  # To search in all subdirectories
+    register: found_file
+
+  - name: Delete s3DV_nisd.device file if it exists
+    file:
+      path: "{{ item.path }}"
+      state: absent
+    loop: "{{ found_file.files }}"
+    when: found_file.matched > 0
 
   - name: Check if minio data directory exists
     stat:
