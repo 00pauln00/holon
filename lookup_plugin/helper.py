@@ -59,13 +59,18 @@ def read_file_list(file_path):
         return []
 
 def copy_files(file_list, destination_path):
+    print(f"Copying {file_list} to {destination_path}")
     # If a single file is passed, wrap it in a list
     if isinstance(file_list, str):
         file_list = [file_list]
     os.makedirs(destination_path, exist_ok=True)
+
     for file_name in file_list:
+
         if not os.path.isdir(file_name):
-            shutil.copy2(file_name, destination_path)
+            # cleaning if any additional quotes are present
+            src = file_name.strip("'")
+            shutil.copy2(src, destination_path)
 
 def get_dir_path(cluster_params, dir_name, seed=None):
     base_dir = cluster_params['base_dir']
@@ -92,25 +97,24 @@ def get_marker_by_type(vdev, chunk, mList, mType):
             return parts[2]
     return None   
 
-def copy_DBI_file_generatorNum(cluster_params, dirName, chunk):
-    jsonPath = get_dir_path(cluster_params, dirName)
-    jsonfile = get_dummy_gen_config_path(jsonPath, chunk)
-    json_data = load_parameters_from_json(jsonfile)
-    dbi_input_path = str(json_data['DbiPath'])
-    files_list = os.listdir(dbi_input_path)    # List files from dbipath
+def inc_dbi_gen_num(cluster_params, chunk):
+    dbi_Path = get_dir_path(cluster_params, DBI_DIR)
+    dummy_config = get_dummy_gen_config_path(dbi_Path, chunk)
+    dummy_json_data = load_parameters_from_json(dummy_config)
+    dbi_input_path = str(dummy_json_data['DbiPath'])
+    files_list = list_files_from_dir(dbi_input_path)    # List files from dbipath
     
     if files_list:
         random_file = random.choice(files_list)  # Select a random file from the list
         filename_parts = random_file.split(".")
         genration_num = filename_parts[GEN_NUM]  # Extract the generation number
         # Increment the extracted element by 1, Decrement as the number is inversed
-        inc_gen_num = str(int(genration_num, 16) - 1)
+        inc_gen_num = str(hex(int(genration_num, 16) - 1)[2:])
         filename_parts[GEN_NUM] = inc_gen_num  # Update the filename with the incremented element
         new_filename = ".".join(filename_parts)
         source_file_path = os.path.join(dbi_input_path, random_file)
         new_file_path = os.path.join(dbi_input_path, new_filename)
-        print(f"Copying {source_file_path} to {new_file_path}") 
-        copy_files(source_file_path, new_file_path)  # Copy the file and rename the copy
+        return source_file_path, new_file_path
     else:
         print("No files found in the directory.")
 
@@ -161,9 +165,14 @@ class LookupModule(LookupBase):
             chunk = terms[1]
             return corrupt_last_file(cluster_params, chunk)
 
-        elif operation == "copy_DBI_file_generatorNum":
+        elif operation == "inc_dbi_gen_num":
             chunk = terms[1]
-            copy_DBI_file_generatorNum(cluster_params, DBI_DIR, chunk)
+            return inc_dbi_gen_num(cluster_params, chunk)
+
+        elif operation == "copy_file":
+            source_file = terms[1]
+            dest_file = terms[2]
+            copy_files(source_file, dest_file)
     
         else:
             raise ValueError(f"Unsupported operation: {operation}")
