@@ -15,8 +15,6 @@
           - "{{ lookup('obj_storage', 'start_minio', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
-    - name: "Generate DBIs with punches only."
-
     - name: "{{ recipe_name }}: Generate random DBI requests."
       include_role:
         name: common

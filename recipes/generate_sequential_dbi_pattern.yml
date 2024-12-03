@@ -8,12 +8,12 @@
   tasks:
   - block:
      - name: "{{ recipe_name }}: Start minio server"
-      vars:
+       vars:
         s3_dir: "/local/minio_data"
-      debug:
+       debug:
          msg:
           - "{{ lookup('obj_storage', 'start_minio', s3_dir, wantlist=True) }}"
-      when: s3Support == "true"
+       when: s3Support == "true"
 
      - name: "{{ recipe_name }}: Generate random DBI requests."
        include_role:

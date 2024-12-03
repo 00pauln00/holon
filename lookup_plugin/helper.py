@@ -183,11 +183,11 @@ class LookupModule(LookupBase):
             chunk = terms[1]
             clone_dbi_files(cluster_params, chunk)
             
-        if operation == "corrupt_last_file":
+        elif operation == "corrupt_last_file":
             chunk = terms[1]
             return corrupt_last_file(cluster_params, chunk)
 
-        if operation == "copy_DBI_file_generatorNum":
+        elif operation == "copy_DBI_file_generatorNum":
             chunk = terms[1]
             copy_DBI_file_generatorNum(cluster_params, DBI_DIR, chunk)
     
