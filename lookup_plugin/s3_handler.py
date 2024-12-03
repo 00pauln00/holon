@@ -124,7 +124,7 @@ def delete_partition(cluster_params):
     mount_pt = os.path.join(log_dir, 'gc')
 
     try:
-        result = subprocess.run(["sudo", "umount", mount_pt], check=True)
+        result = subprocess.run(["sudo", "umount", "-l", mount_pt], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error: {e}")
 

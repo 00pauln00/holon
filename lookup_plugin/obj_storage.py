@@ -66,7 +66,7 @@ class s3_operations:
         self.cluster_params = cluster_params
         self.bin_dir =  os.getenv('NIOVA_BIN_PATH')
         self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/"
-        self.s3_operations_log = f"{self.base_path}/s3_operations.log"
+        self.s3_operations_log = f"{self.base_path}/s3_operations"
 
     def delete_dbi_set_s3(self, chunk):
         dir_path = get_dir_path(self.cluster_params, DBI_DIR)
