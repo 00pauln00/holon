@@ -66,7 +66,7 @@ class s3_operations:
         self.cluster_params = cluster_params
         self.bin_dir =  os.getenv('NIOVA_BIN_PATH')
         self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/"
-        self.s3_operations_log = f"{self.base_path}/s3_operations"
+        self.s3_operations_log = f"{self.base_path}/s3_operation"
 
     def delete_dbi_set_s3(self, chunk):
         dir_path = get_dir_path(self.cluster_params, DBI_DIR)
@@ -94,12 +94,12 @@ class s3_operations:
         vdev = str(json_data['Vdev'])
         bin_path = f'{self.bin_dir}/s3Operation'
         s3_config = f'{self.bin_dir}/s3.config.example'
-        
+        log_path = f'{self.s3_operations_log}_{operation}'
         cmd = [
-            bin_path, '-bucketName', 'paroscale-test', '-operation', operation,
-            '-v', vdev, '-c', chunk, '-s3config', s3_config, '-l', self.s3_operations_log, '-p', path
+            bin_path, '-b', 'paroscale-test', '-o', operation,
+            '-v', vdev, '-c', chunk, '-s3config', s3_config, '-l', log_path, '-p', path
         ]
-
+        print("cmd: ", cmd)
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         return process
 

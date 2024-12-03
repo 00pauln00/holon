@@ -67,33 +67,20 @@ def copy_files(file_list, destination_path):
         if not os.path.isdir(file_name):
             shutil.copy2(file_name, destination_path)
 
-def get_dir_path(cluster_params, dirName, seed=None):
+def get_dir_path(cluster_params, dir_name, seed=None):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
-    baseDir = os.path.join(base_dir, raft_uuid)
+    base_directory = os.path.join(base_dir, raft_uuid, dir_name, seed) if seed else os.path.join(base_dir, raft_uuid, dir_name)
 
-    if seed is not None:
-        dbi_dir = os.path.join(baseDir, dirName, seed)
-    else:
-        dbi_dir = os.path.join(baseDir, dirName)
-
-    # Get a list of all entries (files and directories) under the 'dbi-dbo' directory
-    entries = os.listdir(dbi_dir)
-
-    # Filter out directories only
-    directories = [entry for entry in entries if os.path.isdir(os.path.join(dbi_dir, entry))]
+    # Get a list of all directories under the specified path
+    directories = [entry for entry in os.listdir(base_directory) if os.path.isdir(os.path.join(base_directory, entry))]
 
     if directories:
         # Sort directories based on creation time (most recent first)
-        directories.sort(key=lambda d: os.path.getctime(os.path.join(dbi_dir, d)), reverse=True)
+        directories.sort(key=lambda d: os.path.getctime(os.path.join(base_directory, d)), reverse=True)
         # Return the path of the most recently created directory with a trailing slash
-        most_recent_directory = directories[0]
-        if len(directories) > 1:
-            most_recent_directory = directories[1]
-        directory_path = os.path.join(dbi_dir, most_recent_directory, '')  # Add the trailing slash here
-        return directory_path
-    else:
-        return None
+        return os.path.join(base_directory, directories[0], '')
+    return None
 
 def list_files_from_dir(dir_path):
     return [os.path.abspath(os.path.join(dir_path, file)) for file in os.listdir(dir_path)]   
@@ -159,7 +146,7 @@ def corrupt_last_file(cluster_params, chunk):
     with open(corrupt_file_path, "wb") as f: # Write the modified data back to the original file
         f.write(data)
 
-    return corrupt_file_path 
+    return [corrupt_file_path, orig_file_path]
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
