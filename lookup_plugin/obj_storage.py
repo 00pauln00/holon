@@ -70,15 +70,15 @@ class s3_operations:
 
     def delete_dbi_set_s3(self, chunk):
         dir_path = get_dir_path(self.cluster_params, DBI_DIR)
-        #TODO change the dbi dir and file name
+        # TODO change the dbi dir and file name
+        # the changes need to be made at the dummy generator side as the values are 
+        # hardcoded at the dummy generator
         destination_dir = "dbiSetFiles"
         dbi_list_path = os.path.join(dir_path, "dbisetFname.txt")
         dbi_list = read_file_list(dbi_list_path)
-
         rand_dbi_path = random.choice(dbi_list)
         rand_dbi = os.path.basename(rand_dbi_path)
         dbi_prefix = rand_dbi.split('.')[0]
-
         # Create a list to store files with the same prefix
         dbi_set_files = [file for file in dbi_list if file.startswith(dbi_prefix)]
         with open(dbi_list_path, 'w') as file:
@@ -121,8 +121,8 @@ class s3_operations:
             stdout, stderr = process.communicate()
 
             # Check if any file is found
-            gc_seq = check_if_mType_present(vdev, chunk, stdout, "gc")
-            nisd_seq = check_if_mType_present(vdev, chunk, stdout, "nisd")
+            gc_seq = get_marker_by_type(vdev, chunk, stdout, "gc")
+            nisd_seq = get_marker_by_type(vdev, chunk, stdout, "nisd")
             print("gc_seq : ", gc_seq, "nisd_seq : ", nisd_seq)
             marker_seq = []
             marker_seq.extend([gc_seq, nisd_seq])
