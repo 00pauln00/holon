@@ -24,38 +24,27 @@ class data_generator:
             input_values["seqStart"] = "0"
             dbicount = "0"
 
-        if input_values['chunk'] == "-1":
-            # Generate a random chunkNumber
-            input_values['chunk'] = str(random.randint(1, 200))
+        defaults = {
+            'chunk': lambda: str(random.randint(1, 200)),
+            'maxPunches': lambda: str(random.randint(1, 50)),
+            'maxVblks': lambda: str(random.randint(100, 1000)),
+            'punchAmount': lambda: str(random.randint(51, 100)),
+            'punchesPer': lambda: "0",
+            'maxPunchSize': lambda: str(random.randint(1, 1024)),
+            'seed': lambda: str(random.randint(1, 100)),
+            'vbAmount': lambda: str(random.randint(1000, 10000)),
+            'vblkPer': lambda: str(random.randint(1, 20)),
+            'blockSize': lambda: str(random.randint(1, 32)),
+            'blockSizeMax': lambda: str(random.randint(1, 32)),
+            'startVblk': lambda: "0",
+            'strideWidth': lambda: str(random.randint(1, 50)),
+            'numOfSet': lambda: str(random.randint(1, 10)),
+            'punchwholechunk': lambda: False,
+        }
 
-        if 'maxPunches' not in input_values:
-            input_values['maxPunches'] = str(random.randint(1, 50))
-        if 'maxVblks' not in input_values:
-            input_values['maxVblks'] = str(random.randint(100, 1000))
-        if 'punchAmount' not in input_values:
-            input_values['punchAmount'] = str(random.randint(51, 100))
-        if 'punchesPer' not in input_values:
-            input_values['punchesPer'] = "0"
-        if 'maxPunchSize' not in input_values:
-            input_values['maxPunchSize'] = str(random.randint(1, 1024))
-        if 'seed' not in input_values:
-            input_values['seed'] = str(random.randint(1, 100))
-        if 'vbAmount' not in input_values: 
-            input_values['vbAmount'] =  str(random.randint(1000, 10000))
-        if 'vblkPer' not in input_values:
-            input_values['vblkPer'] = str(random.randint(1, 20))
-        if 'blockSize' not in input_values:
-            input_values['blockSize'] = str(random.randint(1, 32))
-        if 'blockSizeMax' not in input_values:
-            input_values['blockSizeMax'] = str(random.randint(1, 32))
-        if 'startVblk' not in input_values:
-            input_values['startVblk'] = "0"
-        if 'strideWidth' not in input_values:
-            input_values['strideWidth'] = str(random.randint(1, 50))
-        if 'numOfSet' not in input_values:
-            input_values['numOfSet'] = str(random.randint(1, 10))
-        if 'punchwholechunk' not in input_values:
-            input_values['punchwholechunk'] = False   
+        for key, random_val in defaults.items():
+            if key not in input_values:
+                input_values[key] = random_val()
     
         return input_values
 
