@@ -17,16 +17,19 @@
 
     - name: "Generate DBIs with punches only."
       vars:
-         input_param: {
+        input_param: {
                   'genType' : '0',
-                  'chunkNumber' : '-1',
+                  'chunk' : '-1',
                   'vbAmount' : '0',
                   'vblkPer' : '1',
                   'dbiWithPunches' : '1'
                  }
+        is_random: True
+        remove_files: False
+        no_of_chunks: 1
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'generate_pattern', input_param, wantlist=True) }}"
+          - "{{ lookup('mock_data', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
       register: chunk
 
     - name: "{{ recipe_name }}: Start gc algorithm"
@@ -46,7 +49,7 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate',  Chunk, wantlist=True) }}"
+         msg: "{{ lookup('mock_data', 'validator',  Chunk, wantlist=True) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
