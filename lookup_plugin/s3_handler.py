@@ -1584,14 +1584,15 @@ class LookupModule(LookupBase):
         elif operation == "start_gc":
             # Assume terms is a list with relevant arguments
             if len(terms) >= 3:
-               debugMode = terms[1]
-               chunk = terms[2]
-               # Check if crcCheck is provided
-               crcCheck = terms[3] if len(terms) > 3 else None
-               popen = start_gc_process(cluster_params, dirName, debugMode, chunk, crcCheck)
-               return popen
+                debugMode = terms[1]
+                chunk = terms[2]
+                     
+                # Check if crcCheck is provided
+                crcCheck = terms[3] if len(terms) > 3 else None
+                popen = start_gc_process(cluster_params, dirName, debugMode,  chunk, crcCheck)
+                return popen
             else:
-               raise ValueError("Not enough arguments provided for start_gc operation")
+                raise ValueError("Not enough arguments provided for start_gc operation")
 
         elif operation == "start_gcService":
             dryRun = terms[1]
@@ -1639,7 +1640,8 @@ class LookupModule(LookupBase):
             resume_gcProcess(pid)
 
         elif operation == "parallel_data_generation":
-            no_of_chunks = terms[1]
+            input_values = terms[1]
+            no_of_chunks = terms[2]
             generate_dbi_dbo_concurrently(cluster_params, dirName, no_of_chunks)
 
         elif operation == "get_DBI_fileNames":
