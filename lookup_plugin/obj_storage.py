@@ -90,7 +90,7 @@ class s3_operations:
         process = self.perform_operations("delete", chunk, rand_dbi, GET_VDEV)
 
     def perform_operations(self, operation, chunk, path, vdev):
-        if vdev == GET_VDEV and operation != "create_bucket":
+        if vdev == GET_VDEV:
             dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
             json_data = load_parameters_from_json(f"{dbi_path}/{chunk}/DV/dummy_generator.json")
             vdev = str(json_data['Vdev'])
@@ -152,7 +152,10 @@ class LookupModule(LookupBase):
             chunk = terms[2]
             path = terms[3]
             s3 = s3_operations(cluster_params)
-            process = s3.perform_operations(operation, chunk, path, GET_VDEV)
+            if operation == "create_bucket":
+                process = s3.perform_operations(operation, chunk, path, '')
+            else: 
+                process = s3.perform_operations(operation, chunk, path, GET_VDEV)
             return process
         
         elif operation == "delete_set_file":

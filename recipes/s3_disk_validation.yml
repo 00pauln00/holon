@@ -26,8 +26,10 @@
       register: nisd_dev_path
 
     - name: "{{ recipe_name }}: create bucket on minio"
+      vars:
+         Chunk: "0"
       debug:
-         msg: "{{ lookup('obj_storage', 'operation', 'create_bucket' , '', '', wantlist=True)}}"
+         msg: "{{ lookup('obj_storage', 'operation', 'create_bucket' , Chunk, '', wantlist=True)}}"
 
     - name: "{{ recipe_name }}: run niova ctl cmd on device"
       vars:
