@@ -89,9 +89,12 @@ class s3_operations:
         process = self.perform_operations("delete", chunk, rand_dbi)
 
     def perform_operations(self, operation, chunk, path):
-        dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
-        json_data = load_parameters_from_json(f"{dbi_path}/{chunk}/DV/dummy_generator.json")
-        vdev = str(json_data['Vdev'])
+        if chunk != "" and path != "":
+            dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
+            json_data = load_parameters_from_json(f"{dbi_path}/{chunk}/DV/dummy_generator.json")
+            vdev = str(json_data['Vdev'])
+        else: 
+            vdev = ""
         bin_path = f'{self.bin_dir}/s3Operation'
         s3_config = f'{self.bin_dir}/s3.config.example'
         log_path = f'{self.s3_operations_log}_{operation}'
@@ -103,33 +106,33 @@ class s3_operations:
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         return process
 
-    def get_markers(self, chunk):
-        dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
-        if dbi_path is not None:
-            json_data = load_parameters_from_json(f"{dbi_path}/{chunk}/DV/dummy_generator.json")
-            vdev = str(json_data['Vdev'])
-
+    def get_markers(self, chunk, vdev):
+        def process_and_get_markers(vdev, chunk):
             process = self.perform_operations("list", chunk, "m")
             exit_code = process.wait()
-            if exit_code == 0:
-                print("Process completed successfully.")
-            else:
-                error_message = print("Process failed with exit code {exit_code}.")
-                raise RuntimeError(error_message)
 
-            # Read the output and error
-            stdout, stderr = process.communicate()
+            if exit_code != 0:
+                raise RuntimeError(f"Process failed with exit code {exit_code}.")
 
-            # Check if any file is found
+            stdout, _ = process.communicate()
             gc_seq = get_marker_by_type(vdev, chunk, stdout, "gc")
             nisd_seq = get_marker_by_type(vdev, chunk, stdout, "nisd")
-            print("gc_seq : ", gc_seq, "nisd_seq : ", nisd_seq)
-            marker_seq = []
-            marker_seq.extend([gc_seq, nisd_seq])
-            return marker_seq
-        else:
-            print("Invalid path or directory not found.")
-            return False
+            print("gc_seq:", gc_seq, "nisd_seq:", nisd_seq)
+            return [gc_seq, nisd_seq]
+
+        dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
+        if dbi_path:
+            json_path = f"{dbi_path}/{chunk}/DV/dummy_generator.json"
+            json_data = load_parameters_from_json(json_path)
+            vdev = str(json_data.get('Vdev', vdev))  # Use the vdev from JSON if available
+            return process_and_get_markers(vdev, chunk)
+
+        if vdev:
+            return process_and_get_markers(vdev, chunk)
+
+        print("Invalid path or directory not found.")
+        return False
+
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
@@ -160,8 +163,9 @@ class LookupModule(LookupBase):
 
         elif operation == "get_markers":
             chunk = terms[1]
+            vdev = terms[2] if len(terms) > 2 else ""
             s3 = s3_operations(cluster_params)
-            marker_seq = s3.get_markers(chunk)
+            marker_seq = s3.get_markers(chunk, vdev)
             return marker_seq
 
         else:

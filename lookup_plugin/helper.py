@@ -1,7 +1,8 @@
 import json
 import os  
-import shutil
-import random
+import shutil, time
+from genericcmd import *
+import random, subprocess
 from ansible.plugins.lookup import LookupBase
 
 DBI_DIR = "dbi-dbo"
@@ -129,6 +130,130 @@ def get_last_file_from_dir(dir_path):
         return file_list[-1]  # return the last file in the sorted list
     return None
 
+def get_unmounted_ublk_device(path):
+    output_file = "%s/%s" % (path, "lsblk_output.txt")
+    timeout = 3 * 60  # Total timeout in seconds (3 minutes)
+    interval = 5  # Interval in seconds between retries
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            result = subprocess.run(
+                ["lsblk", "-o", "NAME,MOUNTPOINT", "-n"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            with open(output_file, 'w') as file:
+                file.write(result.stdout)
+
+            for line in result.stdout.splitlines():
+                parts = line.split()
+                if not parts:
+                    continue
+                name = parts[0]
+                mountpoint = parts[1] if len(parts) > 1 else ""
+                if name.startswith("ublkb") and mountpoint == "":
+                    return f"/dev/{name}" 
+            print("No unmounted ublk device found. Retrying in 30 seconds...")
+        except subprocess.CalledProcessError as e:
+            raise e
+
+        time.sleep(interval)  
+    print("No unmounted ublk device found after 3 minutes.")
+    return None
+
+class helper:
+    def __init__(self, cluster_params):
+        self.cluster_params = cluster_params
+        self.bin_dir =  os.getenv('NIOVA_BIN_PATH')
+        self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/"
+    
+    def create_dd_file(self, filename, bs, count):
+        full_path = os.path.normpath(os.path.join(self.base_path, filename))
+        try:
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            dd_command = f"sudo dd if=/dev/zero of={full_path} bs={bs} count={count}"
+            print(f"Running command: {dd_command}")
+            result = subprocess.run(
+                dd_command,
+                check=True, shell=True
+            )
+            print(f"File created successfully at: {full_path}")
+        except subprocess.CalledProcessError as e:
+            raise e 
+        return full_path
+
+    def generate_data(self, directory_path):
+        fio_command_base = [
+            "sudo",
+            "/usr/bin/fio",
+            f"--filename={directory_path}/gc0.tf",
+            f"--filename={directory_path}/gc1.tf",
+            "--direct=1",
+            "--ioengine=io_uring",
+            "--iodepth=128",
+            "--numjobs=1",
+            "--group_reporting",
+            "--name=iops-test-job",
+            "--size=100M",  # Generate 100MB of data
+            "--bs=4k",
+            "--fixedbufs",
+            "--buffer_compress_percentage=50",
+            "--rw=randwrite"
+        ]
+
+        for i in range(10):  # Repeat 10 times
+            print(f"Running fio test iteration {i+1}...")
+            try:
+                result = subprocess.run(fio_command_base, capture_output=True, text=True, check=True)
+            except subprocess.CalledProcessError as e:
+                raise e
+            time.sleep(30)
+
+    def setup_btrfs(self, mount_point):
+        """
+        Automates the setup of a Btrfs filesystem:
+        1. Formats the specified device with Btrfs.
+        2. Creates the mount point directory if it doesn't exist.
+        3. Mounts the device to the specified mount point.
+
+        Parameters:
+            device (str): The device name (e.g., /dev/ublkb0).
+            mount_point (str): The directory to mount the filesystem (e.g., /ci_btrfs).
+
+        Raises:
+            RuntimeError: If any command fails during the setup.
+        """
+        mount_path = "%s/%s" % (self.base_path, mount_point)
+        device = get_unmounted_ublk_device(self.base_path)
+        if device == None: 
+            raise RuntimeError(f"no ublk device available")
+        try:
+            # Step 1: Format the device with Btrfs
+            subprocess.run(["sudo","mkfs.btrfs", device], check=True)
+            print(f"Formatted {device} successfully.")
+
+            # Step 2: Create the mount point directory if it doesn't exist
+            if not os.path.exists(mount_path):
+                os.makedirs(mount_path)
+                subprocess.run(["sudo", "chmod", "777", mount_path], check=True)
+                print(f"Directory {mount_path} created.")
+
+            # Step 3: Mount the device to the mount point
+            subprocess.run(["sudo", "mount", device, mount_path], check=True)
+            print(f"Mounted {device} to {mount_path} successfully.")
+
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"An error occurred while setting up Btrfs: {e}")
+
+        recipe_conf = load_recipe_op_config(self.cluster_params)
+        if not "btrfs_process" in recipe_conf:
+            recipe_conf['btrfs_process'] = {}
+        recipe_conf['btrfs_process']['mount_point'] = mount_path
+        genericcmdobj = GenericCmds()
+        genericcmdobj.recipe_json_dump(recipe_conf)
+        return [mount_path, device]
+
 def corrupt_last_file(cluster_params, chunk):
     dbi_path = get_dir_path(cluster_params, DBI_DIR)
     dummy_config = load_parameters_from_json(get_dummy_gen_config_path(dbi_path, chunk))
@@ -157,8 +282,25 @@ class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
         operation = terms[0]
         cluster_params = kwargs['variables']['ClusterParams']
+        help = helper(cluster_params)
+
+        if operation == "create_dd_file":
+            img_dir = terms[1]
+            bs = terms[2]
+            count = terms[3]
+            device_path = help.create_dd_file(img_dir, bs, count)
+            return device_path
+
+        elif operation == "setup_btrfs": 
+            mount = terms[1]
+            mount_path =  help.setup_btrfs(mount)
+            return mount_path
         
-        if operation == "clone_dbi_set":
+        elif operation == "generate_data":
+            device_path = terms[1]
+            help.generate_data(device_path)
+
+        elif operation == "clone_dbi_set":
             chunk = terms[1]
             clone_dbi_files(cluster_params, chunk)
             
