@@ -7,6 +7,7 @@ import time
 from genericcmd import GenericCmds
 from lookup_plugin.helper import *
 
+GET_VDEV = "get_vdev_from_dummy_generator.json"
 
 class Minio:
     def __init__(self, cluster_params, minio_path):
@@ -86,15 +87,13 @@ class s3_operations:
                 file.write(item + ", ")
         # Delete file locally
         os.remove(rand_dbi_path)
-        process = self.perform_operations("delete", chunk, rand_dbi)
+        process = self.perform_operations("delete", chunk, rand_dbi, GET_VDEV)
 
-    def perform_operations(self, operation, chunk, path):
-        if chunk != "" and path != "":
+    def perform_operations(self, operation, chunk, path, vdev):
+        if vdev == GET_VDEV and operation != "create_bucket":
             dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
             json_data = load_parameters_from_json(f"{dbi_path}/{chunk}/DV/dummy_generator.json")
             vdev = str(json_data['Vdev'])
-        else: 
-            vdev = ""
         bin_path = f'{self.bin_dir}/s3Operation'
         s3_config = f'{self.bin_dir}/s3.config.example'
         log_path = f'{self.s3_operations_log}_{operation}'
@@ -108,7 +107,7 @@ class s3_operations:
 
     def get_markers(self, chunk, vdev):
         def process_and_get_markers(vdev, chunk):
-            process = self.perform_operations("list", chunk, "m")
+            process = self.perform_operations("list", chunk, "m", vdev)
             exit_code = process.wait()
 
             if exit_code != 0:
@@ -119,19 +118,19 @@ class s3_operations:
             nisd_seq = get_marker_by_type(vdev, chunk, stdout, "nisd")
             print("gc_seq:", gc_seq, "nisd_seq:", nisd_seq)
             return [gc_seq, nisd_seq]
-
-        dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
-        if dbi_path:
-            json_path = f"{dbi_path}/{chunk}/DV/dummy_generator.json"
-            json_data = load_parameters_from_json(json_path)
-            vdev = str(json_data.get('Vdev', vdev))  # Use the vdev from JSON if available
+        
+        if vdev != "":
             return process_and_get_markers(vdev, chunk)
+        else:
+            dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
+            if dbi_path:
+                json_path = f"{dbi_path}/{chunk}/DV/dummy_generator.json"
+                json_data = load_parameters_from_json(json_path)
+                vdev = str(json_data.get('Vdev', vdev))  # Use the vdev from JSON if available
+                return process_and_get_markers(vdev, chunk)
 
-        if vdev:
-            return process_and_get_markers(vdev, chunk)
-
-        print("Invalid path or directory not found.")
-        return False
+            print("Invalid path or directory not found.")
+            return False
 
 
 class LookupModule(LookupBase):
@@ -153,7 +152,7 @@ class LookupModule(LookupBase):
             chunk = terms[2]
             path = terms[3]
             s3 = s3_operations(cluster_params)
-            process = s3.perform_operations(operation, chunk, path)
+            process = s3.perform_operations(operation, chunk, path, GET_VDEV)
             return process
         
         elif operation == "delete_set_file":
