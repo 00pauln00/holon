@@ -1,0 +1,321 @@
+import json
+import os  
+import shutil, time
+from genericcmd import *
+import random, subprocess
+from ansible.plugins.lookup import LookupBase
+
+DBI_DIR = "dbi-dbo"
+GEN_NUM = 1
+MARKER_VDEV = 0
+MARKER_CHUNK = 1
+MARKER_TYPE = 4
+
+def load_parameters_from_json(filename):
+    with open(filename, 'r') as json_file:
+        params = json.load(json_file)
+    return params
+
+def create_file(file_name: str, content: str):
+    with open(file_name, 'w') as file:
+        file.write(content)
+
+def delete_file(file_name: str):
+    if os.path.exists(file_name):
+        os.remove(file_name)
+
+def load_recipe_op_config(cluster_params):
+    recipe_conf = {}
+    raft_json_fpath = "%s/%s/%s.json" % (cluster_params['base_dir'],
+                                         cluster_params['raft_uuid'],
+                                         cluster_params['raft_uuid'])
+    if os.path.exists(raft_json_fpath):
+        with open(raft_json_fpath, "r+", encoding="utf-8") as json_file:
+            recipe_conf = json.load(json_file)
+
+    return recipe_conf
+
+def create_dir(dir_path: str):
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path, mode=0o777)
+
+def clone_dbi_files(cluster_params, chunk):
+    dir_path = get_dir_path(cluster_params, DBI_DIR)
+    destination_dir = "dbiSetFiles"
+    dbi_list_path = os.path.join(dir_path, "dbisetFname.txt")
+    file_list = read_file_list(dbi_list_path)
+    create_dir(os.path.join(dir_path, destination_dir))
+    copy_files(file_list, os.path.join(dir_path, destination_dir))
+
+# generates the dummy generator config path
+def get_dummy_gen_config_path(data_dir, chunk):
+    return os.path.join(data_dir, str(chunk), "DV", "dummy_generator.json")
+
+def read_file_list(file_path):
+    try:
+        with open(file_path, 'r') as file:
+            return file.read().rstrip(', ').split(', ')
+    except FileNotFoundError:
+        print(f"The file '{file_path}' was not found.")
+        return []
+
+def copy_files(file_list, destination_path):
+    print(f"Copying {file_list} to {destination_path}")
+    # If a single file is passed, wrap it in a list
+    if isinstance(file_list, str):
+        file_list = [file_list]
+    os.makedirs(destination_path, exist_ok=True)
+
+    for file_name in file_list:
+
+        if not os.path.isdir(file_name):
+            # cleaning if any additional quotes are present
+            src = file_name.strip("'")
+            os.chmod(src, 0o777)
+            shutil.copy2(src, destination_path)
+
+def get_dir_path(cluster_params, dir_name, seed=None):
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+    base_directory = os.path.join(base_dir, raft_uuid, dir_name, seed) if seed else os.path.join(base_dir, raft_uuid, dir_name)
+
+    # Get a list of all directories under the specified path
+    directories = [entry for entry in os.listdir(base_directory) if os.path.isdir(os.path.join(base_directory, entry))]
+
+    if directories:
+        # Sort directories based on creation time (most recent first)
+        directories.sort(key=lambda d: os.path.getctime(os.path.join(base_directory, d)), reverse=True)
+        # Return the path of the most recently created directory with a trailing slash
+        return os.path.join(base_directory, directories[0], '')
+    return None
+
+def list_files_from_dir(dir_path):
+    return [os.path.abspath(os.path.join(dir_path, file)) for file in os.listdir(dir_path)]   
+
+def get_marker_by_type(vdev, chunk, mList, mType):
+    for line in (mList.splitlines()):
+        parts = line.split(".")
+        if vdev in parts[MARKER_VDEV] and chunk in parts[MARKER_CHUNK] and mType in parts[MARKER_TYPE]:
+            return parts[2]
+    return None   
+
+def inc_dbi_gen_num(cluster_params, chunk):
+    dbi_Path = get_dir_path(cluster_params, DBI_DIR)
+    dummy_config = get_dummy_gen_config_path(dbi_Path, chunk)
+    dummy_json_data = load_parameters_from_json(dummy_config)
+    dbi_input_path = str(dummy_json_data['DbiPath'])
+    files_list = list_files_from_dir(dbi_input_path)    # List files from dbipath
+    
+    if files_list:
+        random_file = random.choice(files_list)  # Select a random file from the list
+        filename_parts = random_file.split(".")
+        genration_num = filename_parts[GEN_NUM]  # Extract the generation number
+        # Increment the extracted element by 1, Decrement as the number is inversed
+        inc_gen_num = str(hex(int(genration_num, 16) - 1)[2:])
+        filename_parts[GEN_NUM] = inc_gen_num  # Update the filename with the incremented element
+        new_filename = ".".join(filename_parts)
+        source_file_path = os.path.join(dbi_input_path, random_file)
+        new_file_path = os.path.join(dbi_input_path, new_filename)
+        return source_file_path, new_file_path
+    else:
+        print("No files found in the directory.")
+
+def get_last_file_from_dir(dir_path):
+    file_list = list_files_from_dir(dir_path) # Get a list of files in the source directory
+    if len(file_list) > 1:
+        # Sort the file list by modification time (oldest to newest)
+        file_list.sort(key=lambda x: os.path.getmtime(os.path.join(dir_path, x)))
+        # Remove directories from list
+        file_list = [f for f in file_list if not os.path.isdir(os.path.join(dir_path, f))]
+        return file_list[-1]  # return the last file in the sorted list
+    return None
+
+def get_unmounted_ublk_device(path):
+    output_file = "%s/%s" % (path, "lsblk_output.txt")
+    timeout = 3 * 60  # Total timeout in seconds (3 minutes)
+    interval = 5  # Interval in seconds between retries
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            result = subprocess.run(
+                ["lsblk", "-o", "NAME,MOUNTPOINT", "-n"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            with open(output_file, 'w') as file:
+                file.write(result.stdout)
+
+            for line in result.stdout.splitlines():
+                parts = line.split()
+                if not parts:
+                    continue
+                name = parts[0]
+                mountpoint = parts[1] if len(parts) > 1 else ""
+                if name.startswith("ublkb") and mountpoint == "":
+                    return f"/dev/{name}" 
+            print("No unmounted ublk device found. Retrying in 30 seconds...")
+        except subprocess.CalledProcessError as e:
+            raise e
+
+        time.sleep(interval)  
+    print("No unmounted ublk device found after 3 minutes.")
+    return None
+
+class helper:
+    def __init__(self, cluster_params):
+        self.cluster_params = cluster_params
+        self.bin_dir =  os.getenv('NIOVA_BIN_PATH')
+        self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/"
+    
+    def create_dd_file(self, filename, bs, count):
+        full_path = os.path.normpath(os.path.join(self.base_path, filename))
+        try:
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            dd_command = f"sudo dd if=/dev/zero of={full_path} bs={bs} count={count}"
+            print(f"Running command: {dd_command}")
+            result = subprocess.run(
+                dd_command,
+                check=True, shell=True
+            )
+            print(f"File created successfully at: {full_path}")
+        except subprocess.CalledProcessError as e:
+            raise e 
+        return full_path
+
+    def generate_data(self, directory_path):
+        fio_command_base = [
+            "sudo",
+            "/usr/bin/fio",
+            f"--filename={directory_path}/gc0.tf",
+            f"--filename={directory_path}/gc1.tf",
+            "--direct=1",
+            "--ioengine=io_uring",
+            "--iodepth=128",
+            "--numjobs=1",
+            "--group_reporting",
+            "--name=iops-test-job",
+            "--size=100M",  # Generate 100MB of data
+            "--bs=4k",
+            "--fixedbufs",
+            "--buffer_compress_percentage=50",
+            "--rw=randwrite"
+        ]
+
+        for i in range(10):  # Repeat 10 times
+            print(f"Running fio test iteration {i+1}...")
+            try:
+                result = subprocess.run(fio_command_base, capture_output=True, text=True, check=True)
+            except subprocess.CalledProcessError as e:
+                raise e
+            time.sleep(30)
+
+    def setup_btrfs(self, mount_point):
+        """
+        Automates the setup of a Btrfs filesystem:
+        1. Formats the specified device with Btrfs.
+        2. Creates the mount point directory if it doesn't exist.
+        3. Mounts the device to the specified mount point.
+
+        Parameters:
+            device (str): The device name (e.g., /dev/ublkb0).
+            mount_point (str): The directory to mount the filesystem (e.g., /ci_btrfs).
+
+        Raises:
+            RuntimeError: If any command fails during the setup.
+        """
+        mount_path = "%s/%s" % (self.base_path, mount_point)
+        device = get_unmounted_ublk_device(self.base_path)
+        if device == None: 
+            raise RuntimeError(f"no ublk device available")
+        try:
+            # Step 1: Format the device with Btrfs
+            subprocess.run(["sudo","mkfs.btrfs", device], check=True)
+            print(f"Formatted {device} successfully.")
+
+            # Step 2: Create the mount point directory if it doesn't exist
+            if not os.path.exists(mount_path):
+                os.makedirs(mount_path)
+                subprocess.run(["sudo", "chmod", "777", mount_path], check=True)
+                print(f"Directory {mount_path} created.")
+
+            # Step 3: Mount the device to the mount point
+            subprocess.run(["sudo", "mount", device, mount_path], check=True)
+            print(f"Mounted {device} to {mount_path} successfully.")
+
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"An error occurred while setting up Btrfs: {e}")
+
+        recipe_conf = load_recipe_op_config(self.cluster_params)
+        if not "btrfs_process" in recipe_conf:
+            recipe_conf['btrfs_process'] = {}
+        recipe_conf['btrfs_process']['mount_point'] = mount_path
+        genericcmdobj = GenericCmds()
+        genericcmdobj.recipe_json_dump(recipe_conf)
+        return [mount_path, device]
+
+def corrupt_last_file(cluster_params, chunk):
+    dbi_path = get_dir_path(cluster_params, DBI_DIR)
+    dummy_config = load_parameters_from_json(get_dummy_gen_config_path(dbi_path, chunk))
+    dbi_input_path = str(dummy_config['DbiPath'])
+    dbi_list = list_files_from_dir(dbi_input_path)
+    copy_files(dbi_list, f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi")
+    orig_file_path = get_last_file_from_dir(f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi")
+    corrupt_file_path = get_last_file_from_dir(dbi_input_path)
+    if not corrupt_file_path:
+        print("No files found in the directory.")
+        return None
+    with open(corrupt_file_path, "rb") as f:
+        data = bytearray(f.read())
+    if len(data) < 16: # Ensure the file is at least 16 bytes long
+        print("File is too small to modify the first 16 bytes")
+        return None
+    new_entry = bytearray(16)  # Create a new 16-byte entry with Type set to 1 and the rest set to zero
+    new_entry[0] = 0x01  # Set Type to 1
+    data[:16] = new_entry # Copy the new entry to the first 16 bytes of the data
+    with open(corrupt_file_path, "wb") as f: # Write the modified data back to the original file
+        f.write(data)
+
+    return [corrupt_file_path, orig_file_path]
+
+class LookupModule(LookupBase):
+    def run(self, terms, **kwargs):
+        operation = terms[0]
+        cluster_params = kwargs['variables']['ClusterParams']
+        help = helper(cluster_params)
+
+        if operation == "create_dd_file":
+            img_dir = terms[1]
+            bs = terms[2]
+            count = terms[3]
+            device_path = help.create_dd_file(img_dir, bs, count)
+            return device_path
+
+        elif operation == "setup_btrfs": 
+            mount = terms[1]
+            mount_path =  help.setup_btrfs(mount)
+            return mount_path
+        
+        elif operation == "generate_data":
+            device_path = terms[1]
+            help.generate_data(device_path)
+
+        elif operation == "clone_dbi_set":
+            chunk = terms[1]
+            clone_dbi_files(cluster_params, chunk)
+            
+        elif operation == "corrupt_last_file":
+            chunk = terms[1]
+            return corrupt_last_file(cluster_params, chunk)
+
+        elif operation == "inc_dbi_gen_num":
+            chunk = terms[1]
+            return inc_dbi_gen_num(cluster_params, chunk)
+
+        elif operation == "copy_file":
+            source_file = terms[1]
+            dest_file = terms[2]
+            copy_files(source_file, dest_file)
+    
+        else:
+            raise ValueError(f"Unsupported operation: {operation}")

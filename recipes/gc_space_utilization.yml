@@ -14,10 +14,10 @@
 
     - name: "{{ recipe_name }}: Start minio server"
       vars:
-        s3_dir: "minio_data"
+        s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'start_minio', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
     - name: "{{ recipe_name }}: Start GCService"
@@ -90,9 +90,8 @@
         index_var: chunk_index
       vars:
         Chunk: "{{ item | string }}"
-        mType: "Both"
         stage: "wait_for_gc_marker"
-        marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
+        marker_seq: "{{ lookup('obj_storage', 'get_markers', Chunk, wantlist=True) }}"
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq }} for chunk {{ chunk_index + 1 }}"
       until: marker_seq[0] is not none
@@ -105,13 +104,12 @@
         index_var: chunk_index
       vars:
         Chunk: "{{ item | string }}"
-        mType: "Both"
-        Sequence: "{{ lookup('s3_handler', 'GetSeqOfMarker', mType, Chunk, wantlist=True) }}"
-        gcMarkerEndSeq: "{{ Sequence[0] }}"
-        NisdMarkerEndSeq: "{{ Sequence[1] }}"
+        Sequence: "{{ lookup('obj_storage', 'get_markers', Chunk, wantlist=True) }}"
+        gc_marker: "{{ Sequence[0] }}"
+        nisd_marker: "{{ Sequence[1] }}"
       debug:
-        msg: "Wait until marker values gets match {{ gcMarkerEndSeq }} and {{ NisdMarkerEndSeq }} for chunk {{ chunk_index + 1 }}"
-      until: gcMarkerEndSeq == NisdMarkerEndSeq
+        msg: "Wait until marker values gets match {{ gc_marker }} and {{ nisd_marker }} for chunk {{ chunk_index + 1 }}"
+      until: gc_marker == nisd_marker
       retries: 300
       delay: 2
 

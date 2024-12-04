@@ -9,10 +9,10 @@
   - block:
     - name: "{{ recipe_name }}: Start minio server"
       vars:
-        s3_dir: "minio_data"
+        s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_s3', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'start_minio', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
     - name: "{{ recipe_name }}: create nisd device"
@@ -22,14 +22,14 @@
           count: 160
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'createFile', img_dir, bs, count, wantlist=True) }}"
+          - "{{ lookup('helper', 'create_dd_file', img_dir, bs, count, wantlist=True) }}"
       register: nisd_dev_path
 
     - name: "{{ recipe_name }}: create bucket on minio"
       vars:
-          bucket: "paroscale-test"
+         Chunk: "0"
       debug:
-         msg: "{{ lookup('s3_handler', 'create_bucket', bucket, wantlist=True)}}"
+         msg: "{{ lookup('obj_storage', 'operation', 'create_bucket' , Chunk, '', wantlist=True)}}"
 
     - name: "{{ recipe_name }}: run niova ctl cmd on device"
       vars:
@@ -62,13 +62,13 @@
           mount_dir: "ci_data_btrfs"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'setup_btrfs', mount_dir, wantlist=True) }}"
+          - "{{ lookup('helper', 'setup_btrfs', mount_dir, wantlist=True) }}"
       register: device_paths
 
     - name: "{{ recipe_name }}: run the script"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'generate_data', device_paths.msg[0][0], wantlist=True) }}"
+          - "{{ lookup('helper', 'generate_data', device_paths.msg[0][0], wantlist=True) }}"
     
     - name: "{{ recipe_name }}: wait for 2 minute"
       pause:
@@ -92,9 +92,8 @@
     - name: "{{ recipe_name }}: Wait until GC marker file present."
       vars:
          Chunk: "0"
-         mType: "Both"
          stage: "wait_for_gc_marker"
-         marker_seq: "{{ lookup('s3_handler', 'GetSeqOfMarkerWithVdev', mType, Chunk, ublk_uuid.msg[0], wantlist=True) }}"
+         marker_seq: "{{ lookup('obj_storage', 'get_markers', Chunk, ublk_uuid.msg[0], wantlist=True) }}"
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq }}"
       until: marker_seq[0] is not none
