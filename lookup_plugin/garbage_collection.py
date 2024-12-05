@@ -1,25 +1,28 @@
+from ansible.plugins.lookup import LookupBase
 import os
 import subprocess
 import logging
 import re
 import psutil
+from lookup_plugin.helper import *
 
 class garbage_collection:
     def __init__(self, cluster_params):
+        self.cluster_params = cluster_params
         self.s3_support = cluster_params['s3Support']
         self.app_name = cluster_params['app_type']
         self.binary_dir = os.getenv('NIOVA_BIN_PATH')
         self.base_path = os.path.join(cluster_params['base_dir'], cluster_params['raft_uuid'])
         self.gc_log = os.path.join(self.base_path, "gc_logs")
-        self.s3_log_path = os.path.join(self.base_path "s3_log")
-        self.download_path = os.path.join(self.base_path "gc-download")
+        self.s3_log_path = os.path.join(self.base_path, "s3_log")
+        self.download_path = os.path.join(self.base_path, "gc-download")
         self.s3config = os.path.join(self.binary_dir, "s3.config.example")
         os.makedirs(self.download_path, exist_ok=True)
 
     def start_gc_service(self, dry_run, del_dbo, partition, force_gc, total_chunks):
         try:
             if partition:
-                download_path = os.path.join(self.base_path "gc", "gc_download")
+                download_path = os.path.join(self.base_path, "gc", "gc_download")
             else:
                 download_path = self.download_path
 
@@ -92,8 +95,6 @@ class garbage_collection:
             logging.error(f"Error starting GC process: {e}")
             raise
 
-
-
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
         operation = terms[0]
@@ -105,7 +106,7 @@ class LookupModule(LookupBase):
                debug = terms[1]
                chunk = terms[2]
                crc_check = terms[3] if len(terms) > 3 else None
-               popen = gc.start_gc_tester(cluster_params, dirName, debug, chunk, crc_check)
+               popen = gc.start_gc_tester(dirName, debug, chunk, crc_check)
                return popen
             else:
                raise ValueError("not enough arguments provided to start gc tester")
@@ -116,4 +117,4 @@ class LookupModule(LookupBase):
             partition = terms[3]
             total_chunks = terms[4]
             force_gc = terms[5]
-            gc.start_gc_service(cluster_params, dry_run, del_dbo, partition, force_gc, total_chunks)
+            gc.start_gc_service(dry_run, del_dbo, partition, force_gc, total_chunks)
