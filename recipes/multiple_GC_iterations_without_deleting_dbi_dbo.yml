@@ -19,7 +19,7 @@
         name: common
         tasks_from: generate_pattern_dbis
       vars:
-        Type: "0"     #You can pass different pattern value here.
+        Type: "0"   
         ChunkNum: "-1"
       register: chunk
 
@@ -28,10 +28,10 @@
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
-        debugMode: true
+        debug_mode: true
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'start_tester', debug_mode, Chunk, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -43,16 +43,15 @@
         name: common
         tasks_from: generate_pattern_dbis
       vars:
-        Type: "0"     #You can pass different pattern value here.
+        Type: "0"    
         ChunkNum: "{{ chunk['msg'][0] }}"
-      #register: chunk1
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
-        debugMode: false
+        debug_mode: false
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'start_tester', debug_mode, Chunk, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -63,4 +62,4 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate', Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator', Chunk, wantlist=True) }}"
