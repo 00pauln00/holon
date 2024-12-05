@@ -32,16 +32,14 @@
                   "blockSize": "4",
                   "blockSizeMax": "32",
                   "startVblk": "1",
-                  "strideWidth": "",
-                  "overlapSeq": "",
-                  "numOfSet": "",
-                  "vdev": "",
-                  "s3configPath": "",
                   "punchwholechunk": "false",
                   }
+         no_of_chunks : 1
+         is_random : False
+         remove_files: False 
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Perform GC after first iteration"
       vars:
@@ -49,7 +47,7 @@
         Chunk: "2"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'start_tester', debugMode, Chunk, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -73,16 +71,14 @@
                   "blockSize": "4",
                   "blockSizeMax": "32",
                   "startVblk": "1",
-                  "strideWidth": "",
-                  "overlapSeq": "",
-                  "numOfSet": "",
-                  "vdev": "",
-                  "s3configPath": "",
                   "punchwholechunk": "false",
                  }
+         no_of_chunks : 1
+         is_random : False
+         remove_files: False
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Perform GC after second iteration"
       vars:
@@ -90,7 +86,7 @@
         Chunk: "2"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'start_tester', debugMode, Chunk, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -101,7 +97,7 @@
       vars:
         Chunk: "2"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate',  Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
