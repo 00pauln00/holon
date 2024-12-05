@@ -51,7 +51,7 @@
         force_gc: False
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'service', dry_run, del_dbo, partition, no_of_chunks, force_gc, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'start_service', dry_run, del_dbo, partition, no_of_chunks, force_gc, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Check GC Marker file is Present or not."
       vars:

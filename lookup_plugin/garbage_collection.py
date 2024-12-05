@@ -145,7 +145,7 @@ class LookupModule(LookupBase):
         cluster_params = kwargs['variables']['ClusterParams']
         gc = garbage_collection(cluster_params)
         
-        if operation == "tester":
+        if operation == "start_tester":
             if len(terms) >= 3:
                debug = terms[1]
                chunk = terms[2]
@@ -155,7 +155,7 @@ class LookupModule(LookupBase):
             else:
                raise ValueError("not enough arguments provided to start gc tester")
 
-        elif operation == "service":
+        elif operation == "start_service":
             dry_run = terms[1]
             del_dbo = terms[2]
             partition = terms[3]
@@ -163,10 +163,10 @@ class LookupModule(LookupBase):
             force_gc = terms[5]
             gc.start_gc_service(dry_run, del_dbo, partition, force_gc, total_chunks)
 
-        elif operation == "pause":
+        elif operation == "pause_service":
             pid = terms[1]
             gc.pause_gc_service(pid)
 
-        elif operation == "resume":
+        elif operation == "resume_service":
             pid = terms[1]
             gc.resume_gc_service(pid)      

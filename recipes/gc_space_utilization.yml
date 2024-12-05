@@ -29,7 +29,7 @@
         force_gc: False
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'service', dry_run, del_dbo, partition, no_of_chunks, force_gc, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'start_service', dry_run, del_dbo, partition, no_of_chunks, force_gc, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: pause for 5 seconds."
       pause:
@@ -58,7 +58,7 @@
       vars:
         pid : "{{ gc_process_pid | int }}"
       debug:
-        msg: "{{ lookup('garbage_collection', 'pause', pid, wantlist=True) }}"
+        msg: "{{ lookup('garbage_collection', 'pause_service', pid, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Create 1.5GB file"
       vars:
@@ -98,7 +98,7 @@
       vars:
          pid : "{{ gc_process_pid | int }}"
       debug:
-        msg: "{{ lookup('garbage_collection', 'resume', pid, wantlist=True) }}"
+        msg: "{{ lookup('garbage_collection', 'resume_service', pid, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Delete the file from partition to get available space"
       debug:
