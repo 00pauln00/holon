@@ -97,7 +97,6 @@ def read_file_list(file_path):
         return []
 
 def copy_files(file_list, destination_path):
-    print(f"Copying {file_list} to {destination_path}")
     # If a single file is passed, wrap it in a list
     if isinstance(file_list, str):
         file_list = [file_list]

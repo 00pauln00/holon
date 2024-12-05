@@ -25,19 +25,18 @@
                  }
         is_random: True
         remove_files: False
-        no_of_chunks: 1
+        total_chunks: 1
       debug:
          msg:
-          - "{{ lookup('mock_data', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', input_param, total_chunks, is_random, remove_files, wantlist=True) }}"
       register: chunk
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
-        debugMode: false
+        debug_mode: false
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg:
-          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+        msg: "{{ lookup('garbage_collection', 'start_tester', debug_mode, Chunk, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -48,7 +47,7 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('mock_data', 'validator',  Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

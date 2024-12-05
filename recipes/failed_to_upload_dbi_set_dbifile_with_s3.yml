@@ -41,11 +41,10 @@
 
     - name: "{{ recipe_name }}: Perform GC."
       vars:
-        debugMode: false
+        debug_mode: false
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg:
-          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'start_tester', debug_mode, Chunk, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Marker file present or not."
       vars:
@@ -61,3 +60,9 @@
       debug:
         msg: "GC Marker : {{ gc_marker }} | NISD Marker : {{ nisd_marker }}"
       failed_when: (gc_marker != nisd_marker) or (gc_marker is none)
+    
+    - name: "{{ recipe_name }}: Start data validation"
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('data_gen', 'validator', Chunk, wantlist=True) }}"
