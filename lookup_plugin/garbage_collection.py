@@ -150,7 +150,7 @@ class LookupModule(LookupBase):
                debug = terms[1]
                chunk = terms[2]
                crc_check = terms[3] if len(terms) > 3 else None
-               popen = gc.start_gc_tester(dirName, debug, chunk, crc_check)
+               popen = gc.start_gc_tester(debug, chunk, crc_check)
                return popen
             else:
                raise ValueError("not enough arguments provided to start gc tester")
