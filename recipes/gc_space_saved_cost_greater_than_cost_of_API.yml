@@ -40,7 +40,7 @@
         remove_files: False
       debug:
          msg:
-          - "{{ lookup('mock_data', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
@@ -83,7 +83,7 @@
       vars:
         Chunk: "1"
       debug:
-         msg: "{{ lookup('mock_data', 'validator',  Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

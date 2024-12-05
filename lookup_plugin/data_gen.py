@@ -8,7 +8,7 @@ class data_generator:
     def __init__(self, cluster_params):
         self.cluster_params = cluster_params
         self.bin_dir =  os.getenv('NIOVA_BIN_PATH')
-        self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/"
+        self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}"
         self.s3_upload_log = f"{self.base_path}/s3Upload"
 
     def generate_random_values(self, input_values):
@@ -50,7 +50,7 @@ class data_generator:
 
     def set_vals_from_json(self, input_values):
         dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
-
+        dbicount = "0"
         if dbi_path != None:
             entries = os.listdir(dbi_path)
             chunk_no = input_values["chunk"]
@@ -62,7 +62,7 @@ class data_generator:
                 input_values["seqStart"] = str(json_data['SeqEnd'] + 1)
                 dbicount = str(json_data['TMinDbiFileForForceGC'])
 
-        return input_values
+        return input_values, dbicount
 
     def add_params_to_cmd(self, commands, input_values):
         for cmd in commands:
@@ -101,7 +101,7 @@ class data_generator:
         if is_random:
             input_values = self.generate_random_values(input_values)
         else:
-            input_values = self.set_vals_from_json(input_values)
+            input_values, dbicount = self.set_vals_from_json(input_values)
 
         commands = []
         for chunk in range(1, no_of_chunks + 1):
@@ -134,7 +134,7 @@ class data_validator:
     def __init__(self, cluster_params):
         self.cluster_params = cluster_params
         self.bin_dir =  os.getenv('NIOVA_BIN_PATH')
-        self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/"
+        self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}"
         self.data_validate_log = f"{self.base_path}/dataValidateResult"
 
     def validate_data(self, chunk):

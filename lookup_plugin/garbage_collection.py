@@ -4,6 +4,7 @@ import subprocess
 import logging
 import re
 import psutil
+import signal
 from lookup_plugin.helper import *
 
 class garbage_collection:
@@ -65,6 +66,49 @@ class garbage_collection:
             logging.error(f"Error starting gcService process: {e}")
             raise 
 
+    def pause_gc_service(self, pid):
+        try:
+            pid = int(pid)  # Convert string pid to integer
+        except ValueError:
+            logging.error(f"pause_gc_service: Invalid PID format: {pid}")
+            return -1
+
+        try:
+            process_obj = psutil.Process(pid)
+        except psutil.NoSuchProcess:
+            logging.error(f"pause_gc_service: Process with PID {pid} not found")
+            return -1
+
+        logging.info(f"Pausing gc service {pid} by sending SIGSTOP")
+        try:
+            process_obj.send_signal(signal.SIGSTOP)
+            return 0
+        except Exception as e:  # Catch unexpected errors
+            logging.error(f"pause_gc_service: Error pausing process: {e}")
+            return -1
+
+    def resume_gc_service(self, pid):
+        try:
+            pid = int(pid)  # Convert string pid to integer
+        except ValueError:
+            logging.error(f"resume_gc_service: Invalid PID format: {pid}")
+            return -1
+
+        try:
+            process = psutil.Process(pid)
+        except psutil.NoSuchProcess:
+            logging.error(f"resume_gc_service: Process with PID {pid} not found")
+            return -1
+
+        logging.info(f"Resuming gc service {pid} by sending SIGCONT")
+
+        try:
+            process.send_signal(signal.SIGCONT)
+            return 0
+        except Exception as e:  # Catch unexpected errors
+            logging.error(f"resume_gc_service: Unexpected error: {e}")
+            return -1
+
     def start_gc_tester(self, debug_mode, chunk, crcCheck=None):
         try:
             bin_path = os.path.join(self.binary_dir, "gcTester")
@@ -118,3 +162,11 @@ class LookupModule(LookupBase):
             total_chunks = terms[4]
             force_gc = terms[5]
             gc.start_gc_service(dry_run, del_dbo, partition, force_gc, total_chunks)
+
+        elif operation == "pause":
+            pid = terms[1]
+            gc.pause_gc_service(pid)
+
+        elif operation == "resume":
+            pid = terms[1]
+            gc.resume_gc_service(pid)      

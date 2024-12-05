@@ -32,27 +32,26 @@
                   "blockSize": "8",
                   "blockSizeMax": "32",
                   "startVblk": "0",
-                  "strideWidth": "",
-                  "overlapSeq": "",
-                  "numOfSet": "",
                   "vdev": "26b26faa-e5af-11ee-802e-22abb648e432",
-                  "s3configPath": "",
                   "punchwholechunk": "false",
-                 }
+        }
+        no_of_chunks : 1
+        is_random : False
+        remove_files: False
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
-        dryRun: False
-        delDBO: True
+        dry_run: False
+        del_dbo: True
         partition: False
         no_of_chunks: 0
         force_gc: False
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, force_gc, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'service', dry_run, del_dbo, partition, no_of_chunks, force_gc, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: pause for 1 seconds."
       pause:
@@ -75,16 +74,15 @@
                   "blockSize": "8",
                   "blockSizeMax": "32",
                   "startVblk": "0",
-                  "strideWidth": "",
-                  "overlapSeq": "",
-                  "numOfSet": "",
                   "vdev": "26b26faa-e5af-11ee-802e-22abb648e432",
-                  "s3configPath": "",
                   "punchwholechunk": "false",
-                 }
+        }
+        no_of_chunks : 1
+        is_random : False
+        remove_files: False
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Check GC Marker file is Present or not."
       vars:

@@ -22,14 +22,14 @@
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
-        dryRun: False
-        delDBO: True
+        dry_run: False
+        del_dbo: True
         partition: True 
         no_of_chunks: 2 
         force_gc: False
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, force_gc, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'service', dry_run, del_dbo, partition, no_of_chunks, force_gc, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: pause for 5 seconds."
       pause:
@@ -58,7 +58,7 @@
       vars:
         pid : "{{ gc_process_pid | int }}"
       debug:
-        msg: "{{ lookup('s3_handler', 'pauseGCProcess', pid, wantlist=True) }}"
+        msg: "{{ lookup('garbage_collection', 'pause', pid, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Create 1.5GB file"
       vars:
@@ -70,15 +70,35 @@
 
     - name: "{{ recipe_name }}: generate data for 2 chunks parallely"
       vars:
+        input_param: {
+                  "chunk": "1",
+                  "maxPunches": "1024",
+                  "maxVblks": "2097152",
+                  "punchAmount": "6000",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2048",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "2097152",
+                  "vblkPer": "100000",
+                  "genType": "1",
+                  "blockSize": "4",
+                  "blockSizeMax": "32",
+                  "startVblk": "0",
+                  "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
+                  "punchwholechunk": "false",
+        }
         no_of_chunks : 2
+        is_random : False
+        remove_files: False
       debug:
-        msg: "{{ lookup('s3_handler', 'parallel_data_generation', no_of_chunks, wantlist=True) }}"
+        msg: "{{ lookup('data_gen', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Resume the GC process."
       vars:
          pid : "{{ gc_process_pid | int }}"
       debug:
-        msg: "{{ lookup('s3_handler', 'resumeGCProcess', pid, wantlist=True) }}"
+        msg: "{{ lookup('garbage_collection', 'resume', pid, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Delete the file from partition to get available space"
       debug:
