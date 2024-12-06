@@ -12,12 +12,12 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'start_minio', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
     - name: "Generate DBIs for first iteration."
       vars:
-         input_param: {
+         dgen_args: {
                   "chunk": "1",
                   "maxPunches": "83",
                   "maxVblks": "6514",
@@ -35,12 +35,14 @@
                   "vdev": "1998c673-bab7-4cd3-b4c7-24cd515f3293",
                   "punchwholechunk": "false",
                  }
-         no_of_chunks : 1
-         is_random : False
-         remove_files: False 
+         formal_params: {
+                  "no_of_chunks" : 1,
+                  "is_random" : false,
+                  "remove_files": false,
+                 }
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Perform GC after first iteration"
       vars:
@@ -57,7 +59,7 @@
 
     - name: "Generate DBIs for second iteration."
       vars:
-         input_param: {
+         dgen_args: {
                   "chunk": "1",
                   "maxPunches": "180",
                   "maxVblks": "2396",
@@ -75,12 +77,14 @@
                   "vdev": "1998c673-bab7-4cd3-b4c7-24cd515f3293",
                   "punchwholechunk": "false",
                   }
-         no_of_chunks : 1
-         is_random : False
-         remove_files: False   
+         formal_params: {
+                  "no_of_chunks" : 1,
+                  "is_random" : false,
+                  "remove_files": false,
+                  }  
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Perform GC after second iteration"
       vars:

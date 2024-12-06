@@ -69,7 +69,7 @@ class s3_operations:
         self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/"
         self.s3_operations_log = f"{self.base_path}/s3_operation"
 
-    def delete_dbi_set_s3(self, chunk):
+    def delete_dbi_set_s3(self, input_param):
         dir_path = get_dir_path(self.cluster_params, DBI_DIR)
         # TODO change the dbi dir and file name
         # the changes need to be made at the dummy generator side as the values are 
@@ -87,47 +87,47 @@ class s3_operations:
                 file.write(item + ", ")
         # Delete file locally
         os.remove(rand_dbi_path)
-        process = self.perform_operations("delete", chunk, rand_dbi, GET_VDEV)
+        process = self.perform_operations("delete", input_param['chunk'], rand_dbi, GET_VDEV)
 
-    def perform_operations(self, operation, chunk, path, vdev):
+    def perform_operations(self, operation, input_param, vdev):
         if vdev == GET_VDEV:
             dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
-            json_data = load_parameters_from_json(f"{dbi_path}/{chunk}/DV/dummy_generator.json")
+            json_data = load_parameters_from_json(f"{dbi_path}/{input_param['chunk']}/DV/dummy_generator.json")
             vdev = str(json_data['Vdev'])
         bin_path = f'{self.bin_dir}/s3Operation'
         s3_config = f'{self.bin_dir}/s3.config.example'
         log_path = f'{self.s3_operations_log}_{operation}'
         cmd = [
             bin_path, '-b', 'paroscale-test', '-o', operation,
-            '-v', vdev, '-c', chunk, '-s3config', s3_config, '-l', log_path, '-p', path
+            '-v', vdev, '-c', input_param['chunk'], '-s3config', s3_config, '-l', log_path, '-p', input_param['path']
         ]
 
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         return process
 
-    def get_markers(self, chunk, vdev):
-        def process_and_get_markers(vdev, chunk):
-            process = self.perform_operations("list", chunk, "m", vdev)
+    def get_markers(self, input_param):
+        def process_and_get_markers(input_param):
+            process = self.perform_operations("list", input_param['chunk'], "m", input_param['vdev'])
             exit_code = process.wait()
 
             if exit_code != 0:
                 raise RuntimeError(f"Process failed with exit code {exit_code}.")
 
             stdout, _ = process.communicate()
-            gc_seq = get_marker_by_type(vdev, chunk, stdout, "gc")
-            nisd_seq = get_marker_by_type(vdev, chunk, stdout, "nisd")
+            gc_seq = get_marker_by_type(input_param['vdev'], input_param['chunk'], stdout, "gc")
+            nisd_seq = get_marker_by_type(input_param['vdev'], input_param['chunk'], stdout, "nisd")
             print("gc_seq:", gc_seq, "nisd_seq:", nisd_seq)
             return [gc_seq, nisd_seq]
         
-        if vdev != "":
-            return process_and_get_markers(vdev, chunk)
+        if input_param['vdev'] != "":
+            return process_and_get_markers(input_param['vdev'], input_param['chunk'])
         else:
             dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
             if dbi_path:
-                json_path = f"{dbi_path}/{chunk}/DV/dummy_generator.json"
+                json_path = f"{dbi_path}/{input_param['chunk']}/DV/dummy_generator.json"
                 json_data = load_parameters_from_json(json_path)
-                vdev = str(json_data.get('Vdev', vdev))  # Use the vdev from JSON if available
-                return process_and_get_markers(vdev, chunk)
+                vdev = str(json_data.get('Vdev', input_param['vdev']))  # Use the vdev from JSON if available
+                return process_and_get_markers(vdev, input_param['chunk'])
 
             print("Invalid path or directory not found.")
             return False
@@ -151,23 +151,23 @@ class LookupModule(LookupBase):
         
         elif command == "operation":
             operation = terms[1]
-			input_param = terms[2]
+            input_param = terms[2]
             s3 = s3_operations(cluster_params)
             if operation == "create_bucket":
-                process = s3.perform_operations(operation, input_param['chunk'], input_param['path'], '')
+                process = s3.perform_operations(operation, input_param, '')
             else: 
-                process = s3.perform_operations(operation, input_param['chunk'], input_param['path'], GET_VDEV)
+                process = s3.perform_operations(operation, input_param, GET_VDEV)
             return process
         
         elif command == "delete_set_file":
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
-            s3.delete_dbi_set_s3(input_param['chunk'])
+            s3.delete_dbi_set_s3(input_param)
 
         elif command == "get_markers":
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
-            marker_seq = s3.get_markers(input_param['chunk'], input_param['vdev'])
+            marker_seq = s3.get_markers(input_param)
             return marker_seq
 
         else:
