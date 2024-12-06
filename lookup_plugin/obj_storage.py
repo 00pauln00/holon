@@ -87,7 +87,8 @@ class s3_operations:
                 file.write(item + ", ")
         # Delete file locally
         os.remove(rand_dbi_path)
-        process = self.perform_operations("delete", input_param['chunk'], rand_dbi, GET_VDEV)
+        input_param['path'] = rand_dbi
+        process = self.perform_operations("delete", input_param, GET_VDEV)
 
     def perform_operations(self, operation, input_param, vdev):
         if vdev == GET_VDEV:
@@ -107,7 +108,8 @@ class s3_operations:
 
     def get_markers(self, input_param):
         def process_and_get_markers(input_param):
-            process = self.perform_operations("list", input_param['chunk'], "m", input_param['vdev'])
+            input_param['path'] = "m"
+            process = self.perform_operations("list", input_param, input_param['vdev'])
             exit_code = process.wait()
 
             if exit_code != 0:
@@ -120,14 +122,14 @@ class s3_operations:
             return [gc_seq, nisd_seq]
         
         if input_param['vdev'] != "":
-            return process_and_get_markers(input_param['vdev'], input_param['chunk'])
+            return process_and_get_markers(input_param)
         else:
             dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
             if dbi_path:
                 json_path = f"{dbi_path}/{input_param['chunk']}/DV/dummy_generator.json"
                 json_data = load_parameters_from_json(json_path)
-                vdev = str(json_data.get('Vdev', input_param['vdev']))  # Use the vdev from JSON if available
-                return process_and_get_markers(vdev, input_param['chunk'])
+                input_param['vdev'] = str(json_data.get('Vdev', input_param['vdev']))  # Use the vdev from JSON if available
+                return process_and_get_markers(input_param)
 
             print("Invalid path or directory not found.")
             return False
