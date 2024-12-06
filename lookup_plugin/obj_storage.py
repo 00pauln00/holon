@@ -135,39 +135,39 @@ class s3_operations:
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
-        operation = terms[0]
+        command = terms[0]
         cluster_params = kwargs['variables']['ClusterParams']
         
-        if operation == "start_minio":
-            minio_path = terms[1]
-            minio = Minio(cluster_params, minio_path)
-            minio.start()
+        if command == "minio":
+            sub_cmd  = terms[1]
+            if sub_cmd == "start":
+                minio_path = terms[2]
+                minio = Minio(cluster_params, minio_path)
+                minio.start()
 
-        elif operation == "stop_minio":
-            minio = Minio(cluster_params, "")
-            minio.stop()
+            elif sub_cmd == "stop":
+                minio = Minio(cluster_params, "")
+                minio.stop()
         
-        elif operation == "operation":
+        elif command == "operation":
             operation = terms[1]
-            chunk = terms[2]
-            path = terms[3]
+			input_param = terms[2]
             s3 = s3_operations(cluster_params)
             if operation == "create_bucket":
-                process = s3.perform_operations(operation, chunk, path, '')
+                process = s3.perform_operations(operation, input_param['chunk'], input_param['path'], '')
             else: 
-                process = s3.perform_operations(operation, chunk, path, GET_VDEV)
+                process = s3.perform_operations(operation, input_param['chunk'], input_param['path'], GET_VDEV)
             return process
         
-        elif operation == "delete_set_file":
+        elif command == "delete_set_file":
+            input_param = terms[1]
             s3 = s3_operations(cluster_params)
-            chunk = terms[1]
-            s3.delete_dbi_set_s3(chunk)
+            s3.delete_dbi_set_s3(input_param['chunk'])
 
-        elif operation == "get_markers":
-            chunk = terms[1]
-            vdev = terms[2] if len(terms) > 2 else ""
+        elif command == "get_markers":
+            input_param = terms[1]
             s3 = s3_operations(cluster_params)
-            marker_seq = s3.get_markers(chunk, vdev)
+            marker_seq = s3.get_markers(input_param['chunk'], input_param['vdev'])
             return marker_seq
 
         else:
