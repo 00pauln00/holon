@@ -3,6 +3,7 @@ import os
 import shutil, time
 from genericcmd import *
 import random, subprocess
+import pwd
 from ansible.plugins.lookup import LookupBase
 
 DBI_DIR = "dbi-dbo"
@@ -216,8 +217,76 @@ class helper:
             )
             print(f"File created successfully at: {full_path}")
         except subprocess.CalledProcessError as e:
-            raise e 
+            print(f"Error: {e}") 
         return full_path
+
+    def create_gc_partition(self):
+        mount_pt = os.path.join(self.base_path, 'gc')
+        dir_name = os.path.join(mount_pt, 'gc_download')
+
+        # Get the current UID
+        uid = os.geteuid()
+
+        # Get the current user's info
+        user_info = pwd.getpwuid(uid)
+        username = user_info.pw_name
+
+        disk_ipath = self.create_dd_file("GC.img", "64M", 27)
+
+        try:
+            result = subprocess.run(["sudo", "losetup", "-fP", disk_ipath], check=True, shell=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+        try:
+            result = subprocess.run(["sudo", "mkfs.btrfs", disk_ipath], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+        os.mkdir(mount_pt, 0o777)
+
+        try:
+            result = subprocess.run(["sudo", "mount", disk_ipath, mount_pt], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+        try:
+            result = subprocess.run(["sudo", "mkdir", dir_name], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+        try:
+            result = subprocess.run(["sudo", "chown", username, dir_name], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+        try:
+            result = subprocess.run(["sudo", "chmod", "777", dir_name], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+    def delete_dd_file(self, filename):
+        file_path = os.path.join(self.base_path, filename)
+        delete_file(file_path)
+
+    def delete_partition(self):
+        mount_pt = os.path.join(self.base_path, 'gc')
+
+        try:
+            result = subprocess.run(["sudo", "umount", "-l", mount_pt], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+        output = subprocess.check_output(["losetup", "-a"], text=True)
+        for line in output.splitlines():
+            disk_ipath = os.path.join(self.base_path, 'GC.img')
+            if disk_ipath in line:
+                loop_dev = line.split(':')[0]
+                try:
+                    result = subprocess.run(["sudo", "losetup", "-d", loop_dev], check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"Error: {e}")
+                break
 
     def generate_data(self, directory_path):
         fio_command_base = [
@@ -352,6 +421,16 @@ class LookupModule(LookupBase):
             source_file = terms[1]
             dest_file = terms[2]
             copy_files(source_file, dest_file)
+
+        elif operation == "create_partition":
+            help.create_gc_partition()
+        
+        elif operation == "delete_partition":
+            help.delete_partition()
+
+        elif operation == "delete_dd_file":
+            filename = terms[1]
+            help.delete_dd_file(filename)
     
         else:
             raise ValueError(f"Unsupported operation: {operation}")

@@ -101,7 +101,7 @@ class s3_operations:
             bin_path, '-b', 'paroscale-test', '-o', operation,
             '-v', vdev, '-c', chunk, '-s3config', s3_config, '-l', log_path, '-p', path
         ]
-        print("cmd: ", cmd)
+
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         return process
 

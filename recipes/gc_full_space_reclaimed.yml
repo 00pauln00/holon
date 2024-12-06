@@ -17,7 +17,7 @@
 
     - name: "Generate DBIs with vblk entry"
       vars:
-         input_param: {
+        input_param: {
                   "chunk": "1",
                   "maxPunches": "1",
                   "maxVblks": "2097152",
@@ -32,20 +32,19 @@
                   "blockSize": "16",
                   "blockSizeMax": "32",
                   "startVblk": "0",
-                  "strideWidth": "",
-                  "overlapSeq": "",
-                  "numOfSet": "",
                   "vdev": "7d3f6156-16db-4635-9d94-8adb68aae169",
-                  "s3configPath": "",
                   "punchwholechunk": "false",
-                 }
+        }
+        no_of_chunks : 1
+        is_random : False
+        remove_files: False
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
 
     - name: "Generate DBIs with punch entry for whole chunk"
       vars:
-         input_param: {
+        input_param: {
                   "chunk": "1",
                   "maxPunches": "500",
                   "maxVblks": "10",
@@ -60,27 +59,26 @@
                   "blockSize": "16",
                   "blockSizeMax": "32",
                   "startVblk": "0",
-                  "strideWidth": "",
-                  "overlapSeq": "",
-                  "numOfSet": "",
                   "vdev": "7d3f6156-16db-4635-9d94-8adb68aae169",
-                  "s3configPath": "",
                   "punchwholechunk": "=true",
-                 }
+        }
+        no_of_chunks : 1
+        is_random : False
+        remove_files: False
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
-        dryRun: False
-        delDBO: True
+        dry_run: False
+        del_dbo: True
         partition: False
         no_of_chunks: 0
         force_gc: False
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, force_gc, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'start_service', dry_run, del_dbo, partition, no_of_chunks, force_gc, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Wait until GC marker file present."
       vars:
@@ -107,7 +105,7 @@
       vars:
         Chunk: "1"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate', Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator', Chunk, wantlist=True) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

@@ -66,15 +66,14 @@ class data_generator:
 
     def add_params_to_cmd(self, commands, input_values):
         for cmd in commands:
+            if 'vdev' in input_values:
+                cmd.extend(['-vdev', input_values['vdev']])
             if input_values["punchwholechunk"] == "=true":
                 cmd.extend(["-pc", input_values["punchwholechunk"]])
             if 'strideWidth' in input_values:
                 cmd.extend(["-sw", input_values["strideWidth"]])
             if 'overlapSeq' in input_values and 'numOfSet' in input_values:
                 cmd.extend(["-se", input_values["overlapSeq"], "-ts", input_values["numOfSet"]])
-            if 'vdev' in input_values:
-                cmd.extend(['-vdev', input_values['vdev']])
-
         return commands, input_values
 
     def run_dummy_generator(self, command):
