@@ -135,12 +135,12 @@ class data_validator:
         self.cluster_params = cluster_params
         self.bin_dir =  os.getenv('NIOVA_BIN_PATH')
         self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}"
+        self.s3_config = f'{self.bin_dir}/s3.config.example'
         self.data_validate_log = f"{self.base_path}/dataValidateResult"
 
     def validate_data(self, chunk):
         bin_path = f'{self.bin_dir}/dataValidator'
         dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
-        s3_config = f'{self.bin_dir}/s3.config.example'
         dv_path = f"{self.base_path}/dv-downloaded-obj"
         
         if dbi_path != None:
@@ -148,7 +148,7 @@ class data_validator:
             vdev = str(json_data['Vdev'])
 
         modified_path = modify_path(dbi_path)
-        process = subprocess.Popen([bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', s3_config, '-b', 'paroscale-test', '-l', self.data_validate_log, '-ll', '2'])
+        process = subprocess.Popen([bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', self.s3_config, '-b', 'paroscale-test', '-l', self.data_validate_log, '-ll', '2'])
 
         # Wait for the process to finish and get the exit code
         exit_code = process.wait()
@@ -159,6 +159,19 @@ class data_validator:
         else:
             error_message = f"Process failed with exit code {exit_code}."
             raise RuntimeError(error_message)
+    
+    def validate_s3_disk_data(cluster_params, device_path, ublk_uuid, nisd_uuid):
+        bin_path = f'{self.bin_dir}/s3DataValidator'
+        log_dir = f'{self.base_path }/s3DV' 
+        nisd_cmdintf_path = "/tmp/.niova/%s" % nisd_uuid  
+        # Ensure log directory exists
+        create_directory(log_dir)    
+        cmd = ["sudo", bin_path, '-v', ublk_uuid, '-c', self.s3_config, '-p', log_dir, '-b', 'paroscale-test', '-d', device_path, '-nisdP', nisd_cmdintf_path]
+        print(f"s3 dv cmd {cmd}")
+        try:
+            result = subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as e:
+            raise e 
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
@@ -178,3 +191,10 @@ class LookupModule(LookupBase):
             chunk = terms[1]
             dv = data_validator(cluster_params)
             dv.validate_data(chunk)
+        
+        elif operation == "s3_disk_validator":
+            device_path = terms[1]
+            ublk_uuid   = terms[2]
+            nisd_uuid   = terms[3]
+            dv = data_validator(cluster_params)
+            dv.validate_s3_disk_data(cluster_params, device_path, ublk_uuid, nisd_uuid)
