@@ -7,7 +7,7 @@ import psutil
 import signal
 from lookup_plugin.helper import *
 
-class garbage_collection:
+class gc_service:
     def __init__(self, cluster_params):
         self.cluster_params = cluster_params
         self.s3_support = cluster_params['s3Support']
@@ -20,25 +20,18 @@ class garbage_collection:
         self.s3config = os.path.join(self.binary_dir, "s3.config.example")
         os.makedirs(self.download_path, exist_ok=True)
 
-    def start_gc_service(self, dry_run, del_dbo, partition, force_gc, total_chunks):
+    def start_service(self, input_params):
         try:
-            if partition:
-                download_path = os.path.join(self.base_path, "gc", "gc_download")
-            else:
-                download_path = self.download_path
-
+            download_path = os.path.join(self.base_path, "gc", "gc_download") if input_params.get("partition") else self.download_path
             bin_path = os.path.normpath(os.path.join(self.binary_dir, "GCService"))
             cmd = [
                 bin_path, '-path', download_path, '-s3config', self.s3config, 
                 '-s3log', self.s3_log_path, '-t', '120', '-l', '4', '-p', '7500', 
-                '-b', 'paroscale-test', '-mp', str(total_chunks)
+                '-b', 'paroscale-test', '-mp', str(input_params.get("total_chunks"))
             ]
-            if dry_run:
-                cmd.append('-dr')
-            if del_dbo:
-                cmd.append('-dd')
-            if force_gc:
-                cmd.append('-f')
+            if input_params.get("dry_run"): cmd.append('-dr')
+            if input_params.get("del_dbo"): cmd.append('-dd')
+            if input_params.get("force_gc"): cmd.append('-f')
 
             with open(self.gc_log, "a+") as fp:
                 process_popen = subprocess.Popen(cmd, stdout=fp, stderr=fp)
@@ -66,74 +59,54 @@ class garbage_collection:
             logging.error(f"Error starting gcService process: {e}")
             raise 
 
-    def pause_gc_service(self, pid):
+    def pause_service(self, pid):
         try:
-            pid = int(pid)  # Convert string pid to integer
-        except ValueError:
-            logging.error(f"pause_gc_service: Invalid PID format: {pid}")
-            return -1
-
-        try:
-            process_obj = psutil.Process(pid)
-        except psutil.NoSuchProcess:
-            logging.error(f"pause_gc_service: Process with PID {pid} not found")
-            return -1
-
-        logging.info(f"Pausing gc service {pid} by sending SIGSTOP")
-        try:
+            process_obj = psutil.Process(int(pid))
+            logging.info(f"Pausing gc service {pid} by sending SIGSTOP")
             process_obj.send_signal(signal.SIGSTOP)
             return 0
-        except Exception as e:  # Catch unexpected errors
-            logging.error(f"pause_gc_service: Error pausing process: {e}")
+        except (ValueError, psutil.NoSuchProcess) as e:
+            logging.error(f"pause_gc_service: {e}")
             return -1
 
-    def resume_gc_service(self, pid):
+    def resume_service(self, pid):
         try:
-            pid = int(pid)  # Convert string pid to integer
-        except ValueError:
-            logging.error(f"resume_gc_service: Invalid PID format: {pid}")
-            return -1
-
-        try:
-            process = psutil.Process(pid)
-        except psutil.NoSuchProcess:
-            logging.error(f"resume_gc_service: Process with PID {pid} not found")
-            return -1
-
-        logging.info(f"Resuming gc service {pid} by sending SIGCONT")
-
-        try:
+            process = psutil.Process(int(pid))
+            logging.info(f"Resuming gc service {pid} by sending SIGCONT")
             process.send_signal(signal.SIGCONT)
             return 0
-        except Exception as e:  # Catch unexpected errors
-            logging.error(f"resume_gc_service: Unexpected error: {e}")
+        except (ValueError, psutil.NoSuchProcess) as e:
+            logging.error(f"resume_gc_service: {e}")
             return -1
 
-    def start_gc_tester(self, debug_mode, chunk, crcCheck=None):
+class gc_tester:
+    def __init__(self, cluster_params):
+        self.cluster_params = cluster_params
+        self.binary_dir = os.getenv('NIOVA_BIN_PATH')
+        self.base_path = os.path.join(cluster_params['base_dir'], cluster_params['raft_uuid'])
+        self.download_path = os.path.join(self.base_path, "gc-download")
+        self.s3_log_path = os.path.join(self.base_path, "s3_log")
+        self.gc_log = os.path.join(self.base_path, "gc_logs")
+        self.s3config = os.path.join(self.binary_dir, "s3.config.example")
+        os.makedirs(self.download_path, exist_ok=True)
+
+    def start_tester(self, input_params):
         try:
             bin_path = os.path.join(self.binary_dir, "gcTester")
             path = get_dir_path(self.cluster_params, DBI_DIR)
-            matches = re.findall(r'[\w-]{36}', path)
-            vdev = matches[-1] if matches else None
+            vdev = re.findall(r'[\w-]{36}', path)[-1] if re.findall(r'[\w-]{36}', path) else None
             modified_path = modify_path(path)
 
-            if self.s3_support == "true":
-                cmd = [
-                    bin_path, '-c', chunk, '-v', vdev, '-s3config', self.s3config, 
-                    '-path', self.download_path, '-s3log', self.s3_log_path, '-b', 'paroscale-test'
-                ]
-            else:
-                cmd = [bin_path, '-i', modified_path, '-v', vdev, '-c', chunk]
+            cmd = [bin_path, '-c', input_params.get("chunk"), '-v', vdev, '-s3config', self.s3config, 
+                   '-path', self.download_path, '-s3log', self.s3_log_path, '-b', 'paroscale-test'] if self.cluster_params['s3Support'] == "true" else \
+                  [bin_path, '-i', modified_path, '-v', vdev, '-c', input_params.get("chunk")]
 
-            if debug_mode:
-                cmd.append('-d')
-            if crcCheck:
-                cmd.append('-ec=true')
+            if input_params.get("debug_mode"): cmd.append('-d')
+            if input_params.get("crc_check"): cmd.append('-ec=true')
 
             with open(self.gc_log, "a+") as fp:
                 process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
-                exit_code = process.wait()
-                return exit_code
+                return process.wait()
 
         except Exception as e:
             logging.error(f"Error starting GC process: {e}")
@@ -141,32 +114,33 @@ class garbage_collection:
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
-        operation = terms[0]
+        cmd = terms[0]
         cluster_params = kwargs['variables']['ClusterParams']
-        gc = garbage_collection(cluster_params)
         
-        if operation == "start_tester":
-            if len(terms) >= 3:
-               debug = terms[1]
-               chunk = terms[2]
-               crc_check = terms[3] if len(terms) > 3 else None
-               popen = gc.start_gc_tester(debug, chunk, crc_check)
-               return popen
+        if cmd == "single_exec":
+            sub_cmd = terms[1]
+            input_params = terms[2]
+            gc = gc_tester(cluster_params)
+            if sub_cmd == "start":  
+                popen = gc.start_tester(input_params)
+                return popen
             else:
-               raise ValueError("not enough arguments provided to start gc tester")
+                raise ValueError("invalid sub command")
 
-        elif operation == "start_service":
-            dry_run = terms[1]
-            del_dbo = terms[2]
-            partition = terms[3]
-            total_chunks = terms[4]
-            force_gc = terms[5]
-            gc.start_gc_service(dry_run, del_dbo, partition, force_gc, total_chunks)
+        elif cmd == "daemon":
+            sub_cmd = terms[1]
+            input_params = terms[2]
+            gc = gc_service(cluster_params)
+            if sub_cmd == "start":
+                gc.start_service(input_params)
 
-        elif operation == "pause_service":
-            pid = terms[1]
-            gc.pause_gc_service(pid)
+            elif sub_cmd == "pause":
+                gc.pause_service(input_params.get("pid"))
 
-        elif operation == "resume_service":
-            pid = terms[1]
-            gc.resume_gc_service(pid)      
+            elif cmd == "resume":
+                pid = terms[2]
+                gc.resume_service(input_params.get("pid"))   
+            else:
+                raise ValueError("invalid sub command")   
+        else:
+            raise ValueError("invalid command")  

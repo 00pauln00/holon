@@ -171,4 +171,4 @@ class LookupModule(LookupBase):
             return marker_seq
 
         else:
-            raise ValueError(f"Unsupported operation: {operation}")
+            raise ValueError(f"Unsupported operation: {command}")
