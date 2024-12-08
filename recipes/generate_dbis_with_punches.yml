@@ -24,7 +24,7 @@
           dbiWithPunches: '1'
         input_param:
           is_random: true
-          remove_files: false
+          rm_files: false
           no_of_chunks: 1
       debug:
          msg:

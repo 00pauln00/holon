@@ -26,10 +26,11 @@
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
-        debug_mode: false
-        Chunk: "{{ chunk['msg'][0] }}"
+        input_params:
+          debug_mode: "false"
+          chunk: "{{ chunk['msg'][0] }}"
       debug:
-        msg: "{{ lookup('garbage_collection', 'start_tester', debug_mode, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
       register: gc_output
 
     - debug:

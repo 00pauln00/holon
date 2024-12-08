@@ -35,9 +35,10 @@
 
     - name: "{{ recipe_name }}: delete any dbi set file from s3."
       vars:
-        Chunk: "{{ chunk['msg'][0] }}"
+        input_params:
+          chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('obj_storage', 'delete_set_file', Chunk, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'delete_set_file', input_params, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Perform GC."
       vars:
