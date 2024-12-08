@@ -93,10 +93,12 @@ class s3_operations:
 
     def perform_operations(self, operation, input_param):
         vdev = input_param.get('vdev')
-        if vdev == GET_VDEV or vdev == None:
+        if vdev == GET_VDEV:
             dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
             json_data = load_parameters_from_json(f"{dbi_path}/{input_param['chunk']}/DV/dummy_generator.json")
             vdev = str(json_data['Vdev'])
+        elif vdev == None:
+            vdev = ""
         bin_path = f'{self.bin_dir}/s3Operation'
         s3_config = f'{self.bin_dir}/s3.config.example'
         log_path = f'{self.s3_operations_log}_{operation}'
@@ -158,6 +160,7 @@ class LookupModule(LookupBase):
             input_param = terms[2]
             s3 = s3_operations(cluster_params)
             if operation == "create_bucket":
+                input_param['path'] = ""
                 process = s3.perform_operations(operation, input_param)
             else: 
                 input_param['vdev'] = GET_VDEV

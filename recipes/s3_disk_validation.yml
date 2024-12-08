@@ -27,9 +27,10 @@
 
     - name: "{{ recipe_name }}: create bucket on minio"
       vars:
-         Chunk: "0"
+        input_params:
+          chunk: "0"
       debug:
-         msg: "{{ lookup('obj_storage', 'operation', 'create_bucket' , Chunk, '', wantlist=True)}}"
+         msg: "{{ lookup('obj_storage', 'operation', 'create_bucket' , input_params, wantlist=True)}}"
 
     - name: "{{ recipe_name }}: run niova ctl cmd on device"
       vars:
@@ -76,14 +77,14 @@
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
-        dryRun: False
-        delDBO: True
-        partition: False
-        no_of_chunks: 2
-        force_gc: True
+        input_params:
+          dry_run: "false"
+          del_dbo: "true"
+          partition: "false"
+          no_of_chunks: 2
+          force_gc: "true"
       debug:
-         msg:
-          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, force_gc, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'daemon', 'start', input_params, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: pause for 3 seconds."
       pause:
@@ -91,9 +92,11 @@
 
     - name: "{{ recipe_name }}: Wait until GC marker file present."
       vars:
-         Chunk: "0"
-         stage: "wait_for_gc_marker"
-         marker_seq: "{{ lookup('obj_storage', 'get_markers', Chunk, ublk_uuid.msg[0], wantlist=True) }}"
+        input_params:
+              chunk: "0"
+              stage: "wait_for_gc_marker"
+              vdev: "{{ ublk_uuid.msg[0] }}"
+        marker_seq: "{{ lookup('obj_storage', 'get_markers', input_params, wantlist=True) }}" 
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq }}"
       until: marker_seq[0] is not none
@@ -114,8 +117,13 @@
         minutes: 3
 
     - name: "{{ recipe_name }}: start the validator utility"
+      vars:
+        input_params:
+          nisd_uuid: "{{ nisd_uuid.msg[0] }}"
+          ublk_uuid: "{{ ublk_uuid.msg[0] }}"
+          device_path: "{{ device_paths.msg[0][1] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'run_s3DV', device_paths.msg[0][1], ublk_uuid.msg[0], nisd_uuid.msg[0], wantlist=True)}}"
+         msg: "{{ lookup('data_gen', 's3_disk_validator', input_params, wantlist=True)}}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
