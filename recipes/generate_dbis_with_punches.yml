@@ -12,31 +12,32 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'start_minio', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
     - name: "Generate DBIs with punches only."
       vars:
-        input_param: {
-                  'genType' : '0',
-                  'vbAmount' : '0',
-                  'vblkPer' : '1',
-                  'dbiWithPunches' : '1'
-                 }
-        is_random: True
-        remove_files: False
-        total_chunks: 1
+        dbi_param:
+          genType: '0'
+          vbAmount: '0'
+          vblkPer: '1'
+          dbiWithPunches: '1'
+        input_param:
+          is_random: true
+          remove_files: false
+          no_of_chunks: 1
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', input_param, total_chunks, is_random, remove_files, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True) }}"
       register: chunk
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
-        debug_mode: false
-        Chunk: "{{ chunk['msg'][0] }}"
+        input_params:
+          debug_mode: "false"
+          chunk: "{{ chunk['msg'][0] }}"
       debug:
-        msg: "{{ lookup('garbage_collection', 'start_tester', debug_mode, Chunk, wantlist=True) }}"
+        msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
       register: gc_output
 
     - debug:

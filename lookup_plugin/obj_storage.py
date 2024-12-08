@@ -88,10 +88,12 @@ class s3_operations:
         # Delete file locally
         os.remove(rand_dbi_path)
         input_param['path'] = rand_dbi
-        process = self.perform_operations("delete", input_param, GET_VDEV)
+        input_param['vdev'] = GET_VDEV
+        process = self.perform_operations("delete", input_param)
 
-    def perform_operations(self, operation, input_param, vdev):
-        if vdev == GET_VDEV:
+    def perform_operations(self, operation, input_param):
+        vdev = input_param.get('vdev')
+        if vdev == GET_VDEV or vdev == None:
             dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
             json_data = load_parameters_from_json(f"{dbi_path}/{input_param['chunk']}/DV/dummy_generator.json")
             vdev = str(json_data['Vdev'])
@@ -109,7 +111,7 @@ class s3_operations:
     def get_markers(self, input_param):
         def process_and_get_markers(input_param):
             input_param['path'] = "m"
-            process = self.perform_operations("list", input_param, input_param['vdev'])
+            process = self.perform_operations("list", input_param)
             exit_code = process.wait()
 
             if exit_code != 0:
@@ -121,14 +123,14 @@ class s3_operations:
             print("gc_seq:", gc_seq, "nisd_seq:", nisd_seq)
             return [gc_seq, nisd_seq]
         
-        if input_param['vdev'] != "":
+        if input_param.get('vdev') != None:
             return process_and_get_markers(input_param)
         else:
             dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
             if dbi_path:
                 json_path = f"{dbi_path}/{input_param['chunk']}/DV/dummy_generator.json"
                 json_data = load_parameters_from_json(json_path)
-                input_param['vdev'] = str(json_data.get('Vdev', input_param['vdev']))  # Use the vdev from JSON if available
+                input_param['vdev'] = str(json_data.get('Vdev', input_param.get('vdev', 'default_value')))  # Use the vdev from JSON if available
                 return process_and_get_markers(input_param)
 
             print("Invalid path or directory not found.")
@@ -156,9 +158,10 @@ class LookupModule(LookupBase):
             input_param = terms[2]
             s3 = s3_operations(cluster_params)
             if operation == "create_bucket":
-                process = s3.perform_operations(operation, input_param, '')
+                process = s3.perform_operations(operation, input_param)
             else: 
-                process = s3.perform_operations(operation, input_param, GET_VDEV)
+                input_param['vdev'] = GET_VDEV
+                process = s3.perform_operations(operation, input_param)
             return process
         
         elif command == "delete_set_file":
