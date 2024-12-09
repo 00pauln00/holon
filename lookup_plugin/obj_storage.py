@@ -87,6 +87,38 @@ class s3_operations:
         input_param['vdev'] = GET_VDEV
         process = self.perform_operations("delete", input_param)
 
+    def get_dbi_list(self, input_param):
+        input_param['path'] = "GET_VDEV"
+        input_param['vdev'] = GET_VDEV
+        process = self.perform_operations("list", input_param)
+        exit_code = process.wait()
+        if exit_code != 0:
+            raise RuntimeError(f"Process failed with exit code {exit_code}.")
+
+        stdout, _ = process.communicate()
+        return stdout
+
+    def delete_half_dbis(self, input_param):
+        # Split the output into lines
+        list_output = input_param['output']
+        lines = list_output.splitlines()
+
+        # Get half of the lines
+        half_lines = lines[:len(lines) // 2]
+        dbi_path = os.path.join(self.base_path, "gc-download")
+        # Print half of the lines
+        for file in half_lines:
+           if os.path.basename(file) == "solutionArray":
+               continue 
+           obj = os.path.join(dbi_path, file)
+           file_paths = [obj+".i", obj+".o"]
+           for f in file_paths:
+               os.remove(f)
+           input_param['path'] = file
+           input_param['vdev'] = GET_VDEV 
+           process = self.perform_operations("delete", input_param) 
+        
+
     def perform_operations(self, operation, input_param):
         vdev = input_param.get('vdev')
         if vdev == GET_VDEV:
@@ -98,11 +130,12 @@ class s3_operations:
         bin_path = f'{self.bin_dir}/s3Operation'
         s3_config = f'{self.bin_dir}/s3.config.example'
         log_path = f'{self.s3_operations_log}_{operation}'
+        if input_param['path'] == "GET_VDEV":
+            input_param['path'] = f"{vdev}/{input_param['chunk']}"
         cmd = [
             bin_path, '-b', 'paroscale-test', '-o', operation,
             '-v', vdev, '-c', input_param['chunk'], '-s3config', s3_config, '-l', log_path, '-p', input_param['path']
         ]
-
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         return process
 
@@ -173,6 +206,17 @@ class LookupModule(LookupBase):
             s3 = s3_operations(cluster_params)
             marker_seq = s3.get_markers(input_param)
             return marker_seq
+
+        elif command == "get_list":
+            input_param = terms[1]
+            s3 = s3_operations(cluster_params)
+            list_op = s3.get_dbi_list(input_param)
+            return list_op
+
+        elif command == "delete_half_files":
+            input_param = terms[1]
+            s3 = s3_operations(cluster_params)
+            s3.delete_half_dbis( input_param )
 
         else:
             raise ValueError(f"Unsupported operation: {command}")
