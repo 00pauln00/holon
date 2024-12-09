@@ -103,8 +103,8 @@ class data_generator:
             dgen_args, dbicount = self.set_vals_from_json(dgen_args)
 
         commands = []
-        for chunk in range(1, params['no_of_chunks'] + 1):
-            if params['no_of_chunks'] > 1:
+        for chunk in range(1, params['total_chunks'] + 1):
+            if params['total_chunks'] > 1:
                 dgen_args['chunk'] = str(chunk)
             command = [bin_path, "-c", dgen_args['chunk'], "-mp", dgen_args['maxPunches'], "-mv", dgen_args['maxVblks'], 
                        "-p", path, "-pa", dgen_args['punchAmount'], "-pp", dgen_args['punchesPer'], "-ps", dgen_args['maxPunchSize'], 
@@ -123,7 +123,7 @@ class data_generator:
                 if not params['rm_files']:
                     cmd.append('-r=true')
 
-        with Pool(processes = params['no_of_chunks']) as pool:
+        with Pool(processes = params['total_chunks']) as pool:
             results = pool.map(self.run_dummy_generator, commands)
 
         if params['is_random']:

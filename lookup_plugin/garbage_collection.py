@@ -137,7 +137,7 @@ class LookupModule(LookupBase):
             elif sub_cmd == "pause":
                 gc.pause_service(input_params.get("pid"))
 
-            elif cmd == "resume":
+            elif sub_cmd == "resume":
                 pid = terms[2]
                 gc.resume_service(input_params.get("pid"))   
             else:

@@ -17,7 +17,7 @@
 
     - name: "Generate DBIs with vblk entry"
       vars:
-        input_param: {
+        dgen_args: {
                   "chunk": "1",
                   "maxPunches": "1024",
                   "maxVblks": "2096980",
@@ -35,27 +35,31 @@
                   "vdev": "e7fb3b4d-40b2-4ceb-bc2a-6d49f26d0a97",
                   "punchwholechunk": "false",
         }
-        no_of_chunks : 1
-        is_random : False
-        remove_files: False
+        params: {
+                  "total_chunks" : 1,
+                  "is_random" : false,
+                  "remove_files": false,
+        }
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, params, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
-        dry_run: False
-        del_dbo: True
-        partition: False
-        no_of_chunks: 0
-        force_gc: False
+        params: {
+          "dry_run": false,
+          "del_dbo": true,
+          "partition": false,
+          "total_chunks": 0,
+          "force_gc": false,
+        }
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'start_service', dry_run, del_dbo, partition, no_of_chunks, force_gc, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'daemon', 'start', params, wantlist=True) }}"
 
     - name: "Generate Second Iteration DBIs"
       vars:
-        input_param: {
+        dgen_args: {
                   "chunk": "1",
                   "maxPunches": "1024",
                   "maxVblks": "2097152",
@@ -73,28 +77,34 @@
                   "vdev": "e7fb3b4d-40b2-4ceb-bc2a-6d49f26d0a97",
                   "punchwholechunk": "false",
         }
-        no_of_chunks : 1
-        is_random : False
-        remove_files: False
+        params: {
+                  "total_chunks" : 1,
+                  "is_random" : false,
+                  "remove_files": false,
+        }
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', input_param, no_of_chunks, is_random, remove_files, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, params, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Wait until GC marker file present."
       vars:
-         Chunk: "1"
+        params: {
+          "chunk": "1",
+        }
       debug:
         msg: "Waiting for GC Marker File"
-      until: lookup('obj_storage', 'get_markers', Chunk, wantlist=True)[0] is not none
+      until: lookup('obj_storage', 'get_markers', params, wantlist=True)[0] is not none
       retries: 500
       delay: 2
 
     - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
       vars:
-         Chunk: "1"
-         Sequence: "{{ lookup('obj_storage', 'get_markers', Chunk, wantlist=True) }}"
-         gc_marker: "{{ Sequence[0] }}"
-         nisd_marker: "{{ Sequence[1] }}"
+        params: {
+          "chunk": "1",
+        }
+        Sequence: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True) }}"
+        gc_marker: "{{ Sequence[0] }}"
+        nisd_marker: "{{ Sequence[1] }}"
       debug:
         msg: "Wait until marker values gets match"
       until: gc_marker == nisd_marker

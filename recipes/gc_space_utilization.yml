@@ -22,14 +22,16 @@
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
-        dry_run: False
-        del_dbo: True
-        partition: True 
-        no_of_chunks: 2 
-        force_gc: False
+        params: {
+          "dry_run": false,
+          "del_dbo": true,
+          "partition": true,
+          "total_chunks": 2,
+          "force_gc": false,
+        }
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'start_service', dry_run, del_dbo, partition, no_of_chunks, force_gc, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'daemon', 'start', params, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: pause for 5 seconds."
       pause:
@@ -56,9 +58,11 @@
 
     - name: "{{ recipe_name }}: pause the GC process."
       vars:
-        pid : "{{ gc_process_pid | int }}"
+        params: {
+          "pid" : "{{ gc_process_pid | int }}"
+        }
       debug:
-        msg: "{{ lookup('garbage_collection', 'pause_service', pid, wantlist=True) }}"
+        msg: "{{ lookup('garbage_collection', 'daemon', 'pause', params, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Create 1.5GB file"
       vars:
@@ -88,19 +92,21 @@
                   "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
                   "punchwholechunk": "false",
         }
-        formal_params: {
-                  "no_of_chunks" : 2,
+        params: {
+                  "total_chunks" : 2,
                   "is_random" : false,
                   "remove_files": false,
         }
       debug:
-        msg: "{{ lookup('data_gen', 'generator', dgen_args, formal_params, wantlist=True) }}"
+        msg: "{{ lookup('data_gen', 'generator', dgen_args, params, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Resume the GC process."
       vars:
-         pid : "{{ gc_process_pid | int }}"
+        params: {
+          "pid" : "{{ gc_process_pid | int }}",
+        }   
       debug:
-        msg: "{{ lookup('garbage_collection', 'resume_service', pid, wantlist=True) }}"
+        msg: "{{ lookup('garbage_collection', 'daemon', 'resume', params, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Delete the file from partition to get available space"
       vars:
@@ -113,9 +119,11 @@
       loop_control:
         index_var: chunk_index
       vars:
-        Chunk: "{{ item | string }}"
-        stage: "wait_for_gc_marker"
-        marker_seq: "{{ lookup('obj_storage', 'get_markers', Chunk, wantlist=True) }}"
+        params: {
+          "chunk": "{{ item | string }}",
+          "stage": "wait_for_gc_marker",
+        }
+        marker_seq: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True) }}"
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq }} for chunk {{ chunk_index + 1 }}"
       until: marker_seq[0] is not none
@@ -127,8 +135,10 @@
       loop_control:
         index_var: chunk_index
       vars:
-        Chunk: "{{ item | string }}"
-        Sequence: "{{ lookup('obj_storage', 'get_markers', Chunk, wantlist=True) }}"
+        params: {
+          "chunk": "{{ item | string }}",
+        }
+        Sequence: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True) }}"
         gc_marker: "{{ Sequence[0] }}"
         nisd_marker: "{{ Sequence[1] }}"
       debug:
