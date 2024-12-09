@@ -53,7 +53,6 @@
       vars:
         formal_params: {
                 "chunk" : "{{ chunk['msg'][0] }}",
-                "vdev" : "",
                 }
       debug:
          msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True) }}"
@@ -74,7 +73,6 @@
       vars:
         formal_params: {
                 "chunk" : "{{ chunk['msg'][0] }}",
-                "vdev" : "",
                 "path": " {{ paths['msg'][0] }}",
                 }
 
@@ -86,7 +84,6 @@
         formal_params: {
                  "chunk" : "{{ chunk['msg'][0] }}",
                  "path": "{{ paths['msg'][1] }}",
-                  "vdev" : "",
                  }
       debug:
          msg: "{{ lookup('obj_storage', 'operation', 'upload', formal_params, wantlist=True) }}"
@@ -104,8 +101,6 @@
       vars:
         formal_params: {
                 "chunk" : "{{ chunk['msg'][0] }}",
-                "vdev" : "",
-                "path" : "",
                 }
       debug:
          msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True) }}"

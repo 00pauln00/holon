@@ -27,7 +27,7 @@
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
         input_params:
-          debug_mode: false
+          debug_mode: "false"
           chunk: "{{ chunk['msg'][0] }}"
       debug:
          msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
