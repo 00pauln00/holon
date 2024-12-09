@@ -11,6 +11,8 @@ GEN_NUM = 1
 MARKER_VDEV = 0
 MARKER_CHUNK = 1
 MARKER_TYPE = 4
+DBI_SET_LIST  = "dbi_set_list.txt"
+TEMP_DIR = "temp_dir"
 
 def load_parameters_from_json(filename):
     with open(filename, 'r') as json_file:
@@ -79,11 +81,10 @@ def create_dir(dir_path: str):
 
 def clone_dbi_files(cluster_params, chunk):
     dir_path = get_dir_path(cluster_params, DBI_DIR)
-    destination_dir = "dbiSetFiles"
-    dbi_list_path = os.path.join(dir_path, "dbisetFname.txt")
+    dbi_list_path = os.path.join(dir_path, DBI_SET_LIST)
     file_list = read_file_list(dbi_list_path)
-    create_dir(os.path.join(dir_path, destination_dir))
-    copy_files(file_list, os.path.join(dir_path, destination_dir))
+    create_dir(os.path.join(dir_path, TEMP_DIR))
+    copy_files(file_list, os.path.join(dir_path, TEMP_DIR))
 
 # generates the dummy generator config path
 def get_dummy_gen_config_path(data_dir, chunk):

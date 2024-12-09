@@ -71,11 +71,7 @@ class s3_operations:
 
     def delete_dbi_set_s3(self, input_param):
         dir_path = get_dir_path(self.cluster_params, DBI_DIR)
-        # TODO change the dbi dir and file name
-        # the changes need to be made at the dummy generator side as the values are 
-        # hardcoded at the dummy generator
-        destination_dir = "dbiSetFiles"
-        dbi_list_path = os.path.join(dir_path, "dbisetFname.txt")
+        dbi_list_path = os.path.join(dir_path, DBI_SET_LIST)
         dbi_list = read_file_list(dbi_list_path)
         rand_dbi_path = random.choice(dbi_list)
         rand_dbi = os.path.basename(rand_dbi_path)
