@@ -11,7 +11,7 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'start_minio', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
     - name: "{{ recipe_name }}: Generate reversed sequential DBI requests."
@@ -28,10 +28,11 @@
 
     - name: "{{ recipe_name }}: Run gc algorithm without deletion"
       vars:
-        debug_mode: true
-        Chunk: "{{ chunk['msg'][0] }}"
+        input_params:
+          debug_mode: true
+          chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('garbage_collection', 'start_tester', debug_mode, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -48,10 +49,11 @@
 
     - name: "{{ recipe_name }}: Run gc algorithm with deletion"
       vars:
-        debug_mode: false
-        Chunk: "{{ chunk['msg'][0] }}"
+        input_params:
+          debug_mode: false
+          chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('garbage_collection', 'start_tester', debug_mode, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -60,10 +62,11 @@
 
     - name: "{{ recipe_name }}: Again run gc algorithm with deletion"
       vars:
-        debug_mode: false
-        Chunk: "{{ chunk['msg'][0] }}"
+        input_params:
+          debug_mode: false
+          chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('garbage_collection', 'start_tester', debug_mode, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
       register: gc_output
 
     - debug:

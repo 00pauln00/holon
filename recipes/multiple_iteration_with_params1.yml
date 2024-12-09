@@ -46,11 +46,12 @@
 
     - name: "{{ recipe_name }}: Perform GC after first iteration"
       vars:
-        debugMode: false
-        Chunk: "1"
+        input_params:
+          debugMode: false
+          chunk: "1"
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'start_tester', debugMode, Chunk, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -88,11 +89,12 @@
 
     - name: "{{ recipe_name }}: Perform GC after second iteration"
       vars:
-        debugMode: false
-        Chunk: "1"
+        input_params:
+          debugMode: false
+          chunk: "1"
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'start_tester', debugMode, Chunk, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
       register: gc_output
 
     - debug:
