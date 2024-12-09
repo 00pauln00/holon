@@ -4,7 +4,7 @@
   vars:
      recipe_name: "single_iteration_with_json_params"
      parent: None
-     seed_file: "/home/bhanu/Work/holon_test/holon/seed.json"
+     seed_file: "../seed.json"
 
   tasks:
   - block:
