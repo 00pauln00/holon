@@ -69,7 +69,7 @@ class data_generator:
             if 'vdev' in dgen_args and dgen_args['vdev'] != '':
                 cmd.extend(['-vdev', dgen_args['vdev']])
             if 'punchwholechunk' in dgen_args and dgen_args['punchwholechunk'] != '':
-                cmd.extend(["-pc", dgen_args["punchwholechunk"]])
+                cmd.extend(["-pc", str(dgen_args["punchwholechunk"])])
             if 'strideWidth' in dgen_args and dgen_args['strideWidth'] != '':
                 cmd.extend(["-sw", dgen_args["strideWidth"]])
             if 'overlapSeq' in dgen_args and dgen_args['overlapSeq'] != '' and \

@@ -25,7 +25,7 @@
         input_param:
           is_random: true
           rm_files: false
-          no_of_chunks: 1
+          total_chunks: 1
       debug:
          msg:
           - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True) }}"
