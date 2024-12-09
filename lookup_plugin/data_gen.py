@@ -66,15 +66,17 @@ class data_generator:
 
     def add_params_to_cmd(self, commands, dgen_args):
         for cmd in commands:
-            if 'vdev' in dgen_args:
+            if 'vdev' in dgen_args and dgen_args['vdev'] != '':
                 cmd.extend(['-vdev', dgen_args['vdev']])
-            if dgen_args["punchwholechunk"] == "=true":
+            if 'punchwholechunk' in dgen_args and dgen_args['punchwholechunk'] != '':
                 cmd.extend(["-pc", dgen_args["punchwholechunk"]])
-            if 'strideWidth' in dgen_args:
+            if 'strideWidth' in dgen_args and dgen_args['strideWidth'] != '':
                 cmd.extend(["-sw", dgen_args["strideWidth"]])
-            if 'overlapSeq' in dgen_args and 'numOfSet' in dgen_args:
+            if 'overlapSeq' in dgen_args and dgen_args['overlapSeq'] != '' and \
+            'numOfSet' in dgen_args and dgen_args['numOfSet'] != '':
                 cmd.extend(["-se", dgen_args["overlapSeq"], "-ts", dgen_args["numOfSet"]])
         return commands, dgen_args
+
 
     def run_dummy_generator(self, command):
         print("command", command)
@@ -147,7 +149,7 @@ class data_validator:
             vdev = str(json_data['Vdev'])
 
         modified_path = modify_path(dbi_path)
-        process = subprocess.Popen([bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', self.s3_config, '-b', 'paroscale-test', '-l', self.data_validate_log, '-ll', '2'])
+        process = subprocess.Popen([bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', self.s3_config, '-b', 'paroscale-test', '-l', self.data_validate_log, '-ll', '4'])
 
         # Wait for the process to finish and get the exit code
         exit_code = process.wait()

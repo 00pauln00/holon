@@ -316,6 +316,20 @@ class helper:
                 raise e
             time.sleep(30)
 
+    def clear_dir_contents(self, path):
+        path = os.path.join(self.base_path, path)
+        try:
+            if not os.path.isdir(path):
+                raise NotADirectoryError(f"'{path}' is not a directory.")
+            for item in os.listdir(path):
+                item_path = os.path.join(path, item)
+                if os.path.isfile(item_path) or os.path.islink(item_path):
+                    os.remove(item_path)
+                elif os.path.isdir(item_path):
+                    shutil.rmtree(item_path)
+        except Exception as e:
+            print(f"Error: {e}")
+
     def setup_btrfs(self, mount_point):
         """
         Automates the setup of a Btrfs filesystem:
@@ -381,7 +395,7 @@ def corrupt_last_file(cluster_params, chunk):
     data[:16] = new_entry # Copy the new entry to the first 16 bytes of the data
     with open(corrupt_file_path, "wb") as f: # Write the modified data back to the original file
         f.write(data)
-
+    print("corrupted file path:",corrupt_file_path)
     return [corrupt_file_path, orig_file_path]
 
 class LookupModule(LookupBase):
@@ -396,6 +410,10 @@ class LookupModule(LookupBase):
             count = terms[3]
             device_path = help.create_dd_file(img_dir, bs, count)
             return device_path
+
+        elif operation == "delete_dir":
+            dir = terms[1]
+            help.clear_dir_contents(dir)
 
         elif operation == "setup_btrfs": 
             mount = terms[1]
