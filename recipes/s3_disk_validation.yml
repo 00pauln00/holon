@@ -81,7 +81,7 @@
           dry_run: "false"
           del_dbo: "true"
           partition: "false"
-          no_of_chunks: 2
+          total_chunks: 2
           force_gc: "true"
       debug:
          msg: "{{ lookup('garbage_collection', 'daemon', 'start', input_params, wantlist=True) }}"

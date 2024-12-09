@@ -164,7 +164,7 @@ class data_validator:
         log_dir = f'{self.base_path }/s3DV' 
         nisd_cmdintf_path = "/tmp/.niova/%s" % params['nisd_uuid']  
         # Ensure log directory exists
-        create_directory(log_dir)    
+        create_dir(log_dir)    
         cmd = ["sudo", bin_path, '-v', params['ublk_uuid'], '-c', self.s3_config, '-p', log_dir, '-b', 'paroscale-test', '-d', params['device_path'], '-nisdP', nisd_cmdintf_path]
         print(f"s3 dv cmd {cmd}")
         try:
