@@ -90,7 +90,6 @@
                   "blockSizeMax": "32",
                   "startVblk": "0",
                   "vdev": "643eef86-e42b-11ee-8678-22abb648e432",
-                  "punchwholechunk": "false",
         }
         params: {
                   "total_chunks" : 2,
