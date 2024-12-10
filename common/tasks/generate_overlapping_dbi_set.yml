@@ -2,14 +2,19 @@
 
     - name: "Generate DBIs."
       vars:
-         input_param: {
+        dgen_args: {
                   'genType' : "{{ Type }}",
                   'vbAmount' : "{{ VblkNum }}",
                   'vblkPer' : "{{ VblkPer }}",
                   'overlapSeq' : "{{ DBIPerSet }}",
-                  'chunkNumber' : "{{ ChunkNum }}"
-                 }
+                  'chunk' : "{{ ChunkNum }}"     
+        }
+        params: {
+                  "total_chunks" : 1,
+                  "is_random" : true,
+                  "remove_files": false,
+        }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'generate_pattern', input_param, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, params, wantlist=True) }}"
       register: chunk

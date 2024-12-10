@@ -24,8 +24,10 @@ class data_generator:
             dgen_args["seqStart"] = "0"
             dbicount = "0"
 
+        if 'chunk' not in dgen_args or dgen_args['chunk'] == '-1':
+            dgen_args['chunk'] = str(random.randint(1, 200))
+
         defaults = {
-            'chunk': lambda: str(random.randint(1, 200)),
             'maxPunches': lambda: str(random.randint(1, 50)),
             'maxVblks': lambda: str(random.randint(100, 1000)),
             'punchAmount': lambda: str(random.randint(51, 100)),
@@ -39,7 +41,6 @@ class data_generator:
             'startVblk': lambda: "0",
             'strideWidth': lambda: str(random.randint(1, 50)),
             'numOfSet': lambda: str(random.randint(1, 10)),
-            'punchwholechunk': lambda: False,
         }
 
         for key, random_val in defaults.items():
@@ -122,7 +123,7 @@ class data_generator:
                 cmd.extend(['-b', 'paroscale-test'])
                 if 'dbiWithPunches' in dgen_args:
                     cmd.extend(['-e', dgen_args['dbiWithPunches']])
-                if not params['rm_files']:
+                if not params['remove_files']:
                     cmd.append('-r=true')
 
         with Pool(processes = params['total_chunks']) as pool:
@@ -148,7 +149,6 @@ class data_validator:
             json_data = load_parameters_from_json(f"{dbi_path}/{chunk}/DV/dummy_generator.json")
             vdev = str(json_data['Vdev'])
 
-        modified_path = modify_path(dbi_path)
         process = subprocess.Popen([bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', self.s3_config, '-b', 'paroscale-test', '-l', self.data_validate_log, '-ll', '4'])
 
         # Wait for the process to finish and get the exit code
