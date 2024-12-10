@@ -77,15 +77,16 @@ class s3_operations:
         rand_dbi = os.path.basename(rand_dbi_path)
         dbi_prefix = rand_dbi.split('.')[0]
         # Create a list to store files with the same prefix
-        dbi_set_files = [file for file in dbi_list if file.startswith(dbi_prefix)]
+        dbi_set_files = [file for file in dbi_list if os.path.basename(file).startswith(dbi_prefix)]
         with open(dbi_list_path, 'w') as file:
             for item in dbi_set_files:
-                file.write(item + ", ")
+                file.write(item + "\n")
         # Delete file locally
         os.remove(rand_dbi_path)
-        input_param['path'] = rand_dbi
+        input_param['path'] = rand_dbi_path
         input_param['vdev'] = GET_VDEV
         process = self.perform_operations("delete", input_param)
+        return rand_dbi_path
 
     def get_dbi_list(self, input_param):
         input_param['path'] = "GET_VDEV"
@@ -133,8 +134,8 @@ class s3_operations:
             '-v', vdev, '-c', input_param['chunk'], '-s3config', s3_config, '-l', log_path, '-p', input_param['path']
         ]
         with open(outputfile, "w") as outfile:
+            print("cmd: ", cmd)
             process = subprocess.Popen(cmd, stdout=outfile, stderr=subprocess.PIPE, text=True)
-            # Wait for process to complete if necessary
             process.wait()
   
         # Read the output file
@@ -197,7 +198,7 @@ class LookupModule(LookupBase):
         elif command == "delete_set_file":
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
-            s3.delete_dbi_set_s3(input_param)
+            return s3.delete_dbi_set_s3(input_param)
 
         elif command == "get_markers":
             input_param = terms[1]

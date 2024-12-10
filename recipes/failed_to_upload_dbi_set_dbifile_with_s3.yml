@@ -32,6 +32,7 @@
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
          msg: "{{ lookup('helper', 'clone_dbi_set', Chunk, wantlist=True) }}"
+      register: clone_dir
 
     - name: "{{ recipe_name }}: delete any dbi set file from s3."
       vars:
@@ -39,6 +40,69 @@
           chunk: "{{ chunk['msg'][0] }}"
       debug:
          msg: "{{ lookup('obj_storage', 'delete_set_file', input_params, wantlist=True) }}"
+      register: deleted_file
+
+    - name: "{{ recipe_name }}: Perform GC."
+      vars:
+        input_params:
+          debug_mode: "false"
+          chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Marker file present or not."
+      vars:
+        formal_params: {
+                "chunk" : "{{ chunk['msg'][0] }}",
+                }
+      debug:
+        msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True) }}"
+      register: marker_check
+
+    - name: "{{ recipe_name }}: Validate GC and Nisd Marker "
+      vars:
+        gc_marker: "{{ marker_check.msg[0] }}"
+        nisd_marker: "{{ marker_check.msg[1] }}"
+      debug:
+        msg: "GC Marker : {{ gc_marker }} | NISD Marker : {{ nisd_marker }}"
+      failed_when: (gc_marker != nisd_marker) or (gc_marker is none)
+
+    - name: "{{ recipe_name }}: Get dbi file names."
+      vars:
+        formal_params:
+          chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True) }}"
+      register: list_op
+      no_log: true
+
+    - name: "{{ recipe_name }}: check if failed to upload files are still present or not"
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('helper', 'check_files', Chunk, deleted_file['msg'], list_op['msg'], wantlist=True) }}"
+
+    - name: Copy file to deleted_file directory and remove the base name
+      vars:
+        deleted_basename: "{{ deleted_file['msg'] | basename }}"
+        target_directory: "{{ deleted_file['msg'] | dirname }}"  # Get the directory part of deleted_file
+        source_file_path: "{{ clone_dir['msg'] }}/{{ deleted_basename }}"  # Full source file path
+      copy:
+        src: "{{ source_file_path }}"  # Source file path
+        dest: "{{ target_directory }}/"  # Destination directory
+        remote_src: yes  # Indicate that the source file is already on the remote machine
+        force: yes  # Overwrite the file if it already exists
+      register: copy_result
+
+    - name: "{{ recipe_name }}: upload corrupted file"
+      vars:
+        deleted_basename: "{{ deleted_file['msg'] | basename }}"
+        formal_params: {
+                "chunk" : "{{ chunk['msg'][0] }}",
+                "path": "{{ deleted_file['msg'] }}",
+                }
+      debug:
+         msg: "{{ lookup('obj_storage', 'operation', 'upload', formal_params, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Perform GC."
       vars:
