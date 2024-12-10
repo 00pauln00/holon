@@ -91,9 +91,13 @@ class s3_operations:
         input_param['path'] = "GET_VDEV"
         input_param['vdev'] = GET_VDEV
         process = self.perform_operations("list", input_param)
-        exit_code = process.wait()
-        if exit_code != 0:
-            raise RuntimeError(f"Process failed with exit code {exit_code}.")
+        try:
+            exit_code = process.wait(timeout=120)
+            if exit_code != 0:
+                raise RuntimeError(f"Process failed with exit code {exit_code}.")
+        except subprocess.TimeoutExpired:
+            process.kill()
+            raise RuntimeError("Process timed out after 2 minutes and was terminated.")
 
         stdout, _ = process.communicate()
         return stdout
@@ -136,7 +140,8 @@ class s3_operations:
             bin_path, '-b', 'paroscale-test', '-o', operation,
             '-v', vdev, '-c', input_param['chunk'], '-s3config', s3_config, '-l', log_path, '-p', input_param['path']
         ]
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        with open("output.txt", "w") as outfile:
+            process = subprocess.Popen(cmd, stdout=outfile, stderr=subprocess.PIPE, text=True)
         return process
 
     def get_markers(self, input_param):

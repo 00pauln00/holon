@@ -15,7 +15,7 @@ DBI_SET_LIST  = "dbi_set_list.txt"
 TEMP_DIR = "temp_dir"
 
 def load_parameters_from_json(filename):
-    with open(filename, 'r') as json_file:
+    with open(filename, 'r+', encoding="utf-8") as json_file:
         params = json.load(json_file)
     return params
 
