@@ -90,16 +90,7 @@ class s3_operations:
     def get_dbi_list(self, input_param):
         input_param['path'] = "GET_VDEV"
         input_param['vdev'] = GET_VDEV
-        process = self.perform_operations("list", input_param)
-        try:
-            exit_code = process.wait(timeout=120)
-            if exit_code != 0:
-                raise RuntimeError(f"Process failed with exit code {exit_code}.")
-        except subprocess.TimeoutExpired:
-            process.kill()
-            raise RuntimeError("Process timed out after 2 minutes and was terminated.")
-
-        stdout, _ = process.communicate()
+        stdout = self.perform_operations("list", input_param)
         return stdout
 
     def delete_half_dbis(self, input_param):
@@ -134,26 +125,28 @@ class s3_operations:
         bin_path = f'{self.bin_dir}/s3Operation'
         s3_config = f'{self.bin_dir}/s3.config.example'
         log_path = f'{self.s3_operations_log}_{operation}'
+        outputfile = f'{self.base_path}/stdout.txt'
         if input_param['path'] == "GET_VDEV":
             input_param['path'] = f"{vdev}/{input_param['chunk']}"
         cmd = [
             bin_path, '-b', 'paroscale-test', '-o', operation,
             '-v', vdev, '-c', input_param['chunk'], '-s3config', s3_config, '-l', log_path, '-p', input_param['path']
         ]
-        with open("output.txt", "w") as outfile:
+        with open(outputfile, "w") as outfile:
             process = subprocess.Popen(cmd, stdout=outfile, stderr=subprocess.PIPE, text=True)
-        return process
+            # Wait for process to complete if necessary
+            process.wait()
+  
+        # Read the output file
+        with open(outputfile, "r") as outfile:
+            process_stdout = outfile.read()
+            return process_stdout
 
     def get_markers(self, input_param):
         def process_and_get_markers(input_param):
             input_param['path'] = "m"
-            process = self.perform_operations("list", input_param)
-            exit_code = process.wait()
+            stdout = self.perform_operations("list", input_param)
 
-            if exit_code != 0:
-                raise RuntimeError(f"Process failed with exit code {exit_code}.")
-
-            stdout, _ = process.communicate()
             gc_seq = get_marker_by_type(input_param['vdev'], input_param['chunk'], stdout, "gc")
             nisd_seq = get_marker_by_type(input_param['vdev'], input_param['chunk'], stdout, "nisd")
             print("gc_seq:", gc_seq, "nisd_seq:", nisd_seq)
