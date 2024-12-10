@@ -377,10 +377,11 @@ class helper:
 def corrupt_last_file(cluster_params, chunk):
     dbi_path = get_dir_path(cluster_params, DBI_DIR)
     dummy_config = load_parameters_from_json(get_dummy_gen_config_path(dbi_path, chunk))
+    vdev = dummy_config['Vdev']
     dbi_input_path = str(dummy_config['DbiPath'])
     dbi_list = list_files_from_dir(dbi_input_path)
-    copy_files(dbi_list, f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi")
-    orig_file_path = get_last_file_from_dir(f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi")
+    copy_files(dbi_list, f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi/{vdev}/{str(chunk)}")
+    orig_file_path = get_last_file_from_dir(f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi/{vdev}/{str(chunk)}")
     corrupt_file_path = get_last_file_from_dir(dbi_input_path)
     if not corrupt_file_path:
         print("No files found in the directory.")
