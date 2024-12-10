@@ -12,7 +12,7 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'start_minio', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
     - name: "{{ recipe_name }}: Generate random DBI requests."
@@ -26,11 +26,11 @@
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
-        debugMode: false
-        Chunk: "{{ chunk['msg'][0] }}"
+        input_params:
+          debug_mode: "false"
+          chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg:
-          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -41,7 +41,7 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate', Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

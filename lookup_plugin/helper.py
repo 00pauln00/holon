@@ -3,6 +3,7 @@ import os
 import shutil, time
 from genericcmd import *
 import random, subprocess
+import pwd
 from ansible.plugins.lookup import LookupBase
 
 DBI_DIR = "dbi-dbo"
@@ -10,6 +11,8 @@ GEN_NUM = 1
 MARKER_VDEV = 0
 MARKER_CHUNK = 1
 MARKER_TYPE = 4
+DBI_SET_LIST  = "dbi_set_list.txt"
+TEMP_DIR = "temp_dir"
 
 def load_parameters_from_json(filename):
     with open(filename, 'r') as json_file:
@@ -35,17 +38,53 @@ def load_recipe_op_config(cluster_params):
 
     return recipe_conf
 
+def modify_path(path, seed=None):
+    # Split the path into parts
+    parts = path.split('/')
+
+    # Remove the first element if it's empty due to a leading slash
+    if parts[0] == '':
+        parts.pop(0)
+
+    # Remove the last element if it's empty due to a trailing slash
+    if parts[-1] == '':
+        parts.pop()
+
+    # Find the index of 'dbi-dbo' in the list
+    try:
+        dbi_dbo_index = parts.index('dbi-dbo')
+    except ValueError:
+        # If 'dbi-dbo' is not found, return the original path
+        return path
+
+    # Ensure there's at least one directory after 'dbi-dbo' to check
+    if dbi_dbo_index < len(parts) - 1:
+        # Get the directory name after 'dbi-dbo'
+        next_directory = parts[dbi_dbo_index + 1]
+
+        # Check if the next directory is seed
+        if next_directory == seed:
+            # Remove the directory that comes after seed
+            parts.pop(dbi_dbo_index + 2)
+        else:
+            # Remove the directory that comes after 'dbi-dbo'
+            parts.pop(dbi_dbo_index + 1)
+
+    # Rejoin the remaining parts
+    new_path = '/' + '/'.join(parts)
+
+    return new_path
+
 def create_dir(dir_path: str):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path, mode=0o777)
 
 def clone_dbi_files(cluster_params, chunk):
     dir_path = get_dir_path(cluster_params, DBI_DIR)
-    destination_dir = "dbiSetFiles"
-    dbi_list_path = os.path.join(dir_path, "dbisetFname.txt")
+    dbi_list_path = os.path.join(dir_path, DBI_SET_LIST)
     file_list = read_file_list(dbi_list_path)
-    create_dir(os.path.join(dir_path, destination_dir))
-    copy_files(file_list, os.path.join(dir_path, destination_dir))
+    create_dir(os.path.join(dir_path, TEMP_DIR))
+    copy_files(file_list, os.path.join(dir_path, TEMP_DIR))
 
 # generates the dummy generator config path
 def get_dummy_gen_config_path(data_dir, chunk):
@@ -60,7 +99,6 @@ def read_file_list(file_path):
         return []
 
 def copy_files(file_list, destination_path):
-    print(f"Copying {file_list} to {destination_path}")
     # If a single file is passed, wrap it in a list
     if isinstance(file_list, str):
         file_list = [file_list]
@@ -180,8 +218,76 @@ class helper:
             )
             print(f"File created successfully at: {full_path}")
         except subprocess.CalledProcessError as e:
-            raise e 
+            print(f"Error: {e}") 
         return full_path
+
+    def create_gc_partition(self):
+        mount_pt = os.path.join(self.base_path, 'gc')
+        dir_name = os.path.join(mount_pt, 'gc_download')
+
+        # Get the current UID
+        uid = os.geteuid()
+
+        # Get the current user's info
+        user_info = pwd.getpwuid(uid)
+        username = user_info.pw_name
+
+        disk_ipath = self.create_dd_file("GC.img", "64M", 27)
+
+        try:
+            result = subprocess.run(["sudo", "losetup", "-fP", disk_ipath], check=True, shell=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+        try:
+            result = subprocess.run(["sudo", "mkfs.btrfs", disk_ipath], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+        os.mkdir(mount_pt, 0o777)
+
+        try:
+            result = subprocess.run(["sudo", "mount", disk_ipath, mount_pt], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+        try:
+            result = subprocess.run(["sudo", "mkdir", dir_name], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+        try:
+            result = subprocess.run(["sudo", "chown", username, dir_name], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+        try:
+            result = subprocess.run(["sudo", "chmod", "777", dir_name], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+    def delete_dd_file(self, filename):
+        file_path = os.path.join(self.base_path, filename)
+        delete_file(file_path)
+
+    def delete_partition(self):
+        mount_pt = os.path.join(self.base_path, 'gc')
+
+        try:
+            result = subprocess.run(["sudo", "umount", "-l", mount_pt], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+        output = subprocess.check_output(["losetup", "-a"], text=True)
+        for line in output.splitlines():
+            disk_ipath = os.path.join(self.base_path, 'GC.img')
+            if disk_ipath in line:
+                loop_dev = line.split(':')[0]
+                try:
+                    result = subprocess.run(["sudo", "losetup", "-d", loop_dev], check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"Error: {e}")
+                break
 
     def generate_data(self, directory_path):
         fio_command_base = [
@@ -209,6 +315,20 @@ class helper:
             except subprocess.CalledProcessError as e:
                 raise e
             time.sleep(30)
+
+    def clear_dir_contents(self, path):
+        path = os.path.join(self.base_path, path)
+        try:
+            if not os.path.isdir(path):
+                raise NotADirectoryError(f"'{path}' is not a directory.")
+            for item in os.listdir(path):
+                item_path = os.path.join(path, item)
+                if os.path.isfile(item_path) or os.path.islink(item_path):
+                    os.remove(item_path)
+                elif os.path.isdir(item_path):
+                    shutil.rmtree(item_path)
+        except Exception as e:
+            print(f"Error: {e}")
 
     def setup_btrfs(self, mount_point):
         """
@@ -257,10 +377,11 @@ class helper:
 def corrupt_last_file(cluster_params, chunk):
     dbi_path = get_dir_path(cluster_params, DBI_DIR)
     dummy_config = load_parameters_from_json(get_dummy_gen_config_path(dbi_path, chunk))
+    vdev = dummy_config['Vdev']
     dbi_input_path = str(dummy_config['DbiPath'])
     dbi_list = list_files_from_dir(dbi_input_path)
-    copy_files(dbi_list, f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi")
-    orig_file_path = get_last_file_from_dir(f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi")
+    copy_files(dbi_list, f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi/{vdev}/{str(chunk)}")
+    orig_file_path = get_last_file_from_dir(f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi/{vdev}/{str(chunk)}")
     corrupt_file_path = get_last_file_from_dir(dbi_input_path)
     if not corrupt_file_path:
         print("No files found in the directory.")
@@ -275,7 +396,7 @@ def corrupt_last_file(cluster_params, chunk):
     data[:16] = new_entry # Copy the new entry to the first 16 bytes of the data
     with open(corrupt_file_path, "wb") as f: # Write the modified data back to the original file
         f.write(data)
-
+    print("corrupted file path:",corrupt_file_path)
     return [corrupt_file_path, orig_file_path]
 
 class LookupModule(LookupBase):
@@ -290,6 +411,10 @@ class LookupModule(LookupBase):
             count = terms[3]
             device_path = help.create_dd_file(img_dir, bs, count)
             return device_path
+
+        elif operation == "delete_dir":
+            dir = terms[1]
+            help.clear_dir_contents(dir)
 
         elif operation == "setup_btrfs": 
             mount = terms[1]
@@ -316,6 +441,16 @@ class LookupModule(LookupBase):
             source_file = terms[1]
             dest_file = terms[2]
             copy_files(source_file, dest_file)
+
+        elif operation == "create_partition":
+            help.create_gc_partition()
+        
+        elif operation == "delete_partition":
+            help.delete_partition()
+
+        elif operation == "delete_dd_file":
+            filename = terms[1]
+            help.delete_dd_file(filename)
     
         else:
             raise ValueError(f"Unsupported operation: {operation}")

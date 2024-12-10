@@ -4,6 +4,7 @@
   vars:
      recipe_name: "single_iteration_with_json_params"
      parent: None
+     seed_file: "../seed.json"
 
   tasks:
   - block:
@@ -11,19 +12,41 @@
       vars:
         s3_dir: "/local/minio_data"
       debug:
-         msg:
-          - "{{ lookup('obj_storage', 'start_minio', s3_dir, wantlist=True) }}"
+        msg:
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
+    
+    - name: Load seed.json
+      include_vars:
+        file: "{{ seed_file }}"
+        name: seed_data
 
-    - name: "Run GC utilities with single iteration json paramters"
-      vars:
-        params_type: 'single_iteration'
+    - name: Verify seed data
       debug:
-         msg:
-          - "{{ lookup('s3_handler', 'json_params', params_type, wantlist=True) }}"
+        msg: "Seed data loaded: {{ seed_data.single_iteration }}"
 
+    - name: Iterate over seed data
+      vars:
+        params:
+          total_chunks: 1
+          is_random: false
+          remove_files: false
+        input_params:
+          debug_mode: "false"
+          chunk: "{{ dgen_args['chunk'] }}"
+        Chunk: "{{ dgen_args['chunk'] }}"
+      loop: "{{ seed_data.single_iteration }}"
+      loop_control:
+        loop_var: dgen_args  
+      debug:
+        msg:
+          - "Processing parameters: {{ dgen_args }}"
+          - "Generated output: {{ lookup('data_gen', 'generator', dgen_args, params, wantlist=True) }}"
+          - "GC Output: {{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
+          - "Data Validation Output: {{ lookup('data_gen', 'validator', Chunk, wantlist=True) }}"
+      register: gc_output
+    
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:
            terminate_recipe: true
-
