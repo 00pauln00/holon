@@ -35,7 +35,7 @@
                   "punchwholechunk": "false",
                   }
          formal_params: {
-                  "no_of_chunks" : 1,
+                  "total_chunks" : 1,
                   "is_random" : false,
                   "remove_files": false,
                   }
@@ -77,7 +77,7 @@
                   "punchwholechunk": "false",
                  }
          formal_params: {
-                  "no_of_chunks" : 1,
+                  "total_chunks" : 1,
                   "is_random" : false,
                   "remove_files" : false,
                  }
