@@ -21,6 +21,19 @@ class gc_service:
         os.makedirs(self.download_path, exist_ok=True)
 
     def start_service(self, input_params):
+        """
+            Starts the GC Service process using `subprocess.Popen` with the specified parameters.
+            Parameters:
+            - input_params (dict): A dictionary of input parameters for configuring the GC Service.
+                - "partition" (bool, optional): If True, the download path is set to a partitioned GC-specific directory.
+                - "total_chunks" (int): The total number of chunks to process, passed as the '-mp' argument.
+                - "dry_run" (bool, optional): If True, enables dry-run mode, which performs operations without making permanent changes.
+                - "del_dbo" (bool, optional): If True, adds the '-dd' flag to delete dbo objects.
+                - "force_gc" (bool, optional): If True, forces garbage collection with the '-f' flag.
+
+            Exceptions:
+            - Raises an error if the GC Service fails to start or any other exception occurs.
+        """
         try:
             download_path = os.path.join(self.base_path, "gc", "gc_download") if input_params.get("partition") else self.download_path
             bin_path = os.path.normpath(os.path.join(self.binary_dir, "GCService"))
@@ -91,6 +104,19 @@ class gc_tester:
         os.makedirs(self.download_path, exist_ok=True)
 
     def start_tester(self, input_params):
+        """
+            Parameters:
+            - input_params (dict): A dictionary containing input parameters for configuring the gcTester.
+                - "chunk" (str): Specifies the chunk number to be used by the gcTester.
+                - "debug_mode" (bool, optional): If True, enables debug mode for gcTester.
+                - "crc_check" (bool, optional): If True, enables CRC check.
+
+            Returns:
+            - int: The exit code of the `gcTester` process.
+
+            Raises:
+            - Exception: If any error occurs during execution, logs the error and re-raises it.
+        """
         try:
             bin_path = os.path.join(self.binary_dir, "gcTester")
             path = get_dir_path(self.cluster_params, DBI_DIR)

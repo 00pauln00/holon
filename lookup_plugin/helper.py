@@ -6,13 +6,20 @@ import random, subprocess
 import pwd
 from ansible.plugins.lookup import LookupBase
 
-DBI_DIR = "dbi-dbo"
-GEN_NUM = 1
+
+DBI_DIR = "dbi-dbo" # dummy-generator directory
+TEMP_DIR = "temp_dir"
+
+# dbi set list file name
+DBI_SET_LIST  = "dbi_set_list.txt"
+
+# constant to get vdev, chunk and type from marker file
 MARKER_VDEV = 0
 MARKER_CHUNK = 1
 MARKER_TYPE = 4
-DBI_SET_LIST  = "dbi_set_list.txt"
-TEMP_DIR = "temp_dir"
+
+# constant to get generation number from dbi file name
+GEN_NUM = 1
 
 def load_parameters_from_json(filename):
     with open(filename, 'r+', encoding="utf-8") as json_file:
@@ -139,27 +146,6 @@ def get_marker_by_type(vdev, chunk, mList, mType):
         if vdev in parts[MARKER_VDEV] and chunk in parts[MARKER_CHUNK] and mType in parts[MARKER_TYPE]:
             return parts[2]
     return None   
-
-def inc_dbi_gen_num(cluster_params, chunk):
-    dbi_Path = get_dir_path(cluster_params, DBI_DIR)
-    dummy_config = get_dummy_gen_config_path(dbi_Path, chunk)
-    dummy_json_data = load_parameters_from_json(dummy_config)
-    dbi_input_path = str(dummy_json_data['DbiPath'])
-    files_list = list_files_from_dir(dbi_input_path)    # List files from dbipath
-    
-    if files_list:
-        random_file = random.choice(files_list)  # Select a random file from the list
-        filename_parts = random_file.split(".")
-        genration_num = filename_parts[GEN_NUM]  # Extract the generation number
-        # Increment the extracted element by 1, Decrement as the number is inversed
-        inc_gen_num = str(hex(int(genration_num, 16) - 1)[2:])
-        filename_parts[GEN_NUM] = inc_gen_num  # Update the filename with the incremented element
-        new_filename = ".".join(filename_parts)
-        source_file_path = os.path.join(dbi_input_path, random_file)
-        new_file_path = os.path.join(dbi_input_path, new_filename)
-        return source_file_path, new_file_path
-    else:
-        print("No files found in the directory.")
 
 def get_last_file_from_dir(dir_path):
     file_list = list_files_from_dir(dir_path) # Get a list of files in the source directory
@@ -392,33 +378,55 @@ class helper:
         missing_files = file_names - output_files
         if missing_files:
             raise ValueError(f"The following files are missing in the command output: {', '.join(missing_files)}")
+    
+    def corrupt_last_file(self, chunk):
+        dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
+        dummy_config = load_parameters_from_json(get_dummy_gen_config_path(dbi_path, chunk))
+        vdev = dummy_config['Vdev']
+        dbi_input_path = str(dummy_config['DbiPath'])
+        dbi_list = list_files_from_dir(dbi_input_path)
+        dest_path = f"{self.base_path}/{TEMP_DIR}/{vdev}/{str(chunk)}"
+        copy_files(dbi_list, dest_path)
+        orig_file_path = get_last_file_from_dir(dest_path)
+        corrupt_file_path = get_last_file_from_dir(dbi_input_path)
+        if not corrupt_file_path:
+            print("No files found in the directory.")
+            return None
+        with open(corrupt_file_path, "rb") as f:
+            data = bytearray(f.read())
+        if len(data) < 16: # Ensure the file is at least 16 bytes long
+            print("File is too small to modify the first 16 bytes")
+            return None
+        new_entry = bytearray(16)  # Create a new 16-byte entry with Type set to 1 and the rest set to zero
+        new_entry[0] = 0x01  # Set Type to 1
+        data[:16] = new_entry # Copy the new entry to the first 16 bytes of the data
+        with open(corrupt_file_path, "wb") as f: # Write the modified data back to the original file
+            f.write(data)
+        print("corrupted file path:",corrupt_file_path)
+        return [corrupt_file_path, orig_file_path]
+    
+    def inc_dbi_gen_num(self, chunk):
+        dbi_Path = get_dir_path(self.cluster_params, DBI_DIR)
+        dummy_config = get_dummy_gen_config_path(dbi_Path, chunk)
+        dummy_json_data = load_parameters_from_json(dummy_config)
+        dbi_input_path = str(dummy_json_data['DbiPath'])
+        files_list = list_files_from_dir(dbi_input_path)    # List files from dbipath
+        
+        if files_list:
+            random_file = random.choice(files_list)  # Select a random file from the list
+            filename_parts = random_file.split(".")
+            genration_num = filename_parts[GEN_NUM]  # Extract the generation number
+            # Increment the extracted element by 1, Decrement as the number is inversed
+            inc_gen_num = str(hex(int(genration_num, 16) - 1)[2:])
+            filename_parts[GEN_NUM] = inc_gen_num  # Update the filename with the incremented element
+            new_filename = ".".join(filename_parts)
+            source_file_path = os.path.join(dbi_input_path, random_file)
+            new_file_path = os.path.join(dbi_input_path, new_filename)
+            return source_file_path, new_file_path
+        else:
+            print("No files found in the directory.")
 
 
-
-def corrupt_last_file(cluster_params, chunk):
-    dbi_path = get_dir_path(cluster_params, DBI_DIR)
-    dummy_config = load_parameters_from_json(get_dummy_gen_config_path(dbi_path, chunk))
-    vdev = dummy_config['Vdev']
-    dbi_input_path = str(dummy_config['DbiPath'])
-    dbi_list = list_files_from_dir(dbi_input_path)
-    copy_files(dbi_list, f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi/{vdev}/{str(chunk)}")
-    orig_file_path = get_last_file_from_dir(f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi/{vdev}/{str(chunk)}")
-    corrupt_file_path = get_last_file_from_dir(dbi_input_path)
-    if not corrupt_file_path:
-        print("No files found in the directory.")
-        return None
-    with open(corrupt_file_path, "rb") as f:
-        data = bytearray(f.read())
-    if len(data) < 16: # Ensure the file is at least 16 bytes long
-        print("File is too small to modify the first 16 bytes")
-        return None
-    new_entry = bytearray(16)  # Create a new 16-byte entry with Type set to 1 and the rest set to zero
-    new_entry[0] = 0x01  # Set Type to 1
-    data[:16] = new_entry # Copy the new entry to the first 16 bytes of the data
-    with open(corrupt_file_path, "wb") as f: # Write the modified data back to the original file
-        f.write(data)
-    print("corrupted file path:",corrupt_file_path)
-    return [corrupt_file_path, orig_file_path]
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
@@ -452,11 +460,11 @@ class LookupModule(LookupBase):
             
         elif operation == "corrupt_last_file":
             chunk = terms[1]
-            return corrupt_last_file(cluster_params, chunk)
+            return help.corrupt_last_file(chunk)
 
         elif operation == "inc_dbi_gen_num":
             chunk = terms[1]
-            return inc_dbi_gen_num(cluster_params, chunk)
+            return help.inc_dbi_gen_num(chunk)
 
         elif operation == "copy_file":
             source_file = terms[1]
