@@ -6,18 +6,17 @@ import random, subprocess
 import pwd
 from ansible.plugins.lookup import LookupBase
 
-
-DBI_DIR = "dbi-dbo" # dummy-generator directory
+# s3 bucket name
+S3_BUCKET = "paroscale-test" 
+# dummy-generator directory
+DBI_DIR = "dbi-dbo" 
 TEMP_DIR = "temp_dir"
-
 # dbi set list file name
 DBI_SET_LIST  = "dbi_set_list.txt"
-
 # constant to get vdev, chunk and type from marker file
 MARKER_VDEV = 0
 MARKER_CHUNK = 1
 MARKER_TYPE = 4
-
 # constant to get generation number from dbi file name
 GEN_NUM = 1
 

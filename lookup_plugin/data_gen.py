@@ -120,7 +120,7 @@ class data_generator:
 
         if params['is_random']:
             for cmd in commands:
-                cmd.extend(['-b', 'paroscale-test'])
+                cmd.extend(['-b', S3_BUCKET])
                 if 'dbiWithPunches' in dgen_args:
                     cmd.extend(['-e', dgen_args['dbiWithPunches']])
                 if not params['remove_files']:
@@ -149,7 +149,7 @@ class data_validator:
             json_data = load_parameters_from_json(f"{dbi_path}/{chunk}/DV/dummy_generator.json")
             vdev = str(json_data['Vdev'])
 
-        process = subprocess.Popen([bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', self.s3_config, '-b', 'paroscale-test', '-l', self.data_validate_log, '-ll', '4'])
+        process = subprocess.Popen([bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', self.s3_config, '-b', S3_BUCKET, '-l', self.data_validate_log, '-ll', '4'])
 
         # Wait for the process to finish and get the exit code
         exit_code = process.wait()
@@ -167,7 +167,7 @@ class data_validator:
         nisd_cmdintf_path = "/tmp/.niova/%s" % params['nisd_uuid']  
         # Ensure log directory exists
         create_dir(log_dir)    
-        cmd = ["sudo", bin_path, '-v', params['ublk_uuid'], '-c', self.s3_config, '-p', log_dir, '-b', 'paroscale-test', '-d', params['device_path'], '-nisdP', nisd_cmdintf_path]
+        cmd = ["sudo", bin_path, '-v', params['ublk_uuid'], '-c', self.s3_config, '-p', log_dir, '-b', S3_BUCKET, '-d', params['device_path'], '-nisdP', nisd_cmdintf_path]
         print(f"s3 dv cmd {cmd}")
         try:
             result = subprocess.run(cmd, check=True)

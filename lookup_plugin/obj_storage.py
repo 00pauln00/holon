@@ -131,7 +131,7 @@ class s3_operations:
         if input_param['path'] == "GET_VDEV":
             input_param['path'] = f"{vdev}/{input_param['chunk']}"
         cmd = [
-            bin_path, '-b', 'paroscale-test', '-o', operation,
+            bin_path, '-b', S3_BUCKET, '-o', operation,
             '-v', vdev, '-c', input_param['chunk'], '-s3config', s3_config, '-l', log_path, '-p', input_param['path']
         ]
         with open(outputfile, "w") as outfile:

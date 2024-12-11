@@ -40,7 +40,7 @@ class gc_service:
             cmd = [
                 bin_path, '-path', download_path, '-s3config', self.s3config, 
                 '-s3log', self.s3_log_path, '-t', '120', '-l', '4', '-p', '7500', 
-                '-b', 'paroscale-test', '-mp', str(input_params.get("total_chunks"))
+                '-b', S3_BUCKET, '-mp', str(input_params.get("total_chunks"))
             ]
             if input_params.get("dry_run"): cmd.append('-dr')
             if input_params.get("del_dbo"): cmd.append('-dd')
@@ -124,7 +124,7 @@ class gc_tester:
             modified_path = modify_path(path)
 
             cmd = [bin_path, '-c', input_params.get("chunk"), '-v', vdev, '-s3config', self.s3config, 
-                   '-path', self.download_path, '-s3log', self.s3_log_path, '-b', 'paroscale-test'] if self.cluster_params['s3Support'] == "true" else \
+                   '-path', self.download_path, '-s3log', self.s3_log_path, '-b', S3_BUCKET] if self.cluster_params['s3Support'] == "true" else \
                   [bin_path, '-i', modified_path, '-v', vdev, '-c', input_params.get("chunk")]
 
             if input_params.get("debug_mode"): cmd.append('-d')
