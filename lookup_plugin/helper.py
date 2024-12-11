@@ -86,6 +86,7 @@ def clone_dbi_files(cluster_params, chunk):
     dest_path = os.path.join(dir_path, TEMP_DIR)
     create_dir(dest_path)
     copy_files(file_list, dest_path)
+    print("destination path:", dest_path)
     return dest_path
 
 # generates the dummy generator config path

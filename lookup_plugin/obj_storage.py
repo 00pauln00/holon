@@ -83,6 +83,7 @@ class s3_operations:
                 file.write(item + "\n")
         # Delete file locally
         os.remove(rand_dbi_path)
+        print("deleted file:", rand_dbi_path)
         input_param['path'] = rand_dbi_path
         input_param['vdev'] = GET_VDEV
         process = self.perform_operations("delete", input_param)

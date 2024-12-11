@@ -82,6 +82,12 @@
       debug:
          msg: "{{ lookup('helper', 'check_files', Chunk, deleted_file['msg'], list_op['msg'], wantlist=True) }}"
 
+    - name: "{{ recipe_name }}: delete gc download folder"
+      vars:
+        gc_dir: "gc-download"
+      debug:
+         msg: "{{ lookup('helper', 'delete_dir', gc_dir, wantlist=True) }}"
+
     - name: Copy file to deleted_file directory and remove the base name
       vars:
         deleted_basename: "{{ deleted_file['msg'] | basename }}"
@@ -129,8 +135,8 @@
         msg: "GC Marker : {{ gc_marker }} | NISD Marker : {{ nisd_marker }}"
       failed_when: (gc_marker != nisd_marker) or (gc_marker is none)
     
-    # - name: "{{ recipe_name }}: Start data validation"
-    #   vars:
-    #     Chunk: "{{ chunk['msg'][0] }}"
-    #   debug:
-    #      msg: "{{ lookup('data_gen', 'validator', Chunk, wantlist=True) }}"
+    - name: "{{ recipe_name }}: Start data validation"
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('data_gen', 'validator', Chunk, wantlist=True) }}"
