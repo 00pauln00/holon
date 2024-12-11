@@ -69,6 +69,22 @@
       when: gc_marker is defined and nisd_marker is defined
       failed_when: gc_marker != nisd_marker
     
+    - name: "{{ recipe_name }}: Get dbi file names."
+      vars:
+        formal_params:
+          chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True) }}"
+      register: list_op
+      no_log: true
+
+    - name: "{{ recipe_name }}: check if failed to upload files are still present or not"
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+        corrupt_file: "{{ paths['msg'][0] | basename }}" 
+      debug:
+         msg: "{{ lookup('helper', 'check_files', [corrupt_file], list_op['msg'],wantlist=True) }}"
+    
     - name: "{{ recipe_name }}: delete gc download folder"
       vars:
         gc_dir: "gc-download"

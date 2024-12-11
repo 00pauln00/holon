@@ -76,11 +76,18 @@
       register: list_op
       no_log: true
 
+    - name: "{{ recipe_name }}: get dbi set files list"
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('helper', 'get_set_file_list', Chunk, deleted_file['msg'], wantlist=True) }}"
+      register: files_list
+
     - name: "{{ recipe_name }}: check if failed to upload files are still present or not"
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('helper', 'check_files', Chunk, deleted_file['msg'], list_op['msg'], wantlist=True) }}"
+         msg: "{{ lookup('helper', 'check_files', files_list['msg'], list_op['msg'], wantlist=True) }}"
 
     - name: "{{ recipe_name }}: delete gc download folder"
       vars:

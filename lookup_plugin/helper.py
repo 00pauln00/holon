@@ -363,19 +363,22 @@ class helper:
         genericcmdobj.recipe_json_dump(recipe_conf)
         return [mount_path, device]
 
-    def compare_files(self, chunk, deleted_file, command_output, file_path = None) -> None:
+    def get_set_file_list(self, chunk, deleted_file):
         dbi_Path = get_dir_path(self.cluster_params, DBI_DIR)
         dummy_config = get_dummy_gen_config_path(dbi_Path, chunk)
         dummy_json_data = load_parameters_from_json(dummy_config)
         vdev = str(dummy_json_data['Vdev'])
-        if file_path is None:
-            file_path = f"{self.base_path}/{DBI_DIR}/{vdev}/{DBI_SET_LIST}"
+        file_path = f"{self.base_path}/{DBI_DIR}/{vdev}/{DBI_SET_LIST}"
         with open(file_path, 'r') as f:
             file_names = {os.path.basename(line.strip())  for line in f if line.strip()}
-        output_files = {os.path.basename(line.strip()) for line in command_output.splitlines() if line.strip()}
         if deleted_file and os.path.basename(deleted_file.strip()) in file_names:
             file_names.remove(os.path.basename(deleted_file.strip()))
-        missing_files = file_names - output_files
+        return file_names
+
+    def compare_files(self, file_names, command_output) -> None:
+        output_files = {os.path.basename(line.strip()) for line in command_output.splitlines() if line.strip()}
+        missing_files = set(file_names) - output_files
+        print("missing ", missing_files)
         if missing_files:
             raise ValueError(f"The following files are missing in the command output: {', '.join(missing_files)}")
     
@@ -481,11 +484,15 @@ class LookupModule(LookupBase):
             filename = terms[1]
             help.delete_dd_file(filename)
 
-        elif operation == "check_files":
+        elif operation == "get_set_file_list":
             chunk = terms[1]
             deleted_file = terms[2]
-            stdout = terms[3]
-            help.compare_files(chunk, deleted_file, stdout)
+            return help.get_set_file_list(chunk, deleted_file)
+
+        elif operation == "check_files":
+            file_list = terms[1]
+            stdout = terms[2]
+            help.compare_files(file_list, stdout)
     
         else:
             raise ValueError(f"Unsupported operation: {operation}")
