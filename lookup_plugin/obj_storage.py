@@ -138,6 +138,11 @@ class s3_operations:
             print("cmd: ", cmd)
             process = subprocess.Popen(cmd, stdout=outfile, stderr=subprocess.PIPE, text=True)
             process.wait()
+            # Check if the process completed successfully
+            if process.returncode != 0:
+                print(f"Command failed: {' '.join(cmd)}")
+                print(f"Return code: {process.returncode}")
+                return f"Error: {stderr.strip()}"
   
         # Read the output file
         with open(outputfile, "r") as outfile:
@@ -176,6 +181,8 @@ class LookupModule(LookupBase):
         if command == "minio":
             sub_cmd  = terms[1]
             if sub_cmd == "start":
+                # Parameter :  Start the minio using the provided local path
+                # to store minio data.
                 minio_path = terms[2]
                 minio = Minio(cluster_params, minio_path)
                 minio.start()
@@ -186,6 +193,12 @@ class LookupModule(LookupBase):
         
         elif command == "operation":
             operation = terms[1]
+            '''
+            Parameters: chunk, path, vdev, operation
+            operation: to list/download/upload/delete
+            chunk : chunk number, vdev: vdev uuid
+            path: to download/upload/delete file and prefix in case of listing
+            '''
             input_param = terms[2]
             s3 = s3_operations(cluster_params)
             if operation == "create_bucket":
@@ -197,17 +210,32 @@ class LookupModule(LookupBase):
             return process
         
         elif command == "delete_set_file":
+            '''
+            Parameters: chunk, path, vdev
+            chunk : chunk number, vdev: vdev uuid
+            path: to delete files from s3
+            '''
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
             return s3.delete_dbi_set_s3(input_param)
 
         elif command == "get_markers":
+            '''
+            Parameters: chunk, path, vdev
+            chunk : chunk number, vdev: vdev uuid
+            path: prefix(m) to list from s3
+            ''' 
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
             marker_seq = s3.get_markers(input_param)
             return marker_seq
 
         elif command == "get_list":
+            '''
+            Parameters: chunk, path, vdev
+            chunk : chunk number, vdev: vdev uuid
+            path: prefix(vdev/chunk) to list from s3
+            '''
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
             list_op = s3.get_dbi_list(input_param)

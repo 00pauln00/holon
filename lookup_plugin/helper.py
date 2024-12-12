@@ -47,27 +47,22 @@ def load_recipe_op_config(cluster_params):
 def modify_path(path, seed=None):
     # Split the path into parts
     parts = path.split('/')
-
     # Remove the first element if it's empty due to a leading slash
     if parts[0] == '':
         parts.pop(0)
-
     # Remove the last element if it's empty due to a trailing slash
     if parts[-1] == '':
         parts.pop()
-
     # Find the index of 'dbi-dbo' in the list
     try:
-        dbi_dbo_index = parts.index('dbi-dbo')
+        dbi_dbo_index = parts.index(DBI_DIR)
     except ValueError:
         # If 'dbi-dbo' is not found, return the original path
         return path
-
     # Ensure there's at least one directory after 'dbi-dbo' to check
     if dbi_dbo_index < len(parts) - 1:
         # Get the directory name after 'dbi-dbo'
         next_directory = parts[dbi_dbo_index + 1]
-
         # Check if the next directory is seed
         if next_directory == seed:
             # Remove the directory that comes after seed
@@ -75,10 +70,8 @@ def modify_path(path, seed=None):
         else:
             # Remove the directory that comes after 'dbi-dbo'
             parts.pop(dbi_dbo_index + 1)
-
     # Rejoin the remaining parts
     new_path = '/' + '/'.join(parts)
-
     return new_path
 
 def create_dir(dir_path: str):
