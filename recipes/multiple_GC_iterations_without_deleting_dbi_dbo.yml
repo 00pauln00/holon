@@ -11,7 +11,7 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'start_minio', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
     - name: "{{ recipe_name }}: Generate random DBI requests."
@@ -19,7 +19,7 @@
         name: common
         tasks_from: generate_pattern_dbis
       vars:
-        Type: "0"     #You can pass different pattern value here.
+        Type: "0"   
         ChunkNum: "-1"
       register: chunk
 
@@ -28,10 +28,11 @@
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
-        debugMode: true
-        Chunk: "{{ chunk['msg'][0] }}"
+        input_params:
+          debug_mode: true
+          chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -43,16 +44,16 @@
         name: common
         tasks_from: generate_pattern_dbis
       vars:
-        Type: "0"     #You can pass different pattern value here.
+        Type: "0"    
         ChunkNum: "{{ chunk['msg'][0] }}"
-      #register: chunk1
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
-        debugMode: false
-        Chunk: "{{ chunk['msg'][0] }}"
+        input_params:
+          debug_mode: false
+          chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -63,4 +64,4 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate', Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator', Chunk, wantlist=True) }}"

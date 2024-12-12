@@ -12,12 +12,12 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'start_minio', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
     - name: "Generate DBIs with vblk entry"
       vars:
-        input_param: {
+        dgen_args: {
                   "chunk": "1",
                   "maxPunches": "1024",
                   "maxVblks": "2096980",
@@ -32,31 +32,33 @@
                   "blockSize": "4",
                   "blockSizeMax": "32",
                   "startVblk": "0",
-                  "strideWidth": "",
-                  "overlapSeq": "",
-                  "numOfSet": "",
                   "vdev": "e7fb3b4d-40b2-4ceb-bc2a-6d49f26d0a97",
-                  "s3configPath": "",
-                  "punchwholechunk": "false",
-                 }
+        }
+        params: {
+                  "total_chunks" : 1,
+                  "is_random" : false,
+                  "remove_files": false,
+        }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, params, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
-        dryRun: False
-        delDBO: True
-        partition: False
-        no_of_chunks: 0
-        force_gc: False
+        params: {
+          "dry_run": false,
+          "del_dbo": true,
+          "partition": false,
+          "total_chunks": 0,
+          "force_gc": false,
+        }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gcService', dryRun, delDBO, partition, no_of_chunks, force_gc, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'daemon', 'start', params, wantlist=True) }}"
 
     - name: "Generate Second Iteration DBIs"
       vars:
-        input_param: {
+        dgen_args: {
                   "chunk": "1",
                   "maxPunches": "1024",
                   "maxVblks": "2097152",
@@ -71,32 +73,36 @@
                   "blockSize": "4",
                   "blockSizeMax": "32",
                   "startVblk": "0",
-                  "strideWidth": "",
-                  "overlapSeq": "",
-                  "numOfSet": "",
                   "vdev": "e7fb3b4d-40b2-4ceb-bc2a-6d49f26d0a97",
-                  "s3configPath": "",
-                  "punchwholechunk": "false",
-                 }
+        }
+        params: {
+                  "total_chunks" : 1,
+                  "is_random" : false,
+                  "remove_files": false,
+        }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'example_params', input_param, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, params, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Wait until GC marker file present."
       vars:
-         Chunk: "1"
+        params: {
+          "chunk": "1",
+        }
       debug:
         msg: "Waiting for GC Marker File"
-      until: lookup('obj_storage', 'get_markers', Chunk, wantlist=True)[0] is not none
+      until: lookup('obj_storage', 'get_markers', params, wantlist=True)[0] is not none
       retries: 500
       delay: 2
 
     - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
       vars:
-         Chunk: "1"
-         Sequence: "{{ lookup('obj_storage', 'get_markers', Chunk, wantlist=True) }}"
-         gc_marker: "{{ Sequence[0] }}"
-         nisd_marker: "{{ Sequence[1] }}"
+        params: {
+          "chunk": "1",
+        }
+        Sequence: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True) }}"
+        gc_marker: "{{ Sequence[0] }}"
+        nisd_marker: "{{ Sequence[1] }}"
       debug:
         msg: "Wait until marker values gets match"
       until: gc_marker == nisd_marker
@@ -107,7 +113,7 @@
       vars:
         Chunk: "1"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate',  Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator', Chunk, wantlist=True) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

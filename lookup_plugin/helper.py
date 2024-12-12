@@ -3,16 +3,25 @@ import os
 import shutil, time
 from genericcmd import *
 import random, subprocess
+import pwd
 from ansible.plugins.lookup import LookupBase
 
-DBI_DIR = "dbi-dbo"
-GEN_NUM = 1
+# s3 bucket name
+S3_BUCKET = "paroscale-test" 
+# dummy-generator directory
+DBI_DIR = "dbi-dbo" 
+TEMP_DIR = "temp_dir"
+# dbi set list file name
+DBI_SET_LIST  = "dbi_set_list.txt"
+# constant to get vdev, chunk and type from marker file
 MARKER_VDEV = 0
 MARKER_CHUNK = 1
 MARKER_TYPE = 4
+# constant to get generation number from dbi file name
+GEN_NUM = 1
 
 def load_parameters_from_json(filename):
-    with open(filename, 'r') as json_file:
+    with open(filename, 'r+', encoding="utf-8") as json_file:
         params = json.load(json_file)
     return params
 
@@ -35,17 +44,49 @@ def load_recipe_op_config(cluster_params):
 
     return recipe_conf
 
+def modify_path(path, seed=None):
+    # Split the path into parts
+    parts = path.split('/')
+    # Remove the first element if it's empty due to a leading slash
+    if parts[0] == '':
+        parts.pop(0)
+    # Remove the last element if it's empty due to a trailing slash
+    if parts[-1] == '':
+        parts.pop()
+    # Find the index of 'dbi-dbo' in the list
+    try:
+        dbi_dbo_index = parts.index(DBI_DIR)
+    except ValueError:
+        # If 'dbi-dbo' is not found, return the original path
+        return path
+    # Ensure there's at least one directory after 'dbi-dbo' to check
+    if dbi_dbo_index < len(parts) - 1:
+        # Get the directory name after 'dbi-dbo'
+        next_directory = parts[dbi_dbo_index + 1]
+        # Check if the next directory is seed
+        if next_directory == seed:
+            # Remove the directory that comes after seed
+            parts.pop(dbi_dbo_index + 2)
+        else:
+            # Remove the directory that comes after 'dbi-dbo'
+            parts.pop(dbi_dbo_index + 1)
+    # Rejoin the remaining parts
+    new_path = '/' + '/'.join(parts)
+    return new_path
+
 def create_dir(dir_path: str):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path, mode=0o777)
 
 def clone_dbi_files(cluster_params, chunk):
     dir_path = get_dir_path(cluster_params, DBI_DIR)
-    destination_dir = "dbiSetFiles"
-    dbi_list_path = os.path.join(dir_path, "dbisetFname.txt")
+    dbi_list_path = os.path.join(dir_path, DBI_SET_LIST)
     file_list = read_file_list(dbi_list_path)
-    create_dir(os.path.join(dir_path, destination_dir))
-    copy_files(file_list, os.path.join(dir_path, destination_dir))
+    dest_path = os.path.join(dir_path, TEMP_DIR)
+    create_dir(dest_path)
+    copy_files(file_list, dest_path)
+    print("destination path:", dest_path)
+    return dest_path
 
 # generates the dummy generator config path
 def get_dummy_gen_config_path(data_dir, chunk):
@@ -60,7 +101,6 @@ def read_file_list(file_path):
         return []
 
 def copy_files(file_list, destination_path):
-    print(f"Copying {file_list} to {destination_path}")
     # If a single file is passed, wrap it in a list
     if isinstance(file_list, str):
         file_list = [file_list]
@@ -98,27 +138,6 @@ def get_marker_by_type(vdev, chunk, mList, mType):
         if vdev in parts[MARKER_VDEV] and chunk in parts[MARKER_CHUNK] and mType in parts[MARKER_TYPE]:
             return parts[2]
     return None   
-
-def inc_dbi_gen_num(cluster_params, chunk):
-    dbi_Path = get_dir_path(cluster_params, DBI_DIR)
-    dummy_config = get_dummy_gen_config_path(dbi_Path, chunk)
-    dummy_json_data = load_parameters_from_json(dummy_config)
-    dbi_input_path = str(dummy_json_data['DbiPath'])
-    files_list = list_files_from_dir(dbi_input_path)    # List files from dbipath
-    
-    if files_list:
-        random_file = random.choice(files_list)  # Select a random file from the list
-        filename_parts = random_file.split(".")
-        genration_num = filename_parts[GEN_NUM]  # Extract the generation number
-        # Increment the extracted element by 1, Decrement as the number is inversed
-        inc_gen_num = str(hex(int(genration_num, 16) - 1)[2:])
-        filename_parts[GEN_NUM] = inc_gen_num  # Update the filename with the incremented element
-        new_filename = ".".join(filename_parts)
-        source_file_path = os.path.join(dbi_input_path, random_file)
-        new_file_path = os.path.join(dbi_input_path, new_filename)
-        return source_file_path, new_file_path
-    else:
-        print("No files found in the directory.")
 
 def get_last_file_from_dir(dir_path):
     file_list = list_files_from_dir(dir_path) # Get a list of files in the source directory
@@ -180,8 +199,48 @@ class helper:
             )
             print(f"File created successfully at: {full_path}")
         except subprocess.CalledProcessError as e:
-            raise e 
+            print(f"Error: {e}") 
         return full_path
+
+    def create_gc_partition(self):
+        mount_pt = os.path.join(self.base_path, 'gc')
+        dir_name = os.path.join(mount_pt, 'gc_download')
+
+        # Get the current UID
+        uid = os.geteuid()
+
+        # Get the current user's info
+        user_info = pwd.getpwuid(uid)
+        username = user_info.pw_name
+
+        disk_ipath = self.create_dd_file("GC.img", "64M", 27)
+
+        try:
+            result = subprocess.run(["sudo", "losetup", "-fP", disk_ipath], check=True, shell=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+        # setup btrfs and mount
+        self.setup_btrfs("gc", disk_ipath)
+
+        try:
+            result = subprocess.run(["sudo", "mkdir", dir_name], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+        try:
+            result = subprocess.run(["sudo", "chown", username, dir_name], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+        try:
+            result = subprocess.run(["sudo", "chmod", "777", dir_name], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+
+    def delete_dd_file(self, filename):
+        file_path = os.path.join(self.base_path, filename)
+        delete_file(file_path)
 
     def generate_data(self, directory_path):
         fio_command_base = [
@@ -210,7 +269,21 @@ class helper:
                 raise e
             time.sleep(30)
 
-    def setup_btrfs(self, mount_point):
+    def clear_dir_contents(self, path):
+        path = os.path.join(self.base_path, path)
+        try:
+            if not os.path.isdir(path):
+                raise NotADirectoryError(f"'{path}' is not a directory.")
+            for item in os.listdir(path):
+                item_path = os.path.join(path, item)
+                if os.path.isfile(item_path) or os.path.islink(item_path):
+                    os.remove(item_path)
+                elif os.path.isdir(item_path):
+                    shutil.rmtree(item_path)
+        except Exception as e:
+            print(f"Error: {e}")
+
+    def setup_btrfs(self, mount_point, device_path):
         """
         Automates the setup of a Btrfs filesystem:
         1. Formats the specified device with Btrfs.
@@ -225,7 +298,12 @@ class helper:
             RuntimeError: If any command fails during the setup.
         """
         mount_path = "%s/%s" % (self.base_path, mount_point)
-        device = get_unmounted_ublk_device(self.base_path)
+
+        if device_path != "":
+            device = device_path
+        else :
+            device = get_unmounted_ublk_device(self.base_path)
+
         if device == None: 
             raise RuntimeError(f"no ublk device available")
         try:
@@ -254,29 +332,73 @@ class helper:
         genericcmdobj.recipe_json_dump(recipe_conf)
         return [mount_path, device]
 
-def corrupt_last_file(cluster_params, chunk):
-    dbi_path = get_dir_path(cluster_params, DBI_DIR)
-    dummy_config = load_parameters_from_json(get_dummy_gen_config_path(dbi_path, chunk))
-    dbi_input_path = str(dummy_config['DbiPath'])
-    dbi_list = list_files_from_dir(dbi_input_path)
-    copy_files(dbi_list, f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi")
-    orig_file_path = get_last_file_from_dir(f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/orig-dbi")
-    corrupt_file_path = get_last_file_from_dir(dbi_input_path)
-    if not corrupt_file_path:
-        print("No files found in the directory.")
-        return None
-    with open(corrupt_file_path, "rb") as f:
-        data = bytearray(f.read())
-    if len(data) < 16: # Ensure the file is at least 16 bytes long
-        print("File is too small to modify the first 16 bytes")
-        return None
-    new_entry = bytearray(16)  # Create a new 16-byte entry with Type set to 1 and the rest set to zero
-    new_entry[0] = 0x01  # Set Type to 1
-    data[:16] = new_entry # Copy the new entry to the first 16 bytes of the data
-    with open(corrupt_file_path, "wb") as f: # Write the modified data back to the original file
-        f.write(data)
+    def get_set_file_list(self, chunk, deleted_file):
+        dbi_Path = get_dir_path(self.cluster_params, DBI_DIR)
+        dummy_config = get_dummy_gen_config_path(dbi_Path, chunk)
+        dummy_json_data = load_parameters_from_json(dummy_config)
+        vdev = str(dummy_json_data['Vdev'])
+        file_path = f"{self.base_path}/{DBI_DIR}/{vdev}/{DBI_SET_LIST}"
+        with open(file_path, 'r') as f:
+            file_names = {os.path.basename(line.strip())  for line in f if line.strip()}
+        if deleted_file and os.path.basename(deleted_file.strip()) in file_names:
+            file_names.remove(os.path.basename(deleted_file.strip()))
+        return file_names
 
-    return [corrupt_file_path, orig_file_path]
+    def compare_files(self, file_names, command_output) -> None:
+        output_files = {os.path.basename(line.strip()) for line in command_output.splitlines() if line.strip()}
+        missing_files = set(file_names) - output_files
+        print("missing ", missing_files)
+        if missing_files:
+            raise ValueError(f"The following files are missing in the command output: {', '.join(missing_files)}")
+    
+    def corrupt_last_file(self, chunk):
+        dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
+        dummy_config = load_parameters_from_json(get_dummy_gen_config_path(dbi_path, chunk))
+        vdev = dummy_config['Vdev']
+        dbi_input_path = str(dummy_config['DbiPath'])
+        dbi_list = list_files_from_dir(dbi_input_path)
+        dest_path = f"{self.base_path}/{TEMP_DIR}/{vdev}/{str(chunk)}"
+        copy_files(dbi_list, dest_path)
+        orig_file_path = get_last_file_from_dir(dest_path)
+        corrupt_file_path = get_last_file_from_dir(dbi_input_path)
+        if not corrupt_file_path:
+            print("No files found in the directory.")
+            return None
+        with open(corrupt_file_path, "rb") as f:
+            data = bytearray(f.read())
+        if len(data) < 16: # Ensure the file is at least 16 bytes long
+            print("File is too small to modify the first 16 bytes")
+            return None
+        new_entry = bytearray(16)  # Create a new 16-byte entry with Type set to 1 and the rest set to zero
+        new_entry[0] = 0x01  # Set Type to 1
+        data[:16] = new_entry # Copy the new entry to the first 16 bytes of the data
+        with open(corrupt_file_path, "wb") as f: # Write the modified data back to the original file
+            f.write(data)
+        print("corrupted file path:",corrupt_file_path)
+        return [corrupt_file_path, orig_file_path]
+    
+    def inc_dbi_gen_num(self, chunk):
+        dbi_Path = get_dir_path(self.cluster_params, DBI_DIR)
+        dummy_config = get_dummy_gen_config_path(dbi_Path, chunk)
+        dummy_json_data = load_parameters_from_json(dummy_config)
+        dbi_input_path = str(dummy_json_data['DbiPath'])
+        files_list = list_files_from_dir(dbi_input_path)    # List files from dbipath
+        
+        if files_list:
+            random_file = random.choice(files_list)  # Select a random file from the list
+            filename_parts = random_file.split(".")
+            genration_num = filename_parts[GEN_NUM]  # Extract the generation number
+            # Increment the extracted element by 1, Decrement as the number is inversed
+            inc_gen_num = str(hex(int(genration_num, 16) - 1)[2:])
+            filename_parts[GEN_NUM] = inc_gen_num  # Update the filename with the incremented element
+            new_filename = ".".join(filename_parts)
+            source_file_path = os.path.join(dbi_input_path, random_file)
+            new_file_path = os.path.join(dbi_input_path, new_filename)
+            return source_file_path, new_file_path
+        else:
+            print("No files found in the directory.")
+
+
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
@@ -291,9 +413,13 @@ class LookupModule(LookupBase):
             device_path = help.create_dd_file(img_dir, bs, count)
             return device_path
 
+        elif operation == "delete_dir":
+            dir = terms[1]
+            help.clear_dir_contents(dir)
+
         elif operation == "setup_btrfs": 
             mount = terms[1]
-            mount_path =  help.setup_btrfs(mount)
+            mount_path =  help.setup_btrfs(mount, "")
             return mount_path
         
         elif operation == "generate_data":
@@ -302,20 +428,37 @@ class LookupModule(LookupBase):
 
         elif operation == "clone_dbi_set":
             chunk = terms[1]
-            clone_dbi_files(cluster_params, chunk)
+            return clone_dbi_files(cluster_params, chunk)
             
         elif operation == "corrupt_last_file":
             chunk = terms[1]
-            return corrupt_last_file(cluster_params, chunk)
+            return help.corrupt_last_file(chunk)
 
         elif operation == "inc_dbi_gen_num":
             chunk = terms[1]
-            return inc_dbi_gen_num(cluster_params, chunk)
+            return help.inc_dbi_gen_num(chunk)
 
         elif operation == "copy_file":
             source_file = terms[1]
             dest_file = terms[2]
             copy_files(source_file, dest_file)
+
+        elif operation == "create_partition":
+            help.create_gc_partition()
+        
+        elif operation == "delete_dd_file":
+            filename = terms[1]
+            help.delete_dd_file(filename)
+
+        elif operation == "get_set_file_list":
+            chunk = terms[1]
+            deleted_file = terms[2]
+            return help.get_set_file_list(chunk, deleted_file)
+
+        elif operation == "check_files":
+            file_list = terms[1]
+            stdout = terms[2]
+            help.compare_files(file_list, stdout)
     
         else:
             raise ValueError(f"Unsupported operation: {operation}")

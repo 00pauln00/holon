@@ -69,65 +69,105 @@ class s3_operations:
         self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/"
         self.s3_operations_log = f"{self.base_path}/s3_operation"
 
-    def delete_dbi_set_s3(self, chunk):
+    def delete_dbi_set_s3(self, input_param):
         dir_path = get_dir_path(self.cluster_params, DBI_DIR)
-        # TODO change the dbi dir and file name
-        # the changes need to be made at the dummy generator side as the values are 
-        # hardcoded at the dummy generator
-        destination_dir = "dbiSetFiles"
-        dbi_list_path = os.path.join(dir_path, "dbisetFname.txt")
+        dbi_list_path = os.path.join(dir_path, DBI_SET_LIST)
         dbi_list = read_file_list(dbi_list_path)
         rand_dbi_path = random.choice(dbi_list)
         rand_dbi = os.path.basename(rand_dbi_path)
         dbi_prefix = rand_dbi.split('.')[0]
         # Create a list to store files with the same prefix
-        dbi_set_files = [file for file in dbi_list if file.startswith(dbi_prefix)]
+        dbi_set_files = [file for file in dbi_list if os.path.basename(file).startswith(dbi_prefix)]
         with open(dbi_list_path, 'w') as file:
             for item in dbi_set_files:
-                file.write(item + ", ")
+                file.write(item + "\n")
         # Delete file locally
         os.remove(rand_dbi_path)
-        process = self.perform_operations("delete", chunk, rand_dbi, GET_VDEV)
+        print("deleted file:", rand_dbi_path)
+        input_param['path'] = rand_dbi_path
+        input_param['vdev'] = GET_VDEV
+        process = self.perform_operations("delete", input_param)
+        return rand_dbi_path
 
-    def perform_operations(self, operation, chunk, path, vdev):
+    def get_dbi_list(self, input_param):
+        input_param['path'] = "GET_VDEV"
+        input_param['vdev'] = GET_VDEV
+        stdout = self.perform_operations("list", input_param)
+        return stdout
+
+    def delete_half_dbis(self, input_param):
+        # Split the output into lines
+        list_output = input_param['output']
+        lines = list_output.splitlines()
+
+        # Get half of the lines
+        half_lines = lines[:len(lines) // 2]
+        dbi_path = os.path.join(self.base_path, "gc-download")
+        # Print half of the lines
+        for file in half_lines:
+           if os.path.basename(file) == "solutionArray":
+               continue 
+           obj = os.path.join(dbi_path, file)
+           file_paths = [obj+".i", obj+".o"]
+           for f in file_paths:
+               os.remove(f)
+           input_param['path'] = file
+           input_param['vdev'] = GET_VDEV 
+           process = self.perform_operations("delete", input_param) 
+        
+
+    def perform_operations(self, operation, input_param):
+        vdev = input_param.get('vdev')
         if vdev == GET_VDEV:
             dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
-            json_data = load_parameters_from_json(f"{dbi_path}/{chunk}/DV/dummy_generator.json")
+            json_data = load_parameters_from_json(f"{dbi_path}/{input_param['chunk']}/DV/dummy_generator.json")
             vdev = str(json_data['Vdev'])
+        elif vdev == None:
+            vdev = ""
         bin_path = f'{self.bin_dir}/s3Operation'
         s3_config = f'{self.bin_dir}/s3.config.example'
         log_path = f'{self.s3_operations_log}_{operation}'
+        outputfile = f'{self.base_path}/stdout.txt'
+        if input_param['path'] == "GET_VDEV":
+            input_param['path'] = f"{vdev}/{input_param['chunk']}"
         cmd = [
-            bin_path, '-b', 'paroscale-test', '-o', operation,
-            '-v', vdev, '-c', chunk, '-s3config', s3_config, '-l', log_path, '-p', path
+            bin_path, '-b', S3_BUCKET, '-o', operation,
+            '-v', vdev, '-c', input_param['chunk'], '-s3config', s3_config, '-l', log_path, '-p', input_param['path']
         ]
-        print("cmd: ", cmd)
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        return process
+        with open(outputfile, "w") as outfile:
+            print("cmd: ", cmd)
+            process = subprocess.Popen(cmd, stdout=outfile, stderr=subprocess.PIPE, text=True)
+            process.wait()
+            # Check if the process completed successfully
+            if process.returncode != 0:
+                print(f"Command failed: {' '.join(cmd)}")
+                print(f"Return code: {process.returncode}")
+                return f"Error: {stderr.strip()}"
+  
+        # Read the output file
+        with open(outputfile, "r") as outfile:
+            process_stdout = outfile.read()
+            return process_stdout
 
-    def get_markers(self, chunk, vdev):
-        def process_and_get_markers(vdev, chunk):
-            process = self.perform_operations("list", chunk, "m", vdev)
-            exit_code = process.wait()
+    def get_markers(self, input_param):
+        def process_and_get_markers(input_param):
+            input_param['path'] = "m"
+            stdout = self.perform_operations("list", input_param)
 
-            if exit_code != 0:
-                raise RuntimeError(f"Process failed with exit code {exit_code}.")
-
-            stdout, _ = process.communicate()
-            gc_seq = get_marker_by_type(vdev, chunk, stdout, "gc")
-            nisd_seq = get_marker_by_type(vdev, chunk, stdout, "nisd")
+            gc_seq = get_marker_by_type(input_param['vdev'], input_param['chunk'], stdout, "gc")
+            nisd_seq = get_marker_by_type(input_param['vdev'], input_param['chunk'], stdout, "nisd")
             print("gc_seq:", gc_seq, "nisd_seq:", nisd_seq)
             return [gc_seq, nisd_seq]
         
-        if vdev != "":
-            return process_and_get_markers(vdev, chunk)
+        if input_param.get('vdev') != None:
+            return process_and_get_markers(input_param)
         else:
             dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
             if dbi_path:
-                json_path = f"{dbi_path}/{chunk}/DV/dummy_generator.json"
+                json_path = f"{dbi_path}/{input_param['chunk']}/DV/dummy_generator.json"
                 json_data = load_parameters_from_json(json_path)
-                vdev = str(json_data.get('Vdev', vdev))  # Use the vdev from JSON if available
-                return process_and_get_markers(vdev, chunk)
+                input_param['vdev'] = str(json_data.get('Vdev', input_param.get('vdev', 'default_value')))  # Use the vdev from JSON if available
+                return process_and_get_markers(input_param)
 
             print("Invalid path or directory not found.")
             return False
@@ -135,40 +175,76 @@ class s3_operations:
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
-        operation = terms[0]
+        command = terms[0]
         cluster_params = kwargs['variables']['ClusterParams']
         
-        if operation == "start_minio":
-            minio_path = terms[1]
-            minio = Minio(cluster_params, minio_path)
-            minio.start()
+        if command == "minio":
+            sub_cmd  = terms[1]
+            if sub_cmd == "start":
+                # Parameter :  Start the minio using the provided local path
+                # to store minio data.
+                minio_path = terms[2]
+                minio = Minio(cluster_params, minio_path)
+                minio.start()
 
-        elif operation == "stop_minio":
-            minio = Minio(cluster_params, "")
-            minio.stop()
+            elif sub_cmd == "stop":
+                minio = Minio(cluster_params, "")
+                minio.stop()
         
-        elif operation == "operation":
+        elif command == "operation":
             operation = terms[1]
-            chunk = terms[2]
-            path = terms[3]
+            '''
+            Parameters: chunk, path, vdev, operation
+            operation: to list/download/upload/delete
+            chunk : chunk number, vdev: vdev uuid
+            path: to download/upload/delete file and prefix in case of listing
+            '''
+            input_param = terms[2]
             s3 = s3_operations(cluster_params)
             if operation == "create_bucket":
-                process = s3.perform_operations(operation, chunk, path, '')
+                input_param['path'] = ""
+                process = s3.perform_operations(operation, input_param)
             else: 
-                process = s3.perform_operations(operation, chunk, path, GET_VDEV)
+                input_param['vdev'] = GET_VDEV
+                process = s3.perform_operations(operation, input_param)
             return process
         
-        elif operation == "delete_set_file":
+        elif command == "delete_set_file":
+            '''
+            Parameters: chunk, path, vdev
+            chunk : chunk number, vdev: vdev uuid
+            path: to delete files from s3
+            '''
+            input_param = terms[1]
             s3 = s3_operations(cluster_params)
-            chunk = terms[1]
-            s3.delete_dbi_set_s3(chunk)
+            return s3.delete_dbi_set_s3(input_param)
 
-        elif operation == "get_markers":
-            chunk = terms[1]
-            vdev = terms[2] if len(terms) > 2 else ""
+        elif command == "get_markers":
+            '''
+            Parameters: chunk, path, vdev
+            chunk : chunk number, vdev: vdev uuid
+            path: prefix(m) to list from s3
+            ''' 
+            input_param = terms[1]
             s3 = s3_operations(cluster_params)
-            marker_seq = s3.get_markers(chunk, vdev)
+            marker_seq = s3.get_markers(input_param)
             return marker_seq
 
+        elif command == "get_list":
+            '''
+            Parameters: chunk, path, vdev
+            chunk : chunk number, vdev: vdev uuid
+            path: prefix(vdev/chunk) to list from s3
+            '''
+            input_param = terms[1]
+            s3 = s3_operations(cluster_params)
+            list_op = s3.get_dbi_list(input_param)
+            return list_op
+
+        elif command == "delete_half_files":
+            input_param = terms[1]
+            s3 = s3_operations(cluster_params)
+            s3.delete_half_dbis( input_param )
+
         else:
-            raise ValueError(f"Unsupported operation: {operation}")
+            raise ValueError(f"Unsupported operation: {command}")

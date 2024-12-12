@@ -12,12 +12,12 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'start_minio', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
     - name: "Generate DBIs for first iteration."
       vars:
-         input_param: {
+         dgen_args: {
                   "chunk": "1",
                   "maxPunches": "83",
                   "maxVblks": "6514",
@@ -32,24 +32,25 @@
                   "blockSize": "0",
                   "blockSizeMax": "22",
                   "startVblk": "-1",
-                  "strideWidth": "",
-                  "overlapSeq": "",
-                  "numOfSet": "",
                   "vdev": "1998c673-bab7-4cd3-b4c7-24cd515f3293",
-                  "s3configPath": "",
-                  "punchwholechunk": "false",
+                 }
+         formal_params: {
+                  "total_chunks" : 1,
+                  "is_random" : false,
+                  "remove_files": false,
                  }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Perform GC after first iteration"
       vars:
-        debugMode: false
-        Chunk: "1"
+        input_params:
+          debugMode: false
+          chunk: "1"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -58,7 +59,7 @@
 
     - name: "Generate DBIs for second iteration."
       vars:
-         input_param: {
+         dgen_args: {
                   "chunk": "1",
                   "maxPunches": "180",
                   "maxVblks": "2396",
@@ -73,24 +74,25 @@
                   "blockSize": "0",
                   "blockSizeMax": "6",
                   "startVblk": "-1",
-                  "strideWidth": "",
-                  "overlapSeq": "",
-                  "numOfSet": "",
                   "vdev": "1998c673-bab7-4cd3-b4c7-24cd515f3293",
-                  "s3configPath": "",
-                  "punchwholechunk": "false",
                   }
+         formal_params: {
+                  "total_chunks" : 1,
+                  "is_random" : false,
+                  "remove_files": false,
+                  }  
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params, wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Perform GC after second iteration"
       vars:
-        debugMode: false
-        Chunk: "1"
+        input_params:
+          debugMode: false
+          chunk: "1"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
       register: gc_output
 
     - debug:
@@ -101,7 +103,7 @@
       vars:
         Chunk: "1"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate',  Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
