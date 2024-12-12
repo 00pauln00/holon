@@ -87,6 +87,19 @@ class data_generator:
             print(f"Error: {e}")
 
     def generate_data(self, dgen_args, params):
+        """
+        Generate dummy dbi/dbo files using dummy generator utility.
+
+        Args:
+            dgen_args (dict): dictionary containing arguments for data generation utility (e.g., max punches, chunk, seed).
+            params (dict): Configuration parameters, including:
+                - 'is_random' (bool): Flag to determine if dummy generator params should be randomly generated.
+                - 'total_chunks' (int): total number of chunks for which dummy data needs to be generated.
+                - 'remove_files' (bool): Whether to remove generated files after uploading to s3.
+
+        Returns:
+            str: returns the chunk identifier if random data generation is enabled.
+        """
         bin_path = f'{self.bin_dir}/dummyData'
         s3_config = f'{self.bin_dir}/s3.config.example'
         path = f"{self.base_path}/{DBI_DIR}"
@@ -141,6 +154,15 @@ class data_validator:
         self.data_validate_log = f"{self.base_path}/dataValidateResult"
 
     def validate_data(self, chunk):
+        """
+        Validates a dbi/dbo data using data validator utility.
+
+        Args:
+            chunk (str): chunk to be validated.
+
+        Raises:
+            RuntimeError: If the validation process fails (non-zero exit code).
+        """
         bin_path = f'{self.bin_dir}/dataValidator'
         dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
         dv_path = f"{self.base_path}/dv-downloaded-obj"
@@ -162,6 +184,18 @@ class data_validator:
             raise RuntimeError(error_message)
     
     def validate_s3_disk_data(self, params):
+        """
+        Validates disk data with dbi/dbo data using s3 data validator utility.
+
+        Args:
+            params (dict): A dictionary of parameters required for validation, including:
+                - 'nisd_uuid': NISD uuid.
+                - 'ublk_uuid': ublk device uuid.
+                - 'device_path': disk device path to be validated.
+
+        Raises:
+            subprocess.CalledProcessError: If the external validation process fails.
+        """
         bin_path = f'{self.bin_dir}/s3DataValidator'
         log_dir = f'{self.base_path }/s3DV' 
         nisd_cmdintf_path = "/tmp/.niova/%s" % params['nisd_uuid']  
