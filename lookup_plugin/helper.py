@@ -220,17 +220,8 @@ class helper:
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
 
-        try:
-            result = subprocess.run(["sudo", "mkfs.btrfs", disk_ipath], check=True)
-        except subprocess.CalledProcessError as e:
-            print(f"Error: {e}")
-
-        os.mkdir(mount_pt, 0o777)
-
-        try:
-            result = subprocess.run(["sudo", "mount", disk_ipath, mount_pt], check=True)
-        except subprocess.CalledProcessError as e:
-            print(f"Error: {e}")
+        # setup btrfs and mount
+        self.setup_btrfs("gc", disk_ipath)
 
         try:
             result = subprocess.run(["sudo", "mkdir", dir_name], check=True)
@@ -250,25 +241,6 @@ class helper:
     def delete_dd_file(self, filename):
         file_path = os.path.join(self.base_path, filename)
         delete_file(file_path)
-
-    def delete_partition(self):
-        mount_pt = os.path.join(self.base_path, 'gc')
-
-        try:
-            result = subprocess.run(["sudo", "umount", "-l", mount_pt], check=True)
-        except subprocess.CalledProcessError as e:
-            print(f"Error: {e}")
-
-        output = subprocess.check_output(["losetup", "-a"], text=True)
-        for line in output.splitlines():
-            disk_ipath = os.path.join(self.base_path, 'GC.img')
-            if disk_ipath in line:
-                loop_dev = line.split(':')[0]
-                try:
-                    result = subprocess.run(["sudo", "losetup", "-d", loop_dev], check=True)
-                except subprocess.CalledProcessError as e:
-                    print(f"Error: {e}")
-                break
 
     def generate_data(self, directory_path):
         fio_command_base = [
@@ -311,7 +283,7 @@ class helper:
         except Exception as e:
             print(f"Error: {e}")
 
-    def setup_btrfs(self, mount_point):
+    def setup_btrfs(self, mount_point, device_path):
         """
         Automates the setup of a Btrfs filesystem:
         1. Formats the specified device with Btrfs.
@@ -326,7 +298,12 @@ class helper:
             RuntimeError: If any command fails during the setup.
         """
         mount_path = "%s/%s" % (self.base_path, mount_point)
-        device = get_unmounted_ublk_device(self.base_path)
+
+        if device_path != "":
+            device = device_path
+        else :
+            device = get_unmounted_ublk_device(self.base_path)
+
         if device == None: 
             raise RuntimeError(f"no ublk device available")
         try:
@@ -442,7 +419,7 @@ class LookupModule(LookupBase):
 
         elif operation == "setup_btrfs": 
             mount = terms[1]
-            mount_path =  help.setup_btrfs(mount)
+            mount_path =  help.setup_btrfs(mount, "")
             return mount_path
         
         elif operation == "generate_data":
@@ -469,9 +446,6 @@ class LookupModule(LookupBase):
         elif operation == "create_partition":
             help.create_gc_partition()
         
-        elif operation == "delete_partition":
-            help.delete_partition()
-
         elif operation == "delete_dd_file":
             filename = terms[1]
             help.delete_dd_file(filename)
