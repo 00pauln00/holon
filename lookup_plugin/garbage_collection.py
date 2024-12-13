@@ -127,7 +127,7 @@ class gc_tester:
                    '-path', self.download_path, '-s3log', self.s3_log_path, '-b', S3_BUCKET] if self.cluster_params['s3Support'] == "true" else \
                   [bin_path, '-i', modified_path, '-v', vdev, '-c', input_params.get("chunk")]
 
-            if input_params.get("debug_mode"): cmd.append('-d')
+            if input_params.get("debug_mode"): cmd.extend(['-d', input_params.get("debug_mode")])
             if input_params.get("crc_check"): cmd.append('-ec=true')
 
             with open(self.gc_log, "a+") as fp:
