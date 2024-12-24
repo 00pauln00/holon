@@ -42,9 +42,9 @@ class gc_service:
                 '-s3log', self.s3_log_path, '-t', '120', '-l', '4', '-p', '7500', 
                 '-b', S3_BUCKET, '-mp', str(input_params.get("total_chunks"))
             ]
-            if input_params.get("dry_run"): cmd.append('-dr')
-            if input_params.get("del_dbo"): cmd.append('-dd')
-            if input_params.get("force_gc"): cmd.append('-f')
+            if input_params.get("dry_run") == "true" : cmd.append('-dr=true')
+            if input_params.get("del_dbo") == "true" : cmd.append('-dd=true')
+            if input_params.get("force_gc") == "true" : cmd.append('-f=true')
 
             with open(self.gc_log, "a+") as fp:
                 process_popen = subprocess.Popen(cmd, stdout=fp, stderr=fp)
@@ -127,10 +127,11 @@ class gc_tester:
                    '-path', self.download_path, '-s3log', self.s3_log_path, '-b', S3_BUCKET] if self.cluster_params['s3Support'] == "true" else \
                   [bin_path, '-i', modified_path, '-v', vdev, '-c', input_params.get("chunk")]
 
-            if input_params.get("debug_mode"): cmd.extend(['-d', input_params.get("debug_mode")])
-            if input_params.get("crc_check"): cmd.append('-ec=true')
+            if input_params.get("debug_mode") == "true" : cmd.append('d=true')
+            if input_params.get("crc_check") == "true" : cmd.append('-ec=true')
 
             with open(self.gc_log, "a+") as fp:
+                print("cmd : ", cmd)
                 process = subprocess.Popen(cmd, stdout=fp, stderr=fp)
                 return process.wait()
 
