@@ -186,10 +186,12 @@ class LookupModule(LookupBase):
                 minio_path = terms[2]
                 minio = Minio(cluster_params, minio_path)
                 minio.start()
+                return []
 
             elif sub_cmd == "stop":
                 minio = Minio(cluster_params, "")
                 minio.stop()
+                return []  
         
         elif command == "operation":
             operation = terms[1]
@@ -207,7 +209,7 @@ class LookupModule(LookupBase):
             else: 
                 input_param['vdev'] = GET_VDEV
                 process = s3.perform_operations(operation, input_param)
-            return process
+            return process or []
         
         elif command == "delete_set_file":
             '''
@@ -217,7 +219,7 @@ class LookupModule(LookupBase):
             '''
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
-            return s3.delete_dbi_set_s3(input_param)
+            return s3.delete_dbi_set_s3(input_param) or []
 
         elif command == "get_markers":
             '''
@@ -228,7 +230,7 @@ class LookupModule(LookupBase):
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
             marker_seq = s3.get_markers(input_param)
-            return marker_seq
+            return marker_seq or []
 
         elif command == "get_list":
             '''
@@ -239,12 +241,13 @@ class LookupModule(LookupBase):
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
             list_op = s3.get_dbi_list(input_param)
-            return list_op
+            return list_op or []
 
         elif command == "delete_half_files":
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
             s3.delete_half_dbis( input_param )
+            return []
 
         else:
             raise ValueError(f"Unsupported operation: {command}")

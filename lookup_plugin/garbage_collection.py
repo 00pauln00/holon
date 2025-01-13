@@ -150,7 +150,7 @@ class LookupModule(LookupBase):
             gc = gc_tester(cluster_params)
             if sub_cmd == "start":  
                 popen = gc.start_tester(input_params)
-                return popen
+                return popen or []
             else:
                 raise ValueError("invalid sub command")
 
@@ -160,13 +160,16 @@ class LookupModule(LookupBase):
             gc = gc_service(cluster_params)
             if sub_cmd == "start":
                 gc.start_service(input_params)
+                return []
 
             elif sub_cmd == "pause":
                 gc.pause_service(input_params.get("pid"))
+                return []
 
             elif sub_cmd == "resume":
                 pid = terms[2]
-                gc.resume_service(input_params.get("pid"))   
+                gc.resume_service(input_params.get("pid"))
+                return []
             else:
                 raise ValueError("invalid sub command")   
         else:

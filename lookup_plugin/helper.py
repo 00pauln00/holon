@@ -411,44 +411,49 @@ class LookupModule(LookupBase):
             bs = terms[2]
             count = terms[3]
             device_path = help.create_dd_file(img_dir, bs, count)
-            return device_path
+            return device_path or []
 
         elif operation == "delete_dir":
             dir = terms[1]
             help.clear_dir_contents(dir)
+            return []
 
         elif operation == "setup_btrfs": 
             mount = terms[1]
             mount_path =  help.setup_btrfs(mount, "")
-            return mount_path
+            return mount_path or []
         
         elif operation == "generate_data":
             device_path = terms[1]
             help.generate_data(device_path)
+            return []
 
         elif operation == "clone_dbi_set":
             chunk = terms[1]
-            return clone_dbi_files(cluster_params, chunk)
+            return clone_dbi_files(cluster_params, chunk) or []
             
         elif operation == "corrupt_last_file":
             chunk = terms[1]
-            return help.corrupt_last_file(chunk)
+            return help.corrupt_last_file(chunk) or []
 
         elif operation == "inc_dbi_gen_num":
             chunk = terms[1]
-            return help.inc_dbi_gen_num(chunk)
+            return help.inc_dbi_gen_num(chunk) or []
 
         elif operation == "copy_file":
             source_file = terms[1]
             dest_file = terms[2]
             copy_files(source_file, dest_file)
+            return []
 
         elif operation == "create_partition":
             help.create_gc_partition()
+            return []
         
         elif operation == "delete_dd_file":
             filename = terms[1]
             help.delete_dd_file(filename)
+            return []
 
         elif operation == "get_set_file_list":
             chunk = terms[1]
@@ -459,6 +464,7 @@ class LookupModule(LookupBase):
             file_list = terms[1]
             stdout = terms[2]
             help.compare_files(file_list, stdout)
+            return []
     
         else:
             raise ValueError(f"Unsupported operation: {operation}")
