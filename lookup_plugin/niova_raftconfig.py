@@ -105,14 +105,16 @@ class LookupModule(LookupBase):
             Create server and raft config files
             '''
             raftconfobj_dict = niova_server_conf_create(cluster_params)
-            return raftconfobj_dict or []
+            result_list = [{"key": k, "value": v} for k, v in raftconfobj_dict.items()]
+            return result_list or []
 
         elif config_type == "niovakv":
             '''
             Create niovakv config file
             '''
             raftconfobj_dict = niovakv_conf_create(cluster_params)
-            return raftconfobj_dict or []
+            result_list = [{"key": k, "value": v} for k, v in raftconfobj_dict.items()]
+            return result_list or []
 
         elif config_type == "controlplane" or config_type == "standalone":
             '''
@@ -131,5 +133,5 @@ class LookupModule(LookupBase):
             Create client config files
             '''
             raftconfobj_dict = niova_client_conf_create(cluster_params)
-            
-        return raftconfobj_dict or []
+            result_list = [{"key": k, "value": v} for k, v in raftconfobj_dict.items()]
+            return result_list or []
