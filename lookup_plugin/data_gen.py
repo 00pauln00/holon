@@ -218,16 +218,16 @@ class LookupModule(LookupBase):
             params = terms[2]
             data = data_generator(cluster_params)
             chunk = data.generate_data(dgen_args, params)
-            return chunk or []
+            return [chunk] or []
         
         elif operation == "validator":
             chunk = terms[1]
             dv = data_validator(cluster_params)
             dv.validate_data(chunk)
-            return dv or []
+            return [dv] or []
         
         elif operation == "s3_disk_validator":
             params = terms[1]
             dv = data_validator(cluster_params)
             dv.validate_s3_disk_data(params)
-            return dv or []
+            return [dv] or []
