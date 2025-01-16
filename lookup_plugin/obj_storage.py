@@ -241,7 +241,7 @@ class LookupModule(LookupBase):
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
             list_op = s3.get_dbi_list(input_param)
-            return list_op or []
+            return [list_op] or []
 
         elif command == "delete_half_files":
             input_param = terms[1]
