@@ -92,7 +92,7 @@
         }
       debug:
         msg: "Waiting for GC Marker File"
-      until: lookup('obj_storage', 'get_markers', params, wantlist=True)[0] is not none
+      until: lookup('obj_storage', 'get_markers', params, wantlist=True)[0][0] is not none
       retries: 500
       delay: 2
 
@@ -101,7 +101,7 @@
         params: {
           "chunk": "1",
         }
-        Sequence: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True) }}"
+        Sequence: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True)[0] }}"
         gc_marker: "{{ Sequence[0] }}"
         nisd_marker: "{{ Sequence[1] }}"
       debug:

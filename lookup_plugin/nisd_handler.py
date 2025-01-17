@@ -94,7 +94,7 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
     genericcmdobj.recipe_json_dump(recipe_conf)
 
     # Return the process to allow further handling if needed
-    return process
+    return [process]
 
 def install_linux_modules():
     try:
@@ -205,7 +205,7 @@ def run_niova_ublk(cluster_params, cntl_uuid):
 
     # Sync the log file so all the logs from run_niova_ublk gets written to log file.
     os.fsync(fp)
-    return ublk_uuid
+    return [ublk_uuid]
 
 
 # this method is similar to start_niova_block_ctl_process but the difference is it doesn't create the device internally
@@ -627,7 +627,7 @@ class LookupModule(LookupBase):
         if process_type == "run-niova-block-ctl":
                nisd_uuid = run_niova_block_ctl(cluster_params, input_values)
 
-               return nisd_uuid
+               return [nisd_uuid]
 
         elif process_type == "load_module":
 
