@@ -32,7 +32,7 @@
           debug_mode: true
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
       register: gc_output
 
     - debug:
@@ -53,7 +53,7 @@
           debug_mode: false
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
       register: gc_output
 
     - debug:

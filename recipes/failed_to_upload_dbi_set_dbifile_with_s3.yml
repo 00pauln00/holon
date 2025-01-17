@@ -31,7 +31,7 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('helper', 'clone_dbi_set', Chunk, wantlist=True) }}"
+         msg: "{{ lookup('helper', 'clone_dbi_set', Chunk, wantlist=True)[0] }}"
       register: clone_dir
 
     - name: "{{ recipe_name }}: delete any dbi set file from s3."
@@ -39,7 +39,7 @@
         input_params:
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('obj_storage', 'delete_set_file', input_params, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'delete_set_file', input_params, wantlist=True)[0] }}"
       register: deleted_file
 
     - name: "{{ recipe_name }}: Perform GC."
@@ -56,7 +56,7 @@
                 "chunk" : "{{ chunk['msg'][0] }}",
                 }
       debug:
-        msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True) }}"
+        msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True)[0] }}"
       register: marker_check
 
     - name: "{{ recipe_name }}: Validate GC and Nisd Marker "
@@ -72,7 +72,7 @@
         formal_params:
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True)[0] }}"
       register: list_op
       no_log: true
 
@@ -80,7 +80,7 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('helper', 'get_set_file_list', Chunk, deleted_file['msg'], wantlist=True) }}"
+         msg: "{{ lookup('helper', 'get_set_file_list', Chunk, deleted_file['msg'], wantlist=True)[0] }}"
       register: files_list
 
     - name: "{{ recipe_name }}: check if failed to upload files are still present or not"
@@ -131,7 +131,7 @@
                 "chunk" : "{{ chunk['msg'][0] }}",
                 }
       debug:
-        msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True) }}"
+        msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True)[0] }}"
       register: marker_check
 
     - name: "{{ recipe_name }}: Validate GC and Nisd Marker "

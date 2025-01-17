@@ -50,7 +50,7 @@
           chunk: "1"
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
       register: gc_output
 
     - debug:
@@ -92,7 +92,7 @@
           chunk: "1"
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
       register: gc_output
 
     - debug:

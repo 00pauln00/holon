@@ -150,7 +150,7 @@ class LookupModule(LookupBase):
             gc = gc_tester(cluster_params)
             if sub_cmd == "start":  
                 popen = gc.start_tester(input_params)
-                return [popen] or []
+                return [popen]
             else:
                 raise ValueError("invalid sub command")
 

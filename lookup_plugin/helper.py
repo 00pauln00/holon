@@ -86,7 +86,7 @@ def clone_dbi_files(cluster_params, chunk):
     create_dir(dest_path)
     copy_files(file_list, dest_path)
     print("destination path:", dest_path)
-    return dest_path
+    return [dest_path]
 
 # generates the dummy generator config path
 def get_dummy_gen_config_path(data_dir, chunk):
@@ -342,7 +342,7 @@ class helper:
             file_names = {os.path.basename(line.strip())  for line in f if line.strip()}
         if deleted_file and os.path.basename(deleted_file.strip()) in file_names:
             file_names.remove(os.path.basename(deleted_file.strip()))
-        return file_names
+        return [file_names]
 
     def compare_files(self, file_names, command_output) -> None:
         output_files = {os.path.basename(line.strip()) for line in command_output.splitlines() if line.strip()}
@@ -394,7 +394,7 @@ class helper:
             new_filename = ".".join(filename_parts)
             source_file_path = os.path.join(dbi_input_path, random_file)
             new_file_path = os.path.join(dbi_input_path, new_filename)
-            return source_file_path, new_file_path
+            return [source_file_path, new_file_path]
         else:
             print("No files found in the directory.")
 
@@ -411,7 +411,7 @@ class LookupModule(LookupBase):
             bs = terms[2]
             count = terms[3]
             device_path = help.create_dd_file(img_dir, bs, count)
-            return device_path or []
+            return [device_path]
 
         elif operation == "delete_dir":
             dir = terms[1]
@@ -421,7 +421,7 @@ class LookupModule(LookupBase):
         elif operation == "setup_btrfs": 
             mount = terms[1]
             mount_path =  help.setup_btrfs(mount, "")
-            return mount_path or []
+            return [mount_path]
         
         elif operation == "generate_data":
             device_path = terms[1]
@@ -430,15 +430,15 @@ class LookupModule(LookupBase):
 
         elif operation == "clone_dbi_set":
             chunk = terms[1]
-            return clone_dbi_files(cluster_params, chunk) or []
+            return clone_dbi_files(cluster_params, chunk)
             
         elif operation == "corrupt_last_file":
             chunk = terms[1]
-            return help.corrupt_last_file(chunk) or []
+            return help.corrupt_last_file(chunk)
 
         elif operation == "inc_dbi_gen_num":
             chunk = terms[1]
-            return help.inc_dbi_gen_num(chunk) or []
+            return help.inc_dbi_gen_num(chunk)
 
         elif operation == "copy_file":
             source_file = terms[1]

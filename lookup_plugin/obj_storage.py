@@ -87,7 +87,7 @@ class s3_operations:
         input_param['path'] = rand_dbi_path
         input_param['vdev'] = GET_VDEV
         process = self.perform_operations("delete", input_param)
-        return rand_dbi_path
+        return [rand_dbi_path]
 
     def get_dbi_list(self, input_param):
         input_param['path'] = "GET_VDEV"
@@ -209,7 +209,7 @@ class LookupModule(LookupBase):
             else: 
                 input_param['vdev'] = GET_VDEV
                 process = s3.perform_operations(operation, input_param)
-            return process or []
+            return [process]
         
         elif command == "delete_set_file":
             '''
@@ -219,7 +219,7 @@ class LookupModule(LookupBase):
             '''
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
-            return s3.delete_dbi_set_s3(input_param) or []
+            return s3.delete_dbi_set_s3(input_param)
 
         elif command == "get_markers":
             '''
@@ -230,7 +230,7 @@ class LookupModule(LookupBase):
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
             marker_seq = s3.get_markers(input_param)
-            return marker_seq or []
+            return [marker_seq]
 
         elif command == "get_list":
             '''
@@ -241,7 +241,7 @@ class LookupModule(LookupBase):
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
             list_op = s3.get_dbi_list(input_param)
-            return [list_op] or []
+            return [list_op]
 
         elif command == "delete_half_files":
             input_param = terms[1]

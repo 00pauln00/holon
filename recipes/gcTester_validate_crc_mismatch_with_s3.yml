@@ -26,7 +26,7 @@
 
     - name: "{{ recipe_name }}: corrupt last dbi file"
       vars:
-        Chunk: "{{ chunk['msg'][0][0] }}"
+        Chunk: "{{ chunk['msg'][0] }}"
       debug:
          msg: "{{ lookup('helper', 'corrupt_last_file', Chunk, wantlist=True) }}"
       register: paths
@@ -34,7 +34,7 @@
     - name: "{{ recipe_name }}: upload corrupted file"
       vars:
         formal_params: {
-                "chunk" : "{{ chunk['msg'][0][0] }}",
+                "chunk" : "{{ chunk['msg'][0] }}",
                 "path": "{{ paths['msg'][0] }}",
                 }
       debug:
@@ -44,7 +44,7 @@
       vars:
         input_params:
           debug_mode: "false"
-          chunk: "{{ chunk['msg'][0][0] }}"
+          chunk: "{{ chunk['msg'][0] }}"
           crc_check: "true"
       debug:
          msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
@@ -52,10 +52,10 @@
     - name: "{{ recipe_name }}: get gc and nisd markers"
       vars:
         formal_params: {
-                "chunk" : "{{ chunk['msg'][0][0] }}",
+                "chunk" : "{{ chunk['msg'][0] }}",
                 }
       debug:
-         msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True)[0] }}"
       register: marker_check
 
     - name: "{{ recipe_name }}: compare gc and nisd markers"
@@ -72,17 +72,17 @@
     - name: "{{ recipe_name }}: Get dbi file names."
       vars:
         formal_params:
-          chunk: "{{ chunk['msg'][0][0] }}"
+          chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True)[0] }}"
       register: list_op
 
     - name: "{{ recipe_name }}: check if failed to upload files are still present or not"
       vars:
-        Chunk: "{{ chunk['msg'][0][0] }}"
+        Chunk: "{{ chunk['msg'][0] }}"
         corrupt_file: "{{ paths['msg'][0] | basename }}" 
       debug:
-         msg: "{{ lookup('helper', 'check_files', [corrupt_file], list_op['msg'][0], wantlist=True) }}"
+         msg: "{{ lookup('helper', 'check_files', [corrupt_file], list_op['msg'], wantlist=True) }}"
     
     - name: "{{ recipe_name }}: delete gc download folder"
       vars:
@@ -93,7 +93,7 @@
     - name: "{{ recipe_name }}: delete corrupted file"
       vars:
         formal_params: {
-                "chunk" : "{{ chunk['msg'][0][0] }}",
+                "chunk" : "{{ chunk['msg'][0] }}",
                 "path": " {{ paths['msg'][0] }}",
                 }
 
@@ -103,7 +103,7 @@
     - name: "{{ recipe_name }}: upload original file"
       vars:
         formal_params: {
-                 "chunk" : "{{ chunk['msg'][0][0] }}",
+                 "chunk" : "{{ chunk['msg'][0] }}",
                  "path": "{{ paths['msg'][1] }}",
                  }
       debug:
@@ -113,7 +113,7 @@
       vars:
         input_params:
           debug_mode: "false"
-          chunk: "{{ chunk['msg'][0][0] }}"
+          chunk: "{{ chunk['msg'][0] }}"
           crc_check: "true"
       debug:
          msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
@@ -121,10 +121,10 @@
     - name: "{{ recipe_name }}: get gc and nisd markers"
       vars:
         formal_params: {
-                "chunk" : "{{ chunk['msg'][0][0] }}",
+                "chunk" : "{{ chunk['msg'][0] }}",
                 }
       debug:
-         msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True)[0] }}"
       register: marker_check
 
     - name: "{{ recipe_name }}: Compare Gc and Nisd EndSeq"
@@ -140,7 +140,7 @@
     
     - name: "{{ recipe_name }}: Start data validation"
       vars:
-        Chunk: "{{ chunk['msg'][0][0] }}"
+        Chunk: "{{ chunk['msg'][0] }}"
       debug:
          msg: "{{ lookup('data_gen', 'validator', Chunk, wantlist=True) }}"
 
