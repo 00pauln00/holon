@@ -108,9 +108,7 @@ class s3_operations:
            if os.path.basename(file) == "solutionArray":
                continue 
            obj = os.path.join(dbi_path, file)
-           file_paths = [obj+".i", obj+".o"]
-           for f in file_paths:
-               os.remove(f)
+           os.remove(obj)
            input_param['path'] = file
            input_param['vdev'] = GET_VDEV 
            process = self.perform_operations("delete", input_param) 
