@@ -105,12 +105,16 @@ class LookupModule(LookupBase):
             Create server and raft config files
             '''
             raftconfobj_dict = niova_server_conf_create(cluster_params)
+            result_list = [{"key": k, "value": v} for k, v in raftconfobj_dict.items()]
+            return [result_list]
 
         elif config_type == "niovakv":
             '''
             Create niovakv config file
             '''
             raftconfobj_dict = niovakv_conf_create(cluster_params)
+            result_list = [{"key": k, "value": v} for k, v in raftconfobj_dict.items()]
+            return [result_list]
 
         elif config_type == "controlplane" or config_type == "standalone":
             '''
@@ -122,12 +126,12 @@ class LookupModule(LookupBase):
             #Create gossipNodes file using peer-uuids
             raftconfobj_dict = controlplane_gossipNodes_create(cluster_params, peer_uuids, terms[1])
 
-            return 0
+            return [0]
         
         else:
             '''
             Create client config files
             '''
             raftconfobj_dict = niova_client_conf_create(cluster_params)
-            
-        return raftconfobj_dict
+            result_list = [{"key": k, "value": v} for k, v in raftconfobj_dict.items()]
+            return [result_list]

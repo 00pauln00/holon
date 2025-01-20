@@ -86,7 +86,7 @@ def clone_dbi_files(cluster_params, chunk):
     create_dir(dest_path)
     copy_files(file_list, dest_path)
     print("destination path:", dest_path)
-    return dest_path
+    return [dest_path]
 
 # generates the dummy generator config path
 def get_dummy_gen_config_path(data_dir, chunk):
@@ -342,7 +342,7 @@ class helper:
             file_names = {os.path.basename(line.strip())  for line in f if line.strip()}
         if deleted_file and os.path.basename(deleted_file.strip()) in file_names:
             file_names.remove(os.path.basename(deleted_file.strip()))
-        return file_names
+        return [file_names]
 
     def compare_files(self, file_names, command_output) -> None:
         output_files = {os.path.basename(line.strip()) for line in command_output.splitlines() if line.strip()}
@@ -394,7 +394,7 @@ class helper:
             new_filename = ".".join(filename_parts)
             source_file_path = os.path.join(dbi_input_path, random_file)
             new_file_path = os.path.join(dbi_input_path, new_filename)
-            return source_file_path, new_file_path
+            return [source_file_path, new_file_path]
         else:
             print("No files found in the directory.")
 
@@ -411,20 +411,22 @@ class LookupModule(LookupBase):
             bs = terms[2]
             count = terms[3]
             device_path = help.create_dd_file(img_dir, bs, count)
-            return device_path
+            return [device_path]
 
         elif operation == "delete_dir":
             dir = terms[1]
             help.clear_dir_contents(dir)
+            return []
 
         elif operation == "setup_btrfs": 
             mount = terms[1]
             mount_path =  help.setup_btrfs(mount, "")
-            return mount_path
+            return [mount_path]
         
         elif operation == "generate_data":
             device_path = terms[1]
             help.generate_data(device_path)
+            return []
 
         elif operation == "clone_dbi_set":
             chunk = terms[1]
@@ -442,13 +444,16 @@ class LookupModule(LookupBase):
             source_file = terms[1]
             dest_file = terms[2]
             copy_files(source_file, dest_file)
+            return []
 
         elif operation == "create_partition":
             help.create_gc_partition()
+            return []
         
         elif operation == "delete_dd_file":
             filename = terms[1]
             help.delete_dd_file(filename)
+            return []
 
         elif operation == "get_set_file_list":
             chunk = terms[1]
@@ -459,6 +464,7 @@ class LookupModule(LookupBase):
             file_list = terms[1]
             stdout = terms[2]
             help.compare_files(file_list, stdout)
+            return []
     
         else:
             raise ValueError(f"Unsupported operation: {operation}")

@@ -21,6 +21,8 @@ class LookupModule(LookupBase):
         genericcmdobj = GenericCmds()
         if startup_check == "port_check":
             port_check = check_for_ports(config_params_dict, genericcmdobj)
+            return []
         else:
             install_modules = install_python_modules(genericcmdobj)
+            return []
 

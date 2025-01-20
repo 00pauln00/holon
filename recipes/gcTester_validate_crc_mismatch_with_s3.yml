@@ -55,7 +55,7 @@
                 "chunk" : "{{ chunk['msg'][0] }}",
                 }
       debug:
-         msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True)[0] }}"
       register: marker_check
 
     - name: "{{ recipe_name }}: compare gc and nisd markers"
@@ -74,16 +74,15 @@
         formal_params:
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True)[0] }}"
       register: list_op
-      no_log: true
 
     - name: "{{ recipe_name }}: check if failed to upload files are still present or not"
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
         corrupt_file: "{{ paths['msg'][0] | basename }}" 
       debug:
-         msg: "{{ lookup('helper', 'check_files', [corrupt_file], list_op['msg'],wantlist=True) }}"
+         msg: "{{ lookup('helper', 'check_files', [corrupt_file], list_op['msg'], wantlist=True) }}"
     
     - name: "{{ recipe_name }}: delete gc download folder"
       vars:
@@ -125,7 +124,7 @@
                 "chunk" : "{{ chunk['msg'][0] }}",
                 }
       debug:
-         msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True)[0] }}"
       register: marker_check
 
     - name: "{{ recipe_name }}: Compare Gc and Nisd EndSeq"

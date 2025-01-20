@@ -94,7 +94,7 @@
           "chunk": "2",
         }
       debug:
-         msg: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True)[0] }}"
       register: marker_check
 
     - name: "{{ recipe_name }}: Validate that NISD and GC Marker file's endSeq doesn't match."

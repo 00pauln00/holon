@@ -122,7 +122,7 @@
           "chunk": "{{ item | string }}",
           "stage": "wait_for_gc_marker",
         }
-        marker_seq: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True) }}"
+        marker_seq: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True)[0] }}"
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq }} for chunk {{ chunk_index + 1 }}"
       until: marker_seq[0] is not none
@@ -137,7 +137,7 @@
         params: {
           "chunk": "{{ item | string }}",
         }
-        Sequence: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True) }}"
+        Sequence: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True)[0] }}"
         gc_marker: "{{ Sequence[0] }}"
         nisd_marker: "{{ Sequence[1] }}"
       debug:

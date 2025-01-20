@@ -88,7 +88,7 @@
            s3Support: "{{ s3Support }}"
 
   - name: "Prepare server configs"
-    set_fact: ClusterInfo="{{lookup('niova_raftconfig', "server", wantlist=True)}}"
+    set_fact: ClusterInfo="{{lookup('niova_raftconfig', 'server', wantlist=True)[0]}}"
 
   - name: "Show the values"
     debug:
