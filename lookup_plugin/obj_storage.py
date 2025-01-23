@@ -20,14 +20,23 @@ class Minio:
         s3Support = self.cluster_params['s3Support']
         if s3Support:
             create_dir(self.minio_path)
-            command = f"minio server {self.minio_path} --console-address ':2000' --address ':2090'"
+            command = [
+                    "minio",
+                    "server",
+                    self.minio_path,
+                    "--console-address",
+                    ":2000",
+                    "--address",
+                    ":2090"
+                ]
             with open(self.s3_server_log, "w") as fp:
-                process_popen = subprocess.Popen(command, shell=True, stdout=fp, stderr=fp)
+                process_popen = subprocess.Popen(command, stdout=fp, stderr=fp)
 
             if process_popen.poll() is None:
                 logging.info("MinIO server started successfully in the background.")
             else:
                 logging.info("MinIO server failed to start")
+                logging.error(f"MinIO server failed to start: {stderr.decode().strip()}")
                 raise subprocess.SubprocessError(process_popen.returncode)
 
             time.sleep(2)
