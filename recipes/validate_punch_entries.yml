@@ -92,7 +92,7 @@
       debug:
         msg: "Waiting for GC Marker File"
       until: lookup('obj_storage', 'get_markers', params, wantlist=True)[0][0] is not none
-      retries: 50
+      retries: 500
       delay: 2
 
     - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
@@ -106,7 +106,7 @@
       debug:
         msg: "Wait until marker values gets match"
       until: gc_marker == nisd_marker
-      retries: 50
+      retries: 500
       delay: 2
 
     - name: "{{ recipe_name }}: Start data validation"
