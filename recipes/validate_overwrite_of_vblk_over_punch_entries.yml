@@ -40,7 +40,7 @@
           - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
       register: chunk
 
-    - name: "Generate 1 punch entry"
+    - name: "Overwrite with 1000 punch entries"
       vars:
         dbi_param:
           maxVblks: '0'
