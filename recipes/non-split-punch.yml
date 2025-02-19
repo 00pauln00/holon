@@ -1,0 +1,99 @@
+- name: "non-split punch"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "non-split punch"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "/local/minio_data"
+      debug:
+         msg:
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+    - name: "Generate DBIs for first iteration."
+      vars:
+         dgen_args: {
+                  "chunk": "1",
+                  "maxPunches": "0",
+                  "maxVblks": "0",
+                  "punchAmount": "0",
+                  "punchesPer": "0",
+                  "maxPunchSize": "2097151",
+                  "seed": "79",
+                  "seqStart": "0",
+                  "vbAmount": "0",
+                  "vblkPer": "0",
+                  "genType": "0",
+                  "blockSize": "4",
+                  "blockSizeMax": "31",
+                  "startVblk": "0",
+                  "vdev": "2436c962-9cf6-4bc2-8c93-f6b7ba16e57d",
+                  "targetEntry" : true,
+                 }
+         formal_params: {
+                  "total_chunks" : 1,
+                  "is_random" : false,
+                  "remove_files": false,
+                 }
+      debug:
+         msg:
+          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params, wantlist=True) }}"
+
+    - name: "Generate DBIs for second iteration."
+      vars:
+         dgen_args: {
+                  "chunk": "1",
+                  "maxPunches": "0",
+                  "maxVblks": "10",
+                  "punchAmount": "0",
+                  "punchesPer": "0",
+                  "maxPunchSize": "0",
+                  "seed": "79",
+                  "seqStart": "1",
+                  "vbAmount": "10000",
+                  "vblkPer": "100",
+                  "genType": "0",
+                  "blockSize": "4",
+                  "blockSizeMax": "31",
+                  "startVblk": "0",
+                  "vdev": "2436c962-9cf6-4bc2-8c93-f6b7ba16e57d",
+                  }
+         formal_params: {
+                  "total_chunks" : 1,
+                  "is_random" : false,
+                  "remove_files": false,
+                  }  
+      debug:
+         msg:
+          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Perform GC after second iteration"
+      vars:
+        input_params:
+          debugMode: false
+          chunk: "1"
+      debug:
+         msg:
+          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
+      register: gc_output
+
+    - debug:
+         msg: "Check return code of GC Process."
+      failed_when: gc_output['msg'][0] != "0"
+
+    - name: "{{ recipe_name }}: Start data validation"
+      vars:
+        Chunk: "1"
+      debug:
+         msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
+
