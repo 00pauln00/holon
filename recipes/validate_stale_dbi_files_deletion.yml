@@ -1,4 +1,4 @@
-- name: "Validate stale dbi files deletion"
+- name: "validate_stale_dbi_files_deletion"
   hosts: localhost
   connection: local
   vars:
