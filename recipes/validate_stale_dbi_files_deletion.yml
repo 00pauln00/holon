@@ -2,7 +2,7 @@
   hosts: localhost
   connection: local
   vars:
-     recipe_name: "generate_dbis_with_punches"
+     recipe_name: "validate_stale_dbi_files_deletion"
      parent: None
 
   tasks:
