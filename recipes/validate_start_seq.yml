@@ -1,0 +1,92 @@
+- name: "validate_start_seq"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "validate_start_seq"
+    parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "/local/minio_data"
+      debug:
+         msg:
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+    - name: "Generate 100000 vblk entries"
+      vars:
+        dbi_param:
+          maxVblks: '100000'
+          vbAmount: '100000'
+          vblkPer: '1000'
+          maxPunches: '0'
+          punchAmount: '0'
+          seqStart: '0'
+          startVblk: '0'
+          genType: '1'
+          seed: '1'
+          blockSize: '16'
+          blockSizeMax: '32'
+          punchesPer: '0'
+          maxPunchSize: '1'
+        input_param:
+          total_chunks : 1
+          is_random : true
+          remove_files: false
+      debug:
+         msg:
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+      register: chunk
+
+    - name: "Overwrite with 1000 punch entries"
+      vars:
+        dbi_param:
+          maxVblks: '0'
+          vbAmount: '0'
+          vblkPer: '1'
+          maxPunches: '1000'
+          punchAmount: '1000'
+          seqStart: '100000'
+          startVblk: '0'
+          genType: '1'
+          seed: '1'
+          blockSize: '16'
+          blockSizeMax: '32'
+          chunk: "{{ chunk['msg'][0] }}"
+          punchesPer: '1'
+          maxPunchSize: '1000'
+          singlePunchEntry: true
+        input_param:
+          total_chunks : 1
+          is_random : true
+          remove_files: false
+      debug:
+         msg:
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+      register: chunk
+
+    - name: "{{ recipe_name }}: Start gc algorithm"
+      vars:
+        input_params:
+          debug_mode: "false"
+          chunk: "{{ chunk['msg'][0] }}"
+      debug:
+        msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
+      register: gc_output
+
+    - debug:
+         msg: "Check return code of GC Process."
+      failed_when: gc_output['msg'][0] != "0"
+
+    - name: "{{ recipe_name }}: Start data validation"
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
