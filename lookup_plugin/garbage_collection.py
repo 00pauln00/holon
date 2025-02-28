@@ -39,7 +39,7 @@ class gc_service:
             bin_path = os.path.normpath(os.path.join(self.binary_dir, "GCService"))
             cmd = [
                 bin_path, '-path', download_path, '-s3config', self.s3config, 
-                '-s3log', self.s3_log_path, '-t', '120', '-l', '6', '-p', '7500', 
+                '-s3log', self.s3_log_path, '-t', '120', '-l', '4', '-p', '7500', 
                 '-b', S3_BUCKET, '-mp', str(input_params.get("total_chunks"))
             ]
             if input_params.get("dry_run") in [True, "true"]: cmd.append('-dr=true')
@@ -128,7 +128,7 @@ class gc_tester:
                    '-path', self.download_path, '-s3log', self.s3_log_path, '-b', S3_BUCKET] if self.cluster_params['s3Support'] == "true" else \
                   [bin_path, '-i', modified_path, '-v', vdev, '-c', input_params.get("chunk")]
 
-            if input_params.get("debug_mode") in [True, "true"]: cmd.append('-d=true')
+            if input_params.get("debugMode") in [True, "true"]: cmd.append('-d=true')
             if input_params.get("crc_check") in [True, "true"]: cmd.append('-ec=true')
             with open(self.gc_log, "a+") as fp:
                 print("cmd : ", cmd)

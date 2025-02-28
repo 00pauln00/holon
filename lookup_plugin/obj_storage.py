@@ -98,6 +98,24 @@ class s3_operations:
         process = self.perform_operations("delete", input_param)
         return [rand_dbi_path]
 
+    def delete_gc_dbi_from_s3(self, input_param, file_list):
+        dir_path = get_dir_path(self.cluster_params, DBI_DIR)
+        dbi_list = [line.strip() for line in file_list.splitlines() if line.strip()]
+
+        if len(dbi_list) < 2:
+            print("Not enough DBI files to select the second one.")
+            return []
+
+        # Select the second file instead of a random one
+        second_dbi_path = dbi_list[1]  
+        print("Deleted file:", second_dbi_path)
+
+        input_param['path'] = second_dbi_path
+        input_param['vdev'] = GET_VDEV
+        process = self.perform_operations("delete", input_param)
+
+        return [second_dbi_path]
+
     def get_dbi_list(self, input_param):
         input_param['path'] = "GET_VDEV"
         input_param['vdev'] = GET_VDEV
@@ -255,6 +273,17 @@ class LookupModule(LookupBase):
             s3 = s3_operations(cluster_params)
             s3.delete_half_dbis( input_param )
             return []
+
+        elif command == "delete_gc_dbi_from_s3":
+            '''
+            Parameters: chunk, path, vdev
+            chunk : chunk number, vdev: vdev uuid
+            path: to delete files from s3
+            '''
+            input_param = terms[1]
+            file_list = terms[2] 
+            s3 = s3_operations(cluster_params)
+            return s3.delete_gc_dbi_from_s3(input_param, file_list)
 
         else:
             raise ValueError(f"Unsupported operation: {command}")
