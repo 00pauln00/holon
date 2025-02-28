@@ -1,0 +1,127 @@
+- name: "validate_failed_to_upload_dbi_from_gc"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "validate_failed_to_upload_dbi_from_gc"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "/local/minio_data"
+      debug:
+         msg:
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+    - name: "Generate DBIs for first iteration."
+      vars:
+         dgen_args: {
+                  "chunk": "1",
+                  "maxPunches": "100",
+                  "maxVblks": "1000",
+                  "punchAmount": "1000",
+                  "punchesPer": "100",
+                  "maxPunchSize": "120",
+                  "seed": "79",
+                  "seqStart": "0",
+                  "vbAmount": "100000",
+                  "vblkPer": "1000",
+                  "genType": "0",
+                  "blockSize": "4",
+                  "blockSizeMax": "31",
+                  "startVblk": "0",
+                  "vdev": "2436c962-9cf6-4bc2-8c93-f6b7ba16e57d",
+                 }
+         formal_params: {
+                  "total_chunks" : 1,
+                  "is_random" : false,
+                  "remove_files": false,
+                 }
+      debug:
+         msg:
+          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Perform GC after First iteration"
+      vars:
+        input_params:
+          debugMode: True
+          chunk: "1"
+      debug:
+         msg:
+          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
+      register: gc_output
+
+    - debug:
+         msg: "Check return code of GC Process."
+      failed_when: gc_output['msg'][0] != "0"
+
+    - name: "{{ recipe_name }}: Get dbi file names."
+      vars:
+        formal_params:
+          chunk: "1"
+      debug:
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True)[0] }}"
+      register: list_op
+
+    - name: "{{ recipe_name }}: delete any dbi set file from s3."
+      vars:
+        input_params:
+          chunk: "1"
+      debug:
+         msg: "{{ lookup('obj_storage', 'delete_gc_dbi_from_s3', input_params, list_op['msg'], wantlist=True)[0] }}"
+      register: deleted_file
+
+    - name: "Generate DBIs for second iteration."
+      vars:
+         dgen_args: {
+                  "chunk": "1",
+                  "maxPunches": "100",
+                  "maxVblks": "1000",
+                  "punchAmount": "1000",
+                  "punchesPer": "100",
+                  "maxPunchSize": "120",
+                  "seed": "79",
+                  "vbAmount": "10000",
+                  "vblkPer": "100",
+                  "genType": "0",
+                  "blockSize": "4",
+                  "blockSizeMax": "31",
+                  "startVblk": "20000",
+                  "vdev": "2436c962-9cf6-4bc2-8c93-f6b7ba16e57d",
+                  }
+         formal_params: {
+                  "total_chunks" : 1,
+                  "is_random" : false,
+                  "remove_files": false,
+                  }  
+      debug:
+         msg:
+          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Perform GC after second iteration"
+      vars:
+        input_params:
+          debugMode: false
+          chunk: "1"
+      debug:
+         msg:
+          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
+      register: gc_output
+
+    - debug:
+         msg: "Check return code of GC Process."
+      failed_when: gc_output['msg'][0] != "0"
+
+    - name: "{{ recipe_name }}: Start data validation"
+      vars:
+        Chunk: "1"
+      debug:
+         msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
+

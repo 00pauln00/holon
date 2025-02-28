@@ -76,6 +76,8 @@ class data_generator:
             if 'overlapSeq' in dgen_args and dgen_args['overlapSeq'] != '' and \
             'numOfSet' in dgen_args and dgen_args['numOfSet'] != '':
                 cmd.extend(["-se", dgen_args["overlapSeq"], "-ts", dgen_args["numOfSet"]])
+            if dgen_args.get("targetEntry") in [True, "true"]:
+                cmd.extend(["-te=true"]) 
         return commands, dgen_args
 
 
