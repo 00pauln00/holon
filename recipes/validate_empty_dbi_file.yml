@@ -128,7 +128,7 @@
 
     - name: "Get empty dbi file count"
       debug: 
-        msg: "{{ lookup('check_empty_dbi', list_op['msg']) }}"
+        msg: "{{ lookup('get_empty_dbi_count', list_op['msg']) }}"
       register: empty_dbi_count
     
     - debug:
