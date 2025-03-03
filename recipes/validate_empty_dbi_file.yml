@@ -23,12 +23,11 @@
           vblkPer: '100000'
           maxPunches: '0'
           punchAmount: '0'
-          seqStart: '0'
           startVblk: '0'
           genType: '1'
           seed: '1'
-          blockSize: '32'
-          blockSizeMax: '1'
+          blockSize: '1'
+          blockSizeMax: '32'
           punchesPer: '0'
           maxPunchSize: '1'
         input_param:
@@ -48,12 +47,11 @@
           vblkPer: '100000'
           maxPunches: '0'
           punchAmount: '0'
-          seqStart: '400000'
           startVblk: '0'
           genType: '1'
           seed: '1'
-          blockSize: '32'
-          blockSizeMax: '1'
+          blockSize: '1'
+          blockSizeMax: '32'
           punchesPer: '0'
           maxPunchSize: '1'
           chunk: "{{ chunk['msg'][0] }}"
@@ -66,7 +64,41 @@
           - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
       register: chunk
 
-    - name: "{{ recipe_name }}: Start gc algorithm"
+    - name: "{{ recipe_name }}: Start gc algorithm for 1st iteration"
+      vars:
+        input_params:
+          debug_mode: "false"
+          chunk: "{{ chunk['msg'][0] }}"
+      debug:
+        msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
+      register: gc_output
+
+    - name: "Generate 1000 vblk entries"
+      vars:
+        dbi_param:
+          maxVblks: '1000'
+          vbAmount: '1000'
+          vblkPer: '1000'
+          maxPunches: '0'
+          punchAmount: '0'
+          startVblk: '0'
+          genType: '1'
+          seed: '1'
+          blockSize: '1'
+          blockSizeMax: '32'
+          chunk: "{{ chunk['msg'][0] }}"
+          punchesPer: '0'
+          maxPunchSize: '1'
+        input_param:
+          total_chunks : 1
+          is_random : true
+          remove_files: false
+      debug:
+         msg:
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+      register: chunk
+
+    - name: "{{ recipe_name }}: Start gc algorithm for 2nd iteration"
       vars:
         input_params:
           debug_mode: "false"
@@ -84,6 +116,24 @@
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
          msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Get dbi file names."
+      vars:
+        formal_params:
+          chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True)[0] }}"
+      register: list_op
+      no_log: true
+
+    - name: "Get empty dbi file count"
+      debug: 
+        msg: "{{ lookup('check_empty_dbi', list_op['msg']) }}"
+      register: empty_dbi_count
+    
+    - debug:
+         msg: "Total empty dbi files: {{ empty_dbi_count }}"
+      failed_when: empty_dbi_count['msg'] != "1"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
