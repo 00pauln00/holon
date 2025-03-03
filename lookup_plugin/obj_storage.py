@@ -30,7 +30,7 @@ class Minio:
                     ":2090"
                 ]
             with open(self.s3_server_log, "w") as fp:
-                process_popen = subprocess.Popen(command, stdout=fp, stderr=fp)
+                process_popen = subprocess.Popen(command, shell=True, stdout=fp, stderr=fp)
 
             if process_popen.poll() is None:
                 logging.info("MinIO server started successfully in the background.")
