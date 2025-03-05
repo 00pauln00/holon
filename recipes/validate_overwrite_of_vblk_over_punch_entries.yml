@@ -57,7 +57,7 @@
           chunk: "{{ chunk['msg'][0] }}"
           punchesPer: '1'
           maxPunchSize: '1000'
-          singlePunchEntry: true
+          targetEntry: true
         input_param:
           total_chunks : 1
           is_random : true

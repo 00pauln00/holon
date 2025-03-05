@@ -142,9 +142,6 @@ class data_generator:
                 if not params['remove_files']:
                     cmd.append('-r=true')
         
-        if (dgen_args['singlePunchEntry'] != ''):
-            for cmd in commands:
-                cmd.append('-te=true')
 
         with Pool(processes = params['total_chunks']) as pool:
             results = pool.map(self.run_dummy_generator, commands)
