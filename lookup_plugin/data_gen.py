@@ -41,6 +41,7 @@ class data_generator:
             'startVblk': lambda: "0",
             'strideWidth': lambda: str(random.randint(1, 50)),
             'numOfSet': lambda: str(random.randint(1, 10)),
+            'singlePunchEntry': lambda: ""
         }
 
         for key, random_val in defaults.items():
@@ -140,6 +141,7 @@ class data_generator:
                     cmd.extend(['-e', dgen_args['dbiWithPunches']])
                 if not params['remove_files']:
                     cmd.append('-r=true')
+        
 
         with Pool(processes = params['total_chunks']) as pool:
             results = pool.map(self.run_dummy_generator, commands)
