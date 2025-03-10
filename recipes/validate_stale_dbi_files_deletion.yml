@@ -15,12 +15,12 @@
           - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
       when: s3Support == "true"
 
-    - name: "Generate 1000 vblk entries"
+    - name: "Generate 500,000 vblk entries"
       vars:
         dbi_param:
-          maxVblks: '1000'
-          vbAmount: '1000'
-          vblkPer: '1000'
+          maxVblks: '500000'
+          vbAmount: '500000'
+          vblkPer: '500'
           maxPunches: '0'
           punchAmount: '0'
           seqStart: '0'
@@ -45,10 +45,9 @@
         dbi_param:
           maxVblks: '2097152'
           vbAmount: '2097152'
-          vblkPer: '100000'
+          vblkPer: '500'
           maxPunches: '0'
           punchAmount: '0'
-          seqStart: '1000'
           startVblk: '0'
           genType: '1'
           seed: '1'
