@@ -41,7 +41,6 @@ class data_generator:
             'startVblk': lambda: "0",
             'strideWidth': lambda: str(random.randint(1, 50)),
             'numOfSet': lambda: str(random.randint(1, 10)),
-            'singlePunchEntry': lambda: ""
         }
 
         for key, random_val in defaults.items():
