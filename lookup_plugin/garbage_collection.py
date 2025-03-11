@@ -36,7 +36,7 @@ class gc_service:
         """
         try:
             download_path = os.path.join(self.base_path, "gc", "gc_download") if input_params.get("partition") else self.download_path
-            bin_path = os.path.normpath(os.path.join(self.binary_dir, "GCService"))
+            bin_path = os.path.normpath(os.path.join(self.binary_dir, "niova-s3-gcsvc"))
             cmd = [
                 bin_path, '-path', download_path, '-s3config', self.s3config, 
                 '-s3log', self.s3_log_path, '-t', '120', '-l', '4', '-p', '7500', 
@@ -50,9 +50,9 @@ class gc_service:
                 print("cmd : ", cmd)
                 process_popen = subprocess.Popen(cmd, stdout=fp, stderr=fp)
                 if process_popen.poll() is None:
-                    logging.info("gcService process started successfully")
+                    logging.info("niova-s3-gcsvc process started successfully")
                 else:
-                    logging.error("gcService failed to start")
+                    logging.error("niova-s3-gcsvc failed to start")
                     raise subprocess.SubprocessError(process_popen.returncode)
 
                 # Update and save recipe config
@@ -76,21 +76,21 @@ class gc_service:
     def pause_service(self, pid):
         try:
             process_obj = psutil.Process(int(pid))
-            logging.info(f"Pausing gc service {pid} by sending SIGSTOP")
+            logging.info(f"Pausing niova-s3-gcsvc {pid} by sending SIGSTOP")
             process_obj.send_signal(signal.SIGSTOP)
             return 0
         except (ValueError, psutil.NoSuchProcess) as e:
-            logging.error(f"pause_gc_service: {e}")
+            logging.error(f"niova-s3-gcsvc: {e}")
             return -1
 
     def resume_service(self, pid):
         try:
             process = psutil.Process(int(pid))
-            logging.info(f"Resuming gc service {pid} by sending SIGCONT")
+            logging.info(f"Resuming niova-s3-gcsvc {pid} by sending SIGCONT")
             process.send_signal(signal.SIGCONT)
             return 0
         except (ValueError, psutil.NoSuchProcess) as e:
-            logging.error(f"resume_gc_service: {e}")
+            logging.error(f"niova-s3-gcsvc: {e}")
             return -1
 
 class gc_tester:
