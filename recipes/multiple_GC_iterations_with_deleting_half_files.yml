@@ -32,7 +32,6 @@
          msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
       register: gc_output
 
-
     - debug:
          msg: "Check return code of GC Process."
       failed_when: gc_output['msg'][0] != "0"
