@@ -65,6 +65,21 @@
           - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
       register: chunk
 
+    - name: "{{ recipe_name }}: Get dbi file name string."
+      vars:
+        formal_params:
+          chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True)[0] }}"
+      register: list_op
+      no_log: true
+
+    - name: "Get dbi file name list before GC"
+      debug: 
+        msg: "{{ lookup('get_s3_file_names', list_op['msg']) }}"
+      register: dbis_before_gc
+      no_log: true
+
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
         input_params:
@@ -77,6 +92,31 @@
     - debug:
          msg: "Check return code of GC Process."
       failed_when: gc_output['msg'][0] != "0"
+
+    - name: "{{ recipe_name }}: Get dbi file name string."
+      vars:
+        formal_params:
+          chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True)[0] }}"
+      register: list_op_new
+      no_log: true
+
+    - name: "Get dbi file name list after GC"
+      debug: 
+        msg: "{{ lookup('get_s3_file_names', list_op_new['msg']) }}"
+      register: dbis_after_gc
+      no_log: true
+
+    - name: "Get stale file count"
+      debug: 
+        msg: "{{ lookup('get_stale_file_count', dbis_before_gc['msg'], dbis_after_gc['msg']) }}"
+      register: stale_dbi_file_count
+       no_log: true
+
+    - debug:
+        msg: "Total stale dbi files: {{ stale_dbi_file_count['msg']  }}"
+      failed_when: stale_dbi_file_count['msg'] != '0'
 
     - name: "{{ recipe_name }}: Start data validation"
       vars:
