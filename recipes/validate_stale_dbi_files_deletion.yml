@@ -1,0 +1,131 @@
+- name: "validate_stale_dbi_files_deletion"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "validate_stale_dbi_files_deletion"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "/local/minio_data"
+      debug:
+         msg:
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+    - name: "Generate 500,000 vblk entries"
+      vars:
+        dbi_param:
+          maxVblks: '500000'
+          vbAmount: '500000'
+          vblkPer: '500'
+          maxPunches: '0'
+          punchAmount: '0'
+          seqStart: '0'
+          startVblk: '0'
+          genType: '1'
+          seed: '1'
+          blockSize: '16'
+          blockSizeMax: '32'
+          punchesPer: '0'
+          maxPunchSize: '1'
+        input_param:
+          total_chunks : 1
+          is_random : true
+          remove_files: false
+      debug:
+         msg:
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+      register: chunk
+
+    - name: "Generate 2M(2097152) vblk entries"
+      vars:
+        dbi_param:
+          maxVblks: '2097152'
+          vbAmount: '2097152'
+          vblkPer: '500'
+          maxPunches: '0'
+          punchAmount: '0'
+          startVblk: '0'
+          genType: '1'
+          seed: '1'
+          blockSize: '16'
+          blockSizeMax: '32'
+          punchesPer: '0'
+          maxPunchSize: '1'
+          chunk: "{{ chunk['msg'][0] }}"
+        input_param:
+          total_chunks : 1
+          is_random : true
+          remove_files: false
+      debug:
+         msg:
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+      register: chunk
+
+    - name: "{{ recipe_name }}: Get dbi file name string."
+      vars:
+        formal_params:
+          chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True)[0] }}"
+      register: list_op
+      no_log: true
+
+    - name: "Get dbi file name list before GC"
+      debug: 
+        msg: "{{ lookup('get_s3_file_names', list_op['msg']) }}"
+      register: dbis_before_gc
+      no_log: true
+
+    - name: "{{ recipe_name }}: Start gc algorithm"
+      vars:
+        input_params:
+          debug_mode: "false"
+          chunk: "{{ chunk['msg'][0] }}"
+      debug:
+        msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
+      register: gc_output
+
+    - debug:
+         msg: "Check return code of GC Process."
+      failed_when: gc_output['msg'][0] != "0"
+
+    - name: "{{ recipe_name }}: Get dbi file name string."
+      vars:
+        formal_params:
+          chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True)[0] }}"
+      register: list_op_new
+      no_log: true
+
+    - name: "Get dbi file name list after GC"
+      debug: 
+        msg: "{{ lookup('get_s3_file_names', list_op_new['msg']) }}"
+      register: dbis_after_gc
+      no_log: true
+
+    - name: "Get stale file count"
+      debug: 
+        msg: "{{ lookup('get_stale_file_count', dbis_before_gc['msg'], dbis_after_gc['msg']) }}"
+      register: stale_dbi_file_count
+       no_log: true
+
+    - debug:
+        msg: "Total stale dbi files: {{ stale_dbi_file_count['msg']  }}"
+      failed_when: stale_dbi_file_count['msg'] != '0'
+
+    - name: "{{ recipe_name }}: Start data validation"
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
+
