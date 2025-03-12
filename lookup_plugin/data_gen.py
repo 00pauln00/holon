@@ -138,8 +138,7 @@ class data_generator:
                 cmd.extend(['-b', S3_BUCKET])
                 if 'dbiWithPunches' in dgen_args:
                     cmd.extend(['-e', dgen_args['dbiWithPunches']])
-                if not params['remove_files']:
-                    cmd.append('-r=true')
+                if params.get("remove_files") in [True, "true"]: cmd.append('-r=true')
 
         with Pool(processes = params['total_chunks']) as pool:
             results = pool.map(self.run_dummy_generator, commands)
