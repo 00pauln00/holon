@@ -282,6 +282,42 @@ class helper:
                     shutil.rmtree(item_path)
         except Exception as e:
             print(f"Error: {e}")
+            
+    def is_dir_empty(self, path):
+        path = os.path.join(self.base_path, path)
+        
+        try:
+            if not os.path.isdir(path):
+                raise NotADirectoryError(f"'{path}' is not a directory.")
+            
+            is_dir_empty = not bool(os.listdir(path))
+            
+            return [is_dir_empty]
+        except Exception as e:
+            print(f"Error: {e}")
+            
+    def get_directory_size(self, path):
+        path = os.path.join(self.base_path, path)
+        
+        try:
+            if not os.path.isdir(path):
+                raise NotADirectoryError(f"'{path}' is not a directory.")
+            
+            total_size = 0
+        
+            for dirpath, filenames in os.walk(path):
+                for filename in filenames:
+                    file_path = os.path.join(dirpath, filename)
+                    
+                    if os.path.isfile(file_path): 
+                        total_size += os.path.getsize(file_path)
+                        
+            return [total_size]
+        
+        except Exception as e:
+            print(f"Error: {e}")
+            return [0]
+
 
     def setup_btrfs(self, mount_point, device_path):
         """
@@ -465,6 +501,16 @@ class LookupModule(LookupBase):
             stdout = terms[2]
             help.compare_files(file_list, stdout)
             return []
-    
+        
+        elif operation == "is_dir_empty":
+            dir = terms[1]
+                        
+            return help.is_dir_empty(dir)
+        
+        elif operation == "get_directory_size":
+            dir = terms[1]
+                        
+            return help.get_directory_size(dir)
+        
         else:
             raise ValueError(f"Unsupported operation: {operation}")
