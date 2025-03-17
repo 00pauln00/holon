@@ -42,6 +42,11 @@ class gc_service:
                 '-s3log', self.s3_log_path, '-t', '120', '-l', '4', '-p', '7500', 
                 '-b', S3_BUCKET, '-mp', str(input_params.get("total_chunks"))
             ]
+            u = input_params.get("uuid")
+            if u is not None:
+                cmd.extend([' -u', u])
+
+
             if input_params.get("dry_run") in [True, "true"]: cmd.append('-dr=true')
             if input_params.get("del_dbo") in [True, "true"]: cmd.append('-dd=true')
             if input_params.get("force_gc") in [True, "true"]: cmd.append('-f=true')
