@@ -43,7 +43,7 @@ def has_stale_set(file_paths):
         # - `curr_start_seq < prev_start_seq`: Ensures the current sequence starts before the previous one.
         # If either of these conditions is true, it indicates that the current sequence does not overlap 
         # or is positioned entirely before the previous sequence.
-        if not (curr_end_seq < prev_start_seq or curr_start_seq < prev_start_seq):
+        if not (curr_end_seq < prev_start_seq and curr_start_seq < prev_start_seq):
             return ['true']
             
         prev_start_seq = curr_start_seq    
