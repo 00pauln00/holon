@@ -3,7 +3,6 @@
   connection: local
   vars:
     recipe_name: "validate_stale_dbi_files_deletion"
-    # vdev: ''
     parent: None
 
   tasks:
@@ -90,19 +89,13 @@
 
         - name: "Check if stale set is present"
           debug:
-            msg: "{{ lookup('get_stale_sets', list_op_new['msg']) }}"
+            msg: "{{ lookup('validate_stale_sets', list_op_new['msg']) }}"
           register: has_stale_set
           # no_log: true
 
-        # - name: "Get stale file count"
-        #   debug:
-        #     msg: "{{ lookup('get_stale_file_count', dbis_before_gc['msg'], dbis_after_gc['msg']) }}"
-        #   register: stale_dbi_file_count
-        #    no_log: true
-
-        # - debug:
-        #     msg: "Total stale dbi files: {{ stale_dbi_file_count['msg']  }}"
-        #   failed_when: stale_dbi_file_count['msg'] != '0'
+        - debug:
+            msg: "Total stale dbi files"
+          failed_when: has_stale_set['msg'] != 'false'
 
         - name: "{{ recipe_name }}: Start data validation"
           vars:
