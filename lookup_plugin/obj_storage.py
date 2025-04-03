@@ -6,6 +6,9 @@ import psutil
 import time
 from genericcmd import GenericCmds
 from lookup_plugin.helper import *
+import signal
+from raftprocess import RaftProcess
+
 
 GET_VDEV = "get_vdev_from_dummy_generator.json"
 
@@ -18,6 +21,7 @@ class Minio:
 
     def start(self):
         s3Support = self.cluster_params['s3Support']
+        
         if s3Support:
             create_dir(self.minio_path)
             command = [
@@ -25,29 +29,29 @@ class Minio:
                     "server",
                     self.minio_path,
                     "--console-address",
-                    ":2000",
+                    ":8000",
                     "--address",
-                    ":2090"
+                    ":8001"
                 ]
             with open(self.s3_server_log, "w") as fp:
-                process_popen = subprocess.Popen(command, shell=True, stdout=fp, stderr=fp)
+                process_popen = subprocess.Popen(command, shell=True, stderr=fp,stdout=subprocess.PIPE, text=True)
 
             if process_popen.poll() is None:
                 logging.info("MinIO server started successfully in the background.")
             else:
-                logging.info("MinIO server failed to start")
-                logging.error(f"MinIO server failed to start: {stderr.decode().strip()}")
+                logging.error(f"MinIO server failed to start: {process_popen.stderr}")
                 raise subprocess.SubprocessError(process_popen.returncode)
 
-            time.sleep(2)
-            self._update_recipe_conf(process_popen)
-
-    def stop(self):
-        try:
-            subprocess.run(["pkill", "minio"], check=True)
-            logging.info("MinIO server stopped successfully.")
-        except subprocess.CalledProcessError as e:
-            logging.error(f"Failed to stop MinIO server: {e}")
+            # self._update_recipe_conf(process_popen)
+                        
+            return [process_popen.pid]
+        
+    # def stop(self):
+    #     try:
+    #         subprocess.run(["pkill", "minio"], check=True)
+    #         logging.info("MinIO server stopped successfully.")
+    #     except subprocess.CalledProcessError as e:
+    #         logging.error(f"Failed to stop MinIO server: {e}")
 
     def _update_recipe_conf(self, process_popen):
         genericcmdobj = GenericCmds()
@@ -70,7 +74,39 @@ class Minio:
             recipe_conf['s3_process']['process_status'] = minio_status
             genericcmdobj.recipe_json_dump(recipe_conf)
 
+    def pause(self, minio_pid, sleep_time = 10):
+        process_obj = psutil.Process(int(minio_pid))
+        
+        print(f"MINIO PROCESS OBJ: {process_obj}")
+        
+        logging.info("Pause the minio process by sending sigstop")
+        
+        # Pause the minio process
+        try:
+            process_obj.send_signal(signal.SIGSTOP)
+        except (ValueError, psutil.NoSuchProcess) as e:
+            logging.error(f"minio: {e}")
+            return -1
 
+        '''
+        To check if process is paused
+        '''
+        self.Wait_for_process_status("stopped", minio_pid)
+        self.process_status = "paused"
+        
+        time.sleep(sleep_time)
+        
+        # Resume the minio process
+        try:
+            process_obj.send_signal(signal.SIGCONT)
+        except subprocess.SubprocessError as e:
+            logging.error("Failed to send CONT signal with error: %s" % os.stderror(e.errno))
+            return -1
+
+        self.process_status = "running"
+        
+        return 0
+        
 class s3_operations:
     def __init__(self, cluster_params):
         self.cluster_params = cluster_params
@@ -210,13 +246,24 @@ class LookupModule(LookupBase):
                 # to store minio data.
                 minio_path = terms[2]
                 minio = Minio(cluster_params, minio_path)
-                minio.start()
-                return []
+                result = minio.start()
+                
+                return result
 
-            elif sub_cmd == "stop":
-                minio = Minio(cluster_params, "")
-                minio.stop()
-                return []  
+            # elif sub_cmd == "stop":
+            #     minio = Minio(cluster_params, "")
+            #     minio.stop()
+            #     return []  
+            
+            elif sub_cmd == "pause":
+                minio_path = terms[2]
+                minio_pid = terms[3]
+                
+                minio = Minio(cluster_params, minio_path)
+                
+                minio.pause(minio_pid)
+                
+                return []
         
         elif command == "operation":
             operation = terms[1]
