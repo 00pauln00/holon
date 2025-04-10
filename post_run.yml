@@ -4,133 +4,144 @@
     recipe_name: "post_run"
 
   tasks:
+    - name: "Get the status of all running peers before termination"
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
 
-  - name: "Get the status of all running peers before termination"
-    include_role:
-      name: common
-      tasks_from: get_follower_stats
+    #Get all values from all peers
+    - name: "{{ recipe_name }}: Get the server information for all running servers."
+      include_role:
+        name: common
+        tasks_from: get_all_values_from_all_peers
 
-  #Get all values from all peers
-  - name: "{{ recipe_name }}: Get the server information for all running servers."
-    include_role:
-      name: common
-      tasks_from: get_all_values_from_all_peers
+    - name: "Check if recipe failed and post_run is disabled"
+      debug:
+        msg: "Check the recipe execution status"
+      failed_when: recipe_result == True and disable_post_run == True
 
-  - name: "Check if recipe failed and post_run is disabled"
-    debug:
-      msg: "Check the recipe execution status"
-    failed_when: recipe_result == True and disable_post_run == True
+    - name: "Exit now as post run is disabled"
+      meta: end_play
+      when: disable_post_run == "True" or disable_post_run == "true" or disable_post_run == True
 
-  - name: "Exit now as post run is disabled"
-    meta: end_play
-    when: disable_post_run == "True" or disable_post_run == "true" or disable_post_run == True
-
-  - name: "Get the json path"
-    set_fact:
-        base_dir="{{ recipe_params['base_dir']}}"
+    - name: "Get the json path"
+      set_fact: base_dir="{{ recipe_params['base_dir']}}"
         raft_uuid="{{ recipe_params['raft_uuid']}}"
 
-  - name: "prepare path to read recipe JSON file"
-    shell: cat "{{base_dir}}"/"{{raft_uuid}}"/"{{raft_uuid}}".json
-    register: result
+    - name: "prepare path to read recipe JSON file"
+      shell: cat "{{base_dir}}"/"{{raft_uuid}}"/"{{raft_uuid}}".json
+      register: result
 
-  - name: "Convert output to JSON format"
-    set_fact:
-      jsondata: "{{ result.stdout | from_json | default({}) }}"
+    - name: "Convert output to JSON format"
+      set_fact:
+        jsondata: "{{ result.stdout | from_json | default({}) }}"
 
-  - name: "{{ recipe_name }}: Get the GC Service process pid and status."
-    set_fact:
-      gc_process_pid: "{{ jsondata.gcService_process.process_pid | default('') }}"
-      gc_process_status: "{{ jsondata.gcService_process.process_status | default('') }}"
-    when: jsondata.gcService_process is defined
+    - name: "{{ recipe_name }}: Get the GC Service process pid and status."
+      set_fact:
+        gc_process_pid: "{{ jsondata.gcService_process.process_pid | default('') }}"
+        gc_process_status: "{{ jsondata.gcService_process.process_status | default('') }}"
+      when: jsondata.gcService_process is defined
 
-  - name: Kill the GC Service process if it was found
-    shell: kill -9 {{ gc_process_pid }}
-    when: gc_process_pid is defined and gc_process_pid | length > 0 and (gc_process_status == "sleeping" or gc_process_status == "disk-sleep" or gc_process_status == "running")
+    # Check if gc service exists or not
+    - name: Check if the GC Service process with PID exists
+      shell: "kill -0 {{ gc_process_pid }}"
+      register: check_gc_process
+      failed_when: false
+      changed_when: false
+      when:
+        - gc_process_pid is defined
+        - gc_process_pid | length > 0
 
-  - name: "{{ recipe_name }}: Unmount filesystem if mounted"
-    when: jsondata.btrfs_process is defined
-    command: sudo umount {{ jsondata.btrfs_process.mount_point }}
-    register: unmount_result
-    ignore_errors: true
-    changed_when: unmount_result.rc == 0
+    - name: Kill the GC Service process if it exists and is in a valid state
+      shell: "kill -9 {{ gc_process_pid }}"
+      when:
+        - gc_process_pid is defined
+        - gc_process_pid | length > 0
+        - gc_process_status in ['sleeping', 'disk-sleep', 'running']
+        - check_gc_process.rc == 0
 
-  - name: "{{ recipe_name }}: Get the ublk Service process pid and status."
-    set_fact:
-      ublk_process_pid: "{{ jsondata.ublk_process.process_pid | default('') }}"
-      ublk_process_status: "{{ jsondata.ublk_process.process_status | default('') }}"
-    when: jsondata.ublk_process is defined
+    - name: "{{ recipe_name }}: Unmount filesystem if mounted"
+      when: jsondata.btrfs_process is defined
+      command: sudo umount {{ jsondata.btrfs_process.mount_point }}
+      register: unmount_result
+      ignore_errors: true
+      changed_when: unmount_result.rc == 0
 
-  - name: Kill the ublk Service process if it was found
-    shell: sudo kill -9 {{ ublk_process_pid }}
-    when: ublk_process_pid is defined and ublk_process_pid | length > 0 and (ublk_process_status == "sleeping" or ublk_process_status == "disk-sleep" or ublk_process_status == "running")
-  
-  - name: "{{ recipe_name }}: Get the nisd Service process pid and status."
-    set_fact:
-      nisd_process_pid: "{{ jsondata.nisd_process.process_pid | default('') }}"
-      nisd_process_status: "{{ jsondata.nisd_process.process_status | default('') }}"
-    when: jsondata.nisd_process is defined
+    - name: "{{ recipe_name }}: Get the ublk Service process pid and status."
+      set_fact:
+        ublk_process_pid: "{{ jsondata.ublk_process.process_pid | default('') }}"
+        ublk_process_status: "{{ jsondata.ublk_process.process_status | default('') }}"
+      when: jsondata.ublk_process is defined
 
-  - name: Kill the nisd process if it was found
-    shell: sudo kill -9 {{ nisd_process_pid }}
-    when: nisd_process_pid is defined and nisd_process_pid | length > 0 and (nisd_process_status == "sleeping" or nisd_process_status == "disk-sleep" or nisd_process_status == "running")
-  
-  - name: "Kill the processes after recipe execution"
-    set_fact:
-       kill_peer="{{lookup('niova_raftprocess', 'kill', raft_processes[item]['process_uuid'], wantlist=True)}}"
-    when: raft_processes[item]['process_status'] == "running" or raft_processes[item]['process_status'] == "paused"
-    loop: "{{ range(0, raft_processes | length) | list }}"
+    - name: Kill the ublk Service process if it was found
+      shell: sudo kill -9 {{ ublk_process_pid }}
+      when: ublk_process_pid is defined and ublk_process_pid | length > 0 and (ublk_process_status == "sleeping" or ublk_process_status == "disk-sleep" or ublk_process_status == "running")
 
-  - name: Find directories to delete
-    find:
+    - name: "{{ recipe_name }}: Get the nisd Service process pid and status."
+      set_fact:
+        nisd_process_pid: "{{ jsondata.nisd_process.process_pid | default('') }}"
+        nisd_process_status: "{{ jsondata.nisd_process.process_status | default('') }}"
+      when: jsondata.nisd_process is defined
+
+    - name: Kill the nisd process if it was found
+      shell: sudo kill -9 {{ nisd_process_pid }}
+      when: nisd_process_pid is defined and nisd_process_pid | length > 0 and (nisd_process_status == "sleeping" or nisd_process_status == "disk-sleep" or nisd_process_status == "running")
+
+    - name: "Kill the processes after recipe execution"
+      set_fact: kill_peer="{{lookup('niova_raftprocess', 'kill', raft_processes[item]['process_uuid'], wantlist=True)}}"
+      when: raft_processes[item]['process_status'] == "running" or raft_processes[item]['process_status'] == "paused"
+      loop: "{{ range(0, raft_processes | length) | list }}"
+
+    - name: Find directories to delete
+      find:
         paths: /home/runner/work/niovad/niovad/holon_log
-        patterns: 'dbi-dbo,gc-downloaded-obj,dv-downloaded-obj'
+        patterns: "dbi-dbo,gc-downloaded-obj,dv-downloaded-obj"
         file_type: directory
-        recurse: yes  # To search in all subdirectories
-    register: found_dirs
+        recurse: yes # To search in all subdirectories
+      register: found_dirs
 
-  - name: Delete dbi-dbo directories if found
-    file:
+    - name: Delete dbi-dbo directories if found
+      file:
         path: "{{ item.path }}"
         state: absent
-    loop: "{{ found_dirs.files }}"
-    when: found_dirs.matched > 0
+      loop: "{{ found_dirs.files }}"
+      when: found_dirs.matched > 0
 
-  - pause:
-      seconds: 2
+    - pause:
+        seconds: 2
 
-  - name: Find s3DV_nisd.device file
-    find:
-      paths: /home/runner/work/niovad/niovad/holon_log
-      patterns: 's3DV_nisd.device'
-      file_type: file
-      recurse: yes  # To search in all subdirectories
-    register: found_file
+    - name: Find s3DV_nisd.device file
+      find:
+        paths: /home/runner/work/niovad/niovad/holon_log
+        patterns: "s3DV_nisd.device"
+        file_type: file
+        recurse: yes # To search in all subdirectories
+      register: found_file
 
-  - name: Delete s3DV_nisd.device file if it exists
-    file:
-      path: "{{ item.path }}"
-      state: absent
-    loop: "{{ found_file.files }}"
-    when: found_file.matched > 0
+    - name: Delete s3DV_nisd.device file if it exists
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ found_file.files }}"
+      when: found_file.matched > 0
 
-  - name: Check if minio data directory exists
-    stat:
-       path: /home/runner/work/niovad/niovad/build_dir/minio_data/paroscale-test
-    register: directory_stat
+    - name: Check if minio data directory exists
+      stat:
+        path: /home/runner/work/niovad/niovad/build_dir/minio_data/paroscale-test
+      register: directory_stat
 
-  - name: Delete minio data directory if it exists
-    file:
-      path: /home/runner/work/niovad/niovad/build_dir/minio_data/paroscale-test
-      state: absent
-      force: yes
-    #ignore_errors: yes
-    when: directory_stat.stat.exists
+    - name: Delete minio data directory if it exists
+      file:
+        path: /home/runner/work/niovad/niovad/build_dir/minio_data/paroscale-test
+        state: absent
+        force: yes
+      #ignore_errors: yes
+      when: directory_stat.stat.exists
 
-  - pause:
-      seconds: 2
+    - pause:
+        seconds: 2
 
-  - name: "Check status post run"
-    debug:
-      msg: "If recipe was rescued for post run, make sure we return error"
-    failed_when: recipe_result == True
+    - name: "Check status post run"
+      debug:
+        msg: "If recipe was rescued for post run, make sure we return error"
+      failed_when: recipe_result == True
