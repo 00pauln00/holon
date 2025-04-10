@@ -29,29 +29,29 @@ class Minio:
                     "server",
                     self.minio_path,
                     "--console-address",
-                    ":8000",
+                    ":2000",
                     "--address",
-                    ":8001"
+                    ":2090"
                 ]
             with open(self.s3_server_log, "w") as fp:
-                process_popen = subprocess.Popen(command, shell=True, stderr=fp,stdout=subprocess.PIPE, text=True)
-
+                process_popen = subprocess.Popen(command, stderr=fp,stdout=subprocess.PIPE, text=True)
+                
             if process_popen.poll() is None:
                 logging.info("MinIO server started successfully in the background.")
             else:
                 logging.error(f"MinIO server failed to start: {process_popen.stderr}")
                 raise subprocess.SubprocessError(process_popen.returncode)
 
-            # self._update_recipe_conf(process_popen)
+            self._update_recipe_conf(process_popen)
                         
             return [process_popen.pid]
         
-    # def stop(self):
-    #     try:
-    #         subprocess.run(["pkill", "minio"], check=True)
-    #         logging.info("MinIO server stopped successfully.")
-    #     except subprocess.CalledProcessError as e:
-    #         logging.error(f"Failed to stop MinIO server: {e}")
+    def stop(self):
+        try:
+            subprocess.run(["pkill", "minio"], check=True)
+            logging.info("MinIO server stopped successfully.")
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Failed to stop MinIO server: {e}")
 
     def _update_recipe_conf(self, process_popen):
         genericcmdobj = GenericCmds()
@@ -74,36 +74,30 @@ class Minio:
             recipe_conf['s3_process']['process_status'] = minio_status
             genericcmdobj.recipe_json_dump(recipe_conf)
 
-    def pause(self, minio_pid, sleep_time = 10):
+    def pause(self, minio_pid):        
         process_obj = psutil.Process(int(minio_pid))
-        
-        print(f"MINIO PROCESS OBJ: {process_obj}")
-        
-        logging.info("Pause the minio process by sending sigstop")
         
         # Pause the minio process
         try:
             process_obj.send_signal(signal.SIGSTOP)
+            print("MinIO has been paused.")
         except (ValueError, psutil.NoSuchProcess) as e:
             logging.error(f"minio: {e}")
             return -1
-
-        '''
-        To check if process is paused
-        '''
-        self.Wait_for_process_status("stopped", minio_pid)
-        self.process_status = "paused"
+            
+        return 0
+    
+    def resume(self, minio_pid):
+        process_obj = psutil.Process(int(minio_pid))
         
-        time.sleep(sleep_time)
-        
-        # Resume the minio process
+        print(f"STATUS: {process_obj.status()}")
+       
         try:
             process_obj.send_signal(signal.SIGCONT)
+            print("MinIO has been resumed.")
         except subprocess.SubprocessError as e:
             logging.error("Failed to send CONT signal with error: %s" % os.stderror(e.errno))
-            return -1
-
-        self.process_status = "running"
+            return -1        
         
         return 0
         
@@ -250,10 +244,10 @@ class LookupModule(LookupBase):
                 
                 return result
 
-            # elif sub_cmd == "stop":
-            #     minio = Minio(cluster_params, "")
-            #     minio.stop()
-            #     return []  
+            elif sub_cmd == "stop":
+                minio = Minio(cluster_params, "")
+                minio.stop()
+                return []  
             
             elif sub_cmd == "pause":
                 minio_path = terms[2]
@@ -262,6 +256,16 @@ class LookupModule(LookupBase):
                 minio = Minio(cluster_params, minio_path)
                 
                 minio.pause(minio_pid)
+                
+                return []
+            
+            elif sub_cmd == "resume":
+                minio_path = terms[2]
+                minio_pid = terms[3]
+                
+                minio = Minio(cluster_params, minio_path)
+                
+                minio.resume(minio_pid)
                 
                 return []
         

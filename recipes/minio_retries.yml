@@ -19,9 +19,9 @@
         - name: "Generate 1000 vblk entries"
           vars:
             dbi_param:
-              maxVblks: "1000"
-              vbAmount: "100"
-              vblkPer: "100"
+              vbAmount: "500000"
+              maxVblks: "10000"
+              vblkPer: "10000"
               maxPunches: "0"
               punchAmount: "0"
               seqStart: "0"
@@ -32,6 +32,7 @@
               blockSizeMax: "32"
               punchesPer: "0"
               maxPunchSize: "1"
+              chunk: "1"
             input_param:
               total_chunks: 1
               is_random: true
@@ -43,24 +44,74 @@
 
         - name: "{{ recipe_name }}: Pause the minio server"
           vars:
-            s3_dir: "/local/rutvikraj/minio_data"
+            s3_dir: "/local/minio_data"
           debug:
             msg:
-              - "{{ lookup('obj_storage', 'minio', 'pause', s3_dir, minio_pid['msg'][0][0], wantlist=True) }}"
-          # when: s3Support == "true"
+              - "{{ lookup('obj_storage', 'minio', 'pause', s3_dir, minio_pid.msg[0][0], wantlist=True) }}"
 
-        - name: "{{ recipe_name }}: Start gc algorithm"
+        # - name: "{{ recipe_name }}: Start gc algorithm"
+        #   vars:
+        #     input_params:
+        #       debug_mode: "false"
+        #       chunk: "{{ chunk['msg'][0] }}"
+        #   debug:
+        #     msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
+        #   register: gc_output
+
+        - name: "{{ recipe_name }}: Start GCService"
           vars:
-            input_params:
-              debug_mode: "false"
-              chunk: "{{ chunk['msg'][0] }}"
+            params:
+              {
+                "dry_run": false,
+                "del_dbo": true,
+                "partition": false,
+                "total_chunks": 0,
+                "force_gc": true,
+              }
           debug:
-            msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
-          register: gc_output
+            msg:
+              - "{{ lookup('garbage_collection', 'daemon', 'start', params, wantlist=True) }}"
 
-        - debug:
-            msg: "Check return code of GC Process."
-          failed_when: gc_output['msg'][0] != "0"
+        - name: "{{ recipe_name }}: Resume the minio server"
+          vars:
+            s3_dir: "/local/minio_data"
+          debug:
+            msg:
+              - "{{ lookup('obj_storage', 'minio', 'resume', s3_dir, minio_pid.msg[0][0], wantlist=True) }}"
+
+        - name: "{{ recipe_name }}: Wait until GC marker file present."
+          vars:
+            params: { "chunk": "1" }
+          debug:
+            msg: "Waiting for GC Marker File"
+          until: lookup('obj_storage', 'get_markers', params, wantlist=True)[0][0] is not none
+          retries: 500
+          delay: 2
+
+        - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
+          vars:
+            params: { "chunk": "1" }
+            Sequence: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True)[0] }}"
+            gc_marker: "{{ Sequence[0] }}"
+            nisd_marker: "{{ Sequence[1] }}"
+          debug:
+            msg: "Wait until marker values gets match"
+          until: gc_marker == nisd_marker
+          retries: 500
+          delay: 2
+
+        # - name: "{{ recipe_name }}: Start gc algorithm"
+        #   vars:
+        #     input_params:
+        #       debug_mode: "false"
+        #       chunk: "{{ chunk['msg'][0] }}"
+        #   debug:
+        #     msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
+        #   register: gc_output
+
+        # - debug:
+        #     msg: "Check return code of GC Process."
+        #   failed_when: gc_output['msg'][0] != "0"
 
         - name: "{{ recipe_name }}: Start data validation"
           vars:
@@ -69,6 +120,10 @@
             msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
 
       rescue:
+        # # TODO Remove below step after testing is done
+        # - name: Stop ansible minio
+        #   shell: kill -9 "{{ minio_pid.msg[0][0] }}"
+
         - name: "Recipe: {{ recipe_name }} failed"
           set_fact:
             terminate_recipe: true
