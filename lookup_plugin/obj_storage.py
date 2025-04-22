@@ -132,7 +132,7 @@ class s3_operations:
         dbi_path = os.path.join(self.base_path, "gc-download")
         # Print half of the lines
         for file in half_lines:
-           if os.path.basename(file) == "solutionArray":
+           if "solutionArray" in os.path.basename(file):
                continue 
            obj = os.path.join(dbi_path, file)
            os.remove(obj)
