@@ -1,8 +1,8 @@
-- name: "minio_retries"
+- name: "gc_test_by_pausing_minio"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "minio_retries"
+    recipe_name: "gc_test_by_pausing_minio"
     parent: none
 
   tasks:
