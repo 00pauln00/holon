@@ -6,6 +6,9 @@ import psutil
 import time
 from genericcmd import GenericCmds
 from lookup_plugin.helper import *
+import signal
+from raftprocess import RaftProcess
+
 
 GET_VDEV = "get_vdev_from_dummy_generator.json"
 
@@ -18,6 +21,7 @@ class Minio:
 
     def start(self):
         s3Support = self.cluster_params['s3Support']
+        
         if s3Support:
             create_dir(self.minio_path)
             command = [
@@ -30,18 +34,18 @@ class Minio:
                     ":2090"
                 ]
             with open(self.s3_server_log, "w") as fp:
-                process_popen = subprocess.Popen(command, shell=True, stdout=fp, stderr=fp)
-
+                process_popen = subprocess.Popen(command, stderr=fp,stdout=subprocess.PIPE, text=True)
+                
             if process_popen.poll() is None:
                 logging.info("MinIO server started successfully in the background.")
             else:
-                logging.info("MinIO server failed to start")
-                logging.error(f"MinIO server failed to start: {stderr.decode().strip()}")
+                logging.error(f"MinIO server failed to start: {process_popen.stderr}")
                 raise subprocess.SubprocessError(process_popen.returncode)
 
-            time.sleep(2)
             self._update_recipe_conf(process_popen)
-
+                        
+            return [process_popen.pid]
+        
     def stop(self):
         try:
             subprocess.run(["pkill", "minio"], check=True)
@@ -70,7 +74,33 @@ class Minio:
             recipe_conf['s3_process']['process_status'] = minio_status
             genericcmdobj.recipe_json_dump(recipe_conf)
 
-
+    def pause(self, minio_pid):        
+        process_obj = psutil.Process(int(minio_pid))
+        
+        # Pause the minio process
+        try:
+            process_obj.send_signal(signal.SIGSTOP)
+            print("MinIO has been paused.")
+        except (ValueError, psutil.NoSuchProcess) as e:
+            logging.error(f"minio: {e}")
+            return -1
+            
+        return 0
+    
+    def resume(self, minio_pid):
+        process_obj = psutil.Process(int(minio_pid))
+        
+        print(f"STATUS: {process_obj.status()}")
+       
+        try:
+            process_obj.send_signal(signal.SIGCONT)
+            print("MinIO has been resumed.")
+        except subprocess.SubprocessError as e:
+            logging.error("Failed to send CONT signal with error: %s" % os.stderror(e.errno))
+            return -1        
+        
+        return 0
+        
 class s3_operations:
     def __init__(self, cluster_params):
         self.cluster_params = cluster_params
@@ -210,13 +240,34 @@ class LookupModule(LookupBase):
                 # to store minio data.
                 minio_path = terms[2]
                 minio = Minio(cluster_params, minio_path)
-                minio.start()
-                return []
+                result = minio.start()
+                
+                return result
 
             elif sub_cmd == "stop":
                 minio = Minio(cluster_params, "")
                 minio.stop()
                 return []  
+            
+            elif sub_cmd == "pause":
+                minio_path = terms[2]
+                minio_pid = terms[3]
+                
+                minio = Minio(cluster_params, minio_path)
+                
+                minio.pause(minio_pid)
+                
+                return []
+            
+            elif sub_cmd == "resume":
+                minio_path = terms[2]
+                minio_pid = terms[3]
+                
+                minio = Minio(cluster_params, minio_path)
+                
+                minio.resume(minio_pid)
+                
+                return []
         
         elif command == "operation":
             operation = terms[1]
