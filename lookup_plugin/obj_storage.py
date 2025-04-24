@@ -24,6 +24,14 @@ class Minio:
         
         minio_path = shutil.which("minio")
         
+        binary_dir = os.getenv('NIOVA_BIN_PATH')
+        minio_bin_path = '/%s/bin/minio' % binary_dir
+        
+        if not minio_path:
+            minio_path = minio_bin_path
+            
+        print(f"MinIO bin path =====> {minio_path}")
+        
         if s3Support:
             create_dir(self.minio_path)
             command = [
