@@ -30,7 +30,7 @@ class Minio:
         if not minio_path:
             minio_path = minio_bin_path
             
-        print(f"MinIO bin path =====> {minio_path}")
+        print(f"MinIO bin path =====> {binary_dir}")
         
         if s3Support:
             create_dir(self.minio_path)
