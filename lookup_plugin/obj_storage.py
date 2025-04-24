@@ -22,10 +22,12 @@ class Minio:
     def start(self):
         s3Support = self.cluster_params['s3Support']
         
+        minio_path = shutil.which("minio")
+        
         if s3Support:
             create_dir(self.minio_path)
             command = [
-                    "/home/runner/work/niova-block/niova-block/minio",
+                    minio_path,
                     "server",
                     self.minio_path,
                     "--console-address",
