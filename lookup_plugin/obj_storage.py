@@ -36,7 +36,7 @@ class Minio:
         if s3Support:
             create_dir(self.minio_path)
             command = [
-                    binary_dir,
+                    minio_path_temp,
                     "server",
                     self.minio_path,
                     "--console-address",
