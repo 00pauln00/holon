@@ -7,7 +7,7 @@ import time
 from genericcmd import GenericCmds
 from lookup_plugin.helper import *
 import signal
-from raftprocess import RaftProcess
+import time
 
 
 GET_VDEV = "get_vdev_from_dummy_generator.json"
@@ -19,18 +19,31 @@ class Minio:
         self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/"
         self.s3_server_log = f"{self.base_path}/s3_server.log"
         
-    def get_actual_minio_pid(self, parent_pid):
-        try:
-            parent = psutil.Process(parent_pid)
-            children = parent.children(recursive=True)
-            for child in children:
-                if "minio" in child.name().lower():
-                    logging.info(f"Found actual MinIO PID: {child.pid}")
-                    return child.pid
-            logging.warning("MinIO child process not found.")
-        except Exception as e:
-            logging.error(f"Error finding MinIO child: {e}")
-        return None
+    def get_actual_minio_pid(self, parent_pid, retries=5, delay=1):
+        for attempt in range(retries):
+            try:
+                # First try: Look for child processes
+                parent = psutil.Process(parent_pid)
+                for child in parent.children(recursive=True):
+                    if "minio" in child.name().lower():
+                        logging.info(f"[Attempt {attempt}] Found MinIO child PID: {child.pid}")
+                        return child.pid
+            except Exception as e:
+                logging.warning(f"[Attempt {attempt}] Error getting MinIO child: {e}")
+
+            # Fallback: Look globally for a minio process
+            for proc in psutil.process_iter(attrs=["pid", "name", "cmdline"]):
+                try:
+                    if "minio" in proc.info["name"].lower() or "minio" in " ".join(proc.info["cmdline"]).lower():
+                        logging.info(f"[Attempt {attempt}] Found MinIO via global scan: {proc.pid}")
+                        return proc.pid
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+
+            logging.info(f"[Attempt {attempt}] MinIO process not found, retrying in {delay}s...")
+            time.sleep(delay)
+
+        raise RuntimeError("Could not find actual MinIO process PID")
 
     def start(self):
         s3Support = self.cluster_params['s3Support']
