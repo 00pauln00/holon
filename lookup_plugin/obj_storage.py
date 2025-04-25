@@ -24,7 +24,7 @@ class Minio:
         
         binary_dir = os.getenv('NIOVA_BIN_PATH')
         
-        print(f"Niova bin path {binary_dir}")
+        logging.info("Niova bin path ==>", binary_dir)
         
         minio_path_temp = shutil.which("minio")
                 
