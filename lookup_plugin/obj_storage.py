@@ -22,6 +22,10 @@ class Minio:
     def start(self):
         s3Support = self.cluster_params['s3Support']
         
+        binary_dir = os.getenv('NIOVA_BIN_PATH')
+        
+        print(f"Niova bin path {binary_dir}")
+        
         minio_path_temp = shutil.which("minio")
                 
         if not minio_path_temp:
