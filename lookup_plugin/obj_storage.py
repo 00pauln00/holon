@@ -145,7 +145,7 @@ class s3_operations:
         vdev = input_param.get('vdev')
         if vdev == GET_VDEV:
             dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
-            json_data = load_parameters_from_json(f"{dbi_path}/{input_param['chunk']}/DV/dummy_generator.json")
+            json_data = load_parameters_from_json(f"{dbi_path}/dataVal/{input_param['chunk']}/dummy_generator.json")
             vdev = str(json_data['Vdev'])
         elif vdev == None:
             vdev = ""
@@ -189,7 +189,7 @@ class s3_operations:
         else:
             dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
             if dbi_path:
-                json_path = f"{dbi_path}/{input_param['chunk']}/DV/dummy_generator.json"
+                json_path = f"{dbi_path}/dataVal/{input_param['chunk']}/dummy_generator.json"
                 json_data = load_parameters_from_json(json_path)
                 input_param['vdev'] = str(json_data.get('Vdev', input_param.get('vdev', 'default_value')))  # Use the vdev from JSON if available
                 return process_and_get_markers(input_param)

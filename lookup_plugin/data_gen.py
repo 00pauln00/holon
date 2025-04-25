@@ -15,7 +15,7 @@ class data_generator:
         dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
 
         if dbi_path != None:
-            json_data = load_parameters_from_json(f"{dbi_path}/{dgen_args['chunk']}/DV/dummy_generator.json")
+            json_data = load_parameters_from_json(f"{dbi_path}/dataVal/{dgen_args['chunk']}/dummy_generator.json")
             dgen_args['chunk'] = str(json_data['TotalChunkSize'])
             dgen_args["seqStart"] = str(json_data['SeqEnd'] + 1)
             dgen_args["vdev"] = str(json_data['Vdev'])
@@ -58,7 +58,7 @@ class data_generator:
             if chunk_no not in entries:
                 dbi_path = None
             else:
-                json_data = load_parameters_from_json(f"{dbi_path}/{dgen_args['chunk']}/DV/dummy_generator.json")
+                json_data = load_parameters_from_json(f"{dbi_path}/dataVal/{dgen_args['chunk']}/dummy_generator.json")
                 dgen_args["vdev"] = str(json_data['Vdev'])
                 dgen_args["seqStart"] = str(json_data['SeqEnd'] + 1)
                 dbicount = str(json_data['TMinDbiFileForForceGC'])
@@ -169,7 +169,7 @@ class data_validator:
         dv_path = f"{self.base_path}/dv-downloaded-obj"
         
         if dbi_path != None:
-            json_data = load_parameters_from_json(f"{dbi_path}/{chunk}/DV/dummy_generator.json")
+            json_data = load_parameters_from_json(f"{dbi_path}/dataVal/{chunk}/dummy_generator.json")
             vdev = str(json_data['Vdev'])
 
         process = subprocess.Popen([bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', self.s3_config, '-b', S3_BUCKET, '-l', self.data_validate_log, '-ll', '4'])

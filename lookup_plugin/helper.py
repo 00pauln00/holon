@@ -90,7 +90,7 @@ def clone_dbi_files(cluster_params, chunk):
 
 # generates the dummy generator config path
 def get_dummy_gen_config_path(data_dir, chunk):
-    return os.path.join(data_dir, str(chunk), "DV", "dummy_generator.json")
+    return os.path.join(data_dir, "dataVal",str(chunk), "dummy_generator.json")
 
 def read_file_list(file_path):
     try:
