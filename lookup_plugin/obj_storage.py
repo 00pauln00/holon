@@ -22,20 +22,19 @@ class Minio:
     def start(self):
         s3Support = self.cluster_params['s3Support']
         
-        binary_dir = os.getenv('NIOVA_BIN_PATH')
-        
-        logging.info("Niova bin path ==> %s", binary_dir)
-        
-        minio_path_temp = shutil.which("minio")
+        minio_bin_path = shutil.which("minio")
                 
-        if not minio_path_temp:
-            minio_path_temp = '/home/runner/work/niovad/niovad/build_dir/minio'
+        if not minio_bin_path:
+            binary_dir = os.getenv('NIOVA_BIN_PATH')
+            minio_ci_bin_path = os.path.join(binary_dir, 'minio')
+            
+            minio_bin_path = minio_ci_bin_path
                     
         if s3Support:
             create_dir(self.minio_path)
             
             command = [
-                    minio_path_temp,
+                    minio_bin_path,
                     "server",
                     self.minio_path,
                     "--console-address",
@@ -45,7 +44,13 @@ class Minio:
                 ]
             
             with open(self.s3_server_log, "w") as fp:
-                process_popen = subprocess.Popen(command, stderr=fp,stdout=subprocess.PIPE, text=True)
+                process_popen = subprocess.Popen(
+                                                command,
+                                                stdout=fp,
+                                                stderr=subprocess.STDOUT,
+                                                text=True,
+                                                preexec_fn=os.setsid  # Start a new session/process group
+                                            )
                 
             if process_popen.poll() is None:
                 logging.info("MinIO server started successfully in the background.")
@@ -100,9 +105,7 @@ class Minio:
     
     def resume(self, minio_pid):
         process_obj = psutil.Process(int(minio_pid))
-        
-        print(f"STATUS: {process_obj.status()}")
-       
+               
         try:
             process_obj.send_signal(signal.SIGCONT)
             print("MinIO has been resumed.")
