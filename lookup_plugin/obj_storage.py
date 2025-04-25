@@ -23,15 +23,10 @@ class Minio:
         s3Support = self.cluster_params['s3Support']
         
         minio_path_temp = shutil.which("minio")
-        
-        binary_dir = os.getenv('NIOVA_BIN_PATH')
-        minio_bin_path = '/%s/bin/minio' % binary_dir
-        bin_path = os.path.normpath(minio_bin_path)
-        
+                
         if not minio_path_temp:
             minio_path_temp = '/home/runner/work/niova-block/niova-block/minio'
             
-        print(f"bin_path {bin_path} binary_dir {binary_dir} minio_bin_path {minio_bin_path}")
         
         if s3Support:
             create_dir(self.minio_path)
@@ -44,6 +39,7 @@ class Minio:
                     "--address",
                     ":2090"
                 ]
+            
             with open(self.s3_server_log, "w") as fp:
                 process_popen = subprocess.Popen(command, stderr=fp,stdout=subprocess.PIPE, text=True)
                 
