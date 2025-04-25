@@ -50,10 +50,6 @@
               - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
           register: chunk
 
-        # - name: Wait for 60 seconds
-        #   pause:
-        #     seconds: 60
-
         - name: Run df -h
           command: df -h
           register: df_output
@@ -83,19 +79,6 @@
         - name: Create file of available size in that directory
           command: fallocate -l {{ (last_mount_avail_bytes | int) - 900000 }} {{ base_dir }}/{{ raft_uuid }}/{{ minio_dir }}/available_file
 
-        # - name: "{{ recipe_name }}: Starting gc tester with not enough space on s3"
-        #   vars:
-        #     input_params:
-        #       debug_mode: "false"
-        #       chunk: "{{ chunk['msg'][0] }}"
-        #   debug:
-        #     msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
-        #   register: gc_output
-
-        # - debug:
-        #     msg: "Check return code of GC Process. {{ gc_output['msg'][0] }}"
-        #   failed_when: gc_output['msg'][0] == "0"
-
         - name: "{{ recipe_name }}: Start GCService"
           vars:
             params:
@@ -105,7 +88,6 @@
                 "partition": false,
                 "total_chunks": 0,
                 "force_gc": true,
-                "dall": true,
               }
           debug:
             msg:
@@ -114,36 +96,9 @@
         - name: Remove extra file
           command: rm -rf {{ base_dir }}/{{ raft_uuid }}/{{ minio_dir }}/available_file
 
-        # TODO Test with big write in the first iteration and not having the 2nd iteration
-        # - name: "Generate 1000 vblk entries"
-        #   vars:
-        #     dbi_param:
-        #       vbAmount: "1000"
-        #       maxVblks: "100"
-        #       vblkPer: "100"
-        #       maxPunches: "0"
-        #       punchAmount: "0"
-        #       seqStart: "0"
-        #       startVblk: "0"
-        #       genType: "1"
-        #       seed: "1"
-        #       blockSize: "16"
-        #       blockSizeMax: "32"
-        #       punchesPer: "0"
-        #       maxPunchSize: "1"
-        #       chunk: "1"
-        #     input_param:
-        #       total_chunks: 1
-        #       is_random: true
-        #       remove_files: false
-        #   debug:
-        #     msg:
-        #       - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
-        #   register: chunk
-
-        # - name: Wait for 10 minutes to let GC perform
-        #   pause:
-        #     minutes: 10
+        - name: Wait for 2 minutes 10 secondsto let GC perform
+          pause:
+            seconds: 130
 
         - name: "{{ recipe_name }}: Wait until GC marker file present."
           vars:
