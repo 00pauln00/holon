@@ -18,6 +18,19 @@ class Minio:
         self.minio_path = minio_path
         self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/"
         self.s3_server_log = f"{self.base_path}/s3_server.log"
+        
+    def get_actual_minio_pid(self, parent_pid):
+        try:
+            parent = psutil.Process(parent_pid)
+            children = parent.children(recursive=True)
+            for child in children:
+                if "minio" in child.name().lower():
+                    logging.info(f"Found actual MinIO PID: {child.pid}")
+                    return child.pid
+            logging.warning("MinIO child process not found.")
+        except Exception as e:
+            logging.error(f"Error finding MinIO child: {e}")
+        return None
 
     def start(self):
         s3Support = self.cluster_params['s3Support']
@@ -59,6 +72,13 @@ class Minio:
                 raise subprocess.SubprocessError(process_popen.returncode)
 
             self._update_recipe_conf(process_popen)
+            
+            if shutil.which("minio") is None:
+                self._actual_minio_pid = self.get_actual_minio_pid(process_popen.pid)
+                if not self._actual_minio_pid:
+                    raise RuntimeError("Could not find actual MinIO process PID")
+
+                return [self._actual_minio_pid]
                         
             return [process_popen.pid]
         
