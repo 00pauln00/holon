@@ -24,12 +24,12 @@ class Minio:
         
         binary_dir = os.getenv('NIOVA_BIN_PATH')
         
-        logging.info("Niova bin path ==>", binary_dir)
+        logging.info("Niova bin path ==> %s", binary_dir)
         
         minio_path_temp = shutil.which("minio")
                 
         if not minio_path_temp:
-            minio_path_temp = '/home/runner/work/niova-block/niova-block/minio'
+            minio_path_temp = '/home/runner/work/niovad/niovad/build_dir/minio'
                     
         if s3Support:
             create_dir(self.minio_path)
