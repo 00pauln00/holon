@@ -202,8 +202,7 @@ class helper:
             print(f"Error: {e}") 
         return full_path
 
-    def create_gc_partition(self, dir = 'gc', total_blocks = 27):
-        # mount_pt = os.path.join(self.base_path, 'gc')
+    def create_gc_partition(self, dir, total_blocks):
         dir_name_abs = os.path.join(self.base_path, dir)
         dir_name = dir
 
