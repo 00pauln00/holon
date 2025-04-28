@@ -61,14 +61,15 @@
         - check_gc_process.rc == 0
 
     # Update the MinIO port when port is changed while starting MinIO
-    - name: "{{ recipe_name }}: Get the GC Service process pid and status."
+    - name: "{{ recipe_name }}: Get the MinIO process pid and status."
       set_fact:
         s3_process_pid: "{{ jsondata.s3_process.process_pid | default('') }}"
+        s3_process_status: "{{ jsondata.nisd_process.process_status | default('') }}"
       when: jsondata.s3_process is defined
 
     - name: Kill MinIO process on specified port 2090 by current user with pid {{ minio_pid.stdout }}
       shell: kill -9 {{ s3_process_pid }}
-      when: s3_process_pid is defined
+      when: s3_process_pid is defined and s3_process_pid | length > 0 and (s3_process_status == "sleeping" or s3_process_status == "disk-sleep" or s3_process_status == "running")
 
     - name: "{{ recipe_name }}: Unmount filesystem if mounted"
       when: jsondata.btrfs_process is defined
