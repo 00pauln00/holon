@@ -60,6 +60,16 @@
         - gc_process_status in ['sleeping', 'disk-sleep', 'running']
         - check_gc_process.rc == 0
 
+    # Update the MinIO port when port is changed while starting MinIO
+    - name: Get PID of MinIO process running on a specific port by current user
+      shell: pgrep -u {{ ansible_user_id }} -af minio | grep ":2090" | awk '{print $1}' | head -n 1 | tr -d '\n'
+      register: minio_pid
+      failed_when: false
+
+    - name: Kill MinIO process on specified port 2090 by current user with pid {{ minio_pid.stdout }}
+      shell: kill -9 {{ minio_pid.stdout }}
+      when: minio_pid.stdout != ""
+
     - name: "{{ recipe_name }}: Unmount filesystem if mounted"
       when: jsondata.btrfs_process is defined
       command: sudo umount {{ jsondata.btrfs_process.mount_point }}
