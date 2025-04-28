@@ -61,14 +61,14 @@
         - check_gc_process.rc == 0
 
     # Update the MinIO port when port is changed while starting MinIO
-    - name: Get PID of MinIO process running on a specific port by current user
-      shell: pgrep -u {{ ansible_user_id }} -af minio | grep ":2090" | awk '{print $1}' | head -n 1 | tr -d '\n'
-      register: minio_pid
-      failed_when: false
+    - name: "{{ recipe_name }}: Get the GC Service process pid and status."
+      set_fact:
+        s3_process_pid: "{{ jsondata.s3_process.process_pid | default('') }}"
+      when: jsondata.s3_process is defined
 
     - name: Kill MinIO process on specified port 2090 by current user with pid {{ minio_pid.stdout }}
-      shell: kill -9 {{ minio_pid.stdout }}
-      when: minio_pid.stdout != ""
+      shell: kill -9 {{ s3_process_pid }}
+      when: s3_process_pid is defined
 
     - name: "{{ recipe_name }}: Unmount filesystem if mounted"
       when: jsondata.btrfs_process is defined

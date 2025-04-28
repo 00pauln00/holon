@@ -51,7 +51,7 @@ class Minio:
                 logging.error(f"MinIO server failed to start: {process_popen.stderr}")
                 raise subprocess.SubprocessError(process_popen.returncode)
 
-            self._update_recipe_conf(process_popen)
+            self._update_recipe_conf(int(process_popen.pid))
                         
             return [process_popen.pid]
          
@@ -62,22 +62,18 @@ class Minio:
         except subprocess.CalledProcessError as e:
             logging.error(f"Failed to stop MinIO server: {e}")
 
-    def _update_recipe_conf(self, process_popen):
+    def _update_recipe_conf(self, pid):
         genericcmdobj = GenericCmds()
         recipe_conf = load_recipe_op_config(self.cluster_params)
 
         if not "s3_process" in recipe_conf:
             recipe_conf['s3_process'] = {}
+            
+        process_obj = psutil.Process(int(pid))
 
-        minio_process = None
-        for child in psutil.Process(process_popen.pid).children(recursive=True):
-            if "minio" in child.name().lower():
-                minio_process = child
-                break
-
-        if minio_process:
-            minio_pid = minio_process.pid
-            minio_status = minio_process.status()
+        if process_obj:
+            minio_pid = process_obj.pid
+            minio_status = process_obj.status()
             logging.info(f"MinIO server PID: {minio_pid}, Status: {minio_status}")
             recipe_conf['s3_process']['process_pid'] = minio_pid
             recipe_conf['s3_process']['process_status'] = minio_status
