@@ -94,9 +94,7 @@ class Minio:
     
     def resume(self, minio_pid):
         process_obj = psutil.Process(int(minio_pid))
-        
-        print(f"STATUS: {process_obj.status()}")
-       
+               
         try:
             process_obj.send_signal(signal.SIGCONT)
             print("MinIO has been resumed.")
