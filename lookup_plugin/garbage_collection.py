@@ -45,7 +45,7 @@ class gc_service:
             if input_params.get("dry_run") in [True, "true"]: cmd.append('-dr=true')
             if input_params.get("del_dbo") in [True, "true"]: cmd.append('-dd=true')
             if input_params.get("force_gc") in [True, "true"]: cmd.append('-f=true')
-            if input_params.get("dall") in [True, "true"]: cmd.append('-dall=true')
+            if input_params.get("terminate_gc") in [True, "true"]: cmd.append('-tgc=true')
 
             with open(self.gc_log, "a+") as fp:
                 print("cmd : ", cmd)
