@@ -1,0 +1,80 @@
+- import_playbook: basic_leader_election2.yml
+  when: ClusterParams['ctype'] == "pumicedb"
+
+- name: "PMDB Client Writes with Multiple App-uuid"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "pmdb_cli_writes_with_multiple_app_uuid"
+     parent: "basic_leader_election2"
+     requirement: "pumicedb"
+     number_of_app_uuids: 100
+     num_writes: 1
+
+  tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
+      include_role:
+        name: common
+        tasks_from: recipe_compatibility_requirement
+
+     #start single client.
+    - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+      include_role:
+        name: common
+        tasks_from: get_new_client_uuid
+      register: client_uuid
+
+    - debug:
+        msg: "Client UUID: {{ client_uuid }}"
+
+    - name: "{{ recipe_name }}: Start client process"
+      include_role:
+        name: common
+        tasks_from: start_client
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
+    #Create set of required number of app_uuids.
+    - name: "{{ recipe_name }}: Get set of required number of app_uuids."
+      include_role:
+        name: common
+        tasks_from: create_app_uuid_set
+      vars:
+        number_of_apps: "{{ number_of_app_uuids }}"
+
+     #Perform write operations on single client. (passing different app uuids from a single client.)
+    - name: "{{ recipe_name }}: Perform write 100 num-writes with 100 app-uuids on single client."
+      include_role:
+         name: common
+         tasks_from: perform_writes
+      vars:
+        pmdb_apps: "{{ pmdb_app_uuids }}"
+        constant_number_of_writes: 1
+        ClientUUID: "{{ client_uuid.stdout }}"
+
+    # Wait until write completes from client
+    - name: "{{ recipe_name}}: Wait until write completes from client."
+      vars:
+        stage: "wait_for_write_compltn"
+        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+      debug:
+        msg: "Waiting for client to finish writing"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
+      retries: 60
+      delay: 1
+      loop: "{{ range(0, pmdb_app_uuids | length) | list }}"
+
+    #Verify client parameters after successful write operations.
+    - name: "{{ recipe_name }}: Verify client parameters."
+      include_role:
+        name: common
+        tasks_from: verify_client_parameters
+      vars:
+        Client_UUID: "{{ client_uuid.stdout }}"
+
+
