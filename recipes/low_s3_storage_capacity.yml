@@ -50,34 +50,20 @@
               - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
           register: chunk
 
-        - name: Run df -h
-          command: df -h
+        - name: Run df -B1 {{ base_dir }}/{{ raft_uuid }}/{{ minio_dir }}
+          command: df -B1 {{ base_dir }}/{{ raft_uuid }}/{{ minio_dir }}
           register: df_output
 
-        - name: Extract last line from df output
+        - name: Get available space in bytes
           set_fact:
-            last_mount_line: "{{ df_output.stdout_lines[-1] }}"
+            avail_bytes: "{{ df_output.stdout_lines[1].split()[3] | int }}"
 
-        - name: Extract available size of the last mount (column 4)
+        - name: Set reduced allocation size (reserve 50MB buffer)
           set_fact:
-            last_mount_avail: "{{ last_mount_line.split()[3] }}"
+            alloc_bytes: "{{ (avail_bytes | int) - (50 * 1024 * 1024) }}"
 
-        - name: Convert available size to bytes (as integer)
-          set_fact:
-            last_mount_avail_bytes: >-
-              {{
-                (
-                  (last_mount_avail[:-1] | float) *
-                  (1024**3 if last_mount_avail[-1] == 'G' else 1024**2)
-                ) | int
-              }}
-
-        - name: Remaining size
-          debug:
-            msg: "{{ last_mount_avail_bytes }}"
-
-        - name: Create file of available size in that directory
-          command: fallocate -l {{ (last_mount_avail_bytes | int) - 900000 }} {{ base_dir }}/{{ raft_uuid }}/{{ minio_dir }}/available_file
+        - name: Create file of available size ({{ alloc_bytes }} bytes) in mount
+          command: fallocate -l {{ alloc_bytes }} {{ base_dir }}/{{ raft_uuid }}/{{ minio_dir }}/available_file
 
         - name: "{{ recipe_name }}: Start GCService"
           vars:
@@ -120,19 +106,6 @@
           until: gc_marker == nisd_marker
           retries: 50
           delay: 2
-
-        # - name: "{{ recipe_name }}: Starting gc tester after making enough space on s3"
-        #   vars:
-        #     input_params:
-        #       debug_mode: "false"
-        #       chunk: "{{ chunk['msg'][0] }}"
-        #   debug:
-        #     msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
-        #   register: gc_output_new
-
-        # - debug:
-        #     msg: "Check return code of GC Process. {{ gc_output_new['msg'][0] }}"
-        #   failed_when: gc_output_new['msg'][0] != "0"
 
         - name: "{{ recipe_name }}: Start data validation"
           vars:
