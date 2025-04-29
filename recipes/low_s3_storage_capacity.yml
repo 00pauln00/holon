@@ -58,9 +58,9 @@
           set_fact:
             avail_bytes: "{{ df_output.stdout_lines[1].split()[3] | int }}"
 
-        - name: Set reduced allocation size (reserve 50MB buffer)
+        - name: Set reduced allocation size (reserve 1MB buffer)
           set_fact:
-            alloc_bytes: "{{ (avail_bytes | int) - (50 * 1024 * 1024) }}"
+            alloc_bytes: "{{ (avail_bytes | int) - (1024 * 1024) }}"
 
         - name: Create file of available size ({{ alloc_bytes }} bytes) in mount
           command: fallocate -l {{ alloc_bytes }} {{ base_dir }}/{{ raft_uuid }}/{{ minio_dir }}/available_file
