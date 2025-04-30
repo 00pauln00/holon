@@ -3,12 +3,9 @@ import os, random
 import subprocess
 import logging
 import psutil
-import time
 from genericcmd import GenericCmds
 from lookup_plugin.helper import *
 import signal
-from raftprocess import RaftProcess
-
 
 GET_VDEV = "get_vdev_from_dummy_generator.json"
 
@@ -23,12 +20,12 @@ class Minio:
         s3Support = self.cluster_params['s3Support']
         
         minio_bin_path = shutil.which("minio")
-        
+
         if not minio_bin_path:
             binary_dir = os.getenv('NIOVA_BIN_PATH')
             minio_ci_bin_path = os.path.join(binary_dir, 'minio')
             minio_bin_path = minio_ci_bin_path
-        
+
         if s3Support:
             create_dir(self.minio_path)
             
@@ -48,7 +45,8 @@ class Minio:
             if process_popen.poll() is None:
                 logging.info("MinIO server started successfully in the background.")
             else:
-                logging.error(f"MinIO server failed to start: {process_popen.stderr}")
+                logging.info("MinIO server failed to start")
+                logging.error(f"MinIO server failed to start: {stderr.decode().strip()}")
                 raise subprocess.SubprocessError(process_popen.returncode)
 
             self._update_recipe_conf(int(process_popen.pid))
@@ -94,9 +92,7 @@ class Minio:
     
     def resume(self, minio_pid):
         process_obj = psutil.Process(int(minio_pid))
-        
-        print(f"STATUS: {process_obj.status()}")
-       
+               
         try:
             process_obj.send_signal(signal.SIGCONT)
             print("MinIO has been resumed.")
