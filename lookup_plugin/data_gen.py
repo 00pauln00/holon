@@ -140,6 +140,10 @@ class data_generator:
                     cmd.extend(['-e', dgen_args['dbiWithPunches']])
                 if params.get("remove_files") in [True, "true"]: cmd.append('-r=true')
 
+        for cmd in commands:
+            if 'snapshot' in dgen_args:
+                cmd.extend(['-s', 'true'])
+                
         with Pool(processes = params['total_chunks']) as pool:
             results = pool.map(self.run_dummy_generator, commands)
 
