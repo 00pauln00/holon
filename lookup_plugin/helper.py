@@ -202,9 +202,9 @@ class helper:
             print(f"Error: {e}") 
         return full_path
 
-    def create_gc_partition(self):
-        mount_pt = os.path.join(self.base_path, 'gc')
-        dir_name = os.path.join(mount_pt, 'gc_download')
+    def create_gc_partition(self, dir, total_blocks):
+        dir_name_abs = os.path.join(self.base_path, dir)
+        dir_name = dir
 
         # Get the current UID
         uid = os.geteuid()
@@ -213,15 +213,15 @@ class helper:
         user_info = pwd.getpwuid(uid)
         username = user_info.pw_name
 
-        disk_ipath = self.create_dd_file("GC.img", "64M", 27)
+        disk_ipath = self.create_dd_file("GC.img", "64M", total_blocks)
 
         try:
             result = subprocess.run(["sudo", "losetup", "-fP", disk_ipath], check=True, shell=True)
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
-
+            
         # setup btrfs and mount
-        self.setup_btrfs("gc", disk_ipath)
+        self.setup_btrfs(dir_name, disk_ipath)
 
         try:
             result = subprocess.run(["sudo", "mkdir", dir_name], check=True)
@@ -229,12 +229,12 @@ class helper:
             print(f"Error: {e}")
 
         try:
-            result = subprocess.run(["sudo", "chown", username, dir_name], check=True)
+            result = subprocess.run(["sudo", "chown", username, dir_name_abs], check=True)
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
 
         try:
-            result = subprocess.run(["sudo", "chmod", "777", dir_name], check=True)
+            result = subprocess.run(["sudo", "chmod", "777", dir_name_abs], check=True)
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
 
@@ -447,7 +447,9 @@ class LookupModule(LookupBase):
             return []
 
         elif operation == "create_partition":
-            help.create_gc_partition()
+            dir = terms[1]
+            total_blocks = terms[2]
+            help.create_gc_partition(dir, total_blocks)
             return []
         
         elif operation == "delete_dd_file":

@@ -1,0 +1,119 @@
+- name: low_s3_storage_capacity
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "low_s3_storage_capacity"
+    minio_dir: "minio_data"
+    parent: none
+
+  tasks:
+    - block:
+        - name: "{{ recipe_name }}: Create 1GB Partition"
+          debug:
+            msg: "{{ lookup('helper', 'create_partition', 'minio_data', '16', wantlist=True) }}"
+
+        - name: "Get the json path"
+          set_fact: base_dir="{{ recipe_params['base_dir']}}"
+            raft_uuid="{{ recipe_params['raft_uuid']}}"
+
+        - name: "{{ recipe_name }}: Start minio server"
+          vars:
+            s3_dir: "{{ base_dir }}/{{ raft_uuid }}/{{ minio_dir }}"
+          debug:
+            msg:
+              - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+          when: s3Support == "true"
+
+        - name: "Generate 1000 vblk entries"
+          vars:
+            dbi_param:
+              vbAmount: "1000"
+              maxVblks: "100"
+              vblkPer: "100"
+              maxPunches: "0"
+              punchAmount: "0"
+              seqStart: "0"
+              startVblk: "0"
+              genType: "1"
+              seed: "1"
+              blockSize: "16"
+              blockSizeMax: "32"
+              punchesPer: "0"
+              maxPunchSize: "1"
+              chunk: "1"
+            input_param:
+              total_chunks: 1
+              is_random: true
+              remove_files: false
+          debug:
+            msg:
+              - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+          register: chunk
+
+        - name: Run df -B1 {{ base_dir }}/{{ raft_uuid }}/{{ minio_dir }}
+          command: df -B1 {{ base_dir }}/{{ raft_uuid }}/{{ minio_dir }}
+          register: df_output
+
+        - name: Get available space in bytes
+          set_fact:
+            avail_bytes: "{{ df_output.stdout_lines[1].split()[3] | int }}"
+
+        - name: Set reduced allocation size (reserve 1MB buffer)
+          set_fact:
+            alloc_bytes: "{{ (avail_bytes | int) - (1024 * 1024) }}"
+
+        - name: Create file of available size ({{ alloc_bytes }} bytes) in mount
+          command: fallocate -l {{ alloc_bytes }} {{ base_dir }}/{{ raft_uuid }}/{{ minio_dir }}/available_file
+
+        - name: "{{ recipe_name }}: Start GCService"
+          vars:
+            params:
+              {
+                "dry_run": false,
+                "del_dbo": true,
+                "partition": false,
+                "total_chunks": 0,
+                "force_gc": true,
+              }
+          debug:
+            msg:
+              - "{{ lookup('garbage_collection', 'daemon', 'start', params, wantlist=True) }}"
+
+        - name: Remove extra file
+          command: rm -rf {{ base_dir }}/{{ raft_uuid }}/{{ minio_dir }}/available_file
+
+        - name: Wait for 2 minutes 10 secondsto let GC perform
+          pause:
+            seconds: 130
+
+        - name: "{{ recipe_name }}: Wait until GC marker file present."
+          vars:
+            params: { "chunk": "1" }
+          debug:
+            msg: "Waiting for GC Marker File"
+          until: lookup('obj_storage', 'get_markers', params, wantlist=True)[0][0] is not none
+          retries: 50
+          delay: 2
+
+        - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
+          vars:
+            params: { "chunk": "1" }
+            Sequence: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True)[0] }}"
+            gc_marker: "{{ Sequence[0] }}"
+            nisd_marker: "{{ Sequence[1] }}"
+          debug:
+            msg: "Wait until marker values gets match"
+          until: gc_marker == nisd_marker
+          retries: 50
+          delay: 2
+
+        - name: "{{ recipe_name }}: Start data validation"
+          vars:
+            Chunk: "{{ chunk['msg'][0] }}"
+          debug:
+            msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
+
+      rescue:
+        - name: "Recipe: {{ recipe_name }} failed"
+          set_fact:
+            terminate_recipe: true

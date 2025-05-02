@@ -10,7 +10,7 @@
   - block:
     - name: "{{ recipe_name }}: Create 1.5GB Partition"
       debug:
-        msg: "{{ lookup('helper', 'create_partition', wantlist=True) }}"
+        msg: "{{ lookup('helper', 'create_partition', 'gc/gc_download', '27', wantlist=True) }}"
 
     - name: "{{ recipe_name }}: Start minio server"
       vars:
