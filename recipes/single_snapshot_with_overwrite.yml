@@ -36,7 +36,7 @@
               snapshot: true
             input_param:
               total_chunks: 1
-              is_random: false
+              is_random: true
               remove_files: false
           debug:
             msg:
@@ -63,7 +63,7 @@
               vdev: "4d2403f6-d489-11ee-bb54-22abb648e432"
             input_param:
               total_chunks: 1
-              is_random: false
+              is_random: true
               remove_files: false
           debug:
             msg:
