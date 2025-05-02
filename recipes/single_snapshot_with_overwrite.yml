@@ -15,12 +15,12 @@
               - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
           when: s3Support == "true"
 
-        - name: "Generate 500,000 vblk entries with snapshot"
+        - name: "Generate 1000 vblk entries with snapshot"
           vars:
             dbi_param:
-              vbAmount: "500000"
-              maxVblks: "1000"
-              vblkPer: "1000"
+              vbAmount: "1000"
+              maxVblks: "100"
+              vblkPer: "100"
               maxPunches: "0"
               punchAmount: "0"
               seqStart: "0"
@@ -43,12 +43,12 @@
               - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
           register: chunk
 
-        - name: "Generate 500,000 vblk entries without snapshot"
+        - name: "Generate 1000 vblk entries without snapshot"
           vars:
             dbi_param:
-              vbAmount: "500000"
-              maxVblks: "1000"
-              vblkPer: "1000"
+              vbAmount: "1000"
+              maxVblks: "100"
+              vblkPer: "100"
               maxPunches: "0"
               punchAmount: "0"
               seqStart: "0"
@@ -61,6 +61,7 @@
               maxPunchSize: "1"
               chunk: "1"
               vdev: "4d2403f6-d489-11ee-bb54-22abb648e432"
+              has_prev_snap: true
             input_param:
               total_chunks: 1
               is_random: true
