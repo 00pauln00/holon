@@ -47,7 +47,7 @@ class data_generator:
             if key not in dgen_args:
                 dgen_args[key] = random_val()
     
-        return dgen_args
+        return dgen_args, dbicount
 
     def set_vals_from_json(self, dgen_args):
         dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
@@ -116,7 +116,7 @@ class data_generator:
 
         dbicount = "0"
         if params['is_random']:
-            dgen_args = self.generate_random_values(dgen_args)
+            dgen_args, dbicount = self.generate_random_values(dgen_args)
         else:
             dgen_args, dbicount = self.set_vals_from_json(dgen_args)
 
