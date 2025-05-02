@@ -36,7 +36,7 @@
               snapshot: true
             input_param:
               total_chunks: 1
-              is_random: false
+              is_random: true
               remove_files: false
           debug:
             msg:
@@ -64,7 +64,7 @@
               snapshot: true
             input_param:
               total_chunks: 1
-              is_random: false
+              is_random: true
               remove_files: false
           debug:
             msg:
@@ -92,7 +92,7 @@
               snapshot: true
             input_param:
               total_chunks: 1
-              is_random: false
+              is_random: true
               remove_files: false
           debug:
             msg:
