@@ -61,7 +61,6 @@
               maxPunchSize: "1"
               chunk: "1"
               vdev: "4d2403f6-d489-11ee-bb54-22abb648e432"
-              has_prev_snap: true
             input_param:
               total_chunks: 1
               is_random: true

@@ -20,9 +20,11 @@ class data_generator:
             dgen_args["seqStart"] = str(json_data['SeqEnd'] + 1)
             dgen_args["vdev"] = str(json_data['Vdev'])
             dbicount = str(json_data['TMinDbiFileForForceGC'])
+            is_prev_snapshot = str(json_data['CurIterSnapShot'])
         else:
             dgen_args["seqStart"] = "0"
             dbicount = "0"
+            is_prev_snapshot = False
 
         if 'chunk' not in dgen_args or dgen_args['chunk'] == '-1':
             dgen_args['chunk'] = str(random.randint(1, 200))
@@ -47,11 +49,13 @@ class data_generator:
             if key not in dgen_args:
                 dgen_args[key] = random_val()
     
-        return dgen_args, dbicount
+        return dgen_args, dbicount, is_prev_snapshot
 
     def set_vals_from_json(self, dgen_args):
         dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
         dbicount = "0"
+        is_prev_snapshot = False
+        
         if dbi_path != None:
             entries = os.listdir(dbi_path)
             chunk_no = dgen_args["chunk"]
@@ -62,8 +66,9 @@ class data_generator:
                 dgen_args["vdev"] = str(json_data['Vdev'])
                 dgen_args["seqStart"] = str(json_data['SeqEnd'] + 1)
                 dbicount = str(json_data['TMinDbiFileForForceGC'])
+                is_prev_snapshot = str(json_data['CurIterSnapShot'])
 
-        return dgen_args, dbicount
+        return dgen_args, dbicount, is_prev_snapshot
 
     def add_params_to_cmd(self, commands, dgen_args):
         for cmd in commands:
@@ -116,9 +121,9 @@ class data_generator:
 
         dbicount = "0"
         if params['is_random']:
-            dgen_args, dbicount = self.generate_random_values(dgen_args)
+            dgen_args, dbicount, is_prev_snapshot = self.generate_random_values(dgen_args)
         else:
-            dgen_args, dbicount = self.set_vals_from_json(dgen_args)
+            dgen_args, dbicount, is_prev_snapshot = self.set_vals_from_json(dgen_args)
 
         commands = []
         for chunk in range(1, params['total_chunks'] + 1):
@@ -144,7 +149,7 @@ class data_generator:
             if 'snapshot' in dgen_args:
                 cmd.extend(['-s', 'true'])
             
-            if 'has_prev_snap' in dgen_args:
+            if is_prev_snapshot:
                 cmd.extend(['-sp', 'true'])
                 
         with Pool(processes = params['total_chunks']) as pool:
