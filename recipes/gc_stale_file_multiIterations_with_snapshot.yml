@@ -1,0 +1,154 @@
+- name: "gc_stale_file_multiIterations_with_snapshot"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "gc_stale_file_multiIterations_with_snapshot"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "/local/minio_data"
+      debug:
+         msg:
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+    - name: "Generate 500,000 vblk entries"
+      vars:
+        dbi_param:
+          maxVblks: '500000'
+          vbAmount: '500000'
+          vblkPer: '1000'
+          maxPunches: '0'
+          punchAmount: '0'
+          seqStart: '0'
+          startVblk: '0'
+          genType: '1'
+          seed: '1'
+          blockSize: '16'
+          blockSizeMax: '32'
+          punchesPer: '0'
+          maxPunchSize: '1'
+          snapshot: true
+        input_param:
+          total_chunks : 1
+          is_random : true
+          remove_files: false
+      debug:
+         msg:
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+      register: chunk
+
+    - name: "Generate 2097000 vblk entries"
+      vars:
+        dbi_param:
+          maxVblks: '2097000'
+          vbAmount: '2097000'
+          vblkPer: '10000'
+          maxPunches: '0'
+          punchAmount: '0'
+          seqStart: '0'
+          startVblk: '0'
+          genType: '1'
+          seed: '1'
+          blockSize: '16'
+          blockSizeMax: '32'
+          punchesPer: '0'
+          chunk: "{{ chunk['msg'][0] }}"
+          maxPunchSize: '1'
+        input_param:
+          total_chunks : 1
+          is_random : true
+          remove_files: false
+      debug:
+         msg:
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+
+    - name: "Generate 2097000 vblk entries"
+      vars:
+        dbi_param:
+          maxVblks: '2097000'
+          vbAmount: '2097000'
+          vblkPer: '10000'
+          maxPunches: '0'
+          punchAmount: '0'
+          seqStart: '0'
+          startVblk: '0'
+          genType: '1'
+          seed: '1'
+          blockSize: '16'
+          blockSizeMax: '32'
+          punchesPer: '0'
+          chunk: "{{ chunk['msg'][0] }}"
+          maxPunchSize: '1'
+        input_param:
+          total_chunks : 1
+          is_random : true
+          remove_files: false
+      debug:
+         msg:
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+
+    - name: "Generate 2M(2097152) vblk entries"
+      vars:
+        dbi_param:
+          maxVblks: '2097152'
+          vbAmount: '2097152'
+          vblkPer: '1000'
+          maxPunches: '0'
+          punchAmount: '0'
+          startVblk: '0'
+          genType: '1'
+          seed: '1'
+          blockSize: '16'
+          blockSizeMax: '32'
+          punchesPer: '0'
+          maxPunchSize: '1'
+          chunk: "{{ chunk['msg'][0] }}"
+        input_param:
+          total_chunks : 1
+          is_random : true
+          remove_files: false
+      debug:
+         msg:
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+
+    - name: "{{ recipe_name }}: Start GCService"
+      vars:
+        input_params:
+          dry_run: "false"
+          del_dbo: "true"
+          partition: "false"
+          total_chunks: 1
+          force_gc: "true"
+      debug:
+         msg: "{{ lookup('garbage_collection', 'daemon', 'start', input_params, wantlist=True) }}"
+
+    - debug:
+         msg: "Check return code of GC Process."
+      failed_when: gc_output['msg'][0] != "0"
+
+    - name: "{{ recipe_name }}: Check GC Marker file is Present or not."
+      vars:
+        params: {
+          "chunk": "{{ chunk['msg'][0] }}",
+        }
+      debug:
+          msg:
+          - "{{ lookup('obj_storage', 'get_markers', params, wantlist=True)[0] }}"
+      register: marker_check
+
+
+    - name: "{{ recipe_name }}: Start data validation"
+      vars:
+        Chunk: "{{ chunk['msg'][0] }}"
+      debug:
+         msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
+
