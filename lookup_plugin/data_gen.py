@@ -147,10 +147,10 @@ class data_generator:
 
         for cmd in commands:
             if 'snapshot' in dgen_args:
-                cmd.extend(['-s', 'true'])
+                cmd.append('-s=true')
             
             if is_prev_snapshot:
-                cmd.extend(['-sp', 'true'])
+                cmd.append('-sp=true')
                 
         with Pool(processes = params['total_chunks']) as pool:
             results = pool.map(self.run_dummy_generator, commands)
