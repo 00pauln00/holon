@@ -154,7 +154,7 @@ class data_validator:
         self.s3_config = f'{self.bin_dir}/s3.config.example'
         self.data_validate_log = f"{self.base_path}/dataValidateResult"
 
-    def validate_data(self, chunk):
+    def validate_data(self, chunk, has_snapshot):
         """
         Validates a dbi/dbo data using data validator utility.
 
@@ -171,8 +171,13 @@ class data_validator:
         if dbi_path != None:
             json_data = load_parameters_from_json(f"{dbi_path}/dataVal/{chunk}/dummy_generator.json")
             vdev = str(json_data['Vdev'])
+            
+        commands = [bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', self.s3_config, '-b', S3_BUCKET, '-l', self.data_validate_log, '-ll', '4']
+        
+        if has_snapshot:
+            commands.append("-s=true")
 
-        process = subprocess.Popen([bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', self.s3_config, '-b', S3_BUCKET, '-l', self.data_validate_log, '-ll', '4'])
+        process = subprocess.Popen(commands)
 
         # Wait for the process to finish and get the exit code
         exit_code = process.wait()
@@ -223,8 +228,9 @@ class LookupModule(LookupBase):
         
         elif operation == "validator":
             chunk = terms[1]
+            has_snapshot = terms[2]
             dv = data_validator(cluster_params)
-            dv.validate_data(chunk)
+            dv.validate_data(chunk, has_snapshot)
             return []
         
         elif operation == "s3_disk_validator":
