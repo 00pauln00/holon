@@ -20,9 +20,11 @@ class data_generator:
             dgen_args["seqStart"] = str(json_data['SeqEnd'] + 1)
             dgen_args["vdev"] = str(json_data['Vdev'])
             dbicount = str(json_data['TMinDbiFileForForceGC'])
+            is_prev_snapshot = str(json_data['CurIterSnapShot'])
         else:
             dgen_args["seqStart"] = "0"
             dbicount = "0"
+            is_prev_snapshot = False
 
         if 'chunk' not in dgen_args or dgen_args['chunk'] == '-1':
             dgen_args['chunk'] = str(random.randint(1, 200))
@@ -47,11 +49,13 @@ class data_generator:
             if key not in dgen_args:
                 dgen_args[key] = random_val()
     
-        return dgen_args
+        return dgen_args, dbicount, is_prev_snapshot
 
     def set_vals_from_json(self, dgen_args):
         dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
         dbicount = "0"
+        is_prev_snapshot = False
+
         if dbi_path != None:
             entries = os.listdir(dbi_path)
             chunk_no = dgen_args["chunk"]
@@ -63,7 +67,7 @@ class data_generator:
                 dgen_args["seqStart"] = str(json_data['SeqEnd'] + 1)
                 dbicount = str(json_data['TMinDbiFileForForceGC'])
 
-        return dgen_args, dbicount
+        return dgen_args, dbicount, is_prev_snapshot
 
     def add_params_to_cmd(self, commands, dgen_args):
         for cmd in commands:
@@ -116,9 +120,9 @@ class data_generator:
 
         dbicount = "0"
         if params['is_random']:
-            dgen_args = self.generate_random_values(dgen_args)
+            dgen_args, dbicount, is_prev_snapshot = self.generate_random_values(dgen_args)
         else:
-            dgen_args, dbicount = self.set_vals_from_json(dgen_args)
+            dgen_args, dbicount, is_prev_snapshot = self.set_vals_from_json(dgen_args)
 
         commands = []
         for chunk in range(1, params['total_chunks'] + 1):
@@ -139,6 +143,13 @@ class data_generator:
                 if 'dbiWithPunches' in dgen_args:
                     cmd.extend(['-e', dgen_args['dbiWithPunches']])
                 if params.get("remove_files") in [True, "true"]: cmd.append('-r=true')
+        
+        for cmd in commands:
+            if 'snapshot' in dgen_args:
+                cmd.extend(['-s', 'true'])
+
+            if is_prev_snapshot:
+                cmd.extend(['-sp', 'true'])
 
         with Pool(processes = params['total_chunks']) as pool:
             results = pool.map(self.run_dummy_generator, commands)
@@ -172,7 +183,7 @@ class data_validator:
             json_data = load_parameters_from_json(f"{dbi_path}/dataVal/{chunk}/dummy_generator.json")
             vdev = str(json_data['Vdev'])
 
-        process = subprocess.Popen([bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', self.s3_config, '-b', S3_BUCKET, '-l', self.data_validate_log, '-ll', '4'])
+        process = subprocess.Popen([bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', self.s3_config, '-b', S3_BUCKET, '-l', self.data_validate_log, '-ll', '4', '-s'])
 
         # Wait for the process to finish and get the exit code
         exit_code = process.wait()
