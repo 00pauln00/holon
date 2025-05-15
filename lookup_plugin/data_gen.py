@@ -120,6 +120,7 @@ class data_generator:
                 print(f"An error occurred while creating '{path}': {e}")
 
         dbicount = "0"
+        is_prev_snapshot = False
         if params['is_random']:
             dgen_args, dbicount, is_prev_snapshot = self.generate_random_values(dgen_args)
         else:
@@ -149,7 +150,7 @@ class data_generator:
             if 'snapshot' in dgen_args:
                 cmd.append('-s=true')
             
-            if is_prev_snapshot:
+            if is_prev_snapshot == True:
                 cmd.append('-sp=true')
                 
         with Pool(processes = params['total_chunks']) as pool:
@@ -179,7 +180,6 @@ class data_validator:
         bin_path = f'{self.bin_dir}/dataValidator'
         dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
         dv_path = f"{self.base_path}/dv-downloaded-obj"
-        
         if dbi_path != None:
             json_data = load_parameters_from_json(f"{dbi_path}/dataVal/{chunk}/dummy_generator.json")
             vdev = str(json_data['Vdev'])
@@ -189,6 +189,7 @@ class data_validator:
         if has_snapshot:
             commands.append("-s=true")
 
+        print("cmd: ", commands)
         process = subprocess.Popen(commands)
 
         # Wait for the process to finish and get the exit code
@@ -240,7 +241,7 @@ class LookupModule(LookupBase):
         
         elif operation == "validator":
             chunk = terms[1]
-            has_snapshot = terms[2]
+            has_snapshot = terms[2] if len(terms) > 2 else False
             dv = data_validator(cluster_params)
             dv.validate_data(chunk, has_snapshot)
             return []

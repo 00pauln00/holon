@@ -2,7 +2,7 @@
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "validate_punch_entries"
+    recipe_name: "validate_overwrite_of_vblk_over_punch_entries"
     parent: None
   
   tasks:
