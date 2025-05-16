@@ -1,8 +1,8 @@
 ---
     - name: "{{ recipe_name }}: Get the json path."
       set_fact:
-        base_dir: "{{ ClusterInfo | selectattr('key', 'equalto', 'base_dir_path') | map(attribute='value') | first }}"
-        raft_uuid: "{{ ClusterInfo | selectattr('key', 'equalto', 'raft_uuid') | map(attribute='value') | first }}"
+        base_dir="{{ ClusterInfo | json_query('base_dir_path')}}"
+        raft_uuid="{{ ClusterInfo | json_query('raft_uuid')}}"
 
     - name: "{{ recipe_name }}: prepare path to read recipe JSON file."
       shell: cat "{{base_dir}}"/"{{raft_uuid}}".json
