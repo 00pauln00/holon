@@ -82,8 +82,9 @@
         - name: "{{ recipe_name }}: Start data validation"
           vars:
             Chunk: "{{ chunk['msg'][0] }}"
+            has_snapshot: true
           debug:
-            msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
+            msg: "{{ lookup('data_gen', 'validator',  Chunk, has_snapshot, wantlist=True) }}"
 
       rescue:
         - name: "Recipe: {{ recipe_name }} failed"

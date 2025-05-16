@@ -20,7 +20,7 @@ class data_generator:
             dgen_args["seqStart"] = str(json_data['SeqEnd'] + 1)
             dgen_args["vdev"] = str(json_data['Vdev'])
             dbicount = str(json_data['TMinDbiFileForForceGC'])
-            is_prev_snapshot = str(json_data['CurIterSnapShot'])
+            is_prev_snapshot = bool(json_data['CurIterSnapShot'])
         else:
             dgen_args["seqStart"] = "0"
             dbicount = "0"
@@ -66,7 +66,7 @@ class data_generator:
                 dgen_args["vdev"] = str(json_data['Vdev'])
                 dgen_args["seqStart"] = str(json_data['SeqEnd'] + 1)
                 dbicount = str(json_data['TMinDbiFileForForceGC'])
-                is_prev_snapshot = str(json_data['CurIterSnapShot'])
+                is_prev_snapshot = bool(json_data['CurIterSnapShot'])
 
         return dgen_args, dbicount, is_prev_snapshot
 
@@ -120,7 +120,6 @@ class data_generator:
                 print(f"An error occurred while creating '{path}': {e}")
 
         dbicount = "0"
-        is_prev_snapshot = False
         if params['is_random']:
             dgen_args, dbicount, is_prev_snapshot = self.generate_random_values(dgen_args)
         else:
@@ -150,7 +149,7 @@ class data_generator:
             if 'snapshot' in dgen_args:
                 cmd.append('-s=true')
             
-            if is_prev_snapshot == True:
+            if is_prev_snapshot:
                 cmd.append('-sp=true')
                 
         with Pool(processes = params['total_chunks']) as pool:
