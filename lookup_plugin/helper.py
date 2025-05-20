@@ -398,7 +398,22 @@ class helper:
         else:
             print("No files found in the directory.")
 
-
+    def keep_last_entry(self, file_rel_path):
+        # Read the file contents
+        file_path = os.path.normpath(f"{self.base_path}/{file_rel_path}")
+        
+        print(f"{os.path.normpath(f"{self.base_path}/{file_rel_path}")}")
+         
+        with open(file_path, 'r') as file:
+            lines = file.read().split('\n')
+        
+        # Filter out any empty lines and get the last non-empty entry
+        non_empty_lines = [line for line in lines if line.strip()]
+        last_entry = non_empty_lines[-1] if non_empty_lines else ''
+        
+        # Overwrite the file with only the last entry
+        with open(file_path, 'w') as file:
+            file.write(last_entry + '\n')
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
@@ -467,6 +482,13 @@ class LookupModule(LookupBase):
             stdout = terms[2]
             help.compare_files(file_list, stdout)
             return []
+        
+        elif operation == "keep_last_entry":
+            file_rel_path = terms[1]
+            
+            result = help.keep_last_entry(file_rel_path)
+            
+            return [result]
     
         else:
             raise ValueError(f"Unsupported operation: {operation}")

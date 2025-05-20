@@ -20,9 +20,11 @@ class data_generator:
             dgen_args["seqStart"] = str(json_data['SeqEnd'] + 1)
             dgen_args["vdev"] = str(json_data['Vdev'])
             dbicount = str(json_data['TMinDbiFileForForceGC'])
+            is_prev_snapshot = bool(json_data['CurIterSnapShot'])
         else:
             dgen_args["seqStart"] = "0"
             dbicount = "0"
+            is_prev_snapshot = False
 
         if 'chunk' not in dgen_args or dgen_args['chunk'] == '-1':
             dgen_args['chunk'] = str(random.randint(1, 200))
@@ -47,11 +49,13 @@ class data_generator:
             if key not in dgen_args:
                 dgen_args[key] = random_val()
     
-        return dgen_args
+        return dgen_args, dbicount, is_prev_snapshot
 
     def set_vals_from_json(self, dgen_args):
         dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
         dbicount = "0"
+        is_prev_snapshot = False
+        
         if dbi_path != None:
             entries = os.listdir(dbi_path)
             chunk_no = dgen_args["chunk"]
@@ -62,8 +66,9 @@ class data_generator:
                 dgen_args["vdev"] = str(json_data['Vdev'])
                 dgen_args["seqStart"] = str(json_data['SeqEnd'] + 1)
                 dbicount = str(json_data['TMinDbiFileForForceGC'])
+                is_prev_snapshot = bool(json_data['CurIterSnapShot'])
 
-        return dgen_args, dbicount
+        return dgen_args, dbicount, is_prev_snapshot
 
     def add_params_to_cmd(self, commands, dgen_args):
         for cmd in commands:
@@ -116,9 +121,9 @@ class data_generator:
 
         dbicount = "0"
         if params['is_random']:
-            dgen_args = self.generate_random_values(dgen_args)
+            dgen_args, dbicount, is_prev_snapshot = self.generate_random_values(dgen_args)
         else:
-            dgen_args, dbicount = self.set_vals_from_json(dgen_args)
+            dgen_args, dbicount, is_prev_snapshot = self.set_vals_from_json(dgen_args)
 
         commands = []
         for chunk in range(1, params['total_chunks'] + 1):
@@ -140,6 +145,13 @@ class data_generator:
                     cmd.extend(['-e', dgen_args['dbiWithPunches']])
                 if params.get("remove_files") in [True, "true"]: cmd.append('-r=true')
 
+        for cmd in commands:
+            if 'snapshot' in dgen_args:
+                cmd.append('-s=true')
+            
+            if is_prev_snapshot:
+                cmd.append('-sp=true')
+                
         with Pool(processes = params['total_chunks']) as pool:
             results = pool.map(self.run_dummy_generator, commands)
 
@@ -154,7 +166,7 @@ class data_validator:
         self.s3_config = f'{self.bin_dir}/s3.config.example'
         self.data_validate_log = f"{self.base_path}/dataValidateResult"
 
-    def validate_data(self, chunk):
+    def validate_data(self, chunk, has_snapshot):
         """
         Validates a dbi/dbo data using data validator utility.
 
@@ -167,12 +179,17 @@ class data_validator:
         bin_path = f'{self.bin_dir}/dataValidator'
         dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
         dv_path = f"{self.base_path}/dv-downloaded-obj"
-        
         if dbi_path != None:
             json_data = load_parameters_from_json(f"{dbi_path}/dataVal/{chunk}/dummy_generator.json")
             vdev = str(json_data['Vdev'])
+            
+        commands = [bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', self.s3_config, '-b', S3_BUCKET, '-l', self.data_validate_log, '-ll', '4']
+        
+        if has_snapshot:
+            commands.append("-s=true")
 
-        process = subprocess.Popen([bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', self.s3_config, '-b', S3_BUCKET, '-l', self.data_validate_log, '-ll', '4'])
+        print("cmd: ", commands)
+        process = subprocess.Popen(commands)
 
         # Wait for the process to finish and get the exit code
         exit_code = process.wait()
@@ -223,8 +240,9 @@ class LookupModule(LookupBase):
         
         elif operation == "validator":
             chunk = terms[1]
+            has_snapshot = terms[2] if len(terms) > 2 else False
             dv = data_validator(cluster_params)
-            dv.validate_data(chunk)
+            dv.validate_data(chunk, has_snapshot)
             return []
         
         elif operation == "s3_disk_validator":
