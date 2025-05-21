@@ -1,0 +1,127 @@
+- name: "gc_enforce_size_limit_on_file_addition"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "gc_enforce_size_limit_on_file_addition"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Start minio server"
+      vars:
+        s3_dir: "/local/minio_data"
+      debug:
+         msg:
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+      when: s3Support == "true"
+
+    - name: "Generate DBIs with vblk entry"
+      vars:
+        dgen_args: {
+                  "chunk": "0",
+                  "maxPunches": "64",
+                  "maxVblks": "50",
+                  "punchAmount": "1024",
+                  "punchesPer": "0",
+                  "maxPunchSize": "1024",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "7",
+                  "vblkPer": "1",
+                  "genType": "2",
+                  "blockSize": "16",
+                  "blockSizeMax": "32",
+                  "startVblk": "1",
+                  "vdev": "7d3f6156-16db-4635-9d94-8adb68aae169",
+        }
+        params: {
+                  "total_chunks" : 1,
+                  "is_random" : false,
+                  "remove_files": false,
+        }
+      debug:
+         msg:
+          - "{{ lookup('data_gen', 'generator', dgen_args, params, wantlist=True) }}"
+
+    - name: "Generate DBIs with vblk entry"
+      vars:
+        dgen_args: {
+                  "chunk": "0",
+                  "maxPunches": "64",
+                  "maxVblks": "50000",
+                  "punchAmount": "1024",
+                  "punchesPer": "0",
+                  "maxPunchSize": "1024",
+                  "seed": "1",
+                  "seqStart": "0",
+                  "vbAmount": "70000",
+                  "vblkPer": "100",
+                  "genType": "2",
+                  "blockSize": "16",
+                  "blockSizeMax": "32",
+                  "startVblk": "1",
+                  "vdev": "7d3f6156-16db-4635-9d94-8adb68aae169",
+        }
+        params: {
+                  "total_chunks" : 1,
+                  "is_random" : false,
+                  "remove_files": false,
+        }
+      debug:
+         msg:
+          - "{{ lookup('data_gen', 'generator', dgen_args, params, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Start GCService"
+      vars:
+        input_params: {
+          "dry_run": false,
+          "del_dbo": true,
+          "partition": false,
+          "total_chunks": 0,
+          "force_gc": true,
+          "mdis": "1mb"
+        }
+      debug:
+         msg:
+          - "{{ lookup('garbage_collection', 'daemon', 'start', input_params, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: pause for 3 seconds."
+      pause:
+        seconds: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker file present."
+      vars:
+        params: {
+          "chunk": "0",
+        }
+        marker_seq: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True)[0] }}"
+      debug:
+        msg: "Waiting for GC Marker File {{ marker_seq }}"
+      until: marker_seq[0] is not none
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
+      vars:
+        params: {
+          "chunk": "0",
+        }
+        Sequence: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True)[0] }}"
+        gc_marker: "{{ Sequence[0] }}"
+        nisd_marker: "{{ Sequence[1] }}"
+      debug:
+        msg: "Wait until marker values gets match {{ gc_marker }} and {{ nisd_marker }}"
+      until: gc_marker == nisd_marker
+      retries: 300
+      delay: 2
+
+    - name: "{{ recipe_name }}: Start data validation"
+      vars:
+        Chunk: "1"
+      debug:
+         msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
