@@ -1,0 +1,91 @@
+- name: "generate_spill_over_dbis"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "generate_spill_over_dbis"
+    parent: None
+
+  tasks:
+    - block:
+        - name: "{{ recipe_name }}: Start minio server"
+          vars:
+            s3_dir: "/local/minio_data"
+          debug:
+            msg:
+              - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+          when: s3Support == "true"
+
+        - name: "Generate 100,000 vblk entries"
+          vars:
+            dbi_param:
+              vbAmount: "100000"
+              maxVblks: "1000"
+              vblkPer: "1000"
+              maxPunches: "0"
+              punchAmount: "0"
+              seqStart: "0"
+              startVblk: "0"
+              genType: "1"
+              seed: "1"
+              blockSize: "16"
+              blockSizeMax: "32"
+              punchesPer: "0"
+              maxPunchSize: "1"
+              overlapSeq: "20"
+              numOfSet: "2"
+            input_param:
+              total_chunks: 1
+              is_random: true
+              remove_files: false
+          debug:
+            msg:
+              - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+          register: chunk
+
+        - name: "{{ recipe_name }}: Start GCService"
+          vars:
+            params:
+              {
+                "dry_run": false,
+                "del_dbo": true,
+                "partition": false,
+                "total_chunks": 0,
+                "force_gc": true,
+                "terminate_gc": true,
+                "mdis": "500kb",
+              }
+          debug:
+            msg:
+              - "{{ lookup('garbage_collection', 'daemon', 'start', params, wantlist=True) }}"
+
+        - name: "{{ recipe_name }}: Wait until GC marker file present."
+          vars:
+            params: { "chunk": "{{ chunk['msg'][0] }}" }
+          debug:
+            msg: "Waiting for GC Marker File"
+          until: lookup('obj_storage', 'get_markers', params, wantlist=True)[0][0] is not none
+          retries: 50
+          delay: 2
+
+        - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
+          vars:
+            params: { "chunk": "{{ chunk['msg'][0] }}" }
+            Sequence: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True)[0] }}"
+            gc_marker: "{{ Sequence[0] }}"
+            nisd_marker: "{{ Sequence[1] }}"
+          debug:
+            msg: "Wait until marker values gets match"
+          until: gc_marker == nisd_marker
+          retries: 50
+          delay: 2
+
+        - name: "{{ recipe_name }}: Start data validation"
+          vars:
+            Chunk: "{{ chunk['msg'][0] }}"
+          debug:
+            msg: "{{ lookup('data_gen', 'validator', Chunk, wantlist=True) }}"
+
+      rescue:
+        - name: "Recipe: {{ recipe_name }} failed"
+          set_fact:
+            terminate_recipe: true
