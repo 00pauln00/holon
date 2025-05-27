@@ -255,3 +255,5 @@ class LookupModule(LookupBase):
             sleep_info = sinfo
             sleep_nsec = int(sleep_info['sleep_after_cmd'])
             time.sleep(sleep_nsec)
+
+        return []
