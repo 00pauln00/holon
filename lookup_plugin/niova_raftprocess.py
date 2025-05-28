@@ -243,12 +243,9 @@ class LookupModule(LookupBase):
             niova_client_config_create(uuid, recipe_conf, cluster_params)
 
         # Perform the operation on the peer.
-        try:
-            niova_obj_dict = niova_raft_process_ops(uuid, proc_operation,
+        niova_obj_dict = niova_raft_process_ops(uuid, proc_operation,
                                                 proc_type, recipe_conf,
                                                 cluster_params)
-        except Exception as error:
-            sys.stderr.write(str(error))
 
         if sleep_after_op == True:
             logging.info("sleep after the operation")
