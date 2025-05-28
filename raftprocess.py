@@ -42,43 +42,43 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
     # Add complete path to app/pumice/raft executable to bin_path
     if app_type == "foodpalace":
         if process_type == "server":
-            bin_path = '%s/foodpalaceappserver' % binary_dir
+            bin_path = "{}/foodpalaceappserver".format(binary_dir)
         else:
-            bin_path = '%s/foodpalaceappclient' % binary_dir
+            bin_path = "{}/foodpalaceappclient".format(binary_dir)
 
     elif app_type == "covid":
         if process_type == "server":
-            bin_path = '%s/covid_app_server' % binary_dir
+            bin_path = "{}/covid_app_server".format(binary_dir)
         else:
-            bin_path = '%s/covid_app_client' % binary_dir
+            bin_path = "{}/covid_app_client".format(binary_dir)
 
     elif app_type == "niovakv":
         if process_type == "server":
-            bin_path = '%s/NKV_pmdbServer' % binary_dir
+            bin_path = "{}/NKV_pmdbServer".format(binary_dir)
         else:
-            bin_path = '%s/NKV_proxy' % binary_dir
+            bin_path = "{}/NKV_proxy".format(binary_dir)
 
     elif app_type == "controlplane":
         if process_type == "server":
-            bin_path = '%s/CTLPlane_pmdbServer' % binary_dir
+            bin_path = "%s/CTLPlane_pmdbServer".format(binary_dir)
         else:
-            bin_path = '%s/CTLPlane_proxy' % binary_dir
+            bin_path = "{}/CTLPlane_proxy".format(binary_dir)
 
     elif app_type == "lease":
-            bin_path = '%s/LeaseApp_pmdbServer' % binary_dir
+            bin_path = "{}/LeaseApp_pmdbServer".format(binary_dir)
 
     elif app_type == "pumicedb":
         if backend_type == "pumicedb":
             if process_type == "server":
-                bin_path = '%s/pumice-reference-server' % binary_dir
+                bin_path = "{}/pumice-reference-server".format(binary_dir)
             else:
-                bin_path = '%s/pumice-reference-client' % binary_dir
+                bin_path = "{}/pumice-reference-client".format(binary_dir)
 
         else:
             if process_type == "server":
-                bin_path = '%s/raft-reference-server' % binary_dir
+                bin_path = "{}/raft-reference-server".format(binary_dir)
             else:
-                bin_path = '%s/raft-reference-client' % binary_dir
+                bin_path = "{}/raft-reference-client".format(binary_dir)
     else:
         logging.error("Invalid app type" % app_type)
         exit(1)
