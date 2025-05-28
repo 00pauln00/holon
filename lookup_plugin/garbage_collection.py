@@ -39,8 +39,9 @@ class gc_service:
             bin_path = os.path.normpath(os.path.join(self.binary_dir, "niova-s3-gcsvc"))
             cmd = [
                 bin_path, '-path', download_path, '-s3config', self.s3config, 
-                '-s3log', self.s3_log_path, '-t', '120', '-l', '4', '-p', '7500', 
-                '-b', S3_BUCKET, '-mp', str(input_params.get("total_chunks"))
+                '-s3log', self.s3_log_path, '-t', '120', '-l', '5', '-p', '7500', 
+                '-b', S3_BUCKET, '-mp', str(input_params.get("total_chunks")), "-mdis", str(input_params.get("mdis", "960mb"))
+
             ]
             if input_params.get("dry_run") in [True, "true"]: cmd.append('-dr=true')
             if input_params.get("del_dbo") in [True, "true"]: cmd.append('-dd=true')
