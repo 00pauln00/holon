@@ -87,7 +87,9 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
 
 def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, config_path, node_name, coalesced_wr, sync, cluster_params):
     process_popen = {}
-    logging.Info(bin_path)
+    print(bin_path)
+    if not os.path.exists(bin_path):
+        raise FileNotFoundError(f"Bin path not found {bin_path}")
     # binary_dir = os.getenv('NIOVA_BIN_PATH')
     gossipNodes = "%s/gossipNodes" % base_dir
 
