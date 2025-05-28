@@ -234,8 +234,11 @@ class RaftProcess:
             binary_dir = "/home/pauln/raft-builds/latest"
 
         # Add complete path to app/pumice/raft executable to bin_path
-
-        bin_path = get_executable_path(self.process_type, app_type, self.process_backend_type, binary_dir)
+        
+        try:
+            bin_path = get_executable_path(self.process_type, app_type, self.process_backend_type, binary_dir)
+        except:
+            raise ValueError("Error formatting bin path") 
         '''
         We want to append the output of raft-server log into the recipe log
         adding information about for which peerid the process has started.
