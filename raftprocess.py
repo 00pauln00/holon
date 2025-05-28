@@ -70,7 +70,7 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
     elif app_type == "pumicedb":
         if backend_type == "pumicedb":
             if process_type == "server":
-                bin_path = "{}/pumice-reference-server".format(binary_dir)
+                bin_path = str(binary_dir)+"/pumice-reference-server"
             else:
                 bin_path = "{}/pumice-reference-client".format(binary_dir)
 
