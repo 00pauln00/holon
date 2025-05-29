@@ -80,7 +80,7 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
             else:
                 bin_path = "{}/raft-reference-client".format(binary_dir)
     else:
-        logging.error("Invalid app type" % app_type)
+        logging.error("Invalid app type %s " % app_type)
         exit(1)
 
     return bin_path
