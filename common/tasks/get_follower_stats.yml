@@ -49,7 +49,7 @@
 
     - name: "Get the FollowerUUIDs list."
       set_fact:
-        FollowerUUIDs: "{{ NRunningPeers | difference(LeaderUUID['/0/leader-uuid']) }}"
+        FollowerUUIDs: "{{ NRunningPeers | difference([LeaderUUID['/0/leader-uuid']]) }}"
       when: LeaderUUID != "" and LeaderUUID['/0/leader-uuid'] != "null"
 
     - name: "{{ recipe_name }}: Print Follower UUIDs."
