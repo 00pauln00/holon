@@ -42,52 +42,54 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
     # Add complete path to app/pumice/raft executable to bin_path
     if app_type == "foodpalace":
         if process_type == "server":
-            bin_path = '%s/foodpalaceappserver' % binary_dir
+            bin_path = "{}/foodpalaceappserver".format(binary_dir)
         else:
-            bin_path = '%s/foodpalaceappclient' % binary_dir
+            bin_path = "{}/foodpalaceappclient".format(binary_dir)
 
     elif app_type == "covid":
         if process_type == "server":
-            bin_path = '%s/covid_app_server' % binary_dir
+            bin_path = "{}/covid_app_server".format(binary_dir)
         else:
-            bin_path = '%s/covid_app_client' % binary_dir
+            bin_path = "{}/covid_app_client".format(binary_dir)
 
     elif app_type == "niovakv":
         if process_type == "server":
-            bin_path = '%s/NKV_pmdbServer' % binary_dir
+            bin_path = "{}/NKV_pmdbServer".format(binary_dir)
         else:
-            bin_path = '%s/NKV_proxy' % binary_dir
+            bin_path = "{}/NKV_proxy".format(binary_dir)
 
     elif app_type == "controlplane":
         if process_type == "server":
-            bin_path = '%s/CTLPlane_pmdbServer' % binary_dir
+            bin_path = "%s/CTLPlane_pmdbServer".format(binary_dir)
         else:
-            bin_path = '%s/CTLPlane_proxy' % binary_dir
+            bin_path = "{}/CTLPlane_proxy".format(binary_dir)
 
     elif app_type == "lease":
-            bin_path = '%s/LeaseApp_pmdbServer' % binary_dir
+            bin_path = "{}/LeaseApp_pmdbServer".format(binary_dir)
 
     elif app_type == "pumicedb":
         if backend_type == "pumicedb":
             if process_type == "server":
-                bin_path = '%s/pumice-reference-server' % binary_dir
+                bin_path = str(binary_dir)+"/pumice-reference-server"
             else:
-                bin_path = '%s/pumice-reference-client' % binary_dir
+                bin_path = "{}/pumice-reference-client".format(binary_dir)
 
         else:
             if process_type == "server":
-                bin_path = '%s/raft-reference-server' % binary_dir
+                bin_path = "{}/raft-reference-server".format(binary_dir)
             else:
-                bin_path = '%s/raft-reference-client' % binary_dir
+                bin_path = "{}/raft-reference-client".format(binary_dir)
     else:
-        logging.error("Invalid app type" % app_type)
+        logging.error("Invalid app type %s " % app_type)
         exit(1)
 
     return bin_path
 
 def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, config_path, node_name, coalesced_wr, sync, cluster_params):
     process_popen = {}
-
+    print(bin_path)
+    if not os.path.exists(bin_path):
+        raise FileNotFoundError(f"Bin path not found {bin_path}")
     # binary_dir = os.getenv('NIOVA_BIN_PATH')
     gossipNodes = "%s/gossipNodes" % base_dir
 
@@ -169,6 +171,7 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
                                     raft_uuid, '-u', peer_uuid, '-pa', gossipNodes,
                                     '-n', node_name, '-l', log_path],
                                     stdout = fp, stderr = fp)
+    print("Executing")
     return process_popen
 
 class RaftProcess:
@@ -231,8 +234,11 @@ class RaftProcess:
             binary_dir = "/home/pauln/raft-builds/latest"
 
         # Add complete path to app/pumice/raft executable to bin_path
-
-        bin_path = get_executable_path(self.process_type, app_type, self.process_backend_type, binary_dir)
+        
+        try:
+            bin_path = get_executable_path(self.process_type, app_type, self.process_backend_type, binary_dir)
+        except:
+            raise ValueError("Error formatting bin path") 
         '''
         We want to append the output of raft-server log into the recipe log
         adding information about for which peerid the process has started.

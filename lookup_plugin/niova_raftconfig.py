@@ -105,8 +105,7 @@ class LookupModule(LookupBase):
             Create server and raft config files
             '''
             raftconfobj_dict = niova_server_conf_create(cluster_params)
-            result_list = [{"key": k, "value": v} for k, v in raftconfobj_dict.items()]
-            return [result_list]
+            return [raftconfobj_dict]
 
         elif config_type == "niovakv":
             '''
