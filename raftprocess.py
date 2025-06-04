@@ -97,7 +97,7 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
     gossipNodes = "%s/gossipNodes" % base_dir
 
     if ptype == "server":
-        if app_type == "pumicedb":
+        if app_type == "pumicedb"  or app_type == "raft":
             if sync == "0" and coalesced_wr == "1":
                  process_popen = subprocess.Popen([bin_path, '-r',
                                     raft_uuid, '-u', peer_uuid, '-a', '-c'],
@@ -262,7 +262,6 @@ class RaftProcess:
                                     base_dir, config_path, node_name, coalesced_wr, sync, cluster_params)
         #Make sure all the ouput gets flushed to the file before closing it
         os.fsync(fp)
-
         output_label = "raft-%s.%s" % (self.process_type, self.process_uuid)
         self.process_pid = process_popen.pid
 
