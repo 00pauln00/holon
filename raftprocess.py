@@ -73,12 +73,15 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
                 bin_path = str(binary_dir)+"/pumice-reference-server"
             else:
                 bin_path = "{}/pumice-reference-client".format(binary_dir)
+           
 
+    elif app_type == "raft":
+        print("inside raft: ", process_type)
+        if process_type == "server":
+            bin_path = "{}/raft-reference-server".format(binary_dir)
         else:
-            if process_type == "server":
-                bin_path = "{}/raft-reference-server".format(binary_dir)
-            else:
-                bin_path = "{}/raft-reference-client".format(binary_dir)
+            bin_path = "{}/raft-reference-client".format(binary_dir)
+
     else:
         logging.error("Invalid app type %s " % app_type)
         exit(1)
