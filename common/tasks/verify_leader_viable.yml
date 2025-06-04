@@ -17,7 +17,7 @@
             - "/raft_client_root_entry/0/leader-viable"
       set_fact:
         GetLeaderViable: "{{ lookup('niova_ctlrequest', 'lookup', ClientUUID, raft_key, wantlist=True) }}"
-      failed_when: GetLeaderViable['/0/leader-viable'] != True
+      failed_when: GetLeaderViable[0]['/0/leader-viable'] != True
 
 
 

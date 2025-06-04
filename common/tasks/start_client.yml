@@ -9,6 +9,6 @@
         msg: "Wait till client bootup completes."
       vars:
         stage: "start_client"
-      until: ((lookup('niova_ctlrequest', 'lookup', ClientUUID, '/raft_client_root_entry/0/state', wantlist=True)| dict2items | map(attribute='value') | list | first) != "null")
+      until: ((lookup('niova_ctlrequest', 'lookup', ClientUUID, '/raft_client_root_entry/0/state', wantlist=True) | list | first) != "null")
       retries: 60
       delay: 1
