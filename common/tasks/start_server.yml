@@ -1,17 +1,19 @@
 ---
+- name: "Start the peer"
+  debug:
+    msg: "{{lookup('niova_raftprocess', 'start', ServerUUID, wantlist=True)}}"
+  register: ret
+  failed_when: ret.failed == true
+  # no_log: True
 
-    - name: "Start the peer"
-      debug:
-        msg: "{{lookup('niova_raftprocess', 'start', ServerUUID)}}"
+- pause:
+    seconds: 3
 
-    - pause:
-        seconds: 3
-
-    - name: "Wait for server process to bootup completely"
-      debug:
-        msg: "Wait till bootup completes for Peer {{ ServerUUID }}."
-      vars:
-        stage: "start_server"
-      until: (lookup('niova_ctlrequest', 'lookup', ServerUUID, '/raft_root_entry', wantlist=True)| dict2items | map(attribute='value') | list | first != "null") and (lookup('niova_ctlrequest', 'lookup', ServerUUID, '/raft_root_entry/0/state', wantlist=True)| dict2items | map(attribute='value') | list | first != "booting")
-      retries: 60
-      delay: 1
+- name: "Wait for server process to bootup completely"
+  debug:
+    msg: "Wait till bootup completes for Peer {{ ServerUUID }}."
+  vars:
+    stage: "start_server"
+  until: (lookup('niova_ctlrequest', 'lookup', ServerUUID, '/raft_root_entry', wantlist=True)| first != "null") and (lookup('niova_ctlrequest', 'lookup', ServerUUID, '/raft_root_entry/0/state', wantlist=True)| first != "booting")
+  retries: 60
+  delay: 1

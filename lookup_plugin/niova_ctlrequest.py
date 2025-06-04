@@ -315,4 +315,4 @@ class LookupModule(LookupBase):
             result_array = result_array[0]
 
         logging.warning("Values of ctlreq cmd: %s" % result_array)
-        return result_array
+        return [result_array]
