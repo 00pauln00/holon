@@ -55,22 +55,22 @@
 
     - name: "{{ recipe_name }}: Compare raft_root_entry values of all peers."
       vars:
-        term: "{{ raft_root_entry_all['results'][item]['item']['/0/term'] }}"
-        term_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/term'] }}"
-        commit_idx: "{{ raft_root_entry_all['results'][item]['item']['/0/commit-idx'] }}"
-        commit_idx_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/commit-idx'] }}"
-        last_applied: "{{ raft_root_entry_all['results'][item]['item']['/0/last-applied'] }}"
-        last_applied_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/last-applied'] }}"
-        last_applied_cum_crc: "{{ raft_root_entry_all['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
-        last_applied_cum_crc_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/last-applied-cumulative-crc'] }}"
-        sync_entry_idx: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-idx'] }}"
-        sync_entry_idx_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-idx'] }}"
-        sync_entry_term: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-term'] }}"
-        sync_entry_term_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-term'] }}"
-        sync_entry_data_size: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-data-size'] }}"
-        sync_entry_data_size_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-data-size'] }}"
-        sync_entry_crc: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-crc'] }}"
-        sync_entry_crc_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-crc'] }}"
+        term: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/term'] }}"
+        term_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/term'] }}"
+        commit_idx: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/commit-idx'] }}"
+        commit_idx_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/commit-idx'] }}"
+        last_applied: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/last-applied'] }}"
+        last_applied_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/last-applied'] }}"
+        last_applied_cum_crc: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/last-applied-cumulative-crc'] }}"
+        last_applied_cum_crc_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/last-applied-cumulative-crc'] }}"
+        sync_entry_idx: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/sync-entry-idx'] }}"
+        sync_entry_idx_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/sync-entry-idx'] }}"
+        sync_entry_term: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/sync-entry-term'] }}"
+        sync_entry_term_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/sync-entry-term'] }}"
+        sync_entry_data_size: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/sync-entry-data-size'] }}"
+        sync_entry_data_size_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/sync-entry-data-size'] }}"
+        sync_entry_crc: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/sync-entry-crc'] }}"
+        sync_entry_crc_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/sync-entry-crc'] }}"
       debug:
         msg: "Compare raft_root_entry values of all peers."
       failed_when: >
@@ -245,8 +245,8 @@
     #2a- Verification for sync-entry-idx and commit-idx
     - name: "{{ recipe_name }}: Verify that sync-entry-idx of all followers remains same."
       vars:
-        sync_entry_idx_before: "{{ sync_entry_idx_followers_before_write['results'][item]['item'] }}"
-        sync_entry_idx_after: "{{ sync_entry_idx_followers_after_write['results'][item]['item'] }}"
+        sync_entry_idx_before: "{{ sync_entry_idx_followers_before_write['results'][0]['item'][item] }}"
+        sync_entry_idx_after: "{{ sync_entry_idx_followers_after_write['results'][0]['item'][item] }}"
       debug:
         msg: "Verifying that sync-entry-idx of all followers remains same"
       failed_when: sync_entry_idx_before['/0/sync-entry-idx'] != sync_entry_idx_after['/0/sync-entry-idx']
@@ -274,8 +274,8 @@
 
     - name: "{{ recipe_name }}: Verify that commit-idx has not advanced on any peer."
       vars:
-        commit_idx: "{{ raft_root_entry_all['results'][item]['item']['/0/commit-idx'] }}"
-        commit_idx_after: "{{ get_commit_idx_all_after_write['results'][item]['item']['/0/commit-idx'] }}"
+        commit_idx: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/commit-idx'] }}"
+        commit_idx_after: "{{ get_commit_idx_all_after_write['results'][0]['item'][item]['/0/commit-idx'] }}"
       failed_when: commit_idx != commit_idx_after
       debug:
         msg: "Verifying that commit-idx has not advanced on any peer."
@@ -403,12 +403,12 @@
 
     - name: "{{ recipe_name }}: Verify values for commit-idx, last-applied and sync-entry-idx for all servers."
       vars:
-        commit_idx: "{{ raft_root_entry_all_after['results'][item]['item'] }}"
-        last_applied: "{{ raft_root_entry_all_after['results'][item]['item'] }}"
-        sync_entry_idx: "{{  raft_root_entry_all_after['results'][item]['item'] }}"
-        commit_idx_prev: "{{ raft_root_entry_all['results'][item]['item'] }}"
-        last_applied_prev: "{{ raft_root_entry_all['results'][item]['item'] }}"
-        sync_entry_idx_prev: "{{  raft_root_entry_all['results'][item]['item'] }}"
+        commit_idx: "{{ raft_root_entry_all_after['results'][0]['item'][item] }}"
+        last_applied: "{{ raft_root_entry_all_after['results'][0]['item'][item] }}"
+        sync_entry_idx: "{{  raft_root_entry_all_after['results'][0]['item'][item] }}"
+        commit_idx_prev: "{{ raft_root_entry_all['results'][0]['item'][item] }}"
+        last_applied_prev: "{{ raft_root_entry_all['results'][0]['item'][item] }}"
+        sync_entry_idx_prev: "{{  raft_root_entry_all['results'][0]['item'][item] }}"
       debug:
         msg: "Verifying values for commit-idx, last-applied and sync-entry-idx for all servers."
       failed_when: >
@@ -419,16 +419,16 @@
 
     - name: "{{ recipe_name }}: Validate term, last-applied-cumulative-crc, sync-entry-term, sync-entry-data-size and sync-entry-crc of all peers after reboot."
       vars:
-        term: "{{ raft_root_entry_all_after['results'][item]['item']['/0/term'] }}"
-        last_applied_cum_crc: "{{ raft_root_entry_all_after['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
-        sync_entry_term: "{{ raft_root_entry_all_after['results'][item]['item']['/0/sync-entry-term'] }}"
-        sync_entry_data_size: "{{ raft_root_entry_all_after['results'][item]['item']['/0/sync-entry-data-size'] }}"
-        sync_entry_crc: "{{ raft_root_entry_all_after['results'][item]['item']['/0/sync-entry-crc'] }}"
-        term_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/term'] }}"
-        last_applied_cum_crc_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
-        sync_entry_term_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/sync-entry-term'] }}"
-        sync_entry_data_size_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/sync-entry-data-size'] }}"
-        sync_entry_crc_next: "{{ raft_root_entry_all_after['results'][item + 1]['item']['/0/sync-entry-crc'] }}"
+        term: "{{ raft_root_entry_all_after['results'][0]['item'][item]['/0/term'] }}"
+        last_applied_cum_crc: "{{ raft_root_entry_all_after['results'][0]['item'][item]['/0/last-applied-cumulative-crc'] }}"
+        sync_entry_term: "{{ raft_root_entry_all_after['results'][0]['item'][item]['/0/sync-entry-term'] }}"
+        sync_entry_data_size: "{{ raft_root_entry_all_after['results'][0]['item'][item]['/0/sync-entry-data-size'] }}"
+        sync_entry_crc: "{{ raft_root_entry_all_after['results'][0]['item'][item]['/0/sync-entry-crc'] }}"
+        term_next: "{{ raft_root_entry_all_after['results'][0]['item'][item + 1]['/0/term'] }}"
+        last_applied_cum_crc_next: "{{ raft_root_entry_all_after['results'][0]['item'][item + 1]['/0/last-applied-cumulative-crc'] }}"
+        sync_entry_term_next: "{{ raft_root_entry_all_after['results'][0]['item'][item + 1]['/0/sync-entry-term'] }}"
+        sync_entry_data_size_next: "{{ raft_root_entry_all_after['results'][0]['item'][item + 1]['/0/sync-entry-data-size'] }}"
+        sync_entry_crc_next: "{{ raft_root_entry_all_after['results'][0]['item'][item + 1]['/0/sync-entry-crc'] }}"
       debug:
         msg: "Compare raft_root_entry values of all peers"
       failed_when: >

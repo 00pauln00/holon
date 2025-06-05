@@ -55,7 +55,7 @@
         name: common
         tasks_from: set_fault_injection_and_verify
       vars:
-        ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        ServerUUID: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
         fault_injection_name: "coalesced_writes"
 
     - name: "{{ recipe_name}}: Write at seqno 0 and perform the write {{ num_writes }} times."
@@ -72,7 +72,7 @@
         stage: "after_1st_wr_get_coalesed_vals"
         raft_key:
            - "/raft_root_entry/0/coalesce-items-pending"
-        get_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+        get_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID[0]['/0/leader-uuid'], raft_key, wantlist=True) }}"
       debug:
         msg: "Get values after 1st write"
       no_log: true
@@ -95,11 +95,11 @@
         stage: "after_2nd_wr_get_coalesed_vals"
         raft_key:
            - "/raft_root_entry/0/coalesce-items-pending"
-        curr_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+        curr_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID[0]['/0/leader-uuid'], raft_key, wantlist=True) }}"
       debug:
         msg: "Comapre values after 2nd write"
       failed_when: >
-         (curr_vals["/0/coalesce-items-pending"] != leader_info["/0/coalesce-items-pending"])
+         (curr_vals[0]["/0/coalesce-items-pending"] != leader_info["/0/coalesce-items-pending"])
 
     #Remove fault injection from leader
     - name: "{{ recipe_name }}: Apply cmd to remove fault injection from the leader."
@@ -107,7 +107,7 @@
         stage: "recipe_cleanup"
         cmd: "enabled@false"
         where: "/fault_injection_points/name@coalesced_writes"
-        remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
+        remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID[0]['/0/leader-uuid'], cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ remove_fault_inject }}"
       no_log: True
@@ -117,7 +117,7 @@
         stage: "stage6"
         raft_key:
            - "/fault_injection_points"
-        remove_fi: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+        remove_fi: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID[0]['/0/leader-uuid'], raft_key, wantlist=True) }}"
       debug:
         msg: "Getting fault_injection_points array."
       no_log: True
@@ -144,11 +144,11 @@
         stage: "final_stage"
         raft_key:
            - "/raft_root_entry/0/coalesce-items-pending"
-        final_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+        final_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID[0]['/0/leader-uuid'], raft_key, wantlist=True) }}"
       debug:
         msg: "Verify after removing fault injection"
       failed_when: >
-         (final_vals["/0/coalesce-items-pending"] != 0)
+         (final_vals[0]["/0/coalesce-items-pending"] != 0)
 
     - name: "{{ recipe_name}}: Wait until all write completes from client 1"
       vars:
