@@ -17,8 +17,8 @@
 
     - name: "{{ recipe_name }}: Verify fault injection is removed on followers properly."
       set_fact:
-         fault_injection_point_disabled: "{{ fault_injection_remove_points['//fault_injection_points'][index]['enabled'] }}"
-      when: (fault_injection_remove_points['//fault_injection_points'][index]['name'] == fault_injection_name)
+         fault_injection_point_disabled: "{{ fault_injection_remove_points[0]['//fault_injection_points'][index]['enabled'] }}"
+      when: (fault_injection_remove_points[0]['//fault_injection_points'][index]['name'] == fault_injection_name)
       loop: "{{  range(0, fault_injection_points[0]['//fault_injection_points'] |length) | list }}"
       loop_control:
           loop_var: index
