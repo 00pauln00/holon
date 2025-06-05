@@ -105,7 +105,7 @@
 
     - name: "{{ recipe_name }}: After pausing one follower, get the follower-stats from leader"
       vars:
-        bsrwca_leader_uuid: "{{ stage0_value['results'][0]['item']['/0/leader-uuid'] }}"
+        bsrwca_leader_uuid: "{{ stage0_value['results'][0]['item'][0]['/0/leader-uuid'] }}"
         stage: "curr_fstats"
         raft_key:
            - "/raft_root_entry/0/follower-stats"
@@ -312,10 +312,10 @@
     - name: "{{ recipe_name }}: Verify last-applied-cumulative-crc and sync-entry-crc is same on all peers."
       vars:
         running_peers: "{{ NRunningPeers }}"
-        last_applied_cum_crc: "{{ all_running_peers['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
-        last_applied_cum_crc_next: "{{ all_running_peers['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
-        sync_entry_crc: "{{ all_running_peers['results'][item]['item']['/0/sync-entry-crc'] }}"
-        sync_entry_crc_next: "{{ all_running_peers['results'][item + 1]['item']['/0/sync-entry-crc'] }}"
+        last_applied_cum_crc: "{{ all_running_peers['results'][0]['item'][item]['/0/last-applied-cumulative-crc'] }}"
+        last_applied_cum_crc_next: "{{ all_running_peers['results'][0]['item'][item + 1]['/0/last-applied-cumulative-crc'] }}"
+        sync_entry_crc: "{{ all_running_peers['results'][0]['item'][item]['/0/sync-entry-crc'] }}"
+        sync_entry_crc_next: "{{ all_running_peers['results'][0]['item'][item + 1]['/0/sync-entry-crc'] }}"
       debug:
         msg: "Compare last-applied-cumulative-crc and sync-entry-crc on all peers."
       no_log: True
@@ -357,7 +357,7 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/last-request-tag"
       debug:
         msg: "Waiting last-request-tag value changed to a new value"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first != (get_stage3 | int)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | list | first != (get_stage3 | int)
       loop: "{{ range(0, 10) | list }}"
       loop_control:
          pause: 1

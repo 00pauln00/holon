@@ -175,7 +175,7 @@
        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != 0
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | list != 0
       loop: "{{ range(0, 3) | list }}"
       loop_control:
         pause: 1
@@ -225,7 +225,7 @@
             - "/raft_root_entry/0/sync-entry-idx"
       debug:
        msg: "Wait for sync-entry-idx to advance by 1"
-      until: lookup('niova_ctlrequest', 'lookup', cuwr_leader_uuid_before, raft_keys, wantlist=True) | dict2items | map(attribute='value') | list | first | int != leader_sync_entry_idx_before | int + 1
+      until: lookup('niova_ctlrequest', 'lookup', cuwr_leader_uuid_before, raft_keys, wantlist=True) | list | first | int != leader_sync_entry_idx_before | int + 1
       retries: 60
       delay: 1
 
@@ -341,11 +341,11 @@
         stage: "leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', cuwr_num_peer_started_after_reboot[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+      until: lookup('niova_ctlrequest', 'lookup', cuwr_num_peer_started_after_reboot[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | list | first != "null"
       retries: 300
       delay: 1
       loop: "{{ range(0, cuwr_num_peer_started_after_reboot | length) | list }}"
-      failed_when: lookup('niova_ctlrequest', 'lookup', cuwr_num_peer_started_after_reboot[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first == "null"
+      failed_when: lookup('niova_ctlrequest', 'lookup', cuwr_num_peer_started_after_reboot[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | list | first == "null"
 
     #Verify that leader before reboot and after reboot are same.
     - name: "{{ recipe_name }}: Get leader_uuid after reboot."

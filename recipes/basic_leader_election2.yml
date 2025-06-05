@@ -60,11 +60,11 @@
         msg:
         - "Validate the raft values for peer: {{ NRunningPeers[item] }}"
       failed_when: >
-        (verifyPeerVal["/0/commit-idx"] < 0) or
-        (verifyPeerVal["/0/last-applied"] < 0) or
-        (verifyPeerVal["/0/last-applied-cumulative-crc"] != verifyPeerVal["/0/sync-entry-crc"]) or
-        (verifyPeerVal["/0/term"] != verifyPeerVal["/0/sync-entry-term"])
-      loop: "{{ range(0, NRunningPeers | length) | list }}"
+        (verifyPeerVal[0]["/0/commit-idx"] < 0) or
+        (verifyPeerVal[0]["/0/last-applied"] < 0) or
+        (verifyPeerVal[0]["/0/last-applied-cumulative-crc"] != verifyPeerVal[0]["/0/sync-entry-crc"]) or
+        (verifyPeerVal[0]["/0/term"] != verifyPeerVal[0]["/0/sync-entry-term"])
+      loop: "{{ range(0, [NRunningPeers] | length) | list }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

@@ -121,8 +121,8 @@
     #Stage2: Verification
     - name: "{{ recipe_name }}: Verify that restart timestamp has advanced"
       vars:
-        prev_time: "{{ start_time_prerestart['results'][item]['item']['/system_info/start_time'] }}"
-        after_time: "{{ start_time_after_restart['results'][item]['item']['/system_info/start_time'] }}"
+        prev_time: "{{ start_time_prerestart['results'][0]['item'][item]['/system_info/start_time'] }}"
+        after_time: "{{ start_time_after_restart['results'][0]['item'][item]['/system_info/start_time'] }}"
       debug:
         msg: "Compare time stamp: {{ prev_time }} with {{ after_time }}"
       failed_when: prev_time >= after_time
@@ -201,8 +201,8 @@
 
     - name: "{{ recipe_name }}: Compare the values after restart with pre-restart."
       set_fact:
-        type2_vals_after_restart: "{{ peers_info_after_restart['results'][item]['item'] }}"
-        type2_vals_before_restart: "{{ pre_restart_vals['results'][item]['item']}}"
+        type2_vals_after_restart: "{{ peers_info_after_restart['results'][0]['item'][item] }}"
+        type2_vals_before_restart: "{{ pre_restart_vals['results'][0]['item'][item]}}"
       failed_when: >
            (type2_vals_after_restart['/0/term'] <= type2_vals_before_restart['/0/term']) or
            (type2_vals_after_restart['/0/commit-idx'] < 1) or
@@ -214,12 +214,12 @@
 
     - name: "{{ recipe_name }}: Compare term, last_applied_cumulative_crc and sync_entry_crc of all peers"
       vars:
-        term_prev: "{{ peers_info_after_restart['results'][item]['item']['/0/term'] }}"
-        term_next: "{{ peers_info_after_restart['results'][item + 1]['item']['/0/term'] }}"
-        last_applied_cumulative_crc_prev: "{{ peers_info_after_restart['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
-        last_applied_cumulative_crc_next: "{{ peers_info_after_restart['results'][item + 1]['item']['/0/last-applied-cumulative-crc'] }}"
-        sync_entry_crc_prev: "{{ peers_info_after_restart['results'][item]['item']['/0/sync-entry-crc'] }}"
-        sync_entry_crc_next: "{{ peers_info_after_restart['results'][item + 1]['item']['/0/sync-entry-crc'] }}"
+        term_prev: "{{ peers_info_after_restart['results'][0]['item'][item]['/0/term'] }}"
+        term_next: "{{ peers_info_after_restart['results'][0]['item'][item + 1]['/0/term'] }}"
+        last_applied_cumulative_crc_prev: "{{ peers_info_after_restart['results'][0]['item'][item]['/0/last-applied-cumulative-crc'] }}"
+        last_applied_cumulative_crc_next: "{{ peers_info_after_restart['results'][0]['item'][item + 1]['/0/last-applied-cumulative-crc'] }}"
+        sync_entry_crc_prev: "{{ peers_info_after_restart['results'][0]['item'][item]['/0/sync-entry-crc'] }}"
+        sync_entry_crc_next: "{{ peers_info_after_restart['results'][0]['item'][item + 1]['/0/sync-entry-crc'] }}"
       debug:
          msg: "Compare term values of all peers"
       no_log: true
@@ -232,7 +232,7 @@
     - name: "{{ recipe_name }}: Compare Leader’s follower-stats for all followers"
       set_fact:
         type2_fstats_after_restart: "{{ follower_stats_after_restart['results'][0]['item'] }}"
-        type2_term_after_restart: "{{ peers_info_after_restart['results'][item]['item'] }}"
+        type2_term_after_restart: "{{ peers_info_after_restart['results'][0]['item'][item] }}"
       failed_when: >
         (type2_fstats_after_restart['/0/follower-stats'][item]['next-idx'] <= 1) or
         (type2_fstats_after_restart['/0/follower-stats'][item]['prev-idx-term'] != type2_term_after_restart['/0/term'])

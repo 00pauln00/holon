@@ -76,7 +76,7 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | int == (num_writes | int - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | list | int == (num_writes | int - 1)
       retries: 10
       delay: 1
 
@@ -90,9 +90,9 @@
       set_fact:
         first_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
       failed_when: >
-            (first_write_vals['/0/status'] != "Success") or
-            (first_write_vals['/0/pmdb-seqno'] != (num_writes - 1)) or
-            (first_write_vals['/0/app-seqno'] != num_writes)
+            (first_write_vals[0]['/0/status'] != "Success") or
+            (first_write_vals[0]['/0/pmdb-seqno'] != (num_writes - 1)) or
+            (first_write_vals[0]['/0/app-seqno'] != num_writes)
 
     #Get all values from all peers before partitioning.
     - name: "{{ recipe_name }}: Get the server information for all running servers."
@@ -112,17 +112,17 @@
 
     - name: "{{ recipe_name }}: Kill the 1st Leader."
       debug:
-       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
+       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID[0]['/0/leader-uuid'], wantlist=True)}}"
       no_log: True
 
     - name: "{{ recipe_name }}: Wait until 2nd leader election happens."
       vars:
         stage: "wait_leader_election"
-        orig_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        orig_leader: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
         raft_key: "/raft_root_entry/0/leader-uuid"
       debug:
         msg: "Wait to until new leader election happens."
-      until: lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first != (orig_leader)
+      until: lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[item], raft_key, wantlist=True) | list | first != (orig_leader)
       retries: 60
       delay: 1
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
@@ -156,7 +156,7 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | int == (num_writes | int - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | list | int == (num_writes | int - 1)
       retries: 10
       delay: 1
 
@@ -166,7 +166,7 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/status"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == "Connection timed out"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | list | first == "Connection timed out"
       retries: 10
       delay: 1
 
@@ -176,8 +176,8 @@
       set_fact:
         verify_aftr_first_elect: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, server_keys, wantlist=True) }}"
       failed_when: >
-        (verify_aftr_first_elect[item]['/0/commit-idx'] <= get_values_from_all[item]['/0/commit-idx']) or
-        (verify_aftr_first_elect[item]['/0/last-applied'] != get_values_from_all[item]['/0/last-applied'])
+        (verify_aftr_first_elect[0][item]['/0/commit-idx'] <= get_values_from_all[item]['/0/commit-idx']) or
+        (verify_aftr_first_elect[0][item]['/0/last-applied'] != get_values_from_all[item]['/0/last-applied'])
       loop: "{{ range(0, FollowerUUIDs | length)| list }}"
 
     #Remove fault injection on all running peers.
@@ -202,14 +202,14 @@
 
     - name: "{{ recipe_name }}: Kill the 2nd Leader."
       debug:
-       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
+       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID[0]['/0/leader-uuid'], wantlist=True)}}"
       no_log: True
 
     #This is temporary. This is workaround though.
     - name: "{{ recipe_name }}: Wait until 3rd leader election happens"
       vars:
          stage: "wait_leader_election"
-         previous_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+         previous_leader: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
       debug:
         msg: "Waiting for second leader election"
       until: lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != (previous_leader)
@@ -265,7 +265,7 @@
         stage: "aftr_rm_fault_inject_client_write_completes"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | list | first == (num_writes - 1)
       retries: 10
       delay: 1
 
