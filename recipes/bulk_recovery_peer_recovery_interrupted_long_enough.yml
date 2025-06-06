@@ -94,7 +94,7 @@
         stage: "wait_for_write_op"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (pri_num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True)[0]['/0/pmdb-seqno'] == (pri_num_writes - 1)
       retries: 500
       delay: 1
 
@@ -156,7 +156,7 @@
          stage: "getCIFrmAll"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first >= (pri_num_writes | int) * (no_of_app_uuids | int) + 1
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True)[0]['/0/commit-idx'] >= (pri_num_writes | int) * (no_of_app_uuids | int) + 1
       retries: 500
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -167,7 +167,7 @@
          stage: "Get_commit_idx"
       debug:
         msg: "Verify commit-idx on all peers."
-      failed_when: getAll["/0/commit-idx"] < (pri_num_writes | int) * (no_of_app_uuids | int) + 1
+      failed_when: getAll[0]["/0/commit-idx"] < (pri_num_writes | int) * (no_of_app_uuids | int) + 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
       #Create set of required number of app_uuids.
@@ -193,7 +193,7 @@
         stage: "wait_for_write_op"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (pri_num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True)[0]['/0/pmdb-seqno'] == (pri_num_writes - 1)
       retries: 500
       delay: 1
 
@@ -214,7 +214,7 @@
          stage: "aftrNewWrgetCIFrmAll"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first >= (pri_num_writes | int) * (no_of_app_uuids | int) + (initial_vals["/0/commit-idx"])
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True)[0]['/0/commit-idx'] >= (pri_num_writes | int) * (no_of_app_uuids | int) + (initial_vals["/0/commit-idx"])
       retries: 500
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"

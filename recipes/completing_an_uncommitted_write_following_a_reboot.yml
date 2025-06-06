@@ -385,7 +385,7 @@
         stage: "poll_for_last_applied_idx"
       debug:
         msg: "Waiting for all followers to have a last-applied-idx which is equal to the leader's."
-      until: (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[item], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first) == (lookup('niova_ctlrequest', 'lookup', leader_uuid_after['results'][0]['item']['/0/leader-uuid'], '/raft_root_entry/0/last-applied', wantlist=True) | dict2items | map(attribute='value') | list | first)
+      until: (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[item], '/raft_root_entry/0/last-applied', wantlist=True)[0]['/0/last-applied']) == (lookup('niova_ctlrequest', 'lookup', leader_uuid_after['results'][0]['item']['/0/leader-uuid'], '/raft_root_entry/0/last-applied', wantlist=True)[0]['/0/last-applied'])
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
       loop_control:
          pause: 2

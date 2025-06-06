@@ -189,7 +189,7 @@
          stage: "wait_leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', nrunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != prevote_leader_before
+      until: lookup('niova_ctlrequest', 'lookup', nrunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)[0]['/0/leader-uuid'] != prevote_leader_before
       retries: 10
       delay: 1
       loop: "{{ range(0, nrunningPeers | length) | list }}"
