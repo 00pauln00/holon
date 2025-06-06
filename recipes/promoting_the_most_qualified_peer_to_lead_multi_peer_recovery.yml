@@ -42,7 +42,7 @@
          name: common
          tasks_from: validate_followers_aliveness
       vars:
-         ValLeaderUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+         ValLeaderUUID: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
 
     #Recipe Setup: Ensure all fault injections with “raft” in the name are disabled on all peers.
     - name: "{{ recipe_name }}: Check fault injection on all followers through common task."

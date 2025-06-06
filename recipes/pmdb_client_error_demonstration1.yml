@@ -68,7 +68,7 @@
          stage: "client_lookup_inval_obj"
       debug:
         msg: "Wait till the lookup operation completes"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, "/raft_client_root_entry/0/recent-ops-rd/0/status", wantlist=True) | dict2items | map(attribute='value') | list | first != "null"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, "/raft_client_root_entry/0/recent-ops-rd/0/status", wantlist=True)[0]['0/status'] != "null"
       retries: 3
       delay: 1
 

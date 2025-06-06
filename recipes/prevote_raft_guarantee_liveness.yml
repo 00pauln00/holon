@@ -51,7 +51,7 @@
         getlist: "{{ FollowerUUIDs | difference(server2) }}"
         addleader: "{{ getlist | difference(server4) }}"
       set_fact:
-        disablePeersfrmserver4: "{{ addleader + [LeaderUUID['/0/leader-uuid']] }}"
+        disablePeersfrmserver4: "{{ addleader + [LeaderUUID[0]['/0/leader-uuid']] }}"
 
     - debug:
         msg: "Peers which are disabled from server 4: {{ disablePeersfrmserver4 }}"

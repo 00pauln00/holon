@@ -55,7 +55,7 @@
 
     - name: "{{ recipe_name }}: Get leaderUUID."
       vars:
-        oldLeader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        oldLeader: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
       debug:
         msg: "Get the leaderUUID"
       with_items:
@@ -105,7 +105,7 @@
         stage: "wait_for_write_op"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True)[0]['/0/pmdb-seqno'] == (num_writes - 1)
       retries: 500
       delay: 1
 
@@ -127,12 +127,12 @@
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all peers after write operation."
       vars:
-         origCI: "{{ origValues['results'][item]['item']['/0/commit-idx'] }}"
+         origCI: "{{ origValues['results'][0]['item'] }}"
          stage: "getValsFrmAll"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
-      no_log: true
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
+      # no_log: true
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True)[0]['/0/commit-idx'] >= ((num_writes | int)> * (number_of_app_uuids | int)) + (origCI[item]['/0/commit-idx'] | int)
       retries: 60
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -144,8 +144,8 @@
       debug:
         msg: "Verify checkpoint-idx gets changed on all peers."
       failed_when: >
-           (getCPOnAll["/0/checkpoint-idx"] == -1) or
-           (getCPOnAll["/0/lowest-idx"] == -1)
+           (getCPOnAll[0]["/0/checkpoint-idx"] == -1) or
+           (getCPOnAll[0]["/0/lowest-idx"] == -1)
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Start peer with stale DB."
@@ -188,7 +188,7 @@
 
     - name: "{{ recipe_name }}: Kill the Leader."
       debug:
-       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
+       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID[0]['/0/leader-uuid'], wantlist=True)}}"
       no_log: True
 
     - name: "{{ recipe_name }}: Wait until leader election happens."
@@ -208,7 +208,7 @@
 
     - name: "{{ recipe_name }}: Get leaderUUID."
       vars:
-        newLeader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        newLeader: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
       debug:
         msg: "Get the leaderUUID"
       with_items:
@@ -229,8 +229,8 @@
       debug:
         msg: "Verify checkpoint-idx gets changed on peer 4."
       failed_when: >
-           (getCPOnPeer4["/0/checkpoint-idx"] == -1) or
-           (getCPOnPeer4["/0/lowest-idx"] == -1)
+           (getCPOnPeer4[0]["/0/checkpoint-idx"] == -1) or
+           (getCPOnPeer4[0]["/0/lowest-idx"] == -1)
 
       # Check raft values on all the already running peers.
     - name: "{{ recipe_name }}: Get Commit index value from NRunningPeers servers."
@@ -260,8 +260,8 @@
       debug:
         msg: " Verify commit-idx, term and leader-uuid remains same on all peers "
       failed_when: >
-          (peer_info[itr]['/0/commit-idx'] != peer_info[itr+1]['/0/commit-idx']) or
-          (peer_info[itr]['/0/term'] != peer_info[itr+1]['/0/term'])
+          (peer_info[0][itr]['/0/commit-idx'] != peer_info[0][itr+1]['/0/commit-idx']) or
+          (peer_info[0][itr]['/0/term'] != peer_info[0][itr+1]['/0/term'])
       loop: "{{ range(0, NRunningPeers | length - 1)| list }}"
       loop_control:
         loop_var: itr
