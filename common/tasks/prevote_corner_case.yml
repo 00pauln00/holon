@@ -13,7 +13,7 @@
          name: common
          tasks_from: get_follower_stats
 
-    - set_fact: LeaderUUID_before="{{ LeaderUUID['/0/leader-uuid'] }}"
+    - set_fact: LeaderUUID_before="{{ LeaderUUID[0]['/0/leader-uuid'] }}"
 
     - name: "{{ recipe_name }}: Start peer 4"
       include_role:
@@ -41,22 +41,22 @@
     #Verify raft-root-entry values for all peers.
     - name: "{{ recipe_name }}: Compare raft_root_entry values of all peers."
       vars:
-        term: "{{ raft_root_entry_all['results'][item]['item']['/0/term'] }}"
-        term_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/term'] }}"
-        commit_idx: "{{ raft_root_entry_all['results'][item]['item']['/0/commit-idx'] }}"
-        commit_idx_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/commit-idx'] }}"
-        last_applied: "{{ raft_root_entry_all['results'][item]['item']['/0/last-applied'] }}"
-        last_applied_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/last-applied'] }}"
-        last_applied_cum_crc: "{{ raft_root_entry_all['results'][item]['item']['/0/last-applied-cumulative-crc'] }}"
-        last_applied_cum_crc_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/last-applied-cumulative-crc'] }}"
-        sync_entry_idx: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-idx'] }}"
-        sync_entry_idx_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-idx'] }}"
-        sync_entry_term: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-term'] }}"
-        sync_entry_term_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-term'] }}"
-        sync_entry_data_size: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-data-size'] }}"
-        sync_entry_data_size_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-data-size'] }}"
-        sync_entry_crc: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-crc'] }}"
-        sync_entry_crc_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-crc'] }}"
+        term: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/term'] }}"
+        term_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/term'] }}"
+        commit_idx: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/commit-idx'] }}"
+        commit_idx_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/commit-idx'] }}"
+        last_applied: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/last-applied'] }}"
+        last_applied_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/last-applied'] }}"
+        last_applied_cum_crc: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/last-applied-cumulative-crc'] }}"
+        last_applied_cum_crc_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/last-applied-cumulative-crc'] }}"
+        sync_entry_idx: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/sync-entry-idx'] }}"
+        sync_entry_idx_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/sync-entry-idx'] }}"
+        sync_entry_term: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/sync-entry-term'] }}"
+        sync_entry_term_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/sync-entry-term'] }}"
+        sync_entry_data_size: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/sync-entry-data-size'] }}"
+        sync_entry_data_size_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/sync-entry-data-size'] }}"
+        sync_entry_crc: "{{ raft_root_entry_all['results'][0]['item'][item]['/0/sync-entry-crc'] }}"
+        sync_entry_crc_next: "{{ raft_root_entry_all['results'][0]['item'][item +1]['/0/sync-entry-crc'] }}"
       debug:
         msg: "Compare raft_root_entry values of all peers."
       failed_when: >
@@ -143,9 +143,9 @@
       vars:
          fault_injection_name: "raft_pvc_becomes_candidate"
       set_fact:
-         fault_injection_point_enabled: "{{ fault_injection_points['//fault_injection_points'][index]['enabled'] }}"
-      when: (fault_injection_points['//fault_injection_points'][index]['name'] == fault_injection_name)
-      loop: "{{  range(0, fault_injection_points['//fault_injection_points'] |length) | list }}"
+         fault_injection_point_enabled: "{{ fault_injection_points[0]['//fault_injection_points'][index]['enabled'] }}"
+      when: (fault_injection_points[0]['//fault_injection_points'][index]['name'] == fault_injection_name)
+      loop: "{{  range(0, fault_injection_points[0]['//fault_injection_points'] |length) | list }}"
       loop_control:
           loop_var: index
 

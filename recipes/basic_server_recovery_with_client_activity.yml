@@ -117,8 +117,8 @@
 
     - name: "{{ recipe_name }}: 'ms-since-last-ack' should increment in each iteration."
       vars:
-        time1: "{{ curr_follower_info[item]['/0/follower-stats'][0]['ms-since-last-ack'] }}"
-        time2: "{{ curr_follower_info[item + 1]['/0/follower-stats'][0]['ms-since-last-ack'] }}"
+        time1: "{{ curr_follower_info[0][item]['/0/follower-stats'][0]['ms-since-last-ack'] }}"
+        time2: "{{ curr_follower_info[0][item + 1]['/0/follower-stats'][0]['ms-since-last-ack'] }}"
       debug:
         msg: "Compare ms-since-last-ack: {{ time1 | int }} with {{ time2 | int }}"
       no_log: True
@@ -172,7 +172,7 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True)[0]['/0/pmdb-seqno'] == (num_writes - 1)
       retries: 10
       delay: 1
 

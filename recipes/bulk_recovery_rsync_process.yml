@@ -123,8 +123,8 @@
       debug:
         msg: "Verify checkpoint-idx gets changed on all peers."
       failed_when: >
-           (getCPOnAll["/0/checkpoint-idx"] == -1) or
-           (getCPOnAll["/0/lowest-idx"] == -1)
+           (getCPOnAll[0]["/0/checkpoint-idx"] == -1) or
+           (getCPOnAll[0]["/0/lowest-idx"] == -1)
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Start new peer with empty DB."
@@ -202,8 +202,8 @@
       debug:
         msg: "Verify checkpoint-idx gets changed on peer 4."
       failed_when: >
-           (getCPOnPeer4["/0/checkpoint-idx"] == -1) or
-           (getCPOnPeer4["/0/lowest-idx"] == -1)
+           (getCPOnPeer4[0]["/0/checkpoint-idx"] == -1) or
+           (getCPOnPeer4[0]["/0/lowest-idx"] == -1)
 
     # Check raft values on peer4.
     - name: "{{ recipe_name }}: Get raft root  values of newlyStartedPeer4."
@@ -240,9 +240,9 @@
       debug:
         msg: " Verify commit-idx, term and leader-uuid remains same on all peers "
       failed_when: >
-          (peer_info[itr]['/0/commit-idx'] != peer_info[itr+1]['/0/commit-idx']) or
-          (peer_info[itr]['/0/term'] != peer_info[itr+1]['/0/term']) or
-          (peer_info[itr]['/0/leader-uuid'] != peer_info[itr+1]['/0/leader-uuid'])
+          (peer_info[0][itr]['/0/commit-idx'] != peer_info[0][itr+1]['/0/commit-idx']) or
+          (peer_info[0][itr]['/0/term'] != peer_info[0][itr+1]['/0/term']) or
+          (peer_info[0][itr]['/0/leader-uuid'] != peer_info[0][itr+1]['/0/leader-uuid'])
       loop: "{{ range(0, NRunningPeers | length - 1)| list }}"
       loop_control:
         loop_var: itr

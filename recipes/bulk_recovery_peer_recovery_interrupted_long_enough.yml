@@ -227,7 +227,7 @@
       debug:
         msg: "Verify all values on all peers."
       failed_when: >
-           (getAll["/0/commit-idx"] < (pri_num_writes | int) * (no_of_app_uuids | int) + initial_vals["/0/commit-idx"])
+           (getAll[0]["/0/commit-idx"] < (pri_num_writes | int) * (no_of_app_uuids | int) + initial_vals["/0/commit-idx"])
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Get commit-idx values of all peers."
@@ -243,8 +243,8 @@
 
     - name: "{{ recipe_name }}: Compare commit-idx values of all peers."
       vars:
-        commit_idx: "{{ commit_idx_all['results'][item]['item']['/0/commit-idx'] }}"
-        commit_idx_next: "{{ commit_idx_all['results'][item +1]['item']['/0/commit-idx'] }}"
+        commit_idx: "{{ commit_idx_all['results'][0]['item'][item]['/0/commit-idx'] }}"
+        commit_idx_next: "{{ commit_idx_all['results'][0]['item'][item +1]['/0/commit-idx'] }}"
       debug:
         msg: "Compare commit-idx values of all peers."
       failed_when: commit_idx != commit_idx_next
@@ -252,7 +252,7 @@
 
     - name: "{{ recipe_name }}: Check for checkpoint-idx."
       vars:
-        chkp_idx: "{{ stage2_values['results'][item]['item']['/0/checkpoint-idx'] }}"
+        chkp_idx: "{{ stage2_values['results'][0]['item'][item]['/0/checkpoint-idx'] }}"
       debug:
         msg: "Check for checkpoint-idx."
       failed_when: chkp_idx | int == -1
@@ -260,8 +260,8 @@
 
     - name: "{{ recipe_name }}: Check if lowest index is increasing."
       vars:
-        prev_lowest_idx: "{{ stage1_values['results'][item]['item']['/0/lowest-idx'] }}"
-        next_lowest_idx: "{{ stage2_values['results'][item]['item']['/0/lowest-idx'] }}"
+        prev_lowest_idx: "{{ stage1_values['results'][0]['item'][item]['/0/lowest-idx'] }}"
+        next_lowest_idx: "{{ stage2_values['results'][0]['item'][item]['/0/lowest-idx'] }}"
       debug:
         msg: "Check if lowest index is increasing."
       failed_when: prev_lowest_idx == next_lowest_idx

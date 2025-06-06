@@ -52,7 +52,7 @@
     - name: "{{ recipe_name }}: Get the raft values."
       vars:
          stage: "stage0_prevote_get_all"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID[0]['/0/leader-uuid'], raft_keys, wantlist=True) }}"
       debug:
         msg: "Get the raft values for running peers"
       no_log: true
@@ -107,7 +107,7 @@
     - set_fact: prevchk_peers_to_disable="{{ [] + [prev_chk_peer1] + [prev_chk_peer2] }}"
 
     - set_fact:
-         prevote_leader_before: "{{ LeaderUUID['/0/leader-uuid'] }}"
+         prevote_leader_before: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
 
     - name: "{{ recipe_name }}: Get the raft values before disabling peers."
       vars:
@@ -147,7 +147,7 @@
         net_rcv_enabled: []
       set_fact:
          net_rcv_enabled: "{{ net_rcv_enabled + [nre] }}"
-      loop: "{{ ctl_svc_nodes['//ctl_svc_nodes'] }}"
+      loop: "{{ ctl_svc_nodes[0]['//ctl_svc_nodes'] }}"
       when: uuid == prevchk_peers_to_disable[0] or uuid == prevchk_peers_to_disable[1]
       no_log: True
 
@@ -200,7 +200,7 @@
          tasks_from: get_follower_stats
 
     - set_fact:
-         prevote_leader_after: "{{ LeaderUUID['/0/leader-uuid'] }}"
+         prevote_leader_after: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
 
     - name: "{{ recipe_name }}: Check if new leader is elected"
       debug:
@@ -224,7 +224,7 @@
       vars:
         nrunningPeers: "{{ NRunningPeers | difference(prevote_leader_before) }}"
         orig_val: "{{ stage0_raftvals['results'][0]['item'] }}"
-        curr_val: "{{ prevote_get_all_after['results'][item]['item'] }}"
+        curr_val: "{{ prevote_get_all_after['results'][0]['item'][item] }}"
       debug:
         msg: "Verify all values after new leader election"
       failed_when: >
@@ -262,7 +262,7 @@
         net_rcv_enabled_vals: []
       set_fact:
          net_rcv_enabled_vals: "{{ net_rcv_enabled_vals + [nre] }}"
-      loop: "{{ ctl_svc_nodes_en['//ctl_svc_nodes'] }}"
+      loop: "{{ ctl_svc_nodes_en[0]['//ctl_svc_nodes'] }}"
       when: uuid == prevchk_peers_to_disable[0] or uuid == prevchk_peers_to_disable[1]
       no_log: True
 

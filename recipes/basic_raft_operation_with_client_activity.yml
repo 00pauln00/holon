@@ -203,12 +203,12 @@
       vars:
         follower_stats_after_wr: "{{ follower_stats['results'][0]['item'] }}"
         follower_stats_before_wr: "{{ snapshot_fstat_before_wr['results'][0]['item'] }}"
-        term_before_wr: "{{ snapshot_before_write['results'][item]['item'] }}"
+        term_before_wr: "{{ snapshot_before_write['results'][0]['item'] }}"
       debug:
         msg: "Server side verifications."
       failed_when: >
          (follower_stats_after_wr['/0/follower-stats'][item]['next-idx'] != (follower_stats_before_wr['/0/follower-stats'][item]['next-idx'] + num_writes)) or
-         (follower_stats_after_wr['/0/follower-stats'][item]['prev-idx-term'] != term_before_wr['/0/term'])
+         (follower_stats_after_wr['/0/follower-stats'][item]['prev-idx-term'] != term_before_wr[item]['/0/term'])
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
     - name: "{{ recipe_name}}: Get the last-ack for all the followers"
@@ -240,8 +240,8 @@
 
     - name: "{{ recipe_name}}: Verify the values for running peers."
       vars:
-        srv_latest_vals: "{{ running_srv_vals['results'][item]['item'] }}"
-        srv_before_wr_vals: "{{ snapshot_before_write['results'][item]['item'] }}"
+        srv_latest_vals: "{{ running_srv_vals['results'][0]['item'][item] }}"
+        srv_before_wr_vals: "{{ snapshot_before_write['results'][0]['item'][item] }}"
       debug:
        msg: "Compare parameters with before write parameters{{ srv_latest_vals }} and {{ srv_before_wr_vals }}"
       no_log: true
@@ -255,8 +255,8 @@
 
     - name: "{{ recipe_name}}: Verify that term, last-applied-cumulative-crc, sync-entry-term, sync-entry-data-size and sync-entry-crc are same on all peers"
       vars:
-        curr_itr_vals: "{{ running_srv_vals['results'][item]['item'] }}"
-        next_itr_vals: "{{ running_srv_vals['results'][item + 1]['item'] }}"
+        curr_itr_vals: "{{ running_srv_vals['results'][0]['item'][item] }}"
+        next_itr_vals: "{{ running_srv_vals['results'][0]['item'][item + 1] }}"
       debug:
         msg: "Verifying that term, last-applied-cumulative-crc, sync-entry-term, sync-entry-data-size and sync-entry-crc are same on all peers"
       failed_when: >
