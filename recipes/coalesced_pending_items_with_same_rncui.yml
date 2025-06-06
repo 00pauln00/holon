@@ -216,13 +216,13 @@
                 - "/raft_root_entry/0/sync-entry-idx"
         stage4_values: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID[0]['/0/leader-uuid'], raft_keys, wantlist=True) }}"
       debug:
-        msg: "Verify write completion: {{ stage4_values }}"
+        msg: "Verify write completion."
       no_log: true
       failed_when: >
-         (stage4_values[0]["/0/commit-idx"] != ((num_writes | int) + initial_vals[0]["/0/commit-idx"])) or
-         (stage4_values[0]["/0/last-applied"] != ((num_writes | int) + (initial_vals[0]["/0/last-applied"] | int))) or
-         (stage4_values[0]["/0/sync-entry-idx"] != ((num_writes | int) + (initial_vals[0]["/0/sync-entry-idx"] | int))) or
-         (stage4_values[0]["/0/term"] != (initial_vals[0]["/0/term"] | int))
+         (stage4_values[0]["/0/commit-idx"] != ((num_writes | int) + initial_vals["/0/commit-idx"])) or
+         (stage4_values[0]["/0/last-applied"] != ((num_writes | int) + (initial_vals["/0/last-applied"] | int))) or
+         (stage4_values[0]["/0/sync-entry-idx"] != ((num_writes | int) + (initial_vals["/0/sync-entry-idx"] | int))) or
+         (stage4_values[0]["/0/term"] != (initial_vals["/0/term"] | int))
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

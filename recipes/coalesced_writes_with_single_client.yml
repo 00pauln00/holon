@@ -73,7 +73,7 @@
            - "/pumice_db_test_client/pmdb-test-apps/*/status"
       debug:
         msg: "Wait until write status gets updated"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cmd_str, wantlist=True) | dict2items | map(attribute='value') | list | first == "Success"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cmd_str, wantlist=True)[0]['/*/status'] == "Success"
       retries: 100
       delay: 2
 
@@ -85,7 +85,7 @@
           - "/pumice_db_test_client/pmdb-test-apps/*/pmdb-seqno"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, write_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, write_key, wantlist=True)[0]['/*/pmdb-seqno'] == (num_writes - 1)
       retries: 100
       delay: 2
 
@@ -96,7 +96,7 @@
            - "/pumice_db_test_client/pmdb-test-apps/*/app-sync"
       debug:
         msg: "Wait until write status gets updated"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cmd_str, wantlist=True) | dict2items | map(attribute='value') | list | first == true
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cmd_str, wantlist=True)[0]['/*/app-sync'] == true
       retries: 100
       delay: 2
 

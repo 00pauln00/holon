@@ -156,7 +156,7 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', ClientUUIDS[0], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', ClientUUIDS[0], raft_key, wantlist=True)[0]['/0/pmdb-seqno'] == (num_writes - 1)
       retries: 60
       delay: 2
 
@@ -166,7 +166,7 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/status"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', ClientUUIDS[1], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == "Operation not permitted"
+      until: lookup('niova_ctlrequest', 'lookup', ClientUUIDS[1], raft_key, wantlist=True)[0]['/0/status'] == "Operation not permitted"
       retries: 60
       delay: 1
 
