@@ -118,7 +118,7 @@
          raft_keys:
               - "/raft_root_entry/0/state"
       set_fact:
-         verifyServer4State: "{{ lookup('niova_ctlrequest', 'lookup', server4, raft_keys, wantlist=true) }}"
+         verifyServer4State: "{{ lookup('niova_ctlrequest', 'lookup', server4, raft_keys, wantlist=true)[0] }}"
       failed_when: verifyServer4State["/0/state"] != "candidate-prevote"
 
     - name: "{{ recipe_name }}: Prepare list of connected peers i.e. server 1, 2 and 3."
@@ -126,7 +126,7 @@
         rmPeer4: "{{ FollowerUUIDs | difference(server4) }}"
         rmPeer5: "{{ rmPeer4 | difference(server5) }}"
       set_fact:
-        connectedPeers: "{{ rmPeer5 + [LeaderUUID['/0/leader-uuid']] }}"
+        connectedPeers: "{{ rmPeer5 + [LeaderUUID[0]['/0/leader-uuid']] }}"
 
     - name: "{{ recipe_name }}: Get term value from server 1, 2 and 3."
       vars:
@@ -136,7 +136,7 @@
               - "/raft_root_entry/0/leader-uuid"
               - "/raft_root_entry/0/state"
               - "/raft_root_entry/0/commit-idx"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', connectedPeers, raft_keys, wantlist=true) }}"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', connectedPeers, raft_keys, wantlist=true)[0] }}"
       debug:
         msg: "Get term values from server 1, 2 and 3"
       with_items:
@@ -153,7 +153,7 @@
       debug:
         msg: "Verify values for peer."
       failed_when: >
-          (origInfo['results'][item]['item']["/0/leader-uuid"] != LeaderUUID["/0/leader-uuid"]) or
+          (origInfo['results'][item]['item']["/0/leader-uuid"] != LeaderUUID[0]["/0/leader-uuid"]) or
           (term_prev != term_next) or
           (commitIdx_prev != commitIdx_next) or
           ((origInfo['results'][item]['item']["/0/state"] != "leader") and
@@ -220,7 +220,7 @@
           - "/raft_client_root_entry/0/raft-uuid"
           - "/raft_client_root_entry/0/state"
           - "/raft_client_root_entry/0/leader-uuid"
-        cli_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+        cli_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True)[0] }}"
       debug:
         msg: "Get the values for client"
       with_items:
@@ -231,7 +231,7 @@
     - name: "{{ recipe_name }}: leader remains same for client as well"
       vars:
         clientLeader: "{{ client_values['results'][0]['item']['/0/leader-uuid'] }}"
-        actualLeader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        actualLeader: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
       debug:
         msg: "Verify leader remains same"
       failed_when: >
@@ -251,7 +251,7 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True)[0]['/0/pmdb-seqno'] == (num_writes - 1)
       retries: 100
       delay: 1
 
@@ -262,7 +262,7 @@
         raft_key: "/raft_root_entry/0/commit-idx"
       debug:
         msg: "Wait until commit-idx gets incremented"
-      until: lookup('niova_ctlrequest', 'lookup', getPeersExceptServer4[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (get_values_from_all[0]['/0/commit-idx'] + num_writes)
+      until: lookup('niova_ctlrequest', 'lookup', getPeersExceptServer4[item], raft_key, wantlist=True)[0]['/0/commit-idx'] == (get_values_from_all[0][item]['/0/commit-idx'] + num_writes)
       retries: 100
       delay: 1
       loop: "{{ range(0, getPeersExceptServer4 | length) | list }}"
@@ -275,7 +275,7 @@
              - "/raft_root_entry/0/leader-uuid"
              - "/raft_root_entry/0/term"
              - "/raft_root_entry/0/commit-idx"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', getPeersExceptServer4, raft_keys, wantlist=true) }}"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', getPeersExceptServer4, raft_keys, wantlist=true)[0] }}"
       debug:
         msg: "Get all values from all peers."
       with_items:
@@ -286,13 +286,13 @@
     - name: "{{ recipe_name }}: After successful write operation, verify all values same on other peers except server 4."
       vars:
         getPeersExceptServer4: "{{ NRunningPeers | difference(server4) }}"
-        curr_val: "{{ getAllVal['results'][item]['item'] }}"
+        curr_val: "{{ getAllVal['results']}}"
       debug:
         msg: "Verify values for all peers excluding server 4"
       failed_when: >
-          (curr_val['/0/leader-uuid'] != get_values_from_all[item]['/0/leader-uuid']) or
-          (curr_val['/0/term'] != get_values_from_all[item]['/0/term']) or
-          (curr_val['/0/commit-idx'] != get_values_from_all[item]['/0/commit-idx'] + num_writes)
+          (curr_val[item]['item']['/0/leader-uuid'] != get_values_from_all[0][item]['/0/leader-uuid']) or
+          (curr_val[item]['item']['/0/term'] != get_values_from_all[0][item]['/0/term']) or
+          (curr_val[item]['item']['/0/commit-idx'] != get_values_from_all[0][item]['/0/commit-idx'] + num_writes)
       loop: "{{ range(0, getPeersExceptServer4 | length) | list }}"
 
     - name: "{{ recipe_name }}: Verify the write operation should not happen to server 4."
@@ -301,7 +301,7 @@
          raft_keys:
               - "/raft_root_entry/0/commit-idx"
       set_fact:
-         verifyCommitIdx: "{{ lookup('niova_ctlrequest', 'lookup', server4, raft_keys, wantlist=true) }}"
+         verifyCommitIdx: "{{ lookup('niova_ctlrequest', 'lookup', server4, raft_keys, wantlist=true)[0] }}"
       failed_when: verifyCommitIdx["/0/commit-idx"] == getAllVal['results'][0]['item']["/0/commit-idx"]
 
     - name: "{{ recipe_name }}: Enable Msg(Recv) from server 4 to other peers except server 2."
@@ -360,7 +360,7 @@
              - "/raft_root_entry/0/commit-idx"
              - "/raft_root_entry/0/term"
              - "/raft_root_entry/0/state"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=true) }}"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=true)[0] }}"
       debug:
         msg: "Get all values from all peers."
       with_items:
@@ -371,9 +371,9 @@
       debug:
         msg: "Verify values for all running peers."
       failed_when: >
-          (getAllPeerVal['results'][item]['item']['/0/leader-uuid'] != get_values_from_all[item]['/0/leader-uuid']) or
-          (getAllPeerVal['results'][item]['item']['/0/term'] != get_values_from_all[item]['/0/term']) or
-          (getAllPeerVal['results'][item]['item']['/0/commit-idx'] != (get_values_from_all[item]['/0/commit-idx'] + num_writes)) or
+          (getAllPeerVal['results'][item]['item']['/0/leader-uuid'] != get_values_from_all[0][item]['/0/leader-uuid']) or
+          (getAllPeerVal['results'][item]['item']['/0/term'] != get_values_from_all[0][item]['/0/term']) or
+          (getAllPeerVal['results'][item]['item']['/0/commit-idx'] != (get_values_from_all[0][item]['/0/commit-idx'] + num_writes)) or
           ((getAllPeerVal['results'][item]['item']['/0/state'] != "leader") and
           (getAllPeerVal['results'][item]['item']['/0/state'] != "follower"))
       loop: "{{ range(0, NRunningPeers | length) | list }}"

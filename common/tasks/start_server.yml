@@ -14,6 +14,6 @@
     msg: "Wait till bootup completes for Peer {{ ServerUUID }}."
   vars:
     stage: "start_server"
-  until: (lookup('niova_ctlrequest', 'lookup', ServerUUID, '/raft_root_entry', wantlist=True)| first != "null") and (lookup('niova_ctlrequest', 'lookup', ServerUUID, '/raft_root_entry/0/state', wantlist=True)| first != "booting")
+  until: (lookup('niova_ctlrequest', 'lookup', ServerUUID, '/raft_root_entry', wantlist=True)| first != "null") and (lookup('niova_ctlrequest', 'lookup', ServerUUID, '/raft_root_entry/0/state', wantlist=True)[0]['/0/state'] != "booting")
   retries: 60
   delay: 1

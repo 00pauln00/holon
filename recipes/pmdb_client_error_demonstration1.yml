@@ -68,7 +68,7 @@
          stage: "client_lookup_inval_obj"
       debug:
         msg: "Wait till the lookup operation completes"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, "/raft_client_root_entry/0/recent-ops-rd/0/status", wantlist=True)[0]['0/status'] != "null"
+      until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, "/raft_client_root_entry/0/recent-ops-rd/0/status", wantlist=True)[0]['/0/status'] != "null")
       retries: 3
       delay: 1
 
@@ -155,7 +155,7 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
       debug:
         msg: "Waiting for the valid pmdb-seqno"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == 0
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True)[0]['/0/pmdb-seqno'] == 0
       loop: "{{ range(0, 30) | list }}"
       loop_control:
          pause: 1
@@ -204,7 +204,7 @@
         demo1_valid_wr: "{{ valid_write['results'][0]['item'] }}"
       debug:
         msg: "Waiting for last-rqst-tag to change its value"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != demo1_valid_wr['/0/last-request-tag']
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True)[0]['/0/last-request-tag'] != demo1_valid_wr['/0/last-request-tag']
       loop: "{{ range(0, 10) | list }}"
       loop_control:
         pause: 1

@@ -61,7 +61,7 @@
          raft_keys:
             - "/raft_root_entry/0/term"
             - "/raft_root_entry/0/commit-idx"
-         get_values: "{{ lookup('niova_ctlrequest', 'lookup', running_servers, raft_keys, wantlist=True) }}"
+         get_values: "{{ lookup('niova_ctlrequest', 'lookup', running_servers, raft_keys, wantlist=True)[0] }}"
       debug:
         msg: "Getting orignal values."
       no_log: True
@@ -184,7 +184,7 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (nwrites - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True)[0]['/0/pmdb-seqno'] == (nwrites - 1)
       retries: 10
       delay: 1
 
@@ -225,7 +225,7 @@
                 - "/raft_root_entry/0/term"
                 - "/raft_root_entry/0/sync-entry-idx"
                 - "/raft_root_entry/0/last-applied-cumulative-crc"
-        stage4_values: "{{ lookup('niova_ctlrequest', 'lookup', alive_followers, raft_keys, wantlist=True) }}"
+        stage4_values: "{{ lookup('niova_ctlrequest', 'lookup', alive_followers, raft_keys, wantlist=True)[0] }}"
       debug:
         msg:
           - "Getting last-applied-cumulative-crc and sync-entry-crc."
@@ -268,7 +268,7 @@
         no_of_fi: []
         alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
         leader_to_be: "{{ alive_followers[0] }}"
-        pmqp_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        pmqp_leader_uuid: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
         nalive_follower: "{{ alive_followers | difference(leader_to_be) }}"
       set_fact:
         No_of_Fi: "{{ no_of_fi + nalive_follower + [pmqp_leader_uuid] }}"
@@ -288,7 +288,7 @@
         stage: "get_fi_array"
         raft_key:
            - "/fault_injection_points"
-        get_fi: "{{ lookup('niova_ctlrequest', 'lookup', No_of_Fi, raft_key, wantlist=True) }}"
+        get_fi: "{{ lookup('niova_ctlrequest', 'lookup', No_of_Fi, raft_key, wantlist=True)[0] }}"
       debug:
         msg: "Getting fault_injection_points array."
       no_log: True
@@ -317,7 +317,7 @@
         stage: "leader_to_be_fi_array"
         raft_key:
            - "/fault_injection_points"
-        get_fi_on_leader_to_be: "{{ lookup('niova_ctlrequest', 'lookup', leader_to_be, raft_key, wantlist=True) }}"
+        get_fi_on_leader_to_be: "{{ lookup('niova_ctlrequest', 'lookup', leader_to_be, raft_key, wantlist=True)[0] }}"
       debug:
         msg: "Getting fault_injection_points array."
       no_log: True
@@ -377,7 +377,7 @@
         stage: "state_of_resumed_followers"
         state_key:
             - "/raft_root_entry/0/state"
-        get_state: "{{ lookup('niova_ctlrequest', 'lookup', Promoting_Selected_Followers, state_key, wantlist=True) }}"
+        get_state: "{{ lookup('niova_ctlrequest', 'lookup', Promoting_Selected_Followers, state_key, wantlist=True)[0] }}"
       debug:
         msg: "Getting state for resumed followers."
       no_log: True
@@ -406,8 +406,8 @@
         msg:
          - "Wait to until term value >= leader's term."
          - "Initial term {{ initial_term }}"
-         - "{{ lookup('niova_ctlrequest', 'lookup', Promoting_Selected_Followers[item], raft_key, wantlist=True) | dict2items }}"
-      until: lookup('niova_ctlrequest', 'lookup', Promoting_Selected_Followers[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first >= (initial_term | int)
+         - "{{ lookup('niova_ctlrequest', 'lookup', Promoting_Selected_Followers[item], raft_key, wantlist=True)[0]['/0/term'] }}"
+      until: lookup('niova_ctlrequest', 'lookup', Promoting_Selected_Followers[item], raft_key, wantlist=True)[0]['/0/term'] >= (initial_term | int)
       retries: 60
       delay: 1
       loop: "{{ range(0, Promoting_Selected_Followers | length) | list }}"
@@ -453,7 +453,7 @@
         raft_key: "/raft_root_entry/0/leader-uuid"
       debug:
         msg: "Wait to until 'leader-to-be' becomes leader."
-      until: lookup('niova_ctlrequest', 'lookup', nresume_peers[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (leader_to_be)
+      until: lookup('niova_ctlrequest', 'lookup', nresume_peers[item], raft_key, wantlist=True)[0]['/0/leader-uuid'] == (leader_to_be)
       retries: 60
       delay: 1
       loop: "{{ range(0, nresume_peers | length) | list }}"
@@ -470,7 +470,7 @@
             - "/raft_root_entry/0/term"
             - "/raft_root_entry/0/sync-entry-idx"
             - "/raft_root_entry/0/last-applied-cumulative-crc"
-        get_raft_value : "{{ lookup('niova_ctlrequest', 'lookup', nresume_peers, raft_key, wantlist=True) }}"
+        get_raft_value : "{{ lookup('niova_ctlrequest', 'lookup', nresume_peers, raft_key, wantlist=True)[0] }}"
       debug:
         msg: "Getting last-applied for resumed followers."
       no_log: True
@@ -528,7 +528,7 @@
         raft_key: "/raft_root_entry/0/last-applied"
       debug:
         msg: "Wait until last-applied should be <initial-commit-idx + NumWrites + 1>"
-      until: lookup('niova_ctlrequest', 'lookup', No_of_Fi[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first >= ((initial_commit_idx | int) + (nwrites | int) + 1)
+      until: lookup('niova_ctlrequest', 'lookup', No_of_Fi[item], raft_key, wantlist=True)[0]['/0/last-applied'] >= ((initial_commit_idx | int) + (nwrites | int) + 1)
       retries: 5
       delay: 1
       loop: "{{ range(0, No_of_Fi | length) | list }}"
@@ -545,7 +545,7 @@
             - "/raft_root_entry/0/sync-entry-crc"
             - "/raft_root_entry/0/sync-entry-data-size"
             - "/raft_root_entry/0/sync-entry-term"
-        get_raft_key : "{{ lookup('niova_ctlrequest', 'lookup', No_of_Fi, raft_key, wantlist=True) }}"
+        get_raft_key : "{{ lookup('niova_ctlrequest', 'lookup', No_of_Fi, raft_key, wantlist=True)[0] }}"
       debug:
         msg: "Getting last-applied for resumed followers."
       no_log: True
@@ -601,7 +601,7 @@
         stage: "get_fi_array"
         raft_key:
            - "/fault_injection_points"
-        disable_fi: "{{ lookup('niova_ctlrequest', 'lookup', No_of_Fi, raft_key, wantlist=True) }}"
+        disable_fi: "{{ lookup('niova_ctlrequest', 'lookup', No_of_Fi, raft_key, wantlist=True)[0] }}"
       debug:
         msg: "Getting fault_injection_points array."
       no_log: True

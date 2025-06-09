@@ -44,7 +44,7 @@
             - "/raft_root_entry/0/leader-uuid"
             - "/raft_root_entry/0/term"
             - "/raft_root_entry/0/commit-idx"
-         get_values: "{{ lookup('niova_ctlrequest', 'lookup', running_servers, raft_keys, wantlist=True) }}"
+         get_values: "{{ lookup('niova_ctlrequest', 'lookup', running_servers, raft_keys, wantlist=True)[0] }}"
       debug:
         msg: "Getting orignal values."
       no_log: True
@@ -100,7 +100,7 @@
         raft_key:
               - "/raft_client_root_entry/0/default-request-timeout-sec"
       set_fact:
-        verifyCliReqTimeout: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) }}"
+        verifyCliReqTimeout: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True)[0] }}"
       failed_when: verifyCliReqTimeout["/0/default-request-timeout-sec"] != (set_timeout)
 
     - name: "{{ recipe_name }}: Apply write cmd from client."
@@ -145,7 +145,7 @@
         raft_keys:
           - "/raft_client_root_entry/0/recent-ops-wr"
       set_fact:
-        getStatusFrmCli: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+        getStatusFrmCli: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True)[0] }}"
       failed_when: getStatusFrmCli['/0/recent-ops-wr'][0]['status'] != "Connection timed out"
 
     - name: "{{ recipe_name}}: Wait until new leader election happens."
@@ -156,7 +156,7 @@
       debug:
         msg:
         - "Waiting for new leader to elect"
-      until: (lookup('niova_ctlrequest', 'lookup', remainingPeers[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first != stage1_value['results'][0]['item']['/0/leader-uuid'])
+      until: (lookup('niova_ctlrequest', 'lookup', remainingPeers[item], raft_key, wantlist=True)[0]['/0/leader-uuid'] != stage1_value['results'][0]['item']['/0/leader-uuid'])
       retries: 30
       delay: 3
       loop: "{{ range(0, remainingPeers | length)| list }}"
@@ -190,7 +190,7 @@
         stage: "wait_for_write_op"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True)[0]['/0/pmdb-seqno'] == (num_writes - 1)
       retries: 500
       delay: 1
 
@@ -201,7 +201,7 @@
          raft_keys:
             - "/raft_root_entry/0/term"
             - "/raft_root_entry/0/commit-idx"
-         getVal: "{{ lookup('niova_ctlrequest', 'lookup', remainingPeers, raft_keys, wantlist=True) }}"
+         getVal: "{{ lookup('niova_ctlrequest', 'lookup', remainingPeers, raft_keys, wantlist=True)[0] }}"
       debug:
         msg: "Getting values after new election {{ getVal }}"
       no_log: True
@@ -228,7 +228,7 @@
          raft_key:
             - "/raft_root_entry/0/state"
       set_fact:
-         getStateFrmOldLeader: "{{ lookup('niova_ctlrequest', 'lookup', stage1_value['results'][0]['item']['/0/leader-uuid'], raft_key, wantlist=True) }}"
+         getStateFrmOldLeader: "{{ lookup('niova_ctlrequest', 'lookup', stage1_value['results'][0]['item']['/0/leader-uuid'], raft_key, wantlist=True)[0] }}"
       failed_when: getStateFrmOldLeader["/0/state"] != "follower"
 
     - name: "{{ recipe_name }}: Verify the status of both APP-UUID1 and APP-UUID2."

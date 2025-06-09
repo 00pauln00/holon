@@ -43,7 +43,7 @@
     #Get leader uuid.
     - name: "{{ recipe_name }}: Set value for original leader."
       vars:
-        ori_leader: "{{ LeaderUUID | dict2items | map(attribute='value') | list | first }}"
+        ori_leader: "{{ LeaderUUID[0] }}"
       debug: var=ori_leader
       register: reb_orig_leader
       no_log: true
@@ -117,7 +117,7 @@
     - name: "{{ recipe_name }}: Get commit-idx values of unpaused followers after applying fault injection."
       vars:
         stage: "get_commit_idx"
-        commit_idx_vals: "{{ lookup('niova_ctlrequest', 'lookup', rebuild_unpaused_followers, '/raft_root_entry/0/commit-idx', wantlist=True) }}"
+        commit_idx_vals: "{{ lookup('niova_ctlrequest', 'lookup', rebuild_unpaused_followers, '/raft_root_entry/0/commit-idx', wantlist=True)[0] }}"
       debug:
         msg: "{{ commit_idx_vals }}"
       with_items:
@@ -209,7 +209,7 @@
     - name: "{{ recipe_name }}: Get commit-idx values of all peers before reboot."
       vars:
         stage: "get_cm_idx_after_itr"
-        cmidx: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/commit-idx', wantlist=True) }}"
+        cmidx: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/commit-idx', wantlist=True)[0] }}"
       debug:
          msg: "Getting commit-idx for all servers."
       no_log: true
