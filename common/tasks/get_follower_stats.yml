@@ -45,23 +45,40 @@
     - name: "{{ recipe_name }}: Print Leader UUID."
       debug:
         msg: "Leader UUID: {{ LeaderUUID }}"
-      when: LeaderUUID[0] != "" and LeaderUUID[0]['/0/leader-uuid'] != "null"
+      when:
+        - LeaderUUID is defined
+        - LeaderUUID | length > 0
+        - LeaderUUID[0]['/0/leader-uuid'] is defined
+        - LeaderUUID[0]['/0/leader-uuid'] != "null"
 
     - name: "Get the FollowerUUIDs list."
       set_fact:
         FollowerUUIDs: "{{ NRunningPeers | difference([LeaderUUID[0]['/0/leader-uuid']]) }}"
-      when: LeaderUUID[0] != "" and LeaderUUID[0]['/0/leader-uuid'] != "null"
+      when:
+        - LeaderUUID is defined
+        - LeaderUUID | length > 0
+        - LeaderUUID[0]['/0/leader-uuid'] is defined
+        - LeaderUUID[0]['/0/leader-uuid'] != "null"
 
     - name: "{{ recipe_name }}: Print Follower UUIDs."
       debug:
         msg: "{{ FollowerUUIDs }}"
-      when: FollowerUUIDs != ""
+      when:
+        - FollowerUUIDs is defined
+        - FollowerUUIDs | length > 0
 
     - name: "{{ recipe_name }}: Get the follower-stats."
       vars:
         stage: "get_follower_stats"
         raft_key:
-            - "/raft_root_entry/0/follower-stats"
+          - "/raft_root_entry/0/follower-stats"
       set_fact:
         GetFollowerStatsInfo: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID[0]['/0/leader-uuid'], raft_key, wantlist=True) }}"
-      when: LeaderUUID[0] != "" and LeaderUUID[0]['/0/leader-uuid'] != "null" and FollowerUUIDs | length != 0
+      when:
+        - LeaderUUID is defined
+        - LeaderUUID | length > 0
+        - LeaderUUID[0]['/0/leader-uuid'] is defined
+        - LeaderUUID[0]['/0/leader-uuid'] != "null"
+        - FollowerUUIDs is defined
+        - FollowerUUIDs | length > 0
+
