@@ -186,7 +186,7 @@
       debug:
         msg: "Waiting for previous leader to become follower and it's commit-idx should be greater than previous commit-idx by 1."
       no_log: true
-      until: (lookup('niova_ctlrequest', 'lookup', leader_uuid_before, '/raft_root_entry/0/state', wantlist=True)| dict2items | map(attribute='value') | list | string != "follower") and (leader_values_after_election['results'][0]['item']['/0/commit-idx'] - rb_during_start_leader_values_before_election['/0/commit-idx'] == 1)
+      until: (lookup('niova_ctlrequest', 'lookup', leader_uuid_before, '/raft_root_entry/0/state')['/0/state'] != "follower") and (leader_values_after_election['results'][0]['item']['/0/commit-idx'] - rb_during_start_leader_values_before_election['/0/commit-idx'] == 1)
       retries: 10
       delay: 2
 
@@ -199,7 +199,7 @@
             - "/raft_root_entry/0/follower-reason"
             - "/raft_root_entry/0/client-requests"
         leader_uuid_before: "{{ rb_during_start_raft_values['/0/leader-uuid'] }}"
-        prev_leader_vals: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, raft_keys, wantlist=True) }}"
+        prev_leader_vals: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, raft_keys) }}"
       debug:
         msg: "Getting raft_root_entry values for previous leader."
       no_log: true
@@ -229,7 +229,7 @@
       vars:
         num_running_servers: "{{ NRunningPeers }}"
         stage: "get_clstate"
-        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', num_running_servers, peer_raft_keys, wantlist=True) }}"
+        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', num_running_servers, peer_raft_keys) }}"
       debug:
          msg: "Getting raft_root_entry for all servers."
       no_log: true

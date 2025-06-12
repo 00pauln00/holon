@@ -32,7 +32,7 @@
                stage: "check_booting_stage"
                state_key:
                   - "/raft_root_entry/0/state"
-               verify_cluster_requirement: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, state_key, wantlist=True) }}"
+               verify_cluster_requirement: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, state_key) }}"
             debug:
               msg: "Getting orignal values."
             no_log: True
@@ -60,7 +60,7 @@
                name: common
                tasks_from: validate_followers_aliveness
             vars:
-              ValLeaderUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+              ValLeaderUUID: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
 
           #Recipe Setup: Ensure all fault injections with “raft” in the name are disabled on all peers.
           - name: "{{ recipe_name }}: Check fault injection on all followers through common task."
@@ -76,7 +76,7 @@
                raft_keys:
                   - "/raft_root_entry/0/term"
                   - "/raft_root_entry/0/commit-idx"
-               get_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+               get_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
             debug:
               msg: "Getting orignal values."
             no_log: True
@@ -142,7 +142,7 @@
           #1 - Pause the Selected Followers.
           - name: "{{ recipe_name }}: Pause the selected followers."
             vars:
-              pause_followers: "{{ lookup('niova_raftprocess', 'pause', SelCorLeaderPausedFollowers[item], wantlist=True) }}"
+              pause_followers: "{{ lookup('niova_raftprocess', 'pause', SelCorLeaderPausedFollowers[item]) }}"
             debug:
               msg: "{{ pause_followers }}"
             no_log: True
@@ -188,7 +188,7 @@
               stage: "num_writes"
               cmd: "input@{{ sel_correct_lead_app_uuid.stdout }}:0:0:0:0.write:0.{{ nwrites }}"
               where: "/pumice_db_test_client/input"
-              write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+              write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
             debug:
               msg: "{{ write_cmd }}"
             no_log: True
@@ -199,7 +199,7 @@
               raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
             debug:
               msg: "Waiting for client to finish writing"
-            until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (nwrites - 1)
+            until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key)['/0/pmdb-seqno'] == (nwrites - 1)
             retries: 10
             delay: 1
 
@@ -245,7 +245,7 @@
                       - "/raft_root_entry/0/term"
                       - "/raft_root_entry/0/sync-entry-idx"
                       - "/raft_root_entry/0/last-applied-cumulative-crc"
-              stage4_values: "{{ lookup('niova_ctlrequest', 'lookup', alive_followers, raft_keys, wantlist=True) }}"
+              stage4_values: "{{ lookup('niova_ctlrequest', 'lookup', alive_followers, raft_keys) }}"
             debug:
               msg:
                 - "Getting last-applied-cumulative-crc and sync-entry-crc."
@@ -289,7 +289,7 @@
           #2
           - name: "{{ recipe_name }}: Kill the processes."
             debug:
-              msg: "{{ lookup('niova_raftprocess', 'kill', TotalNServersList[item], wantlist=True) }}"
+              msg: "{{ lookup('niova_raftprocess', 'kill', TotalNServersList[item]) }}"
             loop: "{{ range(0, TotalNServersList | length) | list }}"
 
           #3
@@ -317,7 +317,7 @@
               resumed_followers: "{{ SelCorLeaderPausedFollowers }}"
               state_key:
                   - "/raft_root_entry/0/state"
-              get_state: "{{ lookup('niova_ctlrequest', 'lookup', resumed_followers, state_key, wantlist=True) }}"
+              get_state: "{{ lookup('niova_ctlrequest', 'lookup', resumed_followers, state_key) }}"
             debug:
               msg: "Getting state for resumed followers."
             no_log: True
@@ -352,7 +352,7 @@
               stage: "wait_leader_election"
             debug:
               msg: "Wait to until 'leader-to-be' becomes leader."
-            until: lookup('niova_ctlrequest', 'lookup', resumed_followers[0], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first == (Sel_Corr_Lea_Leader_to_be)
+            until: lookup('niova_ctlrequest', 'lookup', resumed_followers[0], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid'] == (Sel_Corr_Lea_Leader_to_be)
             retries: 60
             delay: 1
 
@@ -360,7 +360,7 @@
             vars:
               stage: "validate_leader"
               resumed_followers: "{{ SelCorLeaderPausedFollowers }}"
-              leader_uuid: "{{ lookup('niova_ctlrequest', 'lookup', resumed_followers[0], '/raft_root_entry/0/leader-uuid', wantlist=True) }}"
+              leader_uuid: "{{ lookup('niova_ctlrequest', 'lookup', resumed_followers[0], '/raft_root_entry/0/leader-uuid') }}"
             debug:
                msg: "Leader should be: {{ Sel_Corr_Lea_Leader_to_be }}"
             failed_when: leader_uuid['/0/leader-uuid'] != Sel_Corr_Lea_Leader_to_be
@@ -374,7 +374,7 @@
                   - "/raft_net_info/election-timeout-ms"
                   - "/raft_root_entry/0/follower-stats"
             set_fact:
-               FollowersStat: "{{ lookup('niova_ctlrequest', 'lookup', Sel_Corr_Lea_Leader_to_be, raft_keys, wantlist=True) }}"
+               FollowersStat: "{{ lookup('niova_ctlrequest', 'lookup', Sel_Corr_Lea_Leader_to_be, raft_keys) }}"
 
           - name: "{{ recipe_name }}: Check the aliveness of the started followers."
             vars:
@@ -397,7 +397,7 @@
                   - "/raft_root_entry/0/term"
                   - "/raft_root_entry/0/sync-entry-idx"
                   - "/raft_root_entry/0/last-applied-cumulative-crc"
-              get_raft_value: "{{ lookup('niova_ctlrequest', 'lookup', started_peers, raft_key, wantlist=True) }}"
+              get_raft_value: "{{ lookup('niova_ctlrequest', 'lookup', started_peers, raft_key) }}"
             debug:
               msg: "Getting raft_root_entry values from all running peers."
             no_log: True
@@ -456,7 +456,7 @@
               raft_key: "/raft_root_entry/0/commit-idx"
             debug:
               msg: "Wait until commit-idx should be <initial-commit-idx + NumWrites + 1>"
-            until: lookup('niova_ctlrequest', 'lookup', remaining_peers_to_start[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == ((initial_commit_idx | int) + (nwrites | int) + 1)
+            until: lookup('niova_ctlrequest', 'lookup', remaining_peers_to_start[item], raft_key)['/0/commit-idx'] == ((initial_commit_idx | int) + (nwrites | int) + 1)
             retries: 5
             delay: 1
             loop: "{{ range(0, remaining_peers_to_start | length) | list }}"
@@ -485,7 +485,7 @@
                   - "/raft_root_entry/0/sync-entry-crc"
                   - "/raft_root_entry/0/sync-entry-data-size"
                   - "/raft_root_entry/0/sync-entry-term"
-              get_raft_values : "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_key, wantlist=True) }}"
+              get_raft_values : "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_key) }}"
             debug:
               msg: "Getting raft_root_entry values from all peers."
             no_log: True

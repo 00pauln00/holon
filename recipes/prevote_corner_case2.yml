@@ -150,7 +150,7 @@
           cli_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
         debug:
           msg: "Waiting for client to finish writing"
-        until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cli_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
+        until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cli_key) == (num_writes - 1)
         retries: 20
         delay: 1
 

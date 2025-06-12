@@ -105,7 +105,7 @@
         stage: "wait_for_write_op"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True)[0]['/0/pmdb-seqno'] == (num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno')['/0/pmdb-seqno'] == (num_writes - 1)
       retries: 500
       delay: 1
 
@@ -132,7 +132,7 @@
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
       # no_log: true
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True)[0]['/0/commit-idx'] >= ((num_writes | int)> * (number_of_app_uuids | int)) + (origCI[item]['/0/commit-idx'] | int)
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] >= ((num_writes | int)> * (number_of_app_uuids | int)) + (origCI[item]['/0/commit-idx'] | int)
       retries: 60
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -140,12 +140,12 @@
     - name: "{{ recipe_name }}: Verify checkpoint-idx and lowest-idx gets changed on all 3 peers after write operation."
       vars:
          stage: "verifyCPOnAll"
-         getCPOnAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys, wantlist=True) }}"
+         getCPOnAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys) }}"
       debug:
         msg: "Verify checkpoint-idx gets changed on all peers."
       failed_when: >
-           (getCPOnAll[0]["/0/checkpoint-idx"] == -1) or
-           (getCPOnAll[0]["/0/lowest-idx"] == -1)
+           (getCPOnAll["/0/checkpoint-idx"] == -1) or
+           (getCPOnAll["/0/lowest-idx"] == -1)
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Start peer with stale DB."
