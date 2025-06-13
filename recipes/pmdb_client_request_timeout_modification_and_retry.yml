@@ -57,11 +57,11 @@
 
     - name: "{{ recipe_name }}: Get leader's client-requests."
       vars:
-        pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        pcrtm_leader_uuid: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
         stage: "stage1"
         raft_key:
             - "/raft_root_entry/0/client-requests"
-        client_rqst: "{{ lookup('niova_ctlrequest', 'lookup', pcrtm_leader_uuid, raft_key, wantlist=True) }}"
+        client_rqst: "{{ lookup('niova_ctlrequest', 'lookup', pcrtm_leader_uuid, raft_key, wantlist=True)[0] }}"
       debug:
         msg: "Getting client-requests from leader."
       no_log: True
@@ -80,7 +80,7 @@
 
     - name: "{{ recipe_name }}: Disable recv on client from leader"
       vars:
-        pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        pcrtm_leader_uuid: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
         stage: "disable_recv_from_leader"
         cmd: "net_recv_enabled@false"
         where: "/ctl_svc_nodes/uuid@{{ pcrtm_leader_uuid }}"
@@ -101,7 +101,7 @@
 
     - name: "{{ recipe_name }}: Enable recv on client from leader"
       vars:
-        pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        pcrtm_leader_uuid: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
         stage: "enable_recv_from_leader"
         cmd: "net_recv_enabled@true"
         where: "/ctl_svc_nodes/uuid@{{ pcrtm_leader_uuid }}"
@@ -111,11 +111,11 @@
 
     - name: "{{ recipe_name }}: After enabling recv from leader, Get client request from leader."
       vars:
-        pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        pcrtm_leader_uuid: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
         stage: "stage3"
         raft_key:
             - "/raft_root_entry/0/client-requests"
-        check_cli_rqst: "{{ lookup('niova_ctlrequest', 'lookup', pcrtm_leader_uuid, raft_key, wantlist=True) }}"
+        check_cli_rqst: "{{ lookup('niova_ctlrequest', 'lookup', pcrtm_leader_uuid, raft_key, wantlist=True)[0] }}"
       debug:
         msg: "After enabling net recv from leader, getting client-requests from leader."
       no_log: True
@@ -147,7 +147,7 @@
         stage: "stage4"
         lookup_stage_keys:
             - "/pumice_db_test_client/pmdb-test-apps"
-        check_pmdb_array: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_stage_keys, wantlist=True) }}"
+        check_pmdb_array: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_stage_keys, wantlist=True)[0] }}"
       debug:
         msg: "Access pmdb-test-apps array."
       no_log: True
@@ -207,7 +207,7 @@
         raft_keys:
             - "/pumice_db_test_client/pmdb-test-apps/0/last-request-tag"
             - "/pumice_db_test_client/pmdb-test-apps/0/status"
-        check_recent_ops: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+        check_recent_ops: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True)[0] }}"
       debug:
         msg: "Get the last-request-tag."
       no_log: True
@@ -220,7 +220,7 @@
         stage: "stage_recent_ops"
         raft_keys:
             - "/raft_client_root_entry/0/recent-ops-rd"
-        check_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+        check_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True)[0] }}"
       debug:
         msg: "Access recent-ops-rd array."
       no_log: True
@@ -266,7 +266,7 @@
         stage: "stage8_cleanup"
         raft_key:
             - "/raft_client_root_entry/0/default-request-timeout-sec"
-        cleanup_stage: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) }}"
+        cleanup_stage: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True)[0] }}"
       debug:
         msg: "Default timeout set to {{ cleanup_stage['/0/default-request-timeout-sec'] }}"
       no_log: True

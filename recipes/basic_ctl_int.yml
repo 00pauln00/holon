@@ -50,11 +50,11 @@
       no_log:  True
       # Lookup the  value in the result using last two keys from the complete key path
       failed_when: >
-         (raft_values["/0/leader-uuid"] != "null") or
-         (raft_values["/0/commit-idx"] != -1) or
-         (raft_values["/0/last-applied-cumulative-crc"] != 0) or
-         (raft_values["/0/last-applied"] != -1) or
-         (raft_values["/raft_net_info/ignore_timer_events"] == False)
+         (raft_values[0]["/0/leader-uuid"] != "null") or
+         (raft_values[0]["/0/commit-idx"] != -1) or
+         (raft_values[0]["/0/last-applied-cumulative-crc"] != 0) or
+         (raft_values[0]["/0/last-applied"] != -1) or
+         (raft_values[0]["/raft_net_info/ignore_timer_events"] == False)
 
     - name: "{{ recipe_name }}: Activate Raft timer thread"
       vars:
@@ -81,9 +81,9 @@
 
     - name: "{{ recipe_name }}: Verify stage1, current time should increament in each iteration"
       vars:
-        time_stamp_arr: "{{ time_stamp['results'] }}"
-        orig_time: "{{ time_stamp_arr[item]['item']['/system_info/current_time'] }}"
-        curr_time: "{{ time_stamp_arr[item + 1]['item']['/system_info/current_time'] }}"
+        time_stamp_arr: "{{ time_stamp['results'][0] }}"
+        orig_time: "{{ time_stamp_arr['item'][item]['/system_info/current_time'] }}"
+        curr_time: "{{ time_stamp_arr['item'][item + 1]['/system_info/current_time'] }}"
       debug:
          msg: "Compare time stamp: {{ orig_time }} with {{ curr_time }}"
       failed_when: orig_time >= curr_time

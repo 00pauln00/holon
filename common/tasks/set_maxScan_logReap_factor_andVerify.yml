@@ -27,6 +27,6 @@
       debug:
         msg: "Verify max-scan-entries and log-reap-factor are set properly on all peers."
       failed_when: >
-           (getVal["/raft_net_info/max-scan-entries"] != 1000) or
-           (getVal["/raft_net_info/log-reap-factor"] != 2)
+           (getVal[0]["/raft_net_info/max-scan-entries"] != 1000) or
+           (getVal[0]["/raft_net_info/log-reap-factor"] != 2)
 

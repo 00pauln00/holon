@@ -249,9 +249,12 @@ class LookupModule(LookupBase):
                                                 cluster_params)
         except Exception as error:
             sys.stderr.write(str(error))
+            niova_obj_dict = {}
 
         if sleep_after_op == True:
             logging.info("sleep after the operation")
             sleep_info = sinfo
             sleep_nsec = int(sleep_info['sleep_after_cmd'])
             time.sleep(sleep_nsec)
+            
+        return [niova_obj_dict]

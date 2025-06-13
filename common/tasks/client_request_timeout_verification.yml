@@ -32,7 +32,7 @@
             - "/pumice_db_test_client/pmdb-test-apps/0/last-request-duration-ms"
       set_fact:
         additional_msec_value: "{{ item * 1000 | int + 100 | int }}"
-        stage2_values: "{{ lookup('niova_ctlrequest', 'lookup', timeout_mod_client_uuid, raft_keys, wantlist=True) }}"
+        stage2_values: "{{ lookup('niova_ctlrequest', 'lookup', timeout_mod_client_uuid, raft_keys, wantlist=True)[0] }}"
       failed_when: >
         (stage2_values['/0/app-user-id'] != Demo2Rncui) or
         (stage2_values['/0/status'] != "Connection timed out") or
@@ -45,7 +45,7 @@
             - "/pumice_db_test_client/pmdb-test-apps/0/last-request"
             - "/raft_client_root_entry/0/recent-ops-rd"
       set_fact:
-        get_time: "{{ lookup('niova_ctlrequest', 'lookup', timeout_mod_client_uuid, raft_keys, wantlist=True) }}"
+        get_time: "{{ lookup('niova_ctlrequest', 'lookup', timeout_mod_client_uuid, raft_keys, wantlist=True)[0] }}"
 
     - name: "{{ recipe_name }} : Convert default timestamp format into datetime format for comparison."
       set_fact:

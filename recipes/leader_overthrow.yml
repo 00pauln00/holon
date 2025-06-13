@@ -59,7 +59,7 @@
 
     - name: "{{ recipe_name }}: Verify that message received is disabled successfully on all peers"
       vars:
-         initial_vals: "{{ stage0_peers_vals['results'][item]['item']}}"
+         initial_vals: "{{ stage0_peers_vals['results'][0]['item'][item]}}"
          stage: "stage1_get_all"
          raft_keys:
              - "/ctl_svc_nodes/*/net_recv_enabled"
@@ -74,11 +74,11 @@
          - "initial term {{ initial_vals['/0/term'] }}"
          - "initial leader uuid: {{ initial_vals['/0/leader-uuid'] }}"
       failed_when: >
-           (net_rcv["/*/net_recv_enabled"] != False) or
-           (net_rcv["/0/leader-uuid"] != "null") or
-           (net_rcv["/0/state"] != "candidate-prevote") or
-           (net_rcv["/0/client-requests"] != "deny-leader-not-established") or
-           (net_rcv["/0/term"] != initial_vals["/0/term"])
+           (net_rcv[0]["/*/net_recv_enabled"] != False) or
+           (net_rcv[0]["/0/leader-uuid"] != "null") or
+           (net_rcv[0]["/0/state"] != "candidate-prevote") or
+           (net_rcv[0]["/0/client-requests"] != "deny-leader-not-established") or
+           (net_rcv[0]["/0/term"] != initial_vals["/0/term"])
       loop: "{{ range(0, NRunningPeers|length) | list }}"
       no_log: true
 
@@ -126,8 +126,8 @@
 
     - name: "{{ recipe_name }}: Verify that leader-to-be is not elected yet"
       vars:
-        initial_vals: "{{ stage0_peers_vals['results'][item]['item'] }}"
-        stage2_vals: "{{ set_leader_vals['results'][item]['item'] }}"
+        initial_vals: "{{ stage0_peers_vals['results'][0]['item'][item] }}"
+        stage2_vals: "{{ set_leader_vals['results'][0]['item'][item] }}"
       debug:
         msg: "Verify value for peer: {{ NRunningPeers[item] }}, initial_vals: {{ initial_vals}} / {{ stage2_vals }}"
       failed_when: >
@@ -160,7 +160,7 @@
       debug:
         msg:
          - "Waiting for new leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first == overthrow_leader_to_be
+      until: (lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | first)['/0/leader-uuid']  == overthrow_leader_to_be
       retries: 10
       delay: 2
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -182,9 +182,9 @@
              - "/ctl_svc_nodes/*/net_recv_enabled"
         net_rcv: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_keys, wantlist=True) }}"
       debug:
-        msg: "Verify 'net_recv_enabled' state of all peers to ‘true'"
+        msg: "Verify 'net_recv_enabled' state of all peers to true"
       failed_when: >
-           (net_rcv["/*/net_recv_enabled"] != True)
+           (net_rcv[0]["/*/net_recv_enabled"] != True)
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     rescue:

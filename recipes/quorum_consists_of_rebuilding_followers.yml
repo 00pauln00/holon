@@ -63,7 +63,7 @@
 
     #leader value before resuming inactive followers.
     - set_fact:
-         leader_uuid_before: "{{ LeaderUUID }}"
+         leader_uuid_before: "{{ LeaderUUID[0] }}"
 
     #Create set of required number of app_uuids.
     - name: "{{ recipe_name }}: Get set of required number of app_uuids."
@@ -119,7 +119,7 @@
     - name: "{{ recipe_name }}: Get the Leader UUID for inactive followers and wait until inactive followers show the same leader uuid."
       vars:
         stage: "get_leader_uuid"
-        leader_uuid: "{{ lookup('niova_ctlrequest', 'lookup', inactive_followers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) }}"
+        leader_uuid: "{{ lookup('niova_ctlrequest', 'lookup', inactive_followers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)[0] }}"
       debug:
         msg: "Waiting till inactive followers show same leader uuid"
       until: leader_uuid == leader_uuid_before
