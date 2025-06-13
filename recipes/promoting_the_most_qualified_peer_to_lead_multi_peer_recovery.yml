@@ -133,11 +133,12 @@
       no_log: True
       loop: "{{ range(0, Promoting_Selected_Followers | length) | list }}"
 
-    - name: "{{ recipe_name }}: Ensure that the paused followers are not responding to the leader by observing the increase of their ms-last-ack-ms value."
+    - name: "{{ recipe_name }}: Ensure that the paused followers are not responding to the leader by observing the increase of their ms-last-ack value."
       include_role:
          name: common
          tasks_from: no_response_from_paused_followers
-      loop: "{{ range(0, 4)| list }}"
+      vars:
+        peer_uuids: "{{Promoting_Selected_Followers}}"
 
     - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
       include_role:
