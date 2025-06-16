@@ -76,7 +76,6 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
            
 
     elif app_type == "raft":
-        print("inside raft: ", process_type)
         if process_type == "server":
             bin_path = "{}/raft-reference-server".format(binary_dir)
         else:
@@ -174,7 +173,6 @@ def run_process(fp, raft_uuid, peer_uuid, ptype, app_type, bin_path, base_dir, c
                                     raft_uuid, '-u', peer_uuid, '-pa', gossipNodes,
                                     '-n', node_name, '-l', log_path],
                                     stdout = fp, stderr = fp)
-    print("Executing")
     return process_popen
 
 class RaftProcess:

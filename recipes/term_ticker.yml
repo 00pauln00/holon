@@ -29,7 +29,7 @@
         iter_info:
            iter: 5
            sleep_after_cmd: 3
-        peer0_vals: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, raft_keys, iter_info, wantlist=True) }}"
+        peer0_vals: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, raft_keys, iter_info) }}"
       with_items:
         - "{{ peer0_vals }}"
       register: peer0_stats
@@ -38,8 +38,8 @@
 
     - name: "{{ recipe_name }}: Verify stage0"
       vars:
-        curr_itr_vals: "{{ peer0_stats['results'][0]['item'][item] }}"
-        next_itr_vals: "{{ peer0_stats['results'][0]['item'][item + 1] }}"
+        curr_itr_vals: "{{ peer0_stats['results'][item]['item'] }}"
+        next_itr_vals: "{{ peer0_stats['results'][item + 1]['item']}}"
       debug:
          msg: "Compare term value: {{ curr_itr_vals }} with {{ next_itr_vals }}"
       no_log: true

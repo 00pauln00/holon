@@ -32,7 +32,7 @@
         iter_info:
            iter: 5
            sleep_after_cmd: 2
-        curr_stamp: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/system_info/current_time', iter_info, wantlist=True) }}"
+        curr_stamp: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/system_info/current_time', iter_info) }}"
       with_items:
         - "{{ curr_stamp }}"
       register: time_stamp
@@ -41,9 +41,9 @@
 
     - name: "{{ recipe_name }}: verify stage1: timestamp should be incremental in each iteration"
       vars:
-        time_stamp_arr: "{{ time_stamp['results'][0] }}"
-        time1: "{{ time_stamp_arr['item'][item]['/system_info/current_time'] }}"
-        time2: "{{ time_stamp_arr['item'][item + 1]['/system_info/current_time'] }}"
+        time_stamp_arr: "{{ time_stamp['results'] }}"
+        time1: "{{ time_stamp_arr[item]['item']['/system_info/current_time'] }}"
+        time2: "{{ time_stamp_arr[item + 1]['item']['/system_info/current_time'] }}"
       debug:
          msg: "Compare time stamp: {{ time1 }} with {{ time2 }}"
       failed_when: time1 >= time2
