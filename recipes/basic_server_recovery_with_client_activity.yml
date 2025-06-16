@@ -285,8 +285,8 @@
 
     - name: "{{ recipe_name }}: Verify term value has not changed."
       vars:
-        initial_term: "{{ stage0_value['results'][0]['item']['/0/term'] }}"
-        after_resume_follower: "{{ check_term['results'][0]['item'] }}"
+        initial_term: "{{ stage0_value['results'][0]['item'][0]['/0/term'] }}"
+        after_resume_follower: "{{ check_term['results'][0]['item'][0] }}"
       debug:
         msg:
           - "Verifying term value {{ after_resume_follower }} {{initial_term}} {{num_writes}}."

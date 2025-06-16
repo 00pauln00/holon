@@ -55,7 +55,7 @@
 
     - name: "{{ recipe_name }}: Get leaderUUID."
       vars:
-        oldLeader: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+        oldLeader: "{{ LeaderUUID['/0/leader-uuid'] }}"
       debug:
         msg: "Get the leaderUUID"
       with_items:
@@ -188,7 +188,7 @@
 
     - name: "{{ recipe_name }}: Kill the Leader."
       debug:
-       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID[0]['/0/leader-uuid'], wantlist=True)}}"
+       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
       no_log: True
 
     - name: "{{ recipe_name }}: Wait until leader election happens."
@@ -208,7 +208,7 @@
 
     - name: "{{ recipe_name }}: Get leaderUUID."
       vars:
-        newLeader: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+        newLeader: "{{ LeaderUUID['/0/leader-uuid'] }}"
       debug:
         msg: "Get the leaderUUID"
       with_items:

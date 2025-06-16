@@ -44,7 +44,7 @@
             - "/raft_root_entry/0/leader-uuid"
             - "/raft_root_entry/0/term"
             - "/raft_root_entry/0/commit-idx"
-         get_values: "{{ lookup('niova_ctlrequest', 'lookup', running_servers, raft_keys, wantlist=True)[0] }}"
+         get_values: "{{ lookup('niova_ctlrequest', 'lookup', running_servers, raft_keys) }}"
       debug:
         msg: "Getting orignal values."
       no_log: True
@@ -89,7 +89,7 @@
          stage: "modify_timeout"
          cmd: "default-request-timeout-sec@{{ set_timeout }}"
          where: "/raft_client_root_entry/default-request-timeout-sec"
-         set_time: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+         set_time: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       debug:
         msg: "{{ set_time }}"
       no_log: True
@@ -100,7 +100,7 @@
         raft_key:
               - "/raft_client_root_entry/0/default-request-timeout-sec"
       set_fact:
-        verifyCliReqTimeout: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True)[0] }}"
+        verifyCliReqTimeout: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key) }}"
       failed_when: verifyCliReqTimeout["/0/default-request-timeout-sec"] != (set_timeout)
 
     - name: "{{ recipe_name }}: Apply write cmd from client."
@@ -108,7 +108,7 @@
         stage: "write_op"
         cmd: "input@{{ app_uuid1.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
         where: "/pumice_db_test_client/input"
-        write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+        write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       debug:
         msg: "{{ write_seq }}"
       no_log: True
@@ -132,12 +132,12 @@
          - "/raft_net_info/election-timeout-ms"
       debug:
         msg:
-          - "{{ lookup('niova_ctlrequest', 'apply_cmd', followers, cmd, where, wantlist=True) }}"
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', followers, cmd, where) }}"
       no_log: True
 
     - name: "{{ recipe_name }}: Pause the leader."
       debug:
-        msg: "{{ lookup('niova_raftprocess', 'pause', stage1_value['results'][0]['item']['/0/leader-uuid'], wantlist=True) }}"
+        msg: "{{ lookup('niova_raftprocess', 'pause', stage1_value['results'][0]['item']['/0/leader-uuid']) }}"
 
     - name: "{{ recipe_name }}: Verify client write request is timeout."
       vars:
@@ -145,7 +145,7 @@
         raft_keys:
           - "/raft_client_root_entry/0/recent-ops-wr"
       set_fact:
-        getStatusFrmCli: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True)[0] }}"
+        getStatusFrmCli: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys) }}"
       failed_when: getStatusFrmCli['/0/recent-ops-wr'][0]['status'] != "Connection timed out"
 
     - name: "{{ recipe_name}}: Wait until new leader election happens."
@@ -156,7 +156,7 @@
       debug:
         msg:
         - "Waiting for new leader to elect"
-      until: (lookup('niova_ctlrequest', 'lookup', remainingPeers[item], raft_key, wantlist=True)[0]['/0/leader-uuid'] != stage1_value['results'][0]['item']['/0/leader-uuid'])
+      until: (lookup('niova_ctlrequest', 'lookup', remainingPeers[item], raft_key)['/0/leader-uuid'] != stage1_value['results'][0]['item']['/0/leader-uuid'])
       retries: 30
       delay: 3
       loop: "{{ range(0, remainingPeers | length)| list }}"
@@ -166,7 +166,7 @@
          stage: "modify_timeout"
          cmd: "default-request-timeout-sec@60"
          where: "/raft_client_root_entry/default-request-timeout-sec"
-         set_time: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+         set_time: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       debug:
         msg: "{{ set_time }}"
       no_log: True
@@ -180,7 +180,7 @@
         stage: "write_with_new_appUUID"
         cmd: "input@{{ app_uuid2.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
         where: "/pumice_db_test_client/input"
-        writeFromCli: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+        writeFromCli: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       debug:
         msg: "{{ writeFromCli }}"
       no_log: True
@@ -190,7 +190,7 @@
         stage: "wait_for_write_op"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True)[0]['/0/pmdb-seqno'] == (num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno')['/0/pmdb-seqno'] == (num_writes - 1)
       retries: 500
       delay: 1
 
@@ -201,7 +201,7 @@
          raft_keys:
             - "/raft_root_entry/0/term"
             - "/raft_root_entry/0/commit-idx"
-         getVal: "{{ lookup('niova_ctlrequest', 'lookup', remainingPeers, raft_keys, wantlist=True)[0] }}"
+         getVal: "{{ lookup('niova_ctlrequest', 'lookup', remainingPeers, raft_keys) }}"
       debug:
         msg: "Getting values after new election {{ getVal }}"
       no_log: True
@@ -211,7 +211,7 @@
 
     - name: "{{ recipe_name }}: Resume the old leader."
       debug:
-        msg: "{{ lookup('niova_raftprocess', 'resume', stage1_value['results'][0]['item']['/0/leader-uuid'], wantlist=True) }}"
+        msg: "{{ lookup('niova_raftprocess', 'resume', stage1_value['results'][0]['item']['/0/leader-uuid']) }}"
 
     - name: "{{ recipe_name }}: Remove fault injection from leader."
       vars:
@@ -219,7 +219,7 @@
         cmd: "enabled@false"
         where: "/fault_injection_points/name@coalesced_writes"
       debug:
-         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', stage1_value['results'][0]['item']['/0/leader-uuid'], cmd, where, wantlist=True) }}"
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', stage1_value['results'][0]['item']['/0/leader-uuid'], cmd, where) }}"
       no_log: True
 
     - name: "{{ recipe_name }}: Get the 'state' of old leader."
@@ -228,7 +228,7 @@
          raft_key:
             - "/raft_root_entry/0/state"
       set_fact:
-         getStateFrmOldLeader: "{{ lookup('niova_ctlrequest', 'lookup', stage1_value['results'][0]['item']['/0/leader-uuid'], raft_key, wantlist=True)[0] }}"
+         getStateFrmOldLeader: "{{ lookup('niova_ctlrequest', 'lookup', stage1_value['results'][0]['item']['/0/leader-uuid'], raft_key) }}"
       failed_when: getStateFrmOldLeader["/0/state"] != "follower"
 
     - name: "{{ recipe_name }}: Verify the status of both APP-UUID1 and APP-UUID2."
@@ -256,7 +256,7 @@
          - "/raft_net_info/election-timeout-ms"
       debug:
         msg:
-          - "{{ lookup('niova_ctlrequest', 'apply_cmd', followers, cmd, where, wantlist=True) }}"
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', followers, cmd, where) }}"
       no_log: True
 
     rescue:

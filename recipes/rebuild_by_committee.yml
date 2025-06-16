@@ -43,7 +43,7 @@
     #Get leader uuid.
     - name: "{{ recipe_name }}: Set value for original leader."
       vars:
-        ori_leader: "{{ LeaderUUID[0] }}"
+        ori_leader: "{{ LeaderUUID }}"
       debug: var=ori_leader
       register: reb_orig_leader
       no_log: true
@@ -55,7 +55,7 @@
 
     - name: "{{ recipe_name }}: Pause number of followers."
       set_fact:
-         pause_followers: "{{ lookup('niova_raftprocess', 'pause', FollowerUUIDs[item], wantlist=True) }}"
+         pause_followers: "{{ lookup('niova_raftprocess', 'pause', FollowerUUIDs[item]) }}"
          reb_inactive_followers: "{{ reb_inactive_followers | default([]) + [FollowerUUIDs[item]] }}"
       loop: "{{ range(0, number_of_followers_to_pause | int) | list }}"
 
@@ -90,7 +90,7 @@
     #Unpause inactive followers.
     - name: "{{ recipe_name }}: Resume inactive followers."
       debug:
-        msg: "Resuming inactive followers {{ lookup('niova_raftprocess', 'resume', reb_inactive_followers[item], wantlist=True) }}"
+        msg: "Resuming inactive followers {{ lookup('niova_raftprocess', 'resume', reb_inactive_followers[item]) }}"
       loop: "{{ range(0, reb_inactive_followers | length) | list }}"
 
     #Set num_remaining = 5.
@@ -100,7 +100,7 @@
         cmd:  "num_remaining@5"
         where: "/fault_injection_points/name@raft_follower_ignores_non_hb_AE_request"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', rebuild_unpaused_followers[item], cmd, where, wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', rebuild_unpaused_followers[item], cmd, where) }}"
       loop: "{{ range(0, rebuild_unpaused_followers | length) | list }}"
       no_log: true
 
@@ -117,7 +117,7 @@
     - name: "{{ recipe_name }}: Get commit-idx values of unpaused followers after applying fault injection."
       vars:
         stage: "get_commit_idx"
-        commit_idx_vals: "{{ lookup('niova_ctlrequest', 'lookup', rebuild_unpaused_followers, '/raft_root_entry/0/commit-idx', wantlist=True)[0] }}"
+        commit_idx_vals: "{{ lookup('niova_ctlrequest', 'lookup', rebuild_unpaused_followers, '/raft_root_entry/0/commit-idx') }}"
       debug:
         msg: "{{ commit_idx_vals }}"
       with_items:
@@ -167,7 +167,7 @@
     #Kill original leader.
     - name: "{{ recipe_name }}: Kill original leader."
       debug:
-        msg: "Killing original leader {{ lookup('niova_raftprocess', 'kill', reb_orig_leader['ori_leader'], wantlist=True) }}"
+        msg: "Killing original leader {{ lookup('niova_raftprocess', 'kill', reb_orig_leader['ori_leader']) }}"
 
     - name: "{{ recipe_name }}: Wait until leader election happens."
       include_role:
@@ -198,8 +198,8 @@
     - name: "{{ recipe_name }}: Get commit-idx of all running peers and wait until all running peers show same commit idx."
       vars:
         stage: "get_commit_idx"
-        get_commit_idx: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/commit-idx', wantlist=True) }}"
-        commit_idx_has_unique_val: "{{ get_commit_idx | map(attribute='/0/commit-idx') | list | unique | length == 1 }}"
+        get_commit_idx: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/commit-idx') }}"
+        commit_idx_has_unique_val: "{{  get_commit_idx | map(attribute='/0/commit-idx') | list | unique | length == 1 }}"
       debug:
         msg: "Waiting until all running peers show same commit idx"
       until: commit_idx_has_unique_val == true
@@ -209,7 +209,7 @@
     - name: "{{ recipe_name }}: Get commit-idx values of all peers before reboot."
       vars:
         stage: "get_cm_idx_after_itr"
-        cmidx: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/commit-idx', wantlist=True)[0] }}"
+        cmidx: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/commit-idx') }}"
       debug:
          msg: "Getting commit-idx for all servers."
       no_log: true
@@ -244,7 +244,7 @@
         name: common
         tasks_from: start_server
       vars:
-        ServerUUID: "{{ reb_orig_leader['ori_leader'] }}"
+        ServerUUID: "{{ reb_orig_leader['ori_leader']['/0/leader-uuid'] }}"
 
     rescue:
       - name: "Recipe failed"

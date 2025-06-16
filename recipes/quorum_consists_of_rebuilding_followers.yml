@@ -63,7 +63,7 @@
 
     #leader value before resuming inactive followers.
     - set_fact:
-         leader_uuid_before: "{{ LeaderUUID[0] }}"
+         leader_uuid_before: "{{ LeaderUUID }}"
 
     #Create set of required number of app_uuids.
     - name: "{{ recipe_name }}: Get set of required number of app_uuids."

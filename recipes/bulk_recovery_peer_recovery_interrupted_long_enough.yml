@@ -118,7 +118,7 @@
 
     - name: "{{ recipe_name }}: Kill the leader."
       debug:
-        msg:  "{{ lookup('niova_raftprocess', 'kill', LeaderUUID[0]['/0/leader-uuid']) }}"
+        msg:  "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid']) }}"
 
     - name: "{{ recipe_name }}: Wait until leader election happens."
       include_role:
@@ -128,7 +128,7 @@
       #Store previous leader.
     - name: "{{ recipe_name }}: Store previous leader uuid."
       vars:
-        prv_ldr: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+        prv_ldr: "{{ LeaderUUID['/0/leader-uuid'] }}"
       debug:
         msg: "Store previous leader."
       with_items:

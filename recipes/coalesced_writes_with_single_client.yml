@@ -53,7 +53,7 @@
         name: common
         tasks_from: set_fault_injection_and_verify
       vars:
-        ServerUUID: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+        ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
         fault_injection_name: "coalesced_writes"
 
     #Perform write operations on single client. (passing different app uuids from a single client.)
@@ -73,7 +73,7 @@
            - "/pumice_db_test_client/pmdb-test-apps/*/status"
       debug:
         msg: "Wait until write status gets updated"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cmd_str, wantlist=True)[0]['/*/status'] == "Success"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cmd_str)['/*/status'] == "Success"
       retries: 100
       delay: 2
 
@@ -85,7 +85,7 @@
           - "/pumice_db_test_client/pmdb-test-apps/*/pmdb-seqno"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, write_key, wantlist=True)[0]['/*/pmdb-seqno'] == (num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, write_key)['/*/pmdb-seqno'] == (num_writes - 1)
       retries: 100
       delay: 2
 
@@ -96,7 +96,7 @@
            - "/pumice_db_test_client/pmdb-test-apps/*/app-sync"
       debug:
         msg: "Wait until write status gets updated"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cmd_str, wantlist=True)[0]['/*/app-sync'] == true
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cmd_str)['/*/app-sync'] == true
       retries: 100
       delay: 2
 
@@ -124,7 +124,7 @@
         stage: "recipe_cleanup"
         cmd: "enabled@false"
         where: "/fault_injection_points/name@coalesced_writes"
-        remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID[0]['/0/leader-uuid'], cmd, where, wantlist=True) }}"
+        remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
       debug:
         msg: "{{ remove_fault_inject }}"
       no_log: True
@@ -134,7 +134,7 @@
         stage: "stage6"
         raft_key:
            - "/fault_injection_points"
-        remove_fi: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID[0]['/0/leader-uuid'], raft_key, wantlist=True) }}"
+        remove_fi: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
       debug:
         msg: "Getting fault_injection_points array."
       no_log: True

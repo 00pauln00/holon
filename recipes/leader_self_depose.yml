@@ -53,7 +53,7 @@
 
     - name: "{{ recipe_name }}: Get the follower information from leader peer"
       vars:
-        self_depose_leader_uuid: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+        self_depose_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         stage: "get_follower"
         raft_keys:
             - "/raft_root_entry/0/leader-uuid"
@@ -88,7 +88,7 @@
 
     - name: "{{ recipe_name }}: Observe the leader parameters after pausing followers"
       vars:
-         self_depose_leader_uuid: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+         self_depose_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
          stage: "stage0"
          raft_keys:
             - "/raft_root_entry/0/leader-uuid"
@@ -113,7 +113,7 @@
 
     - name: "{{ recipe_name }}: Resume the followers one at a time and verify stages"
       vars:
-        self_depose_leader_uuid: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+        self_depose_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         stage: "stage1"
         raft_keys:
           - "/raft_root_entry/0/leader-uuid"

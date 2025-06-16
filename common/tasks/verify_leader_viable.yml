@@ -6,7 +6,7 @@
       debug:
         msg:
          - "Wait till client reports leader-viable = true"
-      until: (lookup('niova_ctlrequest', 'lookup', ClientUUID, '/raft_client_root_entry/0/leader-viable', wantlist=True)[0]['/0/leader-viable'] == true)
+      until: (lookup('niova_ctlrequest', 'lookup', ClientUUID, '/raft_client_root_entry/0/leader-viable')['/0/leader-viable'] == true)
       retries: 100
       delay: 1
 
@@ -16,5 +16,5 @@
         raft_key:
             - "/raft_client_root_entry/0/leader-viable"
       set_fact:
-        GetLeaderViable: "{{ lookup('niova_ctlrequest', 'lookup', ClientUUID, raft_key, wantlist=True) }}"
-      failed_when: GetLeaderViable[0]['/0/leader-viable'] != True
+        GetLeaderViable: "{{ lookup('niova_ctlrequest', 'lookup', ClientUUID, raft_key) }}"
+      failed_when: GetLeaderViable['/0/leader-viable'] != True

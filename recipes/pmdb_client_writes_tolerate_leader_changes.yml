@@ -77,7 +77,7 @@
     #Partiotion:2 i.e. smaller_cluster which has only leader-uuid.
     - name: "Set Smaller Cluster."
       set_fact:
-        smaller_cluster: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+        smaller_cluster: "{{ LeaderUUID['/0/leader-uuid'] }}"
 
     - debug:
         msg: "smaller_cluster: {{ smaller_cluster }}"
@@ -143,7 +143,7 @@
         tasks_from: verify_new_leader_election
       vars:
         peer_list: "{{ bigger_cluster }}"
-        old_leader: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+        old_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
       loop: "{{ range(0, peer_list | length) | list }}"
       loop_control:
           loop_var: itr

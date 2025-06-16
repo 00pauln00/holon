@@ -9,7 +9,7 @@
          stage: "wait_leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)[0]['/0/leader-uuid']  != "null"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid']  != "null"
       retries: 5
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"

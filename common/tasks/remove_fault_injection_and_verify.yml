@@ -5,7 +5,7 @@
         cmd: "enabled@false"
         where: "/fault_injection_points/name@{{ fault_injection_name }}"
       set_fact:
-         remove_fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', ServerUUID, cmd, where, wantlist=True) }}"
+         remove_fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', ServerUUID, cmd, where) }}"
 
     - name: "{{ recipe_name }}: Get list of fault-injections."
       vars:
@@ -13,13 +13,13 @@
         raft_keys:
            - "/fault_injection_points"
       set_fact:
-         fault_injection_remove_points: "{{ lookup('niova_ctlrequest', 'lookup', ServerUUID, raft_keys, wantlist=True) }}"
+         fault_injection_remove_points: "{{ lookup('niova_ctlrequest', 'lookup', ServerUUID, raft_keys) }}"
 
     - name: "{{ recipe_name }}: Verify fault injection is removed on followers properly."
       set_fact:
-         fault_injection_point_disabled: "{{ fault_injection_remove_points[0]['//fault_injection_points'][index]['enabled'] }}"
-      when: (fault_injection_remove_points[0]['//fault_injection_points'][index]['name'] == fault_injection_name)
-      loop: "{{  range(0, fault_injection_points[0]['//fault_injection_points'] |length) | list }}"
+         fault_injection_point_disabled: "{{ fault_injection_remove_points['//fault_injection_points'][index]['enabled'] }}"
+      when: (fault_injection_remove_points['//fault_injection_points'][index]['name'] == fault_injection_name)
+      loop: "{{  range(0, fault_injection_points['//fault_injection_points'] |length) | list }}"
       loop_control:
           loop_var: index
 

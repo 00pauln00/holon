@@ -57,7 +57,7 @@
 
     - name: "{{ recipe_name }}: Get leader's client-requests."
       vars:
-        pcrtm_leader_uuid: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+        pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         stage: "stage1"
         raft_key:
             - "/raft_root_entry/0/client-requests"
@@ -80,7 +80,7 @@
 
     - name: "{{ recipe_name }}: Disable recv on client from leader"
       vars:
-        pcrtm_leader_uuid: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+        pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         stage: "disable_recv_from_leader"
         cmd: "net_recv_enabled@false"
         where: "/ctl_svc_nodes/uuid@{{ pcrtm_leader_uuid }}"
@@ -101,7 +101,7 @@
 
     - name: "{{ recipe_name }}: Enable recv on client from leader"
       vars:
-        pcrtm_leader_uuid: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+        pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         stage: "enable_recv_from_leader"
         cmd: "net_recv_enabled@true"
         where: "/ctl_svc_nodes/uuid@{{ pcrtm_leader_uuid }}"
@@ -111,7 +111,7 @@
 
     - name: "{{ recipe_name }}: After enabling recv from leader, Get client request from leader."
       vars:
-        pcrtm_leader_uuid: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+        pcrtm_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
         stage: "stage3"
         raft_key:
             - "/raft_root_entry/0/client-requests"

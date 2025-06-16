@@ -8,7 +8,7 @@
             - "/raft_net_info/election-timeout-ms"
             - "/raft_root_entry/0/follower-stats"
       set_fact:
-        ValFollowersStat: "{{ lookup('niova_ctlrequest', 'lookup', ValLeaderUUID, raft_keys, wantlist=True)[0] }}"
+        ValFollowersStat: "{{ lookup('niova_ctlrequest', 'lookup', ValLeaderUUID, raft_keys) }}"
 
     - name: "{{ recipe_name }}: Validate the aliveness of the followers."
       vars:

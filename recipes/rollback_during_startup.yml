@@ -41,7 +41,7 @@
         stage: "pmdb_tapps"
         raft_keys:
             - "/pumice_db_test_client"
-        pmdb_client_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+        pmdb_client_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys) }}"
       debug:
         msg: "Getting values for pmdb-test-apps, pmdb-request-history."
       no_log: true
@@ -91,7 +91,7 @@
         follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', follower_uuids[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+      until: lookup('niova_ctlrequest', 'lookup', follower_uuids[item], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid'] != "null"
       retries: 20
       delay: 1
       loop: "{{ range(0, follower_uuids | length) | list }}"
@@ -104,7 +104,7 @@
                - "/raft_root_entry/0/leader-uuid"
                - "/raft_root_entry/0/term"
         follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
-        raft_values_leader_after_vals: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids[0], raft_keys, wantlist=True) }}"
+        raft_values_leader_after_vals: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids[0], raft_keys) }}"
       debug:
         msg: "Getting new leader_uuid and term value."
       with_items:
@@ -116,7 +116,7 @@
       vars:
         stage: "get_clstate"
         follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
-        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids, peer_raft_keys, wantlist=True) }}"
+        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids, peer_raft_keys) }}"
       debug:
          msg: "Getting raft_root_entry for all servers."
       no_log: true
@@ -171,7 +171,7 @@
         peer_raft_keys:
             - "/raft_root_entry/0/commit-idx"
         leader_uuid_before: "{{ rb_during_start_raft_values['/0/leader-uuid'] }}"
-        leader_values: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, peer_raft_keys, wantlist=True) }}"
+        leader_values: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, peer_raft_keys) }}"
       debug:
         msg: "Getting commit-idx of leader after new leader election."
       no_log: true

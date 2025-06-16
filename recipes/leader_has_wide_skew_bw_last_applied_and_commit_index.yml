@@ -112,13 +112,13 @@
 
     - name: "{{ recipe_name }}: Kill the 1st Leader."
       debug:
-       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID[0]['/0/leader-uuid'], wantlist=True)}}"
+       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
       no_log: True
 
     - name: "{{ recipe_name }}: Wait until 2nd leader election happens."
       vars:
         stage: "wait_leader_election"
-        orig_leader: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+        orig_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
         raft_key: "/raft_root_entry/0/leader-uuid"
       debug:
         msg: "Wait to until new leader election happens."
@@ -202,14 +202,14 @@
 
     - name: "{{ recipe_name }}: Kill the 2nd Leader."
       debug:
-       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID[0]['/0/leader-uuid'], wantlist=True)}}"
+       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
       no_log: True
 
     #This is temporary. This is workaround though.
     - name: "{{ recipe_name }}: Wait until 3rd leader election happens"
       vars:
          stage: "wait_leader_election"
-         previous_leader: "{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+         previous_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
       debug:
         msg: "Waiting for second leader election"
       until: lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[item], '/raft_root_entry/0/leader-uuid', wantlist=True)[0]['/0/leader-uuid'] != (previous_leader)
