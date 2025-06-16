@@ -37,6 +37,7 @@
         stage: "get_leader_uuid"
       set_fact:
         LeaderUUID: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], '/raft_root_entry/0/leader-uuid') }}"
+        LeaderUUID: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], '/raft_root_entry/0/leader-uuid') }}"
       when: NRunningPeers
 
     - debug:
@@ -46,11 +47,12 @@
       debug:
         msg: "Leader UUID: {{ LeaderUUID }}"
       when:
-        - LeaderUUID is defined
+        - LeaderUUID['/0/leader-uuid'] is defined
         - LeaderUUID | length > 0
 
     - name: "Get the FollowerUUIDs list."
       set_fact:
+        FollowerUUIDs: "{{ NRunningPeers | difference([LeaderUUID['/0/leader-uuid']]) }}"
         FollowerUUIDs: "{{ NRunningPeers | difference([LeaderUUID['/0/leader-uuid']]) }}"
       when:
         - LeaderUUID is defined

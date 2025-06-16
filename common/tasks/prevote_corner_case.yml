@@ -13,7 +13,7 @@
          name: common
          tasks_from: get_follower_stats
 
-    - set_fact: LeaderUUID_before="{{ LeaderUUID[0]['/0/leader-uuid'] }}"
+    - set_fact: LeaderUUID_before="{{ LeaderUUID['/0/leader-uuid'] }}"
 
     - name: "{{ recipe_name }}: Start peer 4"
       include_role:
@@ -98,7 +98,7 @@
         raft_keys:
              - "/ctl_svc_nodes"
       set_fact:
-         ctl_svc_nodes: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeersBefore, raft_keys, wantlist=True) }}"
+         ctl_svc_nodes: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeersBefore, raft_keys) }}"
 
     - name: "{{ recipe_name }}: Verify ctl_svc_nodes/net_recv_enabled and ctl_svc_nodes/net_send_enabled on all peers for peer 4."
       include_role:
@@ -113,7 +113,7 @@
     - name: "{{ recipe_name }}: Get term value of peer4 before applying fault injection."
       vars:
         stage: "get_term_before"
-        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', peer4, '/raft_root_entry/0/term', wantlist=True) }}"
+        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', peer4, '/raft_root_entry/0/term') }}"
       debug:
          msg: "Getting raft_root_entry for all servers."
       no_log: true
@@ -152,7 +152,7 @@
     - name: "{{ recipe_name }}: Get term value of peer4 after applying fault injection."
       vars:
         stage: "fault_inject_get_term"
-        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', peer4, '/raft_root_entry/0/term', wantlist=True) }}"
+        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', peer4, '/raft_root_entry/0/term') }}"
       debug:
          msg: "Getting raft_root_entry for all servers."
       no_log: true
