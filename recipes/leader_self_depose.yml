@@ -121,7 +121,7 @@
           - "/raft_root_entry/0/sync-entry-term"
       set_fact:
         self_depose_resume_peer: "{{ lookup('niova_raftprocess', 'resume', FollowerUUIDs[item], wantlist=True) }}"
-        self_depose_leader_info: "{{ self_depose_leader_info + [lookup('niova_ctlrequest', 'lookup', self_depose_leader_uuid, raft_keys, wantlist=True)] }}"
+        self_depose_leader_info: "{{ self_depose_leader_info + [lookup('niova_ctlrequest', 'lookup', self_depose_leader_uuid, raft_keys)] }}"
       retries: 20
       delay: 1
       loop: "{{ range(0, nfollower_pause.stdout | int) | list }}"
@@ -130,21 +130,21 @@
       set_fact:
           self_depose_case1: "True"
           self_depose_case1_iteration: "{{ item }}"
-      when: self_depose_leader_info[0][item]['/0/leader-uuid'] == FollowerUUIDs[item]
+      when: self_depose_leader_info[item]['/0/leader-uuid'] == FollowerUUIDs[item]
       loop: "{{ range(0, nfollower_pause.stdout | int) | list }}"
 
     - name: "{{ recipe_name }}: Check if Case 2 occured i.e multiple attempts for leader election"
       set_fact:
           self_depose_case2: "True"
           self_depose_case2_iteration: "{{ item }}"
-      when: self_depose_leader_info[0][item]['/0/sync-entry-term'] > 2
+      when: self_depose_leader_info[item]['/0/sync-entry-term'] > 2
       loop: "{{ range(0, nfollower_pause.stdout | int) | list }}"
 
     - name: "{{ recipe_name }}: Check if Case 3 occured i.e leader remained same"
       set_fact:
           self_depose_case3: "True"
           self_depose_case3_iteration: "{{ item }}"
-      when: self_depose_leader_info[0][item]['/0/leader-uuid'] == self_depose_leader_info[0][item]['/0/peer-uuid']
+      when: self_depose_leader_info[item]['/0/leader-uuid'] == self_depose_leader_info[item]['/0/peer-uuid']
       loop: "{{ range(0, nfollower_pause.stdout | int) | list }}"
 
     - name: "{{ recipe_name }}: Print which case occured"
