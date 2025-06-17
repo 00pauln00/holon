@@ -103,18 +103,6 @@
         verifyCliReqTimeout: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key) }}"
       failed_when: verifyCliReqTimeout["/0/default-request-timeout-sec"] != (set_timeout)
 
-    - name: "{{ recipe_name }}: Apply write cmd from client."
-      vars:
-        stage: "write_op"
-        cmd: "input@{{ app_uuid1.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
-        where: "/pumice_db_test_client/input"
-        write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
-      debug:
-        msg: "{{ write_seq }}"
-      no_log: True
-
-    - pause:
-        seconds: "{{ set_timeout | int + 2 | int }}"
 
     - name: "{{ recipe_name }}: Get follower's uuids."
       include_role:
@@ -126,7 +114,7 @@
         followers: "{{ FollowerUUIDs }}"
         stage: "set_elec_timeout"
         wait_for_ofile: False
-        cmd: "election-timeout-ms@2"
+        cmd: "election-timeout-ms@1000"
         where: "/raft_net_info/election-timeout-ms"
         key:
          - "/raft_net_info/election-timeout-ms"
@@ -137,7 +125,20 @@
 
     - name: "{{ recipe_name }}: Pause the leader."
       debug:
-        msg: "{{ lookup('niova_raftprocess', 'pause', stage1_value['results'][0]['item']['/0/leader-uuid']) }}"
+        msg: "{{ lookup('niova_raftprocess', 'pause', stage1_value['results'][0]['item']['/0/leader-uuid'], wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Apply write cmd from client."
+      vars:
+        stage: "write_op"
+        cmd: "input@{{ app_uuid1.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
+        where: "/pumice_db_test_client/input"
+        write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ write_seq }}"
+      no_log: True
+
+    - pause:
+        seconds: "{{ set_timeout | int + 2 | int }}"
 
     - name: "{{ recipe_name }}: Verify client write request is timeout."
       vars:
@@ -148,11 +149,15 @@
         getStatusFrmCli: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys) }}"
       failed_when: getStatusFrmCli['/0/recent-ops-wr'][0]['status'] != "Connection timed out"
 
+    - name: "{{ recipe_name}}: Print followers list for checking leader election"
+      debug:
+        msg: "{{ NRunningPeers  | difference([stage1_value['results'][0]['item']['/0/leader-uuid']]) }}"
+
     - name: "{{ recipe_name}}: Wait until new leader election happens."
       vars:
         stage: "wait_for_new_leader"
         raft_key: "/raft_root_entry/0/leader-uuid"
-        remainingPeers: "{{ NRunningPeers  | difference(stage1_value['results'][0]['item']['/0/leader-uuid']) }}"
+        remainingPeers: "{{ NRunningPeers  | difference([stage1_value['results'][0]['item']['/0/leader-uuid']]) }}"
       debug:
         msg:
         - "Waiting for new leader to elect"
@@ -196,7 +201,7 @@
 
     - name: "{{ recipe_name }}: Get the term value and commit-idx value."
       vars:
-         remainingPeers: "{{ NRunningPeers  | difference(stage1_value['results'][0]['item']['/0/leader-uuid']) }}"
+         remainingPeers: "{{ NRunningPeers  | difference([stage1_value['results'][0]['item']['/0/leader-uuid']]) }}"
          stage: "get_term_and_commit_idx"
          raft_keys:
             - "/raft_root_entry/0/term"
