@@ -106,7 +106,7 @@
         - "{{ get_vals }}"
       register: leader_values
 
-    - name: "{{ recipe_name }}: Verify coalesced pending write.."
+    - name: "{{ recipe_name }}: Verify coalesced pending write."
       vars:
         leader_info: "{{ leader_values['results'][0]['item'] }}"
       debug:
