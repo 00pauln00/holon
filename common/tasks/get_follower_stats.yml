@@ -69,6 +69,6 @@
         raft_key:
           - "/raft_root_entry/0/follower-stats"
       set_fact:
-        GetFollowerStatsInfo: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+        GetFollowerStatsInfo: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key) }}"
       when: LeaderUUID != "" and LeaderUUID['/0/leader-uuid'] != "null" and FollowerUUIDs | length != 0
 
