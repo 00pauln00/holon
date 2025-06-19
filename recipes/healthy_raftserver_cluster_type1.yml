@@ -62,7 +62,7 @@
     - name: "{{ recipe_name }}: Verify consistent next-idx and prev-idx-term values across the cluster."
       debug:
        msg: "Verifying next-idx and prev-idx-term"
-       no_log: true
+      no_log: true
       failed_when: >
         (GetFollowerStatsInfo['/0/follower-stats'][item]['next-idx'] != 1) or
         (GetFollowerStatsInfo['/0/follower-stats'][item]['prev-idx-term'] != stage0_values['results'][0]['item']["/0/term"])
