@@ -15,7 +15,7 @@
         fi_key:
            - "/fault_injection_points"
       set_fact:
-         fault_injection_points: "{{ lookup('niova_ctlrequest', 'lookup', NisdUUID, fi_key, 'nisd', lookout_uuid, wantlist=True) }}"
+         fault_injection_points: "{{ lookup('niova_ctlrequest', 'lookup', NisdUUID, fi_key, 'nisd', lookout_uuid) }}"
 
     - name: "{{ recipe_name }}: Verify fault injected on nisd properly."
       set_fact:

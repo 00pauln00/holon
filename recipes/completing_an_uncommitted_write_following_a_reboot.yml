@@ -166,7 +166,7 @@
         cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0"
         where: "/pumice_db_test_client/input"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       no_log: True
 
     - name: "{{ recipe_name}}: Wait until write completes from client"
