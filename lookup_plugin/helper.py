@@ -90,7 +90,7 @@ def clone_dbi_files(cluster_params, chunk):
 
 # generates the dummy generator config path
 def get_dummy_gen_config_path(data_dir, chunk):
-    return os.path.join(data_dir, str(chunk), "DV", "dummy_generator.json")
+    return os.path.join(data_dir, "dataVal",str(chunk), "dummy_generator.json")
 
 def read_file_list(file_path):
     try:
@@ -202,9 +202,9 @@ class helper:
             print(f"Error: {e}") 
         return full_path
 
-    def create_gc_partition(self):
-        mount_pt = os.path.join(self.base_path, 'gc')
-        dir_name = os.path.join(mount_pt, 'gc_download')
+    def create_gc_partition(self, dir, total_blocks):
+        dir_name_abs = os.path.join(self.base_path, dir)
+        dir_name = dir
 
         # Get the current UID
         uid = os.geteuid()
@@ -213,15 +213,15 @@ class helper:
         user_info = pwd.getpwuid(uid)
         username = user_info.pw_name
 
-        disk_ipath = self.create_dd_file("GC.img", "64M", 27)
+        disk_ipath = self.create_dd_file("GC.img", "64M", total_blocks)
 
         try:
             result = subprocess.run(["sudo", "losetup", "-fP", disk_ipath], check=True, shell=True)
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
-
+            
         # setup btrfs and mount
-        self.setup_btrfs("gc", disk_ipath)
+        self.setup_btrfs(dir_name, disk_ipath)
 
         try:
             result = subprocess.run(["sudo", "mkdir", dir_name], check=True)
@@ -229,12 +229,12 @@ class helper:
             print(f"Error: {e}")
 
         try:
-            result = subprocess.run(["sudo", "chown", username, dir_name], check=True)
+            result = subprocess.run(["sudo", "chown", username, dir_name_abs], check=True)
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
 
         try:
-            result = subprocess.run(["sudo", "chmod", "777", dir_name], check=True)
+            result = subprocess.run(["sudo", "chmod", "777", dir_name_abs], check=True)
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
 
@@ -398,7 +398,22 @@ class helper:
         else:
             print("No files found in the directory.")
 
-
+    def keep_last_entry(self, file_rel_path):
+        # Read the file contents
+        file_path = os.path.normpath(f"{self.base_path}/{file_rel_path}")
+        
+        print(f"{os.path.normpath(f"{self.base_path}/{file_rel_path}")}")
+         
+        with open(file_path, 'r') as file:
+            lines = file.read().split('\n')
+        
+        # Filter out any empty lines and get the last non-empty entry
+        non_empty_lines = [line for line in lines if line.strip()]
+        last_entry = non_empty_lines[-1] if non_empty_lines else ''
+        
+        # Overwrite the file with only the last entry
+        with open(file_path, 'w') as file:
+            file.write(last_entry + '\n')
 
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
@@ -447,7 +462,9 @@ class LookupModule(LookupBase):
             return []
 
         elif operation == "create_partition":
-            help.create_gc_partition()
+            dir = terms[1]
+            total_blocks = terms[2]
+            help.create_gc_partition(dir, total_blocks)
             return []
         
         elif operation == "delete_dd_file":
@@ -465,6 +482,13 @@ class LookupModule(LookupBase):
             stdout = terms[2]
             help.compare_files(file_list, stdout)
             return []
+        
+        elif operation == "keep_last_entry":
+            file_rel_path = terms[1]
+            
+            result = help.keep_last_entry(file_rel_path)
+            
+            return [result]
     
         else:
             raise ValueError(f"Unsupported operation: {operation}")

@@ -1,0 +1,119 @@
+- name: single_snapshot_with_overwrite
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "single_snapshot_with_overwrite"
+    parent: none
+
+  tasks:
+    - block:
+        - name: "{{ recipe_name }}: Start minio server"
+          vars:
+            s3_dir: "/local/minio_data"
+          debug:
+            msg:
+              - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+          when: s3Support == "true"
+
+        - name: "Generate 1000 vblk entries with snapshot"
+          vars:
+            dbi_param:
+              vbAmount: "1000"
+              maxVblks: "100"
+              vblkPer: "100"
+              maxPunches: "0"
+              punchAmount: "0"
+              seqStart: "0"
+              startVblk: "0"
+              genType: "1"
+              seed: "1"
+              blockSize: "16"
+              blockSizeMax: "32"
+              punchesPer: "0"
+              maxPunchSize: "1"
+              chunk: "1"
+              vdev: "4d2403f6-d489-11ee-bb54-22abb648e432"
+              snapshot: true
+            input_param:
+              total_chunks: 1
+              is_random: true
+              remove_files: false
+          debug:
+            msg:
+              - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+          register: chunk
+
+        - name: "Generate 1000 vblk entries without snapshot"
+          vars:
+            dbi_param:
+              vbAmount: "1000"
+              maxVblks: "100"
+              vblkPer: "100"
+              maxPunches: "0"
+              punchAmount: "0"
+              seqStart: "0"
+              startVblk: "0"
+              genType: "1"
+              seed: "1"
+              blockSize: "16"
+              blockSizeMax: "32"
+              punchesPer: "0"
+              maxPunchSize: "1"
+              chunk: "1"
+              vdev: "4d2403f6-d489-11ee-bb54-22abb648e432"
+            input_param:
+              total_chunks: 1
+              is_random: true
+              remove_files: false
+          debug:
+            msg:
+              - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+          register: chunk
+
+        - name: "{{ recipe_name }}: Start GCService"
+          vars:
+            params:
+              {
+                "dry_run": false,
+                "del_dbo": true,
+                "partition": false,
+                "total_chunks": 0,
+                "force_gc": true,
+                "terminate_gc": true,
+              }
+          debug:
+            msg:
+              - "{{ lookup('garbage_collection', 'daemon', 'start', params, wantlist=True) }}"
+
+        - name: "{{ recipe_name }}: Wait until GC marker file present."
+          vars:
+            params: { "chunk": "1" }
+          debug:
+            msg: "Waiting for GC Marker File"
+          until: lookup('obj_storage', 'get_markers', params, wantlist=True)[0][0] is not none
+          retries: 50
+          delay: 2
+
+        - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
+          vars:
+            params: { "chunk": "1" }
+            Sequence: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True)[0] }}"
+            gc_marker: "{{ Sequence[0] }}"
+            nisd_marker: "{{ Sequence[1] }}"
+          debug:
+            msg: "Wait until marker values gets match"
+          until: gc_marker == nisd_marker
+          retries: 50
+          delay: 2
+
+        - name: "{{ recipe_name }}: Start data validation"
+          vars:
+            Chunk: "{{ chunk['msg'][0] }}"
+            has_snapshot: true
+          debug:
+            msg: "{{ lookup('data_gen', 'validator',  Chunk, has_snapshot, wantlist=True) }}"
+
+      rescue:
+        - name: "Recipe: {{ recipe_name }} failed"
+          set_fact:
+            terminate_recipe: true
