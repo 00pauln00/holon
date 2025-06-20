@@ -125,14 +125,14 @@
 
     - name: "{{ recipe_name }}: Pause the leader."
       debug:
-        msg: "{{ lookup('niova_raftprocess', 'pause', stage1_value['results'][0]['item']['/0/leader-uuid'], wantlist=True) }}"
+        msg: "{{ lookup('niova_raftprocess', 'pause', stage1_value['results'][0]['item']['/0/leader-uuid']) }}"
 
     - name: "{{ recipe_name }}: Apply write cmd from client."
       vars:
         stage: "write_op"
         cmd: "input@{{ app_uuid1.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
         where: "/pumice_db_test_client/input"
-        write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+        write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       debug:
         msg: "{{ write_seq }}"
       no_log: True

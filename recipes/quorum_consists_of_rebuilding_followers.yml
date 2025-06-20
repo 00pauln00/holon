@@ -52,7 +52,7 @@
 
     - name: "{{ recipe_name }}: Pause number of followers."
       set_fact:
-         quorum_rebuild_pause_peers: "{{ lookup('niova_raftprocess', 'pause', FollowerUUIDs[item], wantlist=True) }}"
+         quorum_rebuild_pause_peers: "{{ lookup('niova_raftprocess', 'pause', FollowerUUIDs[item]) }}"
          inactive_followers: "{{ inactive_followers | default([]) + [FollowerUUIDs[item]] }}"
       loop: "{{ range(0, number_of_followers_to_pause | int) | list }}"
 
@@ -105,21 +105,21 @@
 
     - name: "{{ recipe_name }}: Resume inactive followers."
       set_fact:
-         quorum_rebuild_resume_peers: "{{ lookup('niova_raftprocess', 'resume', inactive_followers[item], wantlist=True) }}"
+         quorum_rebuild_resume_peers: "{{ lookup('niova_raftprocess', 'resume', inactive_followers[item]) }}"
       loop: "{{ range(0, inactive_followers | length) | list }}"
 
     - name: "{{ recipe_name }}: Pause active followers."
       vars:
          active_followers: "{{ FollowerUUIDs | difference(inactive_followers) }}"
       set_fact:
-         pause_active_followers: "{{ lookup('niova_raftprocess', 'pause', active_followers[item], wantlist=True) }}"
+         pause_active_followers: "{{ lookup('niova_raftprocess', 'pause', active_followers[item]) }}"
       loop: "{{ range(0, active_followers | length) | list }}"
 
     #Wait until inactive followers show the same leader uuid.
     - name: "{{ recipe_name }}: Get the Leader UUID for inactive followers and wait until inactive followers show the same leader uuid."
       vars:
         stage: "get_leader_uuid"
-        leader_uuid: "{{ lookup('niova_ctlrequest', 'lookup', inactive_followers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)[0] }}"
+        leader_uuid: "{{ lookup('niova_ctlrequest', 'lookup', inactive_followers[item], '/raft_root_entry/0/leader-uuid') }}"
       debug:
         msg: "Waiting till inactive followers show same leader uuid"
       until: leader_uuid == leader_uuid_before
@@ -174,7 +174,7 @@
       vars:
          active_followers: "{{ FollowerUUIDs | difference(inactive_followers) }}"
       set_fact:
-         resume_active_followers: "{{ lookup('niova_raftprocess', 'resume', active_followers[item], wantlist=True) }}"
+         resume_active_followers: "{{ lookup('niova_raftprocess', 'resume', active_followers[item]) }}"
       loop: "{{ range(0, active_followers | length) | list }}"
 
     rescue:
