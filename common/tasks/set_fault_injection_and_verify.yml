@@ -13,13 +13,13 @@
         raft_keys:
            - "/fault_injection_points"
       set_fact:
-         fault_injection_points: "{{ lookup('niova_ctlrequest', 'lookup', ServerUUID, raft_keys, wantlist=True) }}"
+         fault_injection_points: "{{ lookup('niova_ctlrequest', 'lookup', ServerUUID, raft_keys) }}"
 
     - name: "{{ recipe_name }}: Verify fault injected on leader properly."
       set_fact:
-         fault_injection_point_enabled : "{{ fault_injection_points[0]['//fault_injection_points'][index]['enabled'] }}"
-      when: (fault_injection_points[0]['//fault_injection_points'][index]['name'] == fault_injection_name)
-      loop: "{{  range(0, fault_injection_points[0]['//fault_injection_points'] |length) | list }}"
+         fault_injection_point_enabled : "{{ fault_injection_points['//fault_injection_points'][index]['enabled'] }}"
+      when: (fault_injection_points['//fault_injection_points'][index]['name'] == fault_injection_name)
+      loop: "{{  range(0, fault_injection_points['//fault_injection_points'] |length) | list }}"
       loop_control:
           loop_var: index
 

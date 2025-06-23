@@ -75,7 +75,7 @@
         get_fi: "{{ lookup('niova_ctlrequest', 'lookup', bsr_pause_follower, raft_key) }}"
       debug:
         msg: "Getting fault_injection_points array {{get_fi}}"
-      no_log: False
+      no_log: True
       with_items:
           - "{{ get_fi }}"
       register: stage2_value

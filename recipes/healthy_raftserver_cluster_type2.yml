@@ -38,7 +38,7 @@
         stage: "pre_restart_start_time"
         raft_keys:
              - "/system_info/start_time"
-        stime_prev: "{{ lookup('niova_ctlrequest','lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+        stime_prev: "{{ lookup('niova_ctlrequest','lookup', NRunningPeers, raft_keys) }}"
       debug:
         msg: "Get start time before restarting peers {{ stime_prev }}"
       no_log: true
@@ -110,7 +110,7 @@
         raft_keys:
              - "/system_info/start_time"
              - "/raft_root_entry/0/leader-uuid"
-        stime_after: "{{ lookup('niova_ctlrequest','lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+        stime_after: "{{ lookup('niova_ctlrequest','lookup', NRunningPeers, raft_keys) }}"
       debug:
         msg: "Get start time after restarting peers {{ stime_after }}"
       no_log: true
@@ -121,8 +121,8 @@
     #Stage2: Verification
     - name: "{{ recipe_name }}: Verify that restart timestamp has advanced"
       vars:
-        prev_time: "{{ start_time_prerestart['results'][0]['item'][item]['/system_info/start_time'] }}"
-        after_time: "{{ start_time_after_restart['results'][0]['item'][item]['/system_info/start_time'] }}"
+        prev_time: "{{ start_time_prerestart['results']['item'][item]['/system_info/start_time'] }}"
+        after_time: "{{ start_time_after_restart['results']['item'][item]['/system_info/start_time'] }}"
       debug:
         msg: "Compare time stamp: {{ prev_time }} with {{ after_time }}"
       failed_when: prev_time >= after_time
@@ -191,7 +191,7 @@
              - "/raft_root_entry/0/sync-entry-term"
              - "/raft_root_entry/0/sync-entry-data-size"
              - "/raft_root_entry/0/sync-entry-crc"
-         values_after_restart: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+         values_after_restart: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
       debug:
         msg: "Get the values of the peers after restart"
       no_log: true
@@ -201,8 +201,8 @@
 
     - name: "{{ recipe_name }}: Compare the values after restart with pre-restart."
       set_fact:
-        type2_vals_after_restart: "{{ peers_info_after_restart['results'][0]['item'][item] }}"
-        type2_vals_before_restart: "{{ pre_restart_vals['results'][0]['item'][item]}}"
+        type2_vals_after_restart: "{{ peers_info_after_restart['results']['item'][item] }}"
+        type2_vals_before_restart: "{{ pre_restart_vals['results']['item'][item]}}"
       failed_when: >
            (type2_vals_after_restart['/0/term'] <= type2_vals_before_restart['/0/term']) or
            (type2_vals_after_restart['/0/commit-idx'] < 1) or

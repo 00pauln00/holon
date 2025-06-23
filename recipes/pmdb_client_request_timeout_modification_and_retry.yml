@@ -157,7 +157,7 @@
 
     - name: "{{ recipe_name }}: Validate pmdb-test-apps array values."
       vars:
-        pmdb_array: "{{ stage4_value['results'][0]['item']['/pumice_db_test_client/pmdb-test-apps'] }}"
+        pmdb_array: "{{ stage4_value['results']['item']['/pumice_db_test_client/pmdb-test-apps'] }}"
       debug:
         msg:
         - "Check pmdb-test-apps array: {{ pmdb_array }}."
@@ -238,8 +238,8 @@
 
     - name: "{{ recipe_name }}: Validate the last request from the recent ops array."
       vars:
-        get_status: "{{ stage6_value['results'][0]['item']['/0/status'] }}"
-        get_lrt: "{{ stage6_value['results'][0]['item']['/0/last-request-tag'] }}"
+        get_status: "{{ stage6_value['results']['item']['/0/status'] }}"
+        get_lrt: "{{ stage6_value['results']['item']['/0/last-request-tag'] }}"
       debug:
         msg:
         - "{{ get_status }}"

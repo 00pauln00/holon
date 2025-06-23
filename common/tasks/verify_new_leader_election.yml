@@ -5,7 +5,7 @@
         stage: "wait_leader_to_elect"
       debug:
         msg: "Waiting for leader to elect"
-      until: lookup('niova_ctlrequest', 'lookup', peer_list[itr], '/raft_root_entry/0/leader-uuid', wantlist=True)[0]['/0/leader-uuid'] != old_leader
+      until: lookup('niova_ctlrequest', 'lookup', peer_list[itr], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid'] != old_leader
       retries: 60
       delay: 1
 

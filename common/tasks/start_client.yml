@@ -2,13 +2,13 @@
 
     - name: "Starting client {{ ClientUUID }}"
       debug:
-        msg: "{{lookup('niova_raftprocess', 'start', ClientUUID, wantlist=True)}}"
+        msg: "{{lookup('niova_raftprocess', 'start', ClientUUID)}}"
 
     - name: "Wait for client process to bootup completely"
       debug:
         msg: "Wait till client bootup completes."
       vars:
         stage: "start_client"
-      until: (lookup('niova_ctlrequest', 'lookup', ClientUUID, '/raft_client_root_entry/0/state', wantlist=True)[0]['/0/state'] != "null")
+      until: (lookup('niova_ctlrequest', 'lookup', ClientUUID, '/raft_client_root_entry/0/state')['/0/state'] != "null")
       retries: 60
       delay: 1
