@@ -30,7 +30,7 @@
     - name: "{{ recipe_name }}: Get raft_root_entry values of all peers."
       vars:
         stage: "stage0"
-        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_key) }}"
+        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
       debug:
          msg: "Getting raft_root_entry for all servers."
       no_log: true

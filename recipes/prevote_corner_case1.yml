@@ -66,7 +66,7 @@
          name: common
          tasks_from: verify_net_send_recv_enabled
       vars:
-        ctl_svc_nodes_arr: "{{ ctl_svc_nodes_en[idx]['//ctl_svc_nodes'] }}"
+        ctl_svc_nodes_arr: "{{ ctl_svc_nodes_en[idx][0]['//ctl_svc_nodes'] }}"
       loop: "{{ range(0, ctl_svc_nodes_en | length) | list }}"
       loop_control:
          loop_var: idx
@@ -92,7 +92,7 @@
          stage: "wait_leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid'] != "null"
       retries: 4
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
