@@ -52,7 +52,7 @@
     - name: "{{ recipe_name }}: Get the raft values."
       vars:
          stage: "stage0_prevote_get_all"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys) }}"
       debug:
         msg: "Get the raft values for running peers"
       no_log: true
@@ -64,7 +64,7 @@
       vars:
         peer_to_kill: "{{ FollowerUUIDs | random }}"
       debug:
-        msg: "{{ lookup('niova_raftprocess', 'kill', peer_to_kill, wantlist=True) }}"
+        msg: "{{ lookup('niova_raftprocess', 'kill', peer_to_kill) }}"
 
     #Start client
     - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
@@ -112,7 +112,7 @@
     - name: "{{ recipe_name }}: Get the raft values before disabling peers."
       vars:
          stage: "prevote_get_all"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', prevchk_peers_to_disable, raft_keys, wantlist=True) }}"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', prevchk_peers_to_disable, raft_keys) }}"
       debug:
         msg: "Get the raft values for running peers"
       no_log: true
@@ -126,7 +126,7 @@
         stage: "disable_peers_mode"
         cmd: "net_recv_enabled@false"
         where: "/ctl_svc_nodes/uuid@{{ prevchk_peers_to_disable[item] }}"
-        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', prevote_leader_before, cmd, where, wantlist=True) }}"
+        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', prevote_leader_before, cmd, where) }}"
       debug:
         msg: "{{ disable_mode }}"
       loop: "{{ range(0, prevchk_peers_to_disable | length) | list }}"
@@ -138,7 +138,7 @@
         raft_keys:
              - "/ctl_svc_nodes"
       set_fact:
-         ctl_svc_nodes:  "{{ lookup('niova_ctlrequest', 'lookup', prevote_leader_before, raft_keys, wantlist=True) }}"
+         ctl_svc_nodes:  "{{ lookup('niova_ctlrequest', 'lookup', prevote_leader_before, raft_keys) }}"
 
     - name: "{{ recipe_name }}: Gather net_rcv_enabled values for peers to be disabled."
       vars:
@@ -160,7 +160,7 @@
     - name: "{{ recipe_name }}: Get the raft values after disabling peers."
       vars:
          stage: "prevote_get_all"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
       debug:
         msg: "Get the raft values for running peers"
       no_log: true
@@ -175,7 +175,7 @@
         cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
         where: "/pumice_db_test_client/input"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       no_log: true
 
     - name: "{{ recipe_name }}: Get the cluster information again after stopping the peer."
@@ -189,7 +189,7 @@
          stage: "wait_leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', nrunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != prevote_leader_before
+      until: lookup('niova_ctlrequest', 'lookup', nrunningPeers[item], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid'] != prevote_leader_before
       retries: 10
       delay: 1
       loop: "{{ range(0, nrunningPeers | length) | list }}"
@@ -211,7 +211,7 @@
       vars:
          nrunningPeers: "{{ NRunningPeers | difference(prevote_leader_before) }}"
          stage: "prevote_get_all_after"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', nrunningPeers, raft_keys, wantlist=True) }}"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', nrunningPeers, raft_keys) }}"
       debug:
         msg: "Get the raft values for running peers"
       no_log: true
@@ -241,7 +241,7 @@
         stage: "enable_recv"
         cmd: "net_recv_enabled@true"
         where: "/ctl_svc_nodes/uuid@{{ prevchk_peers_to_disable[item] }}"
-        enable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', prevote_leader_before, cmd, where, wantlist=True) }}"
+        enable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', prevote_leader_before, cmd, where) }}"
       debug:
         msg: "{{ enable_mode }}"
       loop: "{{ range(0, prevchk_peers_to_disable | length) | list }}"
@@ -253,7 +253,7 @@
         raft_keys:
              - "/ctl_svc_nodes"
       set_fact:
-         ctl_svc_nodes_en: "{{ lookup('niova_ctlrequest', 'lookup', prevote_leader_before, raft_keys, wantlist=True) }}"
+         ctl_svc_nodes_en: "{{ lookup('niova_ctlrequest', 'lookup', prevote_leader_before, raft_keys) }}"
 
     - name: "{{ recipe_name }}: Gather net_rcv_enabled values for peers to be enabled."
       vars:

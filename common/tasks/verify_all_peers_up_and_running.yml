@@ -8,7 +8,7 @@
          state_key:
             - "/raft_root_entry/0/process-state"
       set_fact:
-         verify_cluster_requirement: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, state_key, wantlist=True) }}"
+         verify_cluster_requirement: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, state_key) }}"
 
     - debug:
         msg: "{{ verify_cluster_requirement }}"

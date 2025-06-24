@@ -30,7 +30,7 @@
               - "/raft_root_entry/0/state"
               - "/raft_root_entry/0/last-applied"
               - "/raft_root_entry/0/last-applied-cumulative-crc"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], raft_keys, wantlist=True) }}"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], raft_keys) }}"
       debug:
         msg: "Get the raft values for running peers"
       no_log: true
@@ -90,7 +90,7 @@
          raft_keys:
               - "/raft_root_entry/0/voted-for-uuid"
               - "/raft_root_entry/0/follower-reason"
-         new_peer_vals: "{{ lookup('niova_ctlrequest', 'lookup', type1_peers_to_be_started, raft_keys, wantlist=True) }}"
+         new_peer_vals: "{{ lookup('niova_ctlrequest', 'lookup', type1_peers_to_be_started, raft_keys) }}"
       debug:
         msg: "Verify values for peers"
       no_log: true
@@ -104,7 +104,7 @@
       failed_when: >
           (stage2_values['results'][item]['item']["/0/voted-for-uuid"] != "00000000-0000-0000-0000-000000000000") or
           (stage2_values['results'][item]['item']["/0/follower-reason"] != "leader-already-present")
-      loop: "{{ range(0, type1_peers_to_be_started|length) | list }}"
+      loop: "{{ range(0, type1_peers_to_be_started |length) | list }}"
 
     - name: "{{ recipe_name }}: Get the list of all running peer UUIDs"
       include_role:
@@ -125,7 +125,7 @@
               - "/raft_root_entry/0/state"
               - "/raft_root_entry/0/last-applied"
               - "/raft_root_entry/0/last-applied-cumulative-crc"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
       debug:
          msg: "Get the values for all running peers"
       no_log: true
@@ -133,13 +133,23 @@
         - "{{ peer_values }}"
       register: stage3_values
 
+    - name: Value of stage3_values
+      debug:
+        msg: "{{GetFollowerStatsInfo['/0/follower-stats'][item]['prev-idx-term']}}"
+      loop: "{{ range(0, GetFollowerStatsInfo['/0/follower-stats'] | length) | list}}"
+
+    - name: Value of stage3_values
+      debug:
+        msg: "{{stage0_values['results'][0]['item']['/0/leader-uuid']}}"
+      # loop: "{{ range(0, stage3_values['results'] | length) | list}}"
+
     - name: "{{ recipe_name }}: Verify values on all peers"
       debug:
         msg: "Verify values for peer: {{ NRunningPeers[item] }}"
       failed_when: >
-          (stage3_values['results'][item]['item']["/0/leader-uuid"] != stage0_values['results'][0]['item']["/0/leader-uuid"]) or
+         (stage3_values['results'][item]['item']["/0/leader-uuid"] != stage0_values['results'][0]['item']["/0/leader-uuid"]) or
           ((stage3_values['results'][item]['item']["/0/term"] != stage0_values['results'][0]['item']["/0/term"]) and
-          (stage3_values['results'][item]['item']["/0/term"] != GetFollowerStatsInfo['/0/follower-stats'][0]['prev-idx-term'])) or
+          (stage3_values['results'][item]['item']["/0/term"] != GetFollowerStatsInfo['/0/follower-stats'][item]['prev-idx-term'])) or
           ((stage3_values['results'][item]['item']["/0/state"] != "leader") and
           (stage3_values['results'][item]['item']["/0/state"] != "follower")) or
           (stage3_values['results'][item]['item']["/0/commit-idx"] != 0) or

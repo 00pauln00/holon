@@ -58,7 +58,7 @@
          stage: "lookup_stage"
          cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.lookup"
          where: "/pumice_db_test_client/input"
-         non_existing_obj_lookup: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+         non_existing_obj_lookup: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       debug:
         msg: "{{ non_existing_obj_lookup }}"
       no_log: True
@@ -68,7 +68,7 @@
          stage: "client_lookup_inval_obj"
       debug:
         msg: "Wait till the lookup operation completes"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, "/raft_client_root_entry/0/recent-ops-rd/0/status", wantlist=True) | dict2items | map(attribute='value') | list | first != "null"
+      until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, "/raft_client_root_entry/0/recent-ops-rd/0/status")['/0/status'] != "null")
       retries: 3
       delay: 1
 
@@ -80,7 +80,7 @@
             - "/pumice_db_test_client/pmdb-test-apps/0/app-user-id"
             - "/pumice_db_test_client/pmdb-test-apps/0/status"
             - "/pumice_db_test_client/pmdb-test-apps/0/last-request-tag"
-        demo1_lookup_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_stage_keys, wantlist=True) }}"
+        demo1_lookup_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_stage_keys) }}"
       debug:
         msg: "Lookup should fail on non-existing object."
       with_items:
@@ -106,7 +106,7 @@
          stage: "invalid_seq_stage"
          cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:1"
          where: "/pumice_db_test_client/input"
-         invalid_write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+         invalid_write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       debug:
         msg: "{{ invalid_write_seq }}"
       no_log: True
@@ -115,7 +115,7 @@
       vars:
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
         stage: "stage1"
-        invalid_write: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+        invalid_write: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys) }}"
       debug:
         msg: "Write will fail with invalid seqno."
       no_log: true
@@ -144,7 +144,7 @@
          stage: "valid_seq_stage"
          cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0"
          where: "/pumice_db_test_client/input"
-         valid_write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+         valid_write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       debug:
         msg: "{{ valid_write_seq }}"
       no_log: True
@@ -155,7 +155,7 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
       debug:
         msg: "Waiting for the valid pmdb-seqno"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == 0
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key)['/0/pmdb-seqno'] == 0
       loop: "{{ range(0, 30) | list }}"
       loop_control:
          pause: 1
@@ -164,7 +164,7 @@
       vars:
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
         stage: "stage2"
-        demo1_wr: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+        demo1_wr: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys) }}"
       debug:
         msg: "Verify parameters after successful write operation {{ demo1_wr }}"
       with_items:
@@ -192,7 +192,7 @@
          stage: "invalid_seqno2_stage"
          cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:2"
          where: "/pumice_db_test_client/input"
-         write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+         write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       debug:
         msg: "{{ write_seq }}"
       no_log: True
@@ -204,7 +204,7 @@
         demo1_valid_wr: "{{ valid_write['results'][0]['item'] }}"
       debug:
         msg: "Waiting for last-rqst-tag to change its value"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True) | dict2items | map(attribute='value') | list != demo1_valid_wr['/0/last-request-tag']
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key)['/0/last-request-tag'] != demo1_valid_wr['/0/last-request-tag']
       loop: "{{ range(0, 10) | list }}"
       loop_control:
         pause: 1
@@ -213,7 +213,7 @@
       vars:
         rncui: "{{ app_uuid.stdout }}:0:0:0:0"
         stage: "stage3"
-        invalid_wr: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+        invalid_wr: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys) }}"
       debug:
         msg: "Write should again fail with invalid seqno"
       no_log: true

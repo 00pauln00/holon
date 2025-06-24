@@ -68,7 +68,7 @@
         raft_key:
            - "/raft_root_entry/0/term"
         leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
-        term: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_key, wantlist=True) }}"
+        term: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, raft_key) }}"
       with_items:
         - "{{ term }}"
       register: leader_term
@@ -88,8 +88,8 @@
          - "/raft_root_entry/0/client-requests"
       debug:
         msg:
-          - "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where, wantlist=True) }}"
-          - "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[item], key, wantlist=True) }}"
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where) }}"
+          - "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[item], key) }}"
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
     - name: "{{ recipe_name }}: Now set election timeout to 30sec on leader."
@@ -105,8 +105,8 @@
         leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
       debug:
         msg:
-          - "{{ lookup('niova_ctlrequest', 'apply_cmd', leader_uuid, cmd, where, wantlist=True) }}"
-          - "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, key, wantlist=True) }}"
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', leader_uuid, cmd, where) }}"
+          - "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, key) }}"
 
     - name: "{{ recipe_name }}: Verify that election timeout set to 30sec on all peers."
       vars:
@@ -116,7 +116,7 @@
          - "/raft_root_entry/0/leader-uuid"
         leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
       set_fact:
-        demo2_leader_elect_timeout="{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, key, wantlist=True) }}"
+        demo2_leader_elect_timeout="{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, key) }}"
       failed_when: >
         demo2_leader_elect_timeout["/raft_net_info/election-timeout-ms"] | string != "30000" or
         demo2_leader_elect_timeout["/0/leader-uuid"] != leader_uuid
@@ -126,7 +126,7 @@
         stage: "stage1_client_req_timeout"
         cmd: "default-request-timeout-sec@3"
         where: "/raft_client_root_entry/default-request-timeout-sec"
-        client_timeout: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+        client_timeout: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       debug:
         msg: "{{ client_timeout }}"
 
@@ -135,7 +135,7 @@
          stage: "valid_seq_stage"
          cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0"
          where: "/pumice_db_test_client/input"
-         valid_write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+         valid_write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       debug:
         msg: "{{ valid_write_seq }}"
 
@@ -144,8 +144,7 @@
         stage: "wait-for-write-comp"
       debug:
         msg: "Waiting for write completion"
-      until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/raft_client_root_entry/0/recent-ops-wr/0/status', wantlist=True) |
-              dict2items | map(attribute='value')| list | first != "null")
+      until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/raft_client_root_entry/0/recent-ops-wr/0/status')['/0/status'] != "null")
       retries: 3
       delay: 1
 
@@ -153,7 +152,7 @@
       vars:
         stage: "stage2"
       set_fact:
-        demo2_stage2_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, client_keys, wantlist=True) }}"
+        demo2_stage2_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, client_keys) }}"
       failed_when: >
         (demo2_stage2_values['/0/app-user-id'] != Demo2Rncui) or
         (demo2_stage2_values['/0/status'] != "Success") or
@@ -174,7 +173,7 @@
       debug:
         msg:
          - "Pausing peer: {{ FollowerUUIDs[item] }}"
-         - "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[item], wantlist=True) }}"
+         - "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[item]) }}"
       loop: "{{ range(0, npeers_for_leader_elect | int) | list }}"
 
     - name: "{{ recipe_name }}: Now issue read until read fails i.e till leader timeout occurs and it stops responding to client requests."
@@ -186,9 +185,8 @@
       debug:
         msg:
          - "Read until it fails"
-         - "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_key, wantlist=True)| dict2items | map(attribute='value') | list | first }}"
-
-      until: lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) and (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_key, wantlist=True)| dict2items | map(attribute='value') | list | first  != "Success")
+         - "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_key)['/0/status'] }}"
+      until: lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) and (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_key)['/0/status']  != "Success")
       retries: 65
       delay: 1
 
@@ -197,7 +195,7 @@
          stage: "wait_leader_viableFalse"
       debug:
         msg: "Waiting for leader-viable == false"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/raft_client_root_entry/0/leader-viable', wantlist=True) | dict2items | map(attribute='value') | list | first == false
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/raft_client_root_entry/0/leader-viable')['/0/leader-viable'] == false
       retries: 100
       delay: 1
 
@@ -208,7 +206,7 @@
           - "/raft_client_root_entry/0/leader-viable"
           - "/raft_client_root_entry/0/leader-alive-cnt"
       set_fact:
-         demo2_cli_val_after_timeout: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_key, wantlist=True) }}"
+         demo2_cli_val_after_timeout: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_key) }}"
       failed_when: >
         (demo2_cli_val_after_timeout['/0/leader-viable'] | bool != false) or
         (demo2_cli_val_after_timeout['/0/leader-alive-cnt'] | int != 0)
@@ -223,7 +221,7 @@
         leader_term_val: "{{ leader_term['results'][0]['item'] }}"
         leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
       set_fact:
-        demo2_leader_values="{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, leader_keys, wantlist=True) }}"
+        demo2_leader_values="{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, leader_keys) }}"
       failed_when: >
         (demo2_leader_values["/0/client-requests"] != "deny-may-be-deposed") or
         (demo2_leader_values["/0/state"] != "leader") or
@@ -234,7 +232,7 @@
       debug:
         msg:
          - "Resuming follower: {{ FollowerUUIDs[item] }}"
-         - "{{ lookup('niova_raftprocess', 'start', FollowerUUIDs[item], wantlist=True) }}"
+         - "{{ lookup('niova_raftprocess', 'start', FollowerUUIDs[item]) }}"
       loop: "{{ range(0, npeers_for_leader_elect | int) | list }}"
 
     - name: "{{ recipe_name }}: Resetting the election timeout on leader"
@@ -245,7 +243,7 @@
         leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
       debug:
         msg:
-          - "{{ lookup('niova_ctlrequest', 'apply_cmd', leader_uuid, cmd, where, wantlist=True) }}"
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', leader_uuid, cmd, where) }}"
 
     - name: "{{ recipe_name }}: Resetting the election timeout on followers"
       vars:
@@ -254,7 +252,7 @@
         where: "/raft_net_info/election-timeout-ms"
       debug:
         msg:
-          - "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where, wantlist=True) }}"
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where) }}"
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
 
     - name: "{{ recipe_name }}: Reset the client request timeout."
@@ -262,7 +260,7 @@
         stage: "test_cleanup_client_req_timeout"
         cmd: "default-request-timeout-sec@60"
         where: "/raft_client_root_entry/default-request-timeout-sec"
-        client_timeout: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+        client_timeout: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       debug:
          msg: "{{ client_timeout }}"
 
@@ -274,7 +272,7 @@
     - name: "{{ recipe_name }}: After resuming the followers, new leader might have got elected."
       vars:
         stage: "test-cleanup-get-leader"
-        leader_obj: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry/0/leader-uuid', wantlist=True) }}"
+        leader_obj: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry/0/leader-uuid') }}"
       set_fact: demo2_new_leader_uuid="{{ leader_obj['/0/leader-uuid'] }}"
 
     - name: "{{ recipe_name }}: After resuming followers valiadate it's aliveness"

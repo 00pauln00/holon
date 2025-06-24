@@ -64,7 +64,7 @@
         cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
         where: "/pumice_db_test_client/input"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', ClientUUIDS[0], cmd, where, wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', ClientUUIDS[0], cmd, where) }}"
       no_log: true
 
     - name: "{{ recipe_name }}: Get Values from leader after 1st write."
@@ -72,7 +72,7 @@
         stage: "after_1st_wr_get_coalesed_vals"
         raft_key:
            - "/raft_root_entry/0/coalesce-items-pending"
-        get_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+        get_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key) }}"
       debug:
         msg: "Get values after 1st write"
       no_log: true
@@ -86,7 +86,7 @@
         cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
         where: "/pumice_db_test_client/input"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', ClientUUIDS[1], cmd, where, wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', ClientUUIDS[1], cmd, where) }}"
       no_log: true
 
     - name: "{{ recipe_name }}: Verify 2nd write should not happen with same app-uuid."
@@ -95,7 +95,7 @@
         stage: "after_2nd_wr_get_coalesed_vals"
         raft_key:
            - "/raft_root_entry/0/coalesce-items-pending"
-        curr_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+        curr_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key) }}"
       debug:
         msg: "Comapre values after 2nd write"
       failed_when: >
@@ -107,7 +107,7 @@
         stage: "recipe_cleanup"
         cmd: "enabled@false"
         where: "/fault_injection_points/name@coalesced_writes"
-        remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where, wantlist=True) }}"
+        remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where) }}"
       debug:
         msg: "{{ remove_fault_inject }}"
       no_log: True
@@ -117,7 +117,7 @@
         stage: "stage6"
         raft_key:
            - "/fault_injection_points"
-        remove_fi: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+        remove_fi: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key) }}"
       debug:
         msg: "Getting fault_injection_points array."
       no_log: True
@@ -144,7 +144,7 @@
         stage: "final_stage"
         raft_key:
            - "/raft_root_entry/0/coalesce-items-pending"
-        final_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+        final_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key) }}"
       debug:
         msg: "Verify after removing fault injection"
       failed_when: >
@@ -156,7 +156,7 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', ClientUUIDS[0], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', ClientUUIDS[0], raft_key)['/0/pmdb-seqno'] == (num_writes - 1)
       retries: 60
       delay: 2
 
@@ -166,7 +166,7 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/status"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', ClientUUIDS[1], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == "Operation not permitted"
+      until: lookup('niova_ctlrequest', 'lookup', ClientUUIDS[1], raft_key)['/0/status'] == "Operation not permitted"
       retries: 60
       delay: 1
 
@@ -184,7 +184,7 @@
           - "/pumice_db_test_client/pmdb-test-apps/0/app-sync"
           - "/pumice_db_test_client/pmdb-test-apps/0/app-seqno"
       debug:
-          msg: "{{ lookup('niova_ctlrequest', 'lookup', ClientUUIDS[item], raft_key, wantlist=True) }}"
+          msg: "{{ lookup('niova_ctlrequest', 'lookup', ClientUUIDS[item], raft_key) }}"
       loop: "{{ range(0, ClientUUIDS | length) |list }}"
 
     rescue:

@@ -30,7 +30,7 @@
          stage: "wait_leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid') != "null"
       retries: 10
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -45,7 +45,7 @@
               - "/raft_root_entry/0/sync-entry-crc"
               - "/raft_root_entry/0/term"
               - "/raft_root_entry/0/sync-entry-term"
-         getAllValues: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+         getAllValues: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
       debug:
         msg: "Getting stats for all running peers {{ getAllValues }}"
       no_log: true
@@ -64,7 +64,7 @@
         (verifyPeerVal["/0/last-applied"] < 0) or
         (verifyPeerVal["/0/last-applied-cumulative-crc"] != verifyPeerVal["/0/sync-entry-crc"]) or
         (verifyPeerVal["/0/term"] != verifyPeerVal["/0/sync-entry-term"])
-      loop: "{{ range(0, NRunningPeers | length) | list }}"
+      loop: "{{ range(0, [NRunningPeers] | length) | list }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

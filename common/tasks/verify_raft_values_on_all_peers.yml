@@ -10,7 +10,7 @@
               - "/raft_root_entry/0/last-applied"
               - "/raft_root_entry/0/term"
     set_fact:
-      peer_info: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+      peer_info: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
     failed_when: >
       (peer_info[itr]['/0/commit-idx'] <= get_values_from_all[itr]['/0/commit-idx']) or
       (peer_info[itr]['/0/last-applied'] <= get_values_from_all[itr]['/0/last-applied']) or

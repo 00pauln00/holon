@@ -1,8 +1,8 @@
 ---
     - name: "{{ recipe_name }}: Get the json path."
       set_fact:
-        base_dir: "{{ ClusterInfo | selectattr('key', 'equalto', 'base_dir_path') | map(attribute='value') | first }}"
-        raft_uuid: "{{ ClusterInfo | selectattr('key', 'equalto', 'raft_uuid') | map(attribute='value') | first }}"
+        base_dir="{{ ClusterInfo | json_query('base_dir_path')}}"
+        raft_uuid="{{ ClusterInfo | json_query('raft_uuid')}}"
 
     - name: "{{ recipe_name }}: prepare path to read recipe JSON file."
       shell: cat "{{base_dir}}"/"{{raft_uuid}}".json
@@ -36,7 +36,7 @@
       vars:
         stage: "get_leader_uuid"
       set_fact:
-        LeaderUUID: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], '/raft_root_entry/0/leader-uuid', wantlist=True) }}"
+        LeaderUUID: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], '/raft_root_entry/0/leader-uuid') }}"
       when: NRunningPeers
 
     - debug:
@@ -45,23 +45,30 @@
     - name: "{{ recipe_name }}: Print Leader UUID."
       debug:
         msg: "Leader UUID: {{ LeaderUUID }}"
-      when: LeaderUUID != "" and LeaderUUID['/0/leader-uuid'] != "null"
+      when:
+        - LeaderUUID['/0/leader-uuid'] is defined
+        - LeaderUUID | length > 0
 
     - name: "Get the FollowerUUIDs list."
       set_fact:
-        FollowerUUIDs: "{{ NRunningPeers | difference(LeaderUUID['/0/leader-uuid']) }}"
-      when: LeaderUUID != "" and LeaderUUID['/0/leader-uuid'] != "null"
+        FollowerUUIDs: "{{ NRunningPeers | difference([LeaderUUID['/0/leader-uuid']]) }}"
+      when:
+        - LeaderUUID is defined
+        - LeaderUUID | length > 0
 
     - name: "{{ recipe_name }}: Print Follower UUIDs."
       debug:
         msg: "{{ FollowerUUIDs }}"
-      when: FollowerUUIDs != ""
+      when:
+        - FollowerUUIDs is defined
+        - FollowerUUIDs | length > 0
 
     - name: "{{ recipe_name }}: Get the follower-stats."
       vars:
         stage: "get_follower_stats"
         raft_key:
-            - "/raft_root_entry/0/follower-stats"
+          - "/raft_root_entry/0/follower-stats"
       set_fact:
-        GetFollowerStatsInfo: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, wantlist=True) }}"
+        GetFollowerStatsInfo: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key) }}"
       when: LeaderUUID != "" and LeaderUUID['/0/leader-uuid'] != "null" and FollowerUUIDs | length != 0
+

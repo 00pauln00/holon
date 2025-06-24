@@ -10,7 +10,7 @@
       set_fact:
          net_rcv_list: "{{ net_rcv_list + [nre] }}"
          net_send_list: "{{ net_send_list + [nse] }}"
-      loop: "{{  ctl_svc_nodes_arr }}"
+      loop: "{{  ctl_svc_nodes_arr[0] }}"
       when: uuid == old_leader
       no_log: True
 

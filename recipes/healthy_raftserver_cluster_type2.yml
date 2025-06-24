@@ -38,7 +38,7 @@
         stage: "pre_restart_start_time"
         raft_keys:
              - "/system_info/start_time"
-        stime_prev: "{{ lookup('niova_ctlrequest','lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+        stime_prev: "{{ lookup('niova_ctlrequest','lookup', NRunningPeers, raft_keys) }}"
       debug:
         msg: "Get start time before restarting peers {{ stime_prev }}"
       no_log: true
@@ -99,7 +99,7 @@
         stage: "stage2_leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | string != "null"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| list | string != "null"
       retries: 10
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -110,7 +110,7 @@
         raft_keys:
              - "/system_info/start_time"
              - "/raft_root_entry/0/leader-uuid"
-        stime_after: "{{ lookup('niova_ctlrequest','lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+        stime_after: "{{ lookup('niova_ctlrequest','lookup', NRunningPeers, raft_keys) }}"
       debug:
         msg: "Get start time after restarting peers {{ stime_after }}"
       no_log: true
@@ -191,7 +191,7 @@
              - "/raft_root_entry/0/sync-entry-term"
              - "/raft_root_entry/0/sync-entry-data-size"
              - "/raft_root_entry/0/sync-entry-crc"
-         values_after_restart: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+         values_after_restart: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
       debug:
         msg: "Get the values of the peers after restart"
       no_log: true
@@ -202,7 +202,7 @@
     - name: "{{ recipe_name }}: Compare the values after restart with pre-restart."
       set_fact:
         type2_vals_after_restart: "{{ peers_info_after_restart['results'][item]['item'] }}"
-        type2_vals_before_restart: "{{ pre_restart_vals['results'][item]['item']}}"
+        type2_vals_before_restart: "{{ pre_restart_vals['results'][0]['item'][item]}}"
       failed_when: >
            (type2_vals_after_restart['/0/term'] <= type2_vals_before_restart['/0/term']) or
            (type2_vals_after_restart['/0/commit-idx'] < 1) or

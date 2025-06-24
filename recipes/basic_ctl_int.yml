@@ -44,7 +44,7 @@
             - "/raft_root_entry/0/last-applied-cumulative-crc"
             - "/raft_root_entry/0/last-applied"
             - "/raft_net_info/ignore_timer_events"
-        raft_values: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, raft_keys, wantlist=True) }}"
+        raft_values: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, raft_keys) }}"
       debug:
         msg: "{{ raft_values }}"
       no_log:  True
@@ -72,7 +72,7 @@
         iter_info:
            iter: 5
            sleep_after_cmd: 2
-        curr_stamp: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/system_info/current_time', iter_info, wantlist=True) }}"
+        curr_stamp: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/system_info/current_time', iter_info)}}"
       with_items:
         - "{{ curr_stamp }}"
       register: time_stamp
@@ -81,7 +81,7 @@
 
     - name: "{{ recipe_name }}: Verify stage1, current time should increament in each iteration"
       vars:
-        time_stamp_arr: "{{ time_stamp['results'] }}"
+        time_stamp_arr: "{{ time_stamp['results']}}"
         orig_time: "{{ time_stamp_arr[item]['item']['/system_info/current_time'] }}"
         curr_time: "{{ time_stamp_arr[item + 1]['item']['/system_info/current_time'] }}"
       debug:

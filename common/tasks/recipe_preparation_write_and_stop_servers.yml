@@ -13,7 +13,7 @@
    - name: "{{ recipe_name }}: Get raft_root_entry values of all peers before reboot."
      vars:
        stage: "get_clstate_befo"
-       raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, peer_raft_keys, wantlist=True) }}"
+       raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, peer_raft_keys) }}"
      debug:
         msg: "Getting raft_root_entry for all servers."
      no_log: true
@@ -60,7 +60,7 @@
        raft_keys:
           - "/raft_root_entry/0/leader-uuid"
      set_fact:
-        rb_during_start_raft_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], raft_keys, wantlist=True) }}"
+        rb_during_start_raft_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], raft_keys) }}"
 
    - name: "{{ recipe_name }}: Get sync-entry-idx values for all followers before write."
      vars:
@@ -69,7 +69,7 @@
        raft_keys:
            - "/raft_root_entry/0/sync-entry-idx"
      set_fact:
-        rb_during_start_new_entry_idx_followers_before_write: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids, raft_keys, wantlist=True) }}"
+        rb_during_start_new_entry_idx_followers_before_write: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids, raft_keys) }}"
 
    - name: "{{ recipe_name }}: Get sync-entry-idx value for leader before write."
      vars:
@@ -78,7 +78,7 @@
        raft_keys:
            - "/raft_root_entry/0/sync-entry-idx"
      set_fact:
-        rb_during_start_new_entry_idx_leader_before_write: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, raft_keys, wantlist=True) }}"
+        rb_during_start_new_entry_idx_leader_before_write: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, raft_keys) }}"
 
    #Set raft_follower_ignores_non_hb_AE_request on the followers.
    - name: "{{ recipe_name }}: Set fault injection on all followers and verify through common task."
@@ -111,7 +111,7 @@
        cmd: "default-request-timeout-sec@1"
        where: "/raft_client_root_entry/default-request-timeout-sec"
      debug:
-       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
      no_log: true
 
    - name: "{{ recipe_name }}: Perform write on the client."
@@ -120,7 +120,7 @@
        cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0"
        where: "/pumice_db_test_client/input"
      debug:
-       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
      no_log: true
 
    - name: "{{ recipe_name }}: Get sync-entry-idx values for all followers after write."
@@ -130,7 +130,7 @@
        raft_keys:
            - "/raft_root_entry/0/sync-entry-idx"
      set_fact:
-        rb_during_start_new_entry_idx_followers_after_write: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids, raft_keys, wantlist=True) }}"
+        rb_during_start_new_entry_idx_followers_after_write: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids, raft_keys) }}"
 
    - name: "{{ recipe_name }}: Get sync-entry-idx value for leader after write."
      vars:
@@ -139,7 +139,7 @@
        raft_keys:
            - "/raft_root_entry/0/sync-entry-idx"
      set_fact:
-        rb_during_start_new_entry_idx_leader_after_write: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, raft_keys, wantlist=True) }}"
+        rb_during_start_new_entry_idx_leader_after_write: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, raft_keys) }}"
 
    #2a- Verification for sync-entry-idx.
    - name: "{{ recipe_name }}: Verify that sync-entry-idx of all followers remains same."
@@ -165,7 +165,7 @@
        raft_keys:
            - "/raft_root_entry/0/commit-idx"
      set_fact:
-        rb_during_start_get_commit_idx_all_after_write: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+        rb_during_start_get_commit_idx_all_after_write: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
 
    - name: "{{ recipe_name }}: Validate that commit-idx has not advanced on any peer."
      vars:
@@ -185,7 +185,7 @@
        raft_keys:
            - "/raft_root_entry/0/commit-idx"
      set_fact:
-        rb_during_start_leader_values_before_election: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, raft_keys, wantlist=True) }}"
+        rb_during_start_leader_values_before_election: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, raft_keys) }}"
 
    #3- Stop the processes, first all followers and then leader.
    - name: "{{ recipe_name }}: Stop all follower processes."
@@ -193,7 +193,7 @@
        follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
        ServerUUID: "{{ follower_uuids[item] }}"
      debug:
-       msg: "{{ lookup('niova_raftprocess', 'kill', ServerUUID, wantlist=True) }}"
+       msg: "{{ lookup('niova_raftprocess', 'kill', ServerUUID) }}"
      no_log: true
      loop: "{{ range(0, follower_uuids | length) | list }}"
 
@@ -201,5 +201,5 @@
      vars:
        leader_uuid_before: "{{ rb_during_start_raft_values['/0/leader-uuid'] }}"
      debug:
-       msg: "{{ lookup('niova_raftprocess', 'kill', leader_uuid_before, wantlist=True) }}"
+       msg: "{{ lookup('niova_raftprocess', 'kill', leader_uuid_before) }}"
      no_log: true

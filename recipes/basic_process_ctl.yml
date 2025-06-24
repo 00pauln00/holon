@@ -32,7 +32,7 @@
         iter_info:
            iter: 5
            sleep_after_cmd: 2
-        curr_stamp: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/system_info/current_time', iter_info, wantlist=True) }}"
+        curr_stamp: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/system_info/current_time', iter_info) }}"
       with_items:
         - "{{ curr_stamp }}"
       register: time_stamp

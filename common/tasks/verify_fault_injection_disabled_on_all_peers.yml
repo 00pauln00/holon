@@ -6,7 +6,7 @@
       raft_key:
          - "/fault_injection_points"
     set_fact:
-      fault_inject_array: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_key, wantlist=True) }}"
+      fault_inject_array: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_key) }}"
 
   - name: "{{ recipe_name }}: Get 'enabled' value from fault_injection_points array on all peerrs."
     set_fact:

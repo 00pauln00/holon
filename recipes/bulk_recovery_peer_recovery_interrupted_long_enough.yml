@@ -94,7 +94,7 @@
         stage: "wait_for_write_op"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (pri_num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno')['/0/pmdb-seqno'] == (pri_num_writes - 1)
       retries: 500
       delay: 1
 
@@ -118,7 +118,7 @@
 
     - name: "{{ recipe_name }}: Kill the leader."
       debug:
-        msg:  "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True) }}"
+        msg:  "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid']) }}"
 
     - name: "{{ recipe_name }}: Wait until leader election happens."
       include_role:
@@ -143,7 +143,7 @@
     - name: "{{ recipe_name }}: Get the values for raft-root-entry."
       vars:
         stage: "stage1_get_all"
-        peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_root_entry_keys, wantlist=True) }}"
+        peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_root_entry_keys) }}"
       debug:
         msg: "Get the raft values for running peers"
           #   no_log: true
@@ -156,14 +156,14 @@
          stage: "getCIFrmAll"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first >= (pri_num_writes | int) * (no_of_app_uuids | int) + 1
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] >= (pri_num_writes | int) * (no_of_app_uuids | int) + 1
       retries: 500
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Verify commit-idx gets updated on all peers after first write operation."
       vars:
-         getAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys, wantlist=True) }}"
+         getAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys) }}"
          stage: "Get_commit_idx"
       debug:
         msg: "Verify commit-idx on all peers."
@@ -193,14 +193,14 @@
         stage: "wait_for_write_op"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (pri_num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno')['/0/pmdb-seqno'] == (pri_num_writes - 1)
       retries: 500
       delay: 1
 
     - name: "{{ recipe_name }}: Get the values for raft-root-entry."
       vars:
          stage: "stage2_get_all"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_root_entry_keys, wantlist=True) }}"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_root_entry_keys) }}"
       debug:
         msg: "Get the raft values for running peers"
       no_log: true
@@ -214,7 +214,7 @@
          stage: "aftrNewWrgetCIFrmAll"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first >= (pri_num_writes | int) * (no_of_app_uuids | int) + (initial_vals["/0/commit-idx"])
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] >= (pri_num_writes | int) * (no_of_app_uuids | int) + (initial_vals["/0/commit-idx"])
       retries: 500
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -223,7 +223,7 @@
       vars:
          initial_vals: "{{ stage1_values['results'][0]['item']}}"
          stage: "Get_commit_idx_after2nd_write"
-         getAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys, wantlist=True) }}"
+         getAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys) }}"
       debug:
         msg: "Verify all values on all peers."
       failed_when: >
@@ -233,7 +233,7 @@
     - name: "{{ recipe_name }}: Get commit-idx values of all peers."
       vars:
         stage: "get_cm_idx_all"
-        cmidx: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/commit-idx', wantlist=True) }}"
+        cmidx: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/commit-idx') }}"
       debug:
          msg: "Getting commit-idx for all servers."
       no_log: true

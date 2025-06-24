@@ -112,14 +112,14 @@
         stage: "wait_for_write_op"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno', wantlist=True) | dict2items | map(attribute='value') | list | first == (num_writes - 1)
-      retries: 5000
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno')['/0/pmdb-seqno'] == (num_writes - 1)
+      retries: 500
       delay: 1
 
     - name: "{{ recipe_name }}: Verify checkpoint-idx, lowest-idx gets changed on all 3 peers after write operation."
       vars:
          stage: "verifyCPOnAll"
-         getCPOnAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys, wantlist=True) }}"
+         getCPOnAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys) }}"
       debug:
         msg: "Verify checkpoint-idx gets changed on all peers."
       failed_when: >
@@ -182,7 +182,7 @@
          stage: "getRootValuesFrmPeer4"
       debug:
         msg: "Verify Commit-Idx get incrementing on peer 4."
-      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx', wantlist=True) | dict2items | map(attribute='value') | list | first >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
+      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
       retries: 100
       delay: 1
 
@@ -191,14 +191,14 @@
         stage: "getRootValuesFrmPeer4"
       debug:
         msg: "Verify Checkpoint-Idx get incrementing on peer 4."
-      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/checkpoint-idx', wantlist=True) | dict2items | map(attribute='value') | list | first != (-1)
+      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/checkpoint-idx')['/0/checkpoint-idx'] != (-1)
       retries: 100
       delay: 1
 
     - name: "{{ recipe_name }}: Verify checkpoint-idx and lowest-idx gets changed on newly started peer after write operation."
       vars:
          stage: "verifyCPOnPeer4"
-         getCPOnPeer4: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys, wantlist=True) }}"
+         getCPOnPeer4: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys) }}"
       debug:
         msg: "Verify checkpoint-idx gets changed on peer 4."
       failed_when: >
@@ -236,7 +236,7 @@
           - "/raft_root_entry/0/commit-idx"
           - "/raft_root_entry/0/term"
           - "/raft_root_entry/0/leader-uuid"
-        peer_info: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+        peer_info: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
       debug:
         msg: " Verify commit-idx, term and leader-uuid remains same on all peers "
       failed_when: >

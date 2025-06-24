@@ -33,7 +33,7 @@
             - "/raft_root_entry/0/last-applied"
             - "/raft_root_entry/0/last-applied-cumulative-crc"
             - "/raft_root_entry/0/peer-uuid"
-         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
       debug:
         msg: "Getting stats for all running peers"
       no_log: true
@@ -67,7 +67,7 @@
              - "/raft_root_entry/0/state"
              - "/raft_root_entry/0/client-requests"
              - "/raft_root_entry/0/term"
-         net_rcv: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_keys, wantlist=True) }}"
+         net_rcv: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_keys) }}"
       debug:
         msg:
          - "Verify parameters for peer: {{ NRunningPeers }}"
@@ -116,7 +116,7 @@
             - "/raft_root_entry/0/client-requests"
             - "/raft_root_entry/0/voted-for-uuid"
             - "/raft_root_entry/0/peer-uuid"
-         set_leader: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+         set_leader: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
       debug:
         msg: "Verify leader-to-be not elected on peer"
       no_log: true
@@ -160,7 +160,7 @@
       debug:
         msg:
          - "Waiting for new leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first == overthrow_leader_to_be
+      until: (lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid') | dict2items | map(attribute='value') | list | first) == overthrow_leader_to_be
       retries: 10
       delay: 2
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -180,9 +180,9 @@
         stage: "recipeCleanup"
         raft_keys:
              - "/ctl_svc_nodes/*/net_recv_enabled"
-        net_rcv: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_keys, wantlist=True) }}"
+        net_rcv: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_keys) }}"
       debug:
-        msg: "Verify 'net_recv_enabled' state of all peers to ‘true'"
+        msg: "Verify 'net_recv_enabled' state of all peers to true"
       failed_when: >
            (net_rcv["/*/net_recv_enabled"] != True)
       loop: "{{ range(0, NRunningPeers | length) | list }}"
