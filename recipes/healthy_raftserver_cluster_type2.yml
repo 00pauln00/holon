@@ -121,8 +121,8 @@
     #Stage2: Verification
     - name: "{{ recipe_name }}: Verify that restart timestamp has advanced"
       vars:
-        prev_time: "{{ start_time_prerestart['results']['item'][item]['/system_info/start_time'] }}"
-        after_time: "{{ start_time_after_restart['results']['item'][item]['/system_info/start_time'] }}"
+        prev_time: "{{ start_time_prerestart['results'][item]['item']['/system_info/start_time'] }}"
+        after_time: "{{ start_time_after_restart['results'][item]['item']['/system_info/start_time'] }}"
       debug:
         msg: "Compare time stamp: {{ prev_time }} with {{ after_time }}"
       failed_when: prev_time >= after_time
