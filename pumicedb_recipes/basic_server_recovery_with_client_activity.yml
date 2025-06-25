@@ -1,4 +1,4 @@
-- import_playbook: healthy_raftserver_cluster_type2.yml
+- import_playbook: ../raft_recipes/healthy_raftserver_cluster_type2.yml
 - name: "Basic Server Recovery with Client Activity"
   hosts: localhost
   connection: local
