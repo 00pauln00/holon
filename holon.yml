@@ -104,7 +104,7 @@
         - "Number of thread count: {{ nthreads }}"
         - "s3Support: {{ s3Support }}"
 
-- import_playbook: "recipes/{{ recipe }}"
+- import_playbook: "{{ app_type }}_recipes/{{ recipe }}"
   vars:
     recipe_params: "{{ ClusterParams }}"
 

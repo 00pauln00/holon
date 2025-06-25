@@ -1,4 +1,4 @@
-- import_playbook: healthy_raftserver_cluster_type1.yml
+- import_playbook: ../raft_recipes/healthy_raftserver_cluster_type1.yml
   when: ClusterParams['ctype'] == "pumicedb"
 
 - name: "pmdb_multiple_clients_with_multiple_subapps_per_client"

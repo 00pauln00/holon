@@ -1,4 +1,4 @@
-- import_playbook: basic_leader_election2.yml
+- import_playbook: ../raft_recipes/basic_leader_election2.yml
 - name: "prevote_corner_case2"
   hosts: localhost
   connection: local
