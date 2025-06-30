@@ -1,4 +1,4 @@
-- import_playbook: healthy_raftserver_cluster_type1.yml
+- import_playbook: ../raft_recipes/healthy_raftserver_cluster_type1.yml
 - name: "basic_version_of_leader_has_wide_skew_bw_last_applied_and_commit_index"
   hosts: localhost
   connection: local
