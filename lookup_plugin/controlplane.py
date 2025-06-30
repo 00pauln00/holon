@@ -374,13 +374,12 @@ class LookupModule(LookupBase):
 
         if process_type == "ncpc":
             data = extracting_dictionary(cluster_params, input_values)
-
-            return data
+            return [data]
 
         if process_type == "lease":            
             data = extracting_dictionary_for_lease(cluster_params, input_values)
 
-            return data
+            return [data]
 
 
         elif process_type == "niova-lookout":
@@ -393,12 +392,12 @@ class LookupModule(LookupBase):
              
             niova_lookout_process = start_niova_lookout_process(cluster_params, input_values['uport'])
             
-            return niova_lookout_process
+            return [niova_lookout_process]
 
         elif process_type == "testApp":
             start_test_application = start_testApp(cluster_params, input_values)
 
-            return start_test_application
+            return [start_test_application]
 
         elif process_type == "prometheus":
             hport = input_values['Hport']

@@ -1,0 +1,309 @@
+- import_playbook: controlPlane_rangeQuery.yml
+
+- name: "controlPlane_rangeQuery_consistencyCheck_overwrites_insert.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlPlane_rangeQuery_consistencyCheck_overwrites_insert"
+    parent: "controlPlane_rangeQuery"
+
+  tasks:
+    - block:
+        - name: "Check if parent recipe failed"
+          debug: msg="Check if parent recipe {{ parent }} failed"
+          failed_when: terminate_recipe == true
+
+        - name: "{{ recipe_name }}: Get the leader and follower uuids."
+          include_role:
+            name: common
+            tasks_from: get_follower_stats
+
+        - name: "{{ recipe_name }}: Starting controlplane_client to do rangeWrite with n as 5."
+          vars:
+            input_param:
+              {
+                "Operation": "write",
+                "OutfileName": "Rangewrite_consistencyCheckOutput",
+                "NoofWrites": "5",
+                "wait_for_outfile": True,
+              }
+            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+          debug:
+            msg: "Write key-value from ncpc."
+          with_items:
+            - "{{ ncpcliwr }}"
+          register: firstwriteres5keys
+          no_log: true
+
+        - name: "{{ recipe_name }} : Pause vefore outfile verification"
+          pause:
+            seconds: 10
+
+        - name: "{{ recipe_name }}: Verify outfile status"
+          debug:
+            msg:
+              - "Check write outfile status: {{ firstwriteres5keys['results'][0]['item']['outfile_status'] }}"
+          no_log: true
+          failed_when: >
+            (firstwriteres5keys['results'][0]['item']['outfile_status'] != 0)
+
+        - name: "{{ recipe_name }}: Verify write status"
+          debug:
+            msg: "Check write response status {{ firstwriteres5keys }}"
+          no_log: true
+          failed_when: >
+            (item['Response']['Status'] != 0)
+          loop: "{{ firstwriteres5keys['results'][0]['item']['output_data'] }}"
+
+          # added fault injection not to delete snapshot from the put
+        - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
+          include_role:
+            name: common
+            tasks_from: set_fault_injection_and_verify
+          vars:
+            ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+            fault_injection_name: "pmdb_range_read_keep_snapshot"
+
+          # added fault injection not to delete snapshot from the timer thread.
+        - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
+          include_role:
+            name: common
+            tasks_from: set_fault_injection_and_verify
+          vars:
+            ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+            fault_injection_name: "pmdb_range_read_keep_old_snapshot"
+
+        - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with existing keys."
+          vars:
+            input_param:
+              {
+                "Key": "*",
+                "Operation": "read",
+                "OutfileName": "RangeRead_consistencyCheckOutput",
+                "NoofWrites": "5",
+                "seqNo": "",
+                "wait_for_outfile": True,
+              }
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+          debug:
+            msg: "Read key-value from ncpc."
+          with_items:
+            - "{{ ncpclird }}"
+          register: firstreadres5keys
+          no_log: true
+
+        - name: "{{ recipe_name }}: Verify outfile status and read status"
+          debug:
+            msg: "check outfile status and read status"
+          no_log: true
+          failed_when:
+            (firstreadres5keys['results'][0]['item']['outfile_status'] != 0) or
+            (firstreadres5keys['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
+
+        - set_fact:
+            key: "{{ firstwriteres5keys['results'][0]['item']['output_data'][-1]['Request']['Key'] }}"
+
+        - name: "{{ recipe_name }}: Get the sequence no from the read result of the existing keys."
+          vars:
+            seq_no: "{{ firstreadres5keys['results'][0]['item']['output_data'][0]['Response']['SeqNum'] }}"
+          debug:
+            msg: "Get the seq no"
+          with_items:
+            - "{{ seq_no }}"
+          register: seqNo
+          no_log: true
+
+        - name: "{{ recipe_name }}: Starting controlplane_client to over write the value."
+          vars:
+            input_param:
+              {
+                "Key": "{{ key }}",
+                "Value": "overwrittenValue",
+                "Operation": "write",
+                "IP_addr": "",
+                "Port": "",
+                "OutfileName": "overWriteRangewrite_output",
+                "NoofWrites": "",
+                "wait_for_outfile": True,
+              }
+            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+          debug:
+            msg: "Write key-value from ncpc."
+          with_items:
+            - "{{ ncpcliwr }}"
+          register: writeres_overwrite
+          no_log: true
+
+        - name: "{{ recipe_name }}: Verify outfile status"
+          debug:
+            msg:
+              - "Check write outfile status: {{ writeres_overwrite['results'][0]['item']['outfile_status'] }}"
+          no_log: true
+          failed_when: >
+            (writeres_overwrite['results'][0]['item']['outfile_status'] != 0)
+
+        - name: "{{ recipe_name }}: Check if write is successful."
+          vars:
+            wrstatus: "{{ writeres_overwrite['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
+          debug:
+            msg: "Check if write is successful."
+          failed_when: >
+            (wrstatus|int != 0)
+
+        - name: "{{ recipe_name }}: Starting controlplane_client to write the value."
+          vars:
+            input_param:
+              {
+                "Key": "Paro",
+                "Value": "Scale",
+                "Operation": "write",
+                "IP_addr": "",
+                "Port": "",
+                "OutfileName": "InsertRangewrite_output",
+                "NoofWrites": "",
+                "wait_for_outfile": True,
+              }
+            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+          debug:
+            msg: "Write key-value from ncpc."
+          with_items:
+            - "{{ ncpcliwr }}"
+          register: writeres_Insert
+          no_log: true
+
+        - name: "{{ recipe_name }}: Verify outfile status"
+          debug:
+            msg:
+              - "Check write outfile status: {{ writeres_Insert['results'][0]['item']['outfile_status'] }}"
+          no_log: true
+          failed_when: >
+            (writeres_Insert['results'][0]['item']['outfile_status'] != 0)
+
+        - name: "{{ recipe_name }}: Check if write is successful."
+          vars:
+            wrstatus: "{{ writeres_Insert['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
+          debug:
+            msg: "Check if write is successful."
+          failed_when: >
+            (wrstatus|int != 0)
+
+        - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed."
+          vars:
+            input_param:
+              {
+                "Key": "*",
+                "Operation": "read",
+                "OutfileName": "RangeRead_consistencyCheck_afterPassingSeqno",
+                "NoofWrites": "5",
+                "seqNo": '{{ seqNo["results"][0]["item"] }}',
+                "wait_for_outfile": True,
+              }
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+          debug:
+            msg: "rangeRead key-value from ncpc."
+          with_items:
+            - "{{ ncpclird }}"
+          register: consistencyCheck_rangereadres
+          no_log: true
+
+        - name: "{{ recipe_name }}: Verify outfile status and read status"
+          debug:
+            msg: "check outfile status and read status"
+          no_log: true
+          failed_when:
+            (consistencyCheck_rangereadres['results'][0]['item']['outfile_status'] != 0) or
+            (consistencyCheck_rangereadres['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
+
+        - name: "{{ recipe_name }}: Validate that we should not see the new value written with existing key."
+          vars:
+            read_earlier: "{{ consistencyCheck_rangereadres['results'][0]['item']['output_data'][0]['Response']['ResultMap'][key]  | b64decode }}"
+            write_res: "{{ writeres_overwrite['results'][0]['item']['output_data'][0]['Request']['Value'] | b64decode }}"
+          debug:
+            msg: "compare earlier read and read after new write with same sequence no"
+          failed_when: read_earlier == write_res
+
+        - name: "{{ recipe_name }}: Remove previously applied fault injection."
+          include_role:
+            name: common
+            tasks_from: remove_fault_injection_and_verify
+          vars:
+            ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+            fault_injection_name: "pmdb_range_read_keep_old_snapshot"
+
+        - name: "{{ recipe_name }}: Remove previously applied fault injection."
+          include_role:
+            name: common
+            tasks_from: remove_fault_injection_and_verify
+          vars:
+            ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
+            fault_injection_name: "pmdb_range_read_keep_snapshot"
+
+        - name: "{{ recipe_name }}: Pause for 60 seconds so that snapshot gets deleted successfully."
+          pause:
+            seconds: 60
+
+        - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with seq no passed after removing fault injection."
+          vars:
+            input_param:
+              {
+                "Key": "*",
+                "Operation": "read",
+                "OutfileName": "consistencyCheck_RangeRead_afterRemovingFaultInjection_output",
+                "NoofWrites": "5",
+                "seqNo": '{{ seqNo["results"][0]["item"] }}',
+                "wait_for_outfile": True,
+              }
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+          debug:
+            msg: "read the result after removing fault injection with same seq no"
+          with_items:
+            - "{{ ncpclird }}"
+          register: rangerd_aftr_rm_fi
+          no_log: true
+
+        - name: "{{ recipe_name }}: Verify outfile status and read status"
+          debug:
+            msg: "check outfile status and read status"
+          no_log: true
+          failed_when:
+            (rangerd_aftr_rm_fi['results'][0]['item']['outfile_status'] != 0) or
+            (rangerd_aftr_rm_fi['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
+
+        - name: "{{ recipe_name }}: Get the sequence no from the read result after removing fault injection."
+          vars:
+            seq_no: "{{ rangerd_aftr_rm_fi['results'][0]['item']['output_data'][0]['Response']['SeqNum'] }}"
+          debug:
+            msg: "Get the seq no"
+          with_items:
+            - "{{ seq_no }}"
+          register: seqNo_latest
+          no_log: true
+
+        - name: "{{ recipe_name }}: Validate that we should see updated seq no."
+          vars:
+            seqNo_earlier: "{{ seqNo['results'][0]['item'] }}"
+            seqNo_new: "{{ seqNo_latest['results'][0]['item'] }}"
+          debug:
+            msg: "compare earlier seqno with old seq no."
+          failed_when: seqNo_earlier == seqNo_new
+
+        - name: "{{ recipe_name }}: Validate that we should see the updated value for the over-written key after removing the fault injection."
+          vars:
+            Value_earlier: "{{ consistencyCheck_rangereadres['results'][0]['item']['output_data'][0]['Response']['ResultMap'][key] }}"
+            Value_new: "{{ rangerd_aftr_rm_fi['results'][0]['item']['output_data'][0]['Response']['ResultMap'][key] }}"
+          debug:
+            msg: "compare earlier seqno with old seq no."
+          failed_when: Value_earlier == Value_new
+
+        - name: "{{ recipe_name }}: Validate that we should see the Inserted new value for the key after removing the fault injection."
+          vars:
+            Write: "{{ writeres_Insert['results'][0]['item']['output_data'][0]['Request']['Value'] | b64decode }}"
+            Read: "{{ rangerd_aftr_rm_fi['results'][0]['item']['output_data'][0]['Response']['ResultMap'][writeres_Insert['results'][0]['item']['output_data'][0]['Request']['Key']]  | b64decode }}"
+          debug:
+            msg: "should see the new key written"
+          failed_when: Write != Read
+
+      rescue:
+        - name: "Recipe: {{ recipe_name }} failed"
+          set_fact:
+            terminate_recipe: true

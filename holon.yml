@@ -104,7 +104,9 @@
         - "Number of thread count: {{ nthreads }}"
         - "s3Support: {{ s3Support }}"
 
-- import_playbook: "{{ app_type }}_recipes/{{ recipe }}"
+# If app_type is provided then check in "{{app_type}}_recipes" dir
+# or check in "recipes" dir
+- import_playbook: "{{ (app_type + '_' if app_type else '') }}recipes/{{ recipe }}"
   vars:
     recipe_params: "{{ ClusterParams }}"
 

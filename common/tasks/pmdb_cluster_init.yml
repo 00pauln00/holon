@@ -13,7 +13,7 @@
        loop: "{{ range(0, number_of_clients | int) | list }}"
 
      - name: "Prepare gossip node config and proxy.config file"
-       set_fact: gossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", 0,  wantlist=True)}}"
+       set_fact: gossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", 0)}}"
 
      # Start PMDB servers.
      - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
@@ -78,7 +78,7 @@
                   }
        debug:
         msg: "Verify Proxy server bootup properly"
-       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute='output_data') | map(attribute=proxyList[item]) | map(attribute='Status') | list | first == "alive"
+       until: lookup('controlplane', 'ncpc', input_param) | dict2items | map(attribute='value') | map(attribute='output_data') | map(attribute=proxyList[item]) | map(attribute='Status') | list | first == "alive"
        retries: 20
        delay: 1
        loop: "{{ range(0, proxyList | length) | list }}"
