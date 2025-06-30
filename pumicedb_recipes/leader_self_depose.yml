@@ -1,4 +1,4 @@
-- import_playbook: basic_leader_election2.yml
+- import_playbook: ./raft_recipes/basic_leader_election2.yml
 - name: "leader_self_depose"
   hosts: localhost
   connection: local
