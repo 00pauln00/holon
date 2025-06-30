@@ -10,7 +10,7 @@
                 'outFileName': 'get_lease_{{ outfilename[item] }}'
                  }
         set_fact:
-            getLeaseOps: "{{ getLeaseOps|default([]) + [lookup('lease_feature', 'GET', input_param, wantlist=True)] }}"
+            getLeaseOps: "{{ getLeaseOps|default([]) + [lookup('lease_feature', 'GET', input_param)] }}"
         loop: "{{ range(0, no_of_lease_ops) | list }}"
 
       - name: "{{ recipe_name }}: get the leaseState of the client uuids who did not get the lease."

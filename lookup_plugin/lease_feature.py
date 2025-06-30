@@ -142,4 +142,4 @@ class LookupModule(LookupBase):
 
         data = extracting_dictionary(cluster_params, operation, input_values)
 
-        return data
+        return [data]
