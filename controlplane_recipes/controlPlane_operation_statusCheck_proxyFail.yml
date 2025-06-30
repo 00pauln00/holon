@@ -1,0 +1,151 @@
+- import_playbook: controlPlane_cluster_state_verify.yml
+
+- name: "Controlplane_recipe"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlPlane_operation_statusCheck_proxyFail"
+    parent: "controlPlane_cluster_state_verify"
+
+  tasks:
+    - block:
+        - name: "Check if parent recipe failed"
+          debug: msg="Check if parent recipe {{ parent }} failed"
+          failed_when: terminate_recipe == true
+
+          # check for the app_type
+        - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+          vars:
+            app_type: "{{ app_type }}"
+          debug:
+            msg: "app_type is: {{ app_type }}"
+          failed_when: (app_type != "controlplane")
+
+        - name: "{{ recipe_name }}: Kill the Proxy server."
+          debug:
+            msg: "{{lookup('niova_raftprocess', 'kill', ClientUUIDS[item], wantlist=True)}}"
+          loop: "{{ range(0, ClientUUIDS | length) |list }}"
+          no_log: True
+
+        - name: "{{ recipe_name }}: Starting controlplane_client to do rangeWrite with n as 5."
+          vars:
+            input_param:
+              {
+                "Operation": "write",
+                "OutfileName": "KillallProxy_output",
+                "NoofWrites": "5",
+                "wait_for_outfile": True,
+              }
+            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+          debug:
+            msg: "Write key-value from ncpc."
+          with_items:
+            - "{{ ncpcliwr }}"
+          register: writeres5keys
+          no_log: true
+
+        - name: "{{ recipe_name }}: Verify outfile status"
+          debug:
+            msg:
+              - "Check write outfile status: {{ writeres5keys['results'][0]['item']['outfile_status'] }}"
+          no_log: true
+          failed_when: >
+            (writeres5keys['results'][0]['item']['outfile_status'] != 0)
+
+        - name: "{{ recipe_name }}: get the list of non-running servers."
+          include_role:
+            name: common
+            tasks_from: get_server_uuid_info
+
+          # Start proxy servers
+        - name: "{{ recipe_name }}: Start killed proxy servers."
+          include_role:
+            name: common
+            tasks_from: start_proxy_server
+          vars:
+            ClientUUID: "{{ ClientUUIDS[item] }}"
+          loop: "{{ range(0, ClientUUIDS | length) |list }}"
+
+        - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
+          pause:
+            seconds: 5
+
+        - name: "{{ recipe_name }}: get the list of non-running servers."
+          include_role:
+            name: common
+            tasks_from: get_server_uuid_info
+
+        - name: "{{ recipe_name }}: Starting controlplane_client to do rangeWrite with n as 5."
+          vars:
+            input_param:
+              {
+                "Operation": "write",
+                "OutfileName": "Rangewrite_output_after_starting_proxy",
+                "NoofWrites": "5",
+                "wait_for_outfile": True,
+              }
+            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+          debug:
+            msg: "Write key-value from ncpc."
+          with_items:
+            - "{{ ncpcliwr }}"
+          register: writeres_afterStartingProxy
+          no_log: true
+
+        - name: "{{ recipe_name }}: Verify outfile status"
+          debug:
+            msg:
+              - "Check write outfile status: {{ writeres_afterStartingProxy['results'][0]['item']['outfile_status'] }}"
+          no_log: true
+          failed_when: >
+            (writeres_afterStartingProxy['results'][0]['item']['outfile_status'] != 0)
+
+        - name: "{{ recipe_name }}: Verify write status"
+          debug:
+            msg: "Check write response status"
+          no_log: true
+          failed_when: >
+            (item['Response']['Status'] != 0)
+          loop: "{{ writeres_afterStartingProxy['results'][0]['item']['output_data'] }}"
+
+        - name: "{{ recipe_name }}: Starting controlplane_client to do rangeRead with n as 5."
+          vars:
+            input_param:
+              {
+                "Key": "*",
+                "Operation": "read",
+                "OutfileName": "RangeRead_output_after_starting_proxy",
+                "NoofWrites": "5",
+                "seqNo": "",
+                "wait_for_outfile": True,
+              }
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+          debug:
+            msg: "Read key-value from ncpc."
+          with_items:
+            - "{{ ncpclird }}"
+          register: readres_afterStartingProxy
+          no_log: true
+
+        - name: "{{ recipe_name }}: Verify outfile status and read status"
+          debug:
+            msg:
+              - "Check read outfile status: {{ readres_afterStartingProxy['results'][0]['item']['outfile_status'] }}"
+              - "Check read response status: {{ readres_afterStartingProxy['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
+          no_log: true
+          failed_when:
+            (readres_afterStartingProxy['results'][0]['item']['outfile_status'] != 0) or
+            (readres_afterStartingProxy['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
+
+        - name: "{{ recipe_name }}: Compare write and read output with all the keys passed."
+          vars:
+            readall: "{{ readres_afterStartingProxy['results'][0]['item']['output_data'][0]['Response']['ResultMap']}}"
+          debug:
+            msg: "compare read and write output with all the keys passed"
+          failed_when: (item['Request']['Value'] | b64decode) != (readall[item['Request']['Key']] | b64decode)
+          loop: "{{ writeres_afterStartingProxy['results'][0]['item']['output_data'] }}"
+
+      rescue:
+        - name: "Recipe: {{ recipe_name }} failed"
+          set_fact:
+            terminate_recipe: true
