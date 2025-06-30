@@ -29,7 +29,7 @@
          stage: "wait_for_new_leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', newlist[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != LeaderUUID['/0/leader-uuid']
+      until: lookup('niova_ctlrequest', 'lookup', newlist[item], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first != LeaderUUID['/0/leader-uuid']
       retries: 10
       delay: 1
       loop: "{{ range(0, newlist | length) | list }}"
