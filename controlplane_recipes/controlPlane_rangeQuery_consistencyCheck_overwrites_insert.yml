@@ -27,7 +27,7 @@
                 "NoofWrites": "5",
                 "wait_for_outfile": True,
               }
-            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "Write key-value from ncpc."
           with_items:
@@ -84,7 +84,7 @@
                 "seqNo": "",
                 "wait_for_outfile": True,
               }
-            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "Read key-value from ncpc."
           with_items:
@@ -126,7 +126,7 @@
                 "NoofWrites": "",
                 "wait_for_outfile": True,
               }
-            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "Write key-value from ncpc."
           with_items:
@@ -163,7 +163,7 @@
                 "NoofWrites": "",
                 "wait_for_outfile": True,
               }
-            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "Write key-value from ncpc."
           with_items:
@@ -198,7 +198,7 @@
                 "seqNo": '{{ seqNo["results"][0]["item"] }}',
                 "wait_for_outfile": True,
               }
-            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "rangeRead key-value from ncpc."
           with_items:
@@ -253,7 +253,7 @@
                 "seqNo": '{{ seqNo["results"][0]["item"] }}',
                 "wait_for_outfile": True,
               }
-            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "read the result after removing fault injection with same seq no"
           with_items:
@@ -289,8 +289,8 @@
 
         - name: "{{ recipe_name }}: Validate that we should see the updated value for the over-written key after removing the fault injection."
           vars:
-            Value_earlier: "{{ consistencyCheck_rangereadres['results'][0]['item']['output_data'][0]['Response']['ResultMap'][key] }}"
-            Value_new: "{{ rangerd_aftr_rm_fi['results'][0]['item']['output_data'][0]['Response']['ResultMap'][key] }}"
+            Value_earlier: "{{ consistencyCheck_rangereadres['results'][0]['item']['output_data'][0]['Response']['ResultMap'][key] | b64decode}}"
+            Value_new: "{{ rangerd_aftr_rm_fi['results'][0]['item']['output_data'][0]['Response']['ResultMap'][key] | b64decode}}"
           debug:
             msg: "compare earlier seqno with old seq no."
           failed_when: Value_earlier == Value_new
