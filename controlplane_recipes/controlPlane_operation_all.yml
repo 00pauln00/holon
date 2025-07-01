@@ -66,9 +66,9 @@
 
         - name: "{{ recipe_name }}: Check if write is successful."
           vars:
-            wrstatus: "{{ writeres['results'][0]['item']['output_data']['Response']['Status'] }}"
+            wrstatus: "{{ writeres['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
           debug:
-            msg: "Check if write is successful."
+            msg: "Check if write is successful. {{wrstatus}}"
           failed_when: >
             (wrstatus|int != 0)
 
@@ -95,19 +95,19 @@
           debug:
             msg:
               - "Check read outfile status: {{ readres['results'][0]['item']['outfile_status'] }}"
-              - "Check read response status: {{readres['results'][0]['item']['output_data']['Response']['Status'] }}"
+              - "Check read response status: {{readres['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
           no_log: true
           failed_when: (readres['results'][0]['item']['outfile_status'] != 0) or
-            (readres['results'][0]['item']['output_data']['Response']['Status'] != 0)
+            (readres['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
 
         - name: "{{ recipe_name }}: compare values after sucessful write/read operation."
           vars:
-            rdval: "{{ readres['results'][0]['item']['output_data']['Response'] }}"
+            rdval: "{{ readres['results'][0]['item']['output_data'][0]['Response'] }}"
           debug:
             msg: "Verifying parameter after read operation: {{rdval}}"
           failed_when: >
             (rdval['Status'] != 0) or
-            ((rdval['ResultMap'][writeres['results'][0]['item']['output_data']['Request']['Key']] | b64decode) != (writeres['results'][0]['item']['output_data']['Request']['Value'] | b64decode))
+            ((rdval['ResultMap'][writeres['results'][0]['item']['output_data'][0]['Request']['Key']] | b64decode) != (writeres['results'][0]['item']['output_data'][0]['Request']['Value'] | b64decode))
 
         - name: "{{ recipe_name }}: Starting controlplane_client to get the config values."
           vars:
@@ -169,7 +169,7 @@
 
         - name: "{{ recipe_name }}: Check if proxy node status is 'alive'."
           vars:
-            verifyNodeStatus: "{{ nodeName['results'][0]['item']['membership']['output_data']['Response']['Status'] }}"
+            verifyNodeStatus: "{{ nodeName['results'][0]['item']['membership']['output_data'][nodeList[item]]['Status'] }}"
           debug:
             msg: "Verify proxy server's Status"
           failed_when: verifyNodeStatus != "alive"

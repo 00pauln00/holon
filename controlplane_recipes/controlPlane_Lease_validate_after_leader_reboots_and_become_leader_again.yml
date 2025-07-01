@@ -48,7 +48,7 @@
                 "OutfileName": "getLease_{{ resourceUUID.stdout }}",
                 "wait_for_outfile": True,
               }
-            ncpc_get: "{{ lookup('controlplane', 'lease', input_param, wantlist=True) }}"
+            ncpc_get: "{{ lookup('controlplane', 'lease', input_param) }}"
           debug:
             msg: "getLease from ncpc."
           with_items:
@@ -79,7 +79,7 @@
 
         - name: "{{ recipe_name }}: Kill the Old Leader."
           debug:
-            msg: "{{ lookup('niova_raftprocess', 'kill', orig_leader['results'][0]['item'], wantlist=True) }}"
+            msg: "{{ lookup('niova_raftprocess', 'kill', orig_leader['results'][0]['item']) }}"
 
         - name: "{{ recipe_name }}: Get the running peers list."
           include_role:
@@ -91,7 +91,7 @@
             stage: "wait_for_new_leader_election"
           debug:
             msg: "Waiting for leader election"
-          until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != orig_leader['results'][0]['item']
+          until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first != orig_leader['results'][0]['item']
           retries: 10
           delay: 1
           loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -107,7 +107,7 @@
                 "OutfileName": "lookupLease_{{ resourceUUID.stdout }}",
                 "wait_for_outfile": True,
               }
-            ncpc_lookup: "{{ lookup('controlplane', 'lease', input_param, wantlist=True) }}"
+            ncpc_lookup: "{{ lookup('controlplane', 'lease', input_param) }}"
           debug:
             msg: "lookupLease from ncpc."
           with_items:
@@ -144,7 +144,7 @@
                 "OutfileName": "getLease_{{ resourceUUID1.stdout }}",
                 "wait_for_outfile": True,
               }
-            ncpc_get: "{{ lookup('controlplane', 'lease', input_param, wantlist=True) }}"
+            ncpc_get: "{{ lookup('controlplane', 'lease', input_param) }}"
           debug:
             msg: "getLease from ncpc."
           with_items:
@@ -165,14 +165,14 @@
 
         - name: "{{ recipe_name }}: Restart the Old Leader."
           debug:
-            msg: "{{ lookup('niova_raftprocess', 'start', orig_leader['results'][0]['item'], wantlist=True) }}"
+            msg: "{{ lookup('niova_raftprocess', 'start', orig_leader['results'][0]['item']) }}"
 
         - name: "Wait for Old Leader to bootup completely"
           debug:
             msg: "Wait till bootup completes for Peer {{ FollowerUUIDs[0] }}."
           vars:
             stage: "restart_peer1"
-          until: (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry', wantlist=True)| dict2items | map(attribute='value') | list | first != "null") and (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry/0/state', wantlist=True)| dict2items | map(attribute='value') | list | first != "booting")
+          until: (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry')| dict2items | map(attribute='value') | list | first != "null") and (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry/0/state')| dict2items | map(attribute='value') | list | first != "booting")
           retries: 60
           delay: 1
 
@@ -187,7 +187,7 @@
             cmd: "net_recv_enabled@false"
             where: "/ctl_svc_nodes/net_recv_enabled@true"
           debug:
-            msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+            msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
           no_log: true
 
         - name: "{{ recipe_name }}: Lets sleep for sometime before checking the values"
@@ -207,7 +207,7 @@
             cmd: "net_recv_enabled@true"
             where: "/ctl_svc_nodes/uuid@{{ OLD_LEADER }}"
           debug:
-            msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+            msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
           no_log: true
 
         - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
@@ -216,7 +216,7 @@
             cmd: "net_recv_enabled@true"
             where: "/ctl_svc_nodes/net_recv_enabled@false"
           debug:
-            msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', OLD_LEADER, cmd, where, wantlist=True) }}"
+            msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', OLD_LEADER, cmd, where) }}"
           no_log: true
 
         - name: "{{ recipe_name }}: Verify new leader is elected successfully"
@@ -225,7 +225,7 @@
           debug:
             msg:
               - "Waiting for new leader election"
-          until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first == OLD_LEADER
+          until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid') | dict2items | map(attribute='value') | list | first == OLD_LEADER
           retries: 10
           delay: 2
           loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -241,7 +241,7 @@
                 "OutfileName": "lookupLease_{{ resourceUUID.stdout }}",
                 "wait_for_outfile": True,
               }
-            ncpc_lookup: "{{ lookup('controlplane', 'lease', input_param, wantlist=True) }}"
+            ncpc_lookup: "{{ lookup('controlplane', 'lease', input_param) }}"
           debug:
             msg: "lookupLease from ncpc."
           with_items:
@@ -270,7 +270,7 @@
                 "OutfileName": "lookupLease_{{ resourceUUID1.stdout }}",
                 "wait_for_outfile": True,
               }
-            ncpc_lookup: "{{ lookup('controlplane', 'lease', input_param, wantlist=True) }}"
+            ncpc_lookup: "{{ lookup('controlplane', 'lease', input_param) }}"
           debug:
             msg: "lookupLease from ncpc."
           with_items:

@@ -23,7 +23,7 @@
 
         - name: "{{ recipe_name }}: Kill the Proxy server."
           debug:
-            msg: "{{lookup('niova_raftprocess', 'kill', ClientUUIDS[item], wantlist=True)}}"
+            msg: "{{lookup('niova_raftprocess', 'kill', ClientUUIDS[item])}}"
           loop: "{{ range(0, ClientUUIDS | length) |list }}"
           no_log: True
 
@@ -36,7 +36,7 @@
                 "NoofWrites": "5",
                 "wait_for_outfile": True,
               }
-            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "Write key-value from ncpc."
           with_items:
@@ -84,7 +84,7 @@
                 "NoofWrites": "5",
                 "wait_for_outfile": True,
               }
-            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "Write key-value from ncpc."
           with_items:
@@ -119,7 +119,7 @@
                 "seqNo": "",
                 "wait_for_outfile": True,
               }
-            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "Read key-value from ncpc."
           with_items:
