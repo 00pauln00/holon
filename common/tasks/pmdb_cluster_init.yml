@@ -29,6 +29,10 @@
           name: common
           tasks_from: get_server_uuid_info
 
+     - name: List running peers
+       debug:
+        msg: "{{NRunningPeers}}"
+
      - name: "{{ recipe_name}}: Wait until pmdb server bootup properly."
        vars:
         input_param: {
