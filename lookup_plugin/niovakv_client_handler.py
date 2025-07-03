@@ -213,4 +213,4 @@ class LookupModule(LookupBase):
         elif client_type == "lkvt":
                 result = extract_lkvt_client_values_perform_operation(cluster_params, client_type, input_values)
 
-        return result
+        return [result]
