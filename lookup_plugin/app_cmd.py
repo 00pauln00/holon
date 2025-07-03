@@ -86,6 +86,7 @@ class LookupModule(LookupBase):
             else:
                 #Wait, fail at max count
                 counter += 1
+                print(f"Client JSON path DOES NOT exists {counter}")
                 time.sleep(0.5)
                 if counter == timeout:
                     return [{"status":-1,"msg":"Timeout checking for output file"}]
