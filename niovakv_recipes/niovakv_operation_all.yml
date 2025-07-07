@@ -35,7 +35,7 @@
               "MultiKey": False,
               "Sequential" : False
               }
-         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
+         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
@@ -60,7 +60,7 @@
              "MultiKey": False,
              "Sequential" : False
               }
-         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
+         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param) }}"
        debug:
          msg: "Read value from niovakv_client."
        with_items:

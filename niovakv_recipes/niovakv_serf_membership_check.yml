@@ -50,7 +50,7 @@
               "MultiKey": False,
               "Sequential" : False
               }
-         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
+         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
@@ -67,7 +67,7 @@
        # Kill the niovakv-server.
      - name: "{{ recipe_name }}: Kill the niovakv-server."
        debug:
-        msg: "killing the niovakv-server: {{ lookup('niova_raftprocess', 'kill', client_uuid.stdout, wantlist=True) }}"
+        msg: "killing the niovakv-server: {{ lookup('niova_raftprocess', 'kill', client_uuid.stdout) }}"
 
      # Read key-value after killing node.
      - name: "{{ recipe_name }}: Read the value of requested key."
@@ -81,7 +81,7 @@
              "MultiKey": False,
              "Sequential" : False
               }
-         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
+         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param) }}"
        debug:
          msg: "Read value from niovakv_client."
        with_items:

@@ -34,7 +34,7 @@
               "MultiKey": False,
               "Sequential" : False
               }
-         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
+         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param) }}"
        debug:
          msg: "Write key-value from niovakv_client."
        with_items:
@@ -60,7 +60,7 @@
               "MultiKey": False,
               "Sequential" : False
               }
-         getLeader_values: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
+         getLeader_values: "{{ lookup('niovakv_client_handler', 'niovakv', input_param) }}"
        debug:
          msg: "Get the Old Leader UUID {{ getLeader_values }}"
        with_items:
@@ -75,7 +75,7 @@
        vars:
          old_leader: "{{ OldLeaderUUID['results'][0]['item']['Leader-UUID'] }}"
        debug:
-        msg: "killing the leader {{ lookup('niova_raftprocess', 'kill', old_leader, wantlist=True) }}"
+        msg: "killing the leader {{ lookup('niova_raftprocess', 'kill', old_leader) }}"
 
      - name: "{{ recipe_name }}: Printing the list of all server"
        include_role:
@@ -106,7 +106,7 @@
               "MultiKey": False,
               "Sequential" : False
               }
-         getLeader_values: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
+         getLeader_values: "{{ lookup('niovakv_client_handler', 'niovakv', input_param) }}"
        debug:
          msg: "Get the New Leader UUID {{ getLeader_values }}"
        with_items:
@@ -131,7 +131,7 @@
              "MultiKey": False,
              "Sequential" : False
               }
-         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
+         nkvclires: "{{ lookup('niovakv_client_handler', 'niovakv', input_param) }}"
        debug:
          msg: "Read value from niovakv_client."
        with_items:

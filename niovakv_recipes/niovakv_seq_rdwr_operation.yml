@@ -50,7 +50,7 @@
               "MultiKey": True,
               "Sequential" : True
               }
-         multicli: "{{ lookup('niovakv_client_handler', 'niovakv', input_param, wantlist=True) }}"
+         multicli: "{{ lookup('niovakv_client_handler', 'niovakv', input_param) }}"
        debug:
          msg: "Read value from niovakv_client."
        with_items:
