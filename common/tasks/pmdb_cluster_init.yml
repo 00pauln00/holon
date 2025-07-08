@@ -33,8 +33,14 @@
        debug:
         msg: "{{NRunningPeers}}"
 
-     - pause:
-        seconds: 5
+     - name: Value of lookup
+       vars:
+        input_param: {
+                  'Operation': 'membership',
+                  'OutfileName': 'get_pmdbstatus'
+                  }
+       debug:
+        msg: "{{ lookup('controlplane', 'ncpc', input_param)}}"
 
      - name: "{{ recipe_name}}: Wait until pmdb server bootup properly."
        vars:
