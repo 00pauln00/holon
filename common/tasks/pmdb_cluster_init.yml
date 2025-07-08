@@ -33,6 +33,9 @@
        debug:
         msg: "{{NRunningPeers}}"
 
+     - pause:
+        seconds: 5
+
      - name: "{{ recipe_name}}: Wait until pmdb server bootup properly."
        vars:
         input_param: {
