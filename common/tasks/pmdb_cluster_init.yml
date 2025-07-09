@@ -78,10 +78,6 @@
      - debug:
          msg: "Node name list: {{ proxyList }}"
 
-     - name: Wait for 1 second
-       pause:
-          seconds: 1
-
      - name: "{{ recipe_name}}: Wait until proxy server bootup properly."
        vars:
         input_param: {
