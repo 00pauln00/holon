@@ -34,7 +34,7 @@
         msg: "{{NRunningPeers}}"
 
      - pause:
-        minutes: 1
+        minutes: 5
 
      - name: Value of lookup
        vars:
