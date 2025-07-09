@@ -60,7 +60,7 @@ def get_executable_path(process_type, app_type, backend_type, binary_dir):
 
     elif app_type == "controlplane":
         if process_type == "server":
-            bin_path = "%s/CTLPlane_pmdbServer".format(binary_dir)
+            bin_path = "{}/CTLPlane_pmdbServer".format(binary_dir)
         else:
             bin_path = "{}/CTLPlane_proxy".format(binary_dir)
 
