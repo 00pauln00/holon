@@ -43,6 +43,11 @@ class gc_service:
                 '-b', S3_BUCKET, '-mp', str(input_params.get("total_chunks")), "-mdis", str(input_params.get("mdis", "960mb"))
 
             ]
+            u = input_params.get("uuid")
+            if u is not None:
+                cmd.extend([' -u', u])
+
+
             if input_params.get("dry_run") in [True, "true"]: cmd.append('-dr=true')
             if input_params.get("del_dbo") in [True, "true"]: cmd.append('-dd=true')
             if input_params.get("force_gc") in [True, "true"]: cmd.append('-f=true')
