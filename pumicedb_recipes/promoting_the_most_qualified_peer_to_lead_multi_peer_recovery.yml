@@ -270,7 +270,7 @@
         alive_followers: "{{ FollowerUUIDs | difference(Promoting_Selected_Followers) }}"
         leader_to_be: "{{ alive_followers[0] }}"
         pmqp_leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
-        nalive_follower: "{{ alive_followers | difference(leader_to_be) }}"
+        nalive_follower: "{{ alive_followers | difference([leader_to_be]) }}"
       set_fact:
         No_of_Fi: "{{ no_of_fi + nalive_follower + [pmqp_leader_uuid] }}"
 
