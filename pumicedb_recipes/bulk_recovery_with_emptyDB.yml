@@ -121,7 +121,7 @@
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all peers after write operation."
       vars:
-         origCI: "{{ stage0_values['results'][0]['item'][item]['/0/commit-idx'] }}"
+         origCI: "{{ stage0_values['results'][item]['item']['/0/commit-idx'] }}"
          stage: "getValsFrmAll"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
