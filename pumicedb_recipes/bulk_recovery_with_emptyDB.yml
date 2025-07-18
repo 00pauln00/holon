@@ -92,12 +92,6 @@
       vars:
         number_of_apps: "{{number_of_app_uuids}}"
 
-    - name: DEBUG actual client commit-idxs before write
-      debug:
-        msg: >-
-          {{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx') }}
-      loop: "{{ range(0, NRunningPeers | length) | list }}"
-
     #Perform write operations.
     - name: "Perform write operations for multiple clients."
       include_role:
