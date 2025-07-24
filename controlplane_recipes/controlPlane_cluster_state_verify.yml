@@ -75,7 +75,7 @@
 
         - name: "{{ recipe_name }}: Check if write is successful."
           vars:
-            wrstatus: "{{ writeresult['results'][0]['item']['output_data']['Response']['Status'] }}"
+            wrstatus: "{{ writeresult['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
           debug:
             msg: "Check if write is successful."
           failed_when: >
@@ -118,7 +118,7 @@
               }
           debug:
             msg: "Verifying node status"
-          until: lookup('controlplane', 'ncpc', input_param)['membership']['output_data']['Response']['Status'] == "failed"
+          until: lookup('controlplane', 'ncpc', input_param)['membership']['output_data'][getNodeName]['Status'] == "failed"
           retries: 10
           delay: 1
 
@@ -159,20 +159,20 @@
           debug:
             msg:
               - "Check read outfile status: {{ readresult['results'][0]['item']['outfile_status'] }}"
-              - "Check read response status: {{readresult['results'][0]['item']['output_data']['Response']['Status'] }}"
+              - "Check read response status: {{readresult['results'][0]['item']['output_data'][0]['Response']['Status'] }}"
           no_log: true
           failed_when:
             (readresult['results'][0]['item']['outfile_status'] != 0) or
-            (readresult['results'][0]['item']['output_data']['Response']['Status'] != 0)
+            (readresult['results'][0]['item']['output_data'][0]['Response']['Status'] != 0)
 
         - name: "{{ recipe_name }}: compare values after sucessful write/read operation."
           vars:
-            rdval: "{{ readresult['results'][0]['item']['output_data']['Response'] }}"
+            rdval: "{{ readresult['results'][0]['item']['output_data'][0]['Response'] }}"
           debug:
             msg: "Verifying parameter after read operation"
           failed_when: >
             (rdval['Status'] != 0) or
-            ((rdval['ResultMap'][writeresult['results'][0]['item']['output_data']['Request']['Key']] | b64decode) != (writeresult['results'][0]['item']['output_data']['Request']['Value'] | b64decode))
+            ((rdval['ResultMap'][writeresult['results'][0]['item']['output_data'][0]['Request']['Key']] | b64decode) != (writeresult['results'][0]['item']['output_data'][0]['Request']['Value'] | b64decode))
 
         - name: "{{ recipe_name }}: Kill one of the pmdb server."
           debug:
@@ -191,7 +191,7 @@
               }
           debug:
             msg: "Verifying pmdb server's status"
-          until: lookup('controlplane', 'ncpc', input_param)['results'][0]['item']['output_data']['Response']['Status'] == "failed"
+          until: lookup('controlplane', 'ncpc', input_param)| dict2items | map(attribute='value') | map(attribute='output_data') | map(attribute=getPmdbServer) | map(attribute='Status') | list | first == "failed"
           retries: 10
           delay: 1
 
