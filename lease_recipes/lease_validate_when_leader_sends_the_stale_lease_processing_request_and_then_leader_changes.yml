@@ -113,7 +113,7 @@
       debug:
         msg:
           - "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', newList[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != oldLeader
+      until: lookup('niova_ctlrequest', 'lookup', newList[0], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first != oldLeader
       retries: 30
       delay: 1
       loop: "{{ range(0, newList | length) | list }}"
@@ -122,7 +122,7 @@
       vars:
         stage: "getNewLeader"
       set_fact:
-        newLeaderUUID: "{{ lookup('niova_ctlrequest', 'lookup', newList[0], '/raft_root_entry/0/leader-uuid', wantlist=True) }}"
+        newLeaderUUID: "{{ lookup('niova_ctlrequest', 'lookup', newList[0], '/raft_root_entry/0/leader-uuid') }}"
 
     - name: "{{ recipe_name }}: Wait untill leaseState of all leases is granted."
       include_role:
@@ -145,7 +145,7 @@
          cmd: "net_recv_enabled@false"
          where: "/ctl_svc_nodes/net_recv_enabled@true"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
       no_log: true
 
     - debug:
@@ -157,7 +157,7 @@
          cmd: "net_recv_enabled@true"
          where: "/ctl_svc_nodes/uuid@{{ oldLeader }}"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
       no_log: true
 
     - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
@@ -166,7 +166,7 @@
          cmd: "net_recv_enabled@true"
          where: "/ctl_svc_nodes/net_recv_enabled@false"
       debug:
-       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', oldLeader, cmd, where, wantlist=True) }}"
+       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', oldLeader, cmd, where) }}"
       no_log: true
 
     - name: "{{ recipe_name }}: Verify previous leader is elected successfully again."
@@ -175,7 +175,7 @@
       debug:
         msg:
          - "Waiting for old leader to become leader again"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first == oldLeader
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], '/raft_root_entry/0/leader-uuid') | dict2items | map(attribute='value') | list | first == oldLeader
       retries: 20
       delay: 2
       loop: "{{ range(0, NRunningPeers | length) | list }}"
