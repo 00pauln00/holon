@@ -25,7 +25,7 @@
          raft_keys:
             - "/raft_root_entry/0/leader-uuid"
             - "/raft_root_entry/0/term"
-         pre_restart: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+         pre_restart: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
       debug:
         msg: "Get the leader-uuid and term before restarting the servers"
       no_log: true
@@ -68,14 +68,14 @@
         cmd: "ignore_timer_events@true"
         where: "/raft_net_info/ignore_timer_events"
         wait_for_ofile: False
-        idle_on: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+        idle_on: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
       debug:
         msg: "making servers idle before stopping them"
       no_log: true
 
     - name: "{{ recipe_name }}: Safe_restart : Kill the processes."
       set_fact:
-        type2_kill_peer: "{{ lookup('niova_raftprocess', 'kill', NRunningPeers[item], wantlist=True) }}"
+        type2_kill_peer: "{{ lookup('niova_raftprocess', 'kill', NRunningPeers[item]) }}"
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "Restart all peers in the cluster"
@@ -92,14 +92,14 @@
          cmd: "ignore_timer_events@false"
          where: "/raft_net_info/ignore_timer_events"
       set_fact:
-         type2_idle_off: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+         type2_idle_off: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
 
     - name: "{{ recipe_name }}: Wait until leader election happens"
       vars:
         stage: "stage2_leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| list | string != "null"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')| list | string != "null"
       retries: 10
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -134,7 +134,7 @@
          stage: "stage2_get_leader_uuid"
          raft_keys:
              - "/raft_root_entry/0/leader-uuid"
-         after_restart: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+         after_restart: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
       debug:
         msg: "Get new leader uuid after restart"
       no_log: true
@@ -202,7 +202,7 @@
     - name: "{{ recipe_name }}: Compare the values after restart with pre-restart."
       set_fact:
         type2_vals_after_restart: "{{ peers_info_after_restart['results'][item]['item'] }}"
-        type2_vals_before_restart: "{{ pre_restart_vals['results'][0]['item'][item]}}"
+        type2_vals_before_restart: "{{ pre_restart_vals['results'][item]['item']}}"
       failed_when: >
            (type2_vals_after_restart['/0/term'] <= type2_vals_before_restart['/0/term']) or
            (type2_vals_after_restart['/0/commit-idx'] < 1) or

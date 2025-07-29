@@ -39,9 +39,9 @@
           sleep_after_cmd: 2
         term_key:
           - "/raft_root_entry/0/term"
-        pause_peer0: "{{ lookup('niova_raftprocess', 'pause', Server0UUID, wantlist=True) }}"
+        pause_peer0: "{{ lookup('niova_raftprocess', 'pause', Server0UUID) }}"
         peer1_term: "{{ lookup('niova_ctlrequest', 'lookup', Server1UUID, '/raft_root_entry/0/term', iter_info) }}"
-        resume_peer0: "{{ lookup('niova_raftprocess', 'resume', Server0UUID, iter_info, wantlist=True) }}"
+        resume_peer0: "{{ lookup('niova_raftprocess', 'resume', Server0UUID, iter_info) }}"
         peer0_term: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term') }}"
       debug:
          msg: "Compare peer1 term value: {{ peer1_term }} with peer0 term value: {{ peer0_term }}"
