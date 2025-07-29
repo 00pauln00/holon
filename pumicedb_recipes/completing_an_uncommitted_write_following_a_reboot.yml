@@ -167,18 +167,9 @@
         where: "/pumice_db_test_client/input"
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
-      no_log: True
+      no_log: true
 
-    - name: "{{ recipe_name}}: Wait until write completes from client"
-      vars:
-       stage: "wait_for_client_write_comp"
-       raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
-      debug:
-        msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key)['/0/pmdb-seqno'] != 0
-      loop: "{{ range(0, 3) | list }}"
-      loop_control:
-        pause: 1
+    - pause: seconds=2
 
     #Verify that write operation failed with timeout error.
     - name: "{{ recipe_name }}: Get values for pmdb-request-history."
@@ -473,7 +464,9 @@
         op: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][0] }}"
         status: "{{ pmdb_request_history['results'][0]['item']['/pumice_db_test_client/pmdb-request-history'][0] }}"
       debug:
-        msg: "Validating pmdb-request-history parameters."
+        msg: 
+          - "Validating pmdb-request-history parameters."
+          - "{{ pmdb_request_history }}"
       failed_when: >
             (pmdb_seqno['pmdb-seqno'] != 0) or
             (app_seq_no['app-seqno'] != 1) or

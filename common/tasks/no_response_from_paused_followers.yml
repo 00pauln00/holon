@@ -15,8 +15,7 @@
           'lookup',
           LeaderUUID['/0/leader-uuid'],
           raft_key,
-          iter_info,
-          wantlist=True
+          iter_info
         )
       }}
   no_log: true
