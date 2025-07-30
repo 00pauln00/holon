@@ -96,11 +96,7 @@
          cmd: "net_recv_enabled@true"
          where: "/ctl_svc_nodes/uuid@{{ overthrow_leader_to_be }}"
       debug:
-<<<<<<< HEAD
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where }}"
-=======
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
->>>>>>> master
       no_log: true
 
     - name: "{{ recipe_name }}: Get the values to verify leader-to-be is not elected yet"
