@@ -167,7 +167,7 @@
 
     - name: "{{ recipe_name }}: Make sure enable message receive on all peers for leader overthrow"
       vars:
-         npeersExceptLeaderToBe: "{{ NRunningPeers | difference(overthrow_leader_to_be) }}"
+         npeersExceptLeaderToBe: "{{ NRunningPeers | difference([overthrow_leader_to_be]) }}"
          stage: "net_rcv_true_on_all"
          cmd: "net_recv_enabled@true"
          where: "/ctl_svc_nodes/net_recv_enabled@false"
