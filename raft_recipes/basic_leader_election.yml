@@ -41,7 +41,7 @@
          stage: "wait_leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first != "null"
       retries: 4
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -63,7 +63,7 @@
               - "/raft_root_entry/0/sync-entry-crc"
               - "/raft_root_entry/0/term"
               - "/raft_root_entry/0/sync-entry-term"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
       debug:
         msg: "Getting stats for all running peers."
       no_log: true
