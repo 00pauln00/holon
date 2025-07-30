@@ -1,4 +1,4 @@
-- import_playbook: basic_leader_election2.yml
+- import_playbook: ../raft_recipes/basic_leader_election2.yml
 - name: "leader_self_depose"
   hosts: localhost
   connection: local
@@ -38,7 +38,7 @@
             - "/raft_root_entry/0/last-applied"
             - "/raft_root_entry/0/last-applied-cumulative-crc"
             - "/raft_root_entry/0/peer-uuid"
-         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys, wantlist=True) }}"
+         peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
       debug:
         msg: "Get the raft values for all peers"
       no_log: true
@@ -59,7 +59,7 @@
             - "/raft_root_entry/0/leader-uuid"
             - "/raft_root_entry/0/follower-stats"
             - "/raft_root_entry/*/client-requests"
-        follower_bf_pause: "{{ lookup('niova_ctlrequest', 'lookup', self_depose_leader_uuid, raft_keys, wantlist=True) }}"
+        follower_bf_pause: "{{ lookup('niova_ctlrequest', 'lookup', self_depose_leader_uuid, raft_keys) }}"
       debug:
        msg: "Get follower stats from leader: {{ self_depose_leader_uuid }}"
       no_log: true
@@ -79,7 +79,7 @@
 
     - name: "{{ recipe_name }}: Pause number of followers in series"
       set_fact:
-         self_depose_pause_peer: "{{ lookup('niova_raftprocess', 'pause', FollowerUUIDs[item], wantlist=True) }}"
+         self_depose_pause_peer: "{{ lookup('niova_raftprocess', 'pause', FollowerUUIDs[item]) }}"
       loop: "{{ range(0, nfollower_pause.stdout | int) | list }}"
 
     - name: "Wait for 5sec"
@@ -94,7 +94,7 @@
             - "/raft_root_entry/0/leader-uuid"
             - "/raft_root_entry/0/follower-stats"
             - "/raft_root_entry/*/client-requests"
-         fstat: "{{ lookup('niova_ctlrequest', 'lookup', self_depose_leader_uuid, raft_keys, wantlist=True) }}"
+         fstat: "{{ lookup('niova_ctlrequest', 'lookup', self_depose_leader_uuid, raft_keys) }}"
       debug:
         msg: "Get the follower stat after pausing follower(s)"
       no_log: true
@@ -120,7 +120,7 @@
           - "/raft_root_entry/0/peer-uuid"
           - "/raft_root_entry/0/sync-entry-term"
       set_fact:
-        self_depose_resume_peer: "{{ lookup('niova_raftprocess', 'resume', FollowerUUIDs[item], wantlist=True) }}"
+        self_depose_resume_peer: "{{ lookup('niova_raftprocess', 'resume', FollowerUUIDs[item]) }}"
         self_depose_leader_info: "{{ self_depose_leader_info + [lookup('niova_ctlrequest', 'lookup', self_depose_leader_uuid, raft_keys)] }}"
       retries: 20
       delay: 1
