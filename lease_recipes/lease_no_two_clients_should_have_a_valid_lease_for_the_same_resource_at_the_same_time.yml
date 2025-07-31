@@ -52,7 +52,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'get_lease_{{ resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param) }}"
       debug:
          msg: "GET operation"
       with_items:
