@@ -47,7 +47,7 @@
 
     - name: "Get the non-running peer list"
       set_fact:
-       NonRunningServers: "{{ NonRunningServers|default([]) + (TotalNServersList | difference(NRunningPeers)) }}"
+       NonRunningServers: "{{ NonRunningServers|default([]) + (TotalNServersList | difference([NRunningPeers])) }}"
 
     - name: "Print non-running peers"
       debug:
