@@ -1,0 +1,93 @@
+- name: "basic_recipe_for_covid_goapp"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "basic_recipe_for_covid_goapp"
+    parent: None
+    uid: "{{ app_uuid.stdout }}:0:0:0:0"
+
+  tasks:
+  - block:
+      # check for the app_type
+     - name: "{{ recipe_name }}: Check if the app_type is covid"
+       vars:
+         app_type: "{{ app_type}}"
+       debug:
+         msg: "app_type should be covid"
+       failed_when:
+         (app_type != "covid")
+
+       # start the servers
+     - name: "{{ recipe_name }}: Print the UUIDs of all the servers"
+       include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+     - name: "{{ recipe_name }}: Start all the servers in the cluster"
+       include_role:
+         name: common
+         tasks_from: start_server_golang
+       vars:
+         ServerUUID: "{{ NonRunningServers[item] }}"
+       loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+       # start the client
+     - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+       include_role:
+         name: common
+         tasks_from: get_new_client_uuid
+       register: client_uuid
+
+       # generate rncui
+     - name: "{{ recipe_name }}: Generate App UUID"
+       shell: "/usr/bin/uuid"
+       register: app_uuid
+
+       # write single entry
+     - name: "{{ recipe_name}}: Write the single key-value pair to COVID Application"
+       vars:
+         stage: "CovidWriteOne"
+         cmd: "WriteOne#{{ app_uuid.stdout }}:0:0:0:0#Africa#OWID_AFR#5000#2000#{{ recipe_name }}_{{ stage }}"
+         WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout) }}"
+       debug:
+         msg: "write single entry"
+       with_items:
+         - "{{ WriteOneValue }}"
+       register: WriteOne
+       no_log: True
+
+       # check if write is successful
+     - name: "{{ recipe_name }}: Check if write is successful"
+       debug:
+         msg: "check if write is successful"
+       failed_when: >
+         (WriteOne['results'][0]['item']['status'] != 0) or
+         (WriteOne['results'][0]['item']['response'][uid]['Status'] != '0')
+
+      # write single entry with same rncui
+     - name: "{{ recipe_name}}: Write the with same rncui to COVID Application"
+       vars:
+         stage: "CovidWriteOneAgain"
+         cmd: "WriteOne#{{ app_uuid.stdout }}:0:0:0:0#Africa#OWID_AFR#6000#3000#{{ recipe_name }}_{{ stage }}"
+         WriteOneAgainValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout) }}"
+       debug:
+         msg: "write single entry"
+       with_items:
+         - "{{ WriteOneAgainValue }}"
+       register: WriteOneAgain
+       no_log: True
+
+       # check if write is successful
+     - name: "{{ recipe_name }}: Check if write response matches previous values"
+       debug:
+         msg: "Checking write response matches previous values"
+       failed_when: >
+        (WriteOneAgain['results'][0]['item']['response'][uid]['Location'] != "Africa") or
+        (WriteOneAgain['results'][0]['item']['response'][uid]['IsoCode'] != "OWID_AFR") or
+        (WriteOneAgain['results'][0]['item']['response'][uid]['TotalVaccinations'] != "5000") or
+        (WriteOneAgain['results'][0]['item']['response'][uid]['PeopleVaccinated'] != "2000")
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+          terminate_recipe: true
