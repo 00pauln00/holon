@@ -152,7 +152,8 @@
             include_role:
                name: common
                tasks_from: no_response_from_paused_followers
-            loop: "{{ range(0, 4)| list }}"
+            vars:
+              peer_uuids: "{{ SelCorLeaderPausedFollowers }}"
 
           - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
             include_role:
@@ -288,17 +289,17 @@
 
           #2
           - name: "{{ recipe_name }}: Kill the processes."
+            vars:
+              kill_followers: "{{ TotalNServersList | difference(SelCorLeaderPausedFollowers) }}"
             debug:
-              msg: "{{ lookup('niova_raftprocess', 'kill', TotalNServersList[item]) }}"
-            loop: "{{ range(0, TotalNServersList | length) | list }}"
+              msg: "{{ lookup('niova_raftprocess', 'kill', kill_followers[item]) }}"
+            loop: "{{ range(0, kill_followers | length) | list }}"
 
           #3
-          - name: "{{ recipe_name }}: Start followers which are paused in step 1."
-            include_role:
-              name: common
-              tasks_from: start_server
-            vars:
-              ServerUUID: "{{ SelCorLeaderPausedFollowers[item] }}"
+          - name: "{{ recipe_name }}: Retart followers which are paused in step 1."
+            debug:
+              msg: "{{ lookup('niova_raftprocess', 'resume', SelCorLeaderPausedFollowers[item]) }}"
+            no_log: false
             loop: "{{ range(0, SelCorLeaderPausedFollowers | length) | list }}"
 
           - name: "{{ recipe_name }}: Verify timestamp progress for newly started followers."

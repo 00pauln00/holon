@@ -5,7 +5,7 @@
         cmd: "enabled@true"
         where: "/fault_injection_points/name@{{ fault_injection_name }}"
       set_fact:
-         fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', ServerUUID, cmd, where, wantlist=True) }}"
+         fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', ServerUUID, cmd, where) }}"
 
     - name: "{{ recipe_name }}: Get list of fault-injections."
       vars:

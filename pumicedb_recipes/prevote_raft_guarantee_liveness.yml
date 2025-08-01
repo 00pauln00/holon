@@ -38,9 +38,9 @@
 
     #Prepare list for different peers to disable.
     - set_fact: server4="{{ FollowerUUIDs |  random }}"
-    - set_fact: server5="{{ FollowerUUIDs  | difference(server4) | random }}"
+    - set_fact: server5="{{ FollowerUUIDs  | difference([server4]) | random }}"
     - set_fact: disablePeers="{{ [] + [server4] + [server5] }}"
-    - set_fact: server2="{{ FollowerUUIDs | difference(disablePeers) | random }}"
+    - set_fact: server2="{{ FollowerUUIDs | difference([disablePeers]) | random }}"
 
     - name: "{{ recipe_name }}: Print UUID for server 4 and server 5."
       debug:
@@ -48,8 +48,8 @@
 
     - name: "{{ recipe_name }}: Prepare list for disable peers from server 4."
       vars:
-        getlist: "{{ FollowerUUIDs | difference(server2) }}"
-        addleader: "{{ getlist | difference(server4) }}"
+        getlist: "{{ FollowerUUIDs | difference([server2]) }}"
+        addleader: "{{ getlist | difference([server4]) }}"
       set_fact:
         disablePeersfrmserver4: "{{ addleader + [LeaderUUID['/0/leader-uuid']] }}"
 
@@ -58,7 +58,7 @@
 
     - name: "{{ recipe_name }}: Prepare list for disable peers from server 5."
       set_fact:
-         disablePeersfrmserver5: "{{ FollowerUUIDs | difference(server5) }}"
+         disablePeersfrmserver5: "{{ FollowerUUIDs | difference([server5]) }}"
 
     - debug:
         msg: "Peers which are disabled from server 5: {{ disablePeersfrmserver5 }}"
@@ -123,8 +123,8 @@
 
     - name: "{{ recipe_name }}: Prepare list of connected peers i.e. server 1, 2 and 3."
       vars:
-        rmPeer4: "{{ FollowerUUIDs | difference(server4) }}"
-        rmPeer5: "{{ rmPeer4 | difference(server5) }}"
+        rmPeer4: "{{ FollowerUUIDs | difference([server4]) }}"
+        rmPeer5: "{{ rmPeer4 | difference([server5]) }}"
       set_fact:
         connectedPeers: "{{ rmPeer5 + [LeaderUUID['/0/leader-uuid']] }}"
 
@@ -220,13 +220,13 @@
           - "/raft_client_root_entry/0/raft-uuid"
           - "/raft_client_root_entry/0/state"
           - "/raft_client_root_entry/0/leader-uuid"
-        cli_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True)[0] }}"
+        cli_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys) }}"
       debug:
         msg: "Get the values for client"
       with_items:
         - "{{ cli_vals }}"
       register: client_values
-      no_log: True
+      no_log: false
 
     - name: "{{ recipe_name }}: leader remains same for client as well"
       vars:
@@ -251,13 +251,13 @@
         raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key, wantlist=True)[0]['/0/pmdb-seqno'] == (num_writes - 1)
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key)['/0/pmdb-seqno'] == (num_writes - 1)
       retries: 100
       delay: 1
 
     - name: "{{ recipe_name}}: Wait until commit-idx gets incremented on all peers except server 4."
       vars:
-        getPeersExceptServer4: "{{ NRunningPeers | difference(server4) }}"
+        getPeersExceptServer4: "{{ NRunningPeers | difference([server4]) }}"
         stage: "wait_for_commitId"
         raft_key: "/raft_root_entry/0/commit-idx"
       debug:
@@ -270,7 +270,7 @@
     - name: "{{ recipe_name }}: Get the all values after num_writes from all peers except server 4."
       vars:
          stage: "verifyCommitindex"
-         getPeersExceptServer4: "{{ NRunningPeers | difference(server4) }}"
+         getPeersExceptServer4: "{{ NRunningPeers | difference([server4]) }}"
          raft_keys:
              - "/raft_root_entry/0/leader-uuid"
              - "/raft_root_entry/0/term"
@@ -285,7 +285,7 @@
 
     - name: "{{ recipe_name }}: After successful write operation, verify all values same on other peers except server 4."
       vars:
-        getPeersExceptServer4: "{{ NRunningPeers | difference(server4) }}"
+        getPeersExceptServer4: "{{ NRunningPeers | difference([server4]) }}"
         curr_val: "{{ getAllVal['results']}}"
       debug:
         msg: "Verify values for all peers excluding server 4"

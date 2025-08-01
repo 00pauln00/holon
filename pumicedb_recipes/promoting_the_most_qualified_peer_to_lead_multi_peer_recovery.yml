@@ -127,7 +127,7 @@
     #1 - Pause the Selected Followers.
     - name: "{{ recipe_name }}: Pause the selected followers."
       vars:
-        pause_followers: "{{ lookup('niova_raftprocess', 'pause', Promoting_Selected_Followers[item], wantlist=True) }}"
+        pause_followers: "{{ lookup('niova_raftprocess', 'pause', Promoting_Selected_Followers[item]) }}"
       debug:
         msg: "{{ pause_followers }}"
       no_log: True
