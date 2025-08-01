@@ -76,7 +76,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'get_lease_all'
                  }
-         multiLeaseApp: "{{ lookup('lease_feature', 'GET_VALIDATE', input_param, wantlist=True) }}"
+         multiLeaseApp: "{{ lookup('lease_feature', 'GET_VALIDATE', input_param) }}"
       debug:
          msg: "Perform GET_VALIDATE operation"
       with_items:
@@ -139,20 +139,9 @@
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    - name: "Debug net_recv_enabled state on all nodes"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, ['/ctl_svc_nodes/*/net_recv_enabled']) }}"
-
-    - debug: 
-        msg: "{{ FollowerUUIDs }}"
-
     - name: "{{ recipe_name }}: Selected leader-to-be"
       set_fact:
         Peer1: "{{ FollowerUUIDs[0] }}"
-
-    - name: "{{ recipe_name }}: DEBUG Print leader-to-be"
-      debug:
-        msg: "Leader-to-be: {{ Peer1 }}"
 
     - name: "{{ recipe_name }}: Enable receive on all peers from the leader-to-be."
       vars:
@@ -163,7 +152,7 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
       no_log: false
 
-    - pause: seconds=5
+    - pause: seconds=3
 
     - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
       vars:
@@ -184,19 +173,6 @@
       until: lookup('niova_ctlrequest', 'lookup', Peer1, enable_key)| dict2items | map(attribute='value') | list | first == True
       retries: 60
       delay: 1
-
-    - name: "Debug net_recv_enabled state on all nodes"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, ['/ctl_svc_nodes/*/net_recv_enabled']) }}"
-
-    - pause: seconds=5
-
-    - name: "{{ recipe_name }}: Print current leader seen by peer {{ item }}"
-      vars:
-        leader_key: ['/raft_root_entry/0/leader-uuid']
-      debug:
-        msg: "Peer {{ NRunningPeers[item] }} sees leader: {{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], leader_key) }}"
-      loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Verify new leader is elected successfully"
       vars:
