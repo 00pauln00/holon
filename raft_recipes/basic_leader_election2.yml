@@ -64,7 +64,7 @@
         (verifyPeerVal["/0/last-applied"] < 0) or
         (verifyPeerVal["/0/last-applied-cumulative-crc"] != verifyPeerVal["/0/sync-entry-crc"]) or
         (verifyPeerVal["/0/term"] != verifyPeerVal["/0/sync-entry-term"])
-      loop: "{{ range(0, [NRunningPeers] | length) | list }}"
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

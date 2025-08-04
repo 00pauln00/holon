@@ -1,4 +1,4 @@
-- import_playbook: basic_leader_election2.yml
+- import_playbook: ../raft_recipes/basic_leader_election2.yml
 
 - name: "prevote_corner_case1"
   hosts: localhost
@@ -37,7 +37,7 @@
         stage: "enable_recv"
         cmd: "net_recv_enabled@true"
         where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
-        enable_net_rcv: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where, wantlist=True) }}"
+        enable_net_rcv: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where) }}"
       debug:
         msg: "{{ enable_net_rcv }}"
       no_log: True
@@ -48,7 +48,7 @@
         stage: "enable_send"
         cmd: "net_send_enabled@true"
         where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
-        enable_send: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where, wantlist=True) }}"
+        enable_send: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where) }}"
       debug:
         msg: "{{ enable_send }}"
       no_log: True
@@ -59,7 +59,7 @@
         raft_keys:
              - "/ctl_svc_nodes"
       set_fact:
-         ctl_svc_nodes_en: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeersBefore, raft_keys, wantlist=True) }}"
+         ctl_svc_nodes_en: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeersBefore, raft_keys) }}"
 
     - name: "{{ recipe_name }}: Verify ctl_svc_nodes/net_recv_enabled and ctl_svc_nodes/net_send_enabled on all peers for peer 4."
       include_role:
@@ -74,7 +74,7 @@
     - name: "{{ recipe_name }}: Get term value of peer 4 after enabling."
       vars:
         stage: "get_term_val_after"
-        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', peer4, '/raft_root_entry/0/term', wantlist=True) }}"
+        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', peer4, '/raft_root_entry/0/term') }}"
       debug:
          msg: "Getting raft_root_entry for all servers."
       no_log: true

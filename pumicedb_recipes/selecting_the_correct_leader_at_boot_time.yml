@@ -296,7 +296,7 @@
             loop: "{{ range(0, kill_followers | length) | list }}"
 
           #3
-          - name: "{{ recipe_name }}: Retart followers which are paused in step 1."
+          - name: "{{ recipe_name }}: Restart followers which are paused in step 1."
             debug:
               msg: "{{ lookup('niova_raftprocess', 'resume', SelCorLeaderPausedFollowers[item]) }}"
             no_log: false
