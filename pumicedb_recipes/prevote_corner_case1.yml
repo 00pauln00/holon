@@ -66,7 +66,7 @@
          name: common
          tasks_from: verify_net_send_recv_enabled
       vars:
-        ctl_svc_nodes_arr: "{{ ctl_svc_nodes_en[idx][0]['//ctl_svc_nodes'] }}"
+        ctl_svc_nodes_arr: "{{ ctl_svc_nodes_en[idx]['//ctl_svc_nodes'] }}"
       loop: "{{ range(0, ctl_svc_nodes_en | length) | list }}"
       loop_control:
          loop_var: idx
