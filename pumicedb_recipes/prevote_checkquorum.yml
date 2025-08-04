@@ -183,6 +183,8 @@
          name: common
          tasks_from: get_server_uuid_info
 
+    - pause: seconds=5
+
     - name: "{{ recipe_name }}: Wait until leader election happens"
       vars:
          nrunningPeers: "{{ NRunningPeers | difference([prevote_leader_before]) }}"
@@ -190,7 +192,7 @@
       debug:
         msg: "Waiting for leader election"
       until: lookup('niova_ctlrequest', 'lookup', nrunningPeers[item], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid'] != prevote_leader_before
-      retries: 10
+      retries: 20
       delay: 1
       loop: "{{ range(0, nrunningPeers | length) | list }}"
 
