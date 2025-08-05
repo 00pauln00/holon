@@ -51,7 +51,7 @@
         name: common
         tasks_from: get_follower_stats
 
-    - pause: seconds=5
+    - pause: seconds=15
 
     - name: "{{ recipe_name }}: Get the raft values for all running peers"
       vars:
@@ -72,17 +72,11 @@
       shell: "/usr/bin/uuid"
       register: resourceUUID
 
-    - debug:
-        msg: "resourceUUID: {{ resourceUUID }}"
-
     - name: Generate new client
       shell: "/usr/bin/uuid"
       register: clientUUID
 
-    - debug:
-        msg: "clientUUID: {{ clientUUID }}"
-
-    - pause: seconds=5
+    - pause: seconds=15
     
     - name: "{{ recipe_name }}: Perform 'GET' operation."
       vars:
@@ -99,9 +93,6 @@
       with_items:
           - "{{ leaseApp }}"
       register: getLease
-
-    - debug:
-        msg: "getLease: {{ getLease }}"
 
     - name: "{{ recipe_name }}: Verify outfile status"
       debug:
