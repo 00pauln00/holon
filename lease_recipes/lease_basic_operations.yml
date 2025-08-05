@@ -60,10 +60,10 @@
             - "/raft_root_entry/0/leader-uuid"
             - "/raft_root_entry/0/term"
             - "/raft_root_entry/0/leader-time"
-         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys) }}"
       debug:
         msg: "Getting stats for all running peers: {{ peers_val }}"
-      no_log: true
+      no_log: false
       with_items:
          - "{{ peers_val }}"
       register: stage0_peers_vals
@@ -77,7 +77,17 @@
       register: clientUUID
 
     - pause: seconds=15
-    
+
+    - name: "{{ recipe_name }}: Show leader UUIDs on all peers"
+      vars:
+        raft_keys: ["/raft_root_entry/0/leader-uuid"]
+        all_leader_views: >-
+          {{
+            NRunningPeers | map('extract', lookup('niova_ctlrequest', 'lookup', item, raft_keys)) | list
+          }}
+      debug:
+        msg: "Leader view on all peers: {{ all_leader_views }}"
+ 
     - name: "{{ recipe_name }}: Perform 'GET' operation."
       vars:
          input_param: {
@@ -128,7 +138,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param) }}"
       debug:
          msg: "lookup lease operation"
       with_items:
@@ -183,7 +193,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'get_lease_{{ resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param) }}"
       debug:
          msg: "GET operation with new client uuid"
       with_items:
