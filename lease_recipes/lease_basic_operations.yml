@@ -73,6 +73,8 @@
     - name: Generate new client
       shell: "/usr/bin/uuid"
       register: clientUUID
+
+    - pause: seconds=5
     
     - name: "{{ recipe_name }}: Perform 'GET' operation."
       vars:
