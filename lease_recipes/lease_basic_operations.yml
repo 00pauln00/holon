@@ -78,16 +78,13 @@
 
     - pause: seconds=15
 
-    - name: "{{ recipe_name }}: Show leader UUIDs on all peers"
+    - name: "{{ recipe_name }}: Show leader UUID seen by each peer"
       vars:
-        raft_keys: ["/raft_root_entry/0/leader-uuid"]
-        all_leader_views: >-
-          {{
-            NRunningPeers | map('extract', lookup('niova_ctlrequest', 'lookup', item, raft_keys)) | list
-          }}
+        raft_keys: "/raft_root_entry/0/leader-uuid"
       debug:
-        msg: "Leader view on all peers: {{ all_leader_views }}"
- 
+        msg: "Peer {{ item }} sees leader UUID: {{ lookup('niova_ctlrequest', 'lookup', item, raft_keys)['/0/leader-uuid'] }}"
+      loop: "{{ NRunningPeers }}"
+
     - name: "{{ recipe_name }}: Perform 'GET' operation."
       vars:
          input_param: {
