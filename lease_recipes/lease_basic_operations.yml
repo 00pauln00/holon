@@ -97,6 +97,8 @@
       failed_when: >
          (getLease['results'][0]['item']['outfile_status'] != 0)
 
+    - pause: seconds=5
+
     - name: "{{ recipe_name }}: Check if 'GET' is successful."
       vars:
          wr_response: "{{ getLease['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
