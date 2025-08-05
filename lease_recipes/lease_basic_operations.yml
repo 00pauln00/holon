@@ -46,6 +46,20 @@
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
+    - name: "{{ recipe_name }}: Wait until all running peers are ready with net_recv_enabled and role info"
+      vars:
+      raft_keys:
+        - "/ctl_svc_nodes/net_recv_enabled"
+        - "/ctl_svc_nodes/role"
+      until: >
+        lookup('niova_ctlrequest', 'lookup', item, raft_keys)["/ctl_svc_nodes/net_recv_enabled"] == true and
+        lookup('niova_ctlrequest', 'lookup', item, raft_keys)["/ctl_svc_nodes/role"] in ['leader', 'follower']
+      retries: 10
+      delay: 1
+      loop: "{{ NRunningPeers }}"
+      loop_control:
+        label: "{{ item }}"
+
     - name: "{{ recipe_name }}: Get cluster information"
       include_role:
         name: common
