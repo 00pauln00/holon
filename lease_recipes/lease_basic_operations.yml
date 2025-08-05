@@ -72,9 +72,15 @@
       shell: "/usr/bin/uuid"
       register: resourceUUID
 
+    - debug:
+        msg: "resourceUUID: {{ resourceUUID }}"
+
     - name: Generate new client
       shell: "/usr/bin/uuid"
       register: clientUUID
+
+    - debug:
+        msg: "clientUUID: {{ clientUUID }}"
 
     - pause: seconds=5
     
