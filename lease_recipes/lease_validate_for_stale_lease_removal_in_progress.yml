@@ -139,9 +139,9 @@
         ServerUUID: "{{ LeaderUUID['/0/leader-uuid'] }}"
         fault_injection_name: "raft_leader_ignore_direct_req"
 
-    - name: "{{ recipe_name }}: Pause for 60 sec so that lease gets expired."
+    - name: "{{ recipe_name }}: Pause for 5 sec so that lease gets expired."
       pause:
-         seconds: 60
+         seconds: 5
 
     - name: "{{ recipe_name }}: Wait until leaseState of all leases should complete."
       include_role:

@@ -68,9 +68,9 @@
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
       loop: "{{ range(0, no_of_leases) | list }}"
 
-    - name: "{{ recipe_name }}: Pause for 60 sec so that lease gets expired."
+    - name: "{{ recipe_name }}: Pause for 5 sec so that lease gets expired."
       pause:
-         seconds: 60
+         seconds: 5
 
     - name: "{{ recipe_name }}: Wait untill leaseState of all leases is expired."
       include_role:
