@@ -69,7 +69,7 @@
         name: common
         tasks_from: start_server
       vars:
-        follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
+        follower_uuids: "{{ NRunningPeers | difference([rb_during_start_raft_values['/0/leader-uuid']]) }}"
         ServerUUID: "{{ follower_uuids[item] }}"
       loop: "{{ range(0, follower_uuids | length) | list }}"
 
@@ -78,8 +78,8 @@
         stage: "idle_off"
         cmd: "ignore_timer_events@false"
         where: "/raft_net_info/ignore_timer_events"
-        follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
-        idle_off: "{{ lookup('niova_ctlrequest', 'apply_cmd', follower_uuids, cmd, where, wantlist=True) }}"
+        follower_uuids: "{{ NRunningPeers | difference([rb_during_start_raft_values['/0/leader-uuid']]) }}"
+        idle_off: "{{ lookup('niova_ctlrequest', 'apply_cmd', follower_uuids, cmd, where) }}"
       debug:
         msg: "Activating Raft timer thread on all started peers."
       no_log: true
@@ -88,7 +88,7 @@
     - name: "{{ recipe_name }}: Wait until leader election happens."
       vars:
         stage: "lea_elect"
-        follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
+        follower_uuids: "{{ NRunningPeers | difference([rb_during_start_raft_values['/0/leader-uuid']]) }}"
       debug:
         msg: "Waiting for leader election"
       until: lookup('niova_ctlrequest', 'lookup', follower_uuids[item], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid'] != "null"
@@ -103,7 +103,7 @@
         raft_keys:
                - "/raft_root_entry/0/leader-uuid"
                - "/raft_root_entry/0/term"
-        follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
+        follower_uuids: "{{ NRunningPeers | difference([rb_during_start_raft_values['/0/leader-uuid']]) }}"
         raft_values_leader_after_vals: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids[0], raft_keys) }}"
       debug:
         msg: "Getting new leader_uuid and term value."
@@ -115,7 +115,7 @@
     - name: "{{ recipe_name }}: Get raft_root_entry values after starting all followers."
       vars:
         stage: "get_clstate"
-        follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
+        follower_uuids: "{{ NRunningPeers | difference([rb_during_start_raft_values['/0/leader-uuid']]) }}"
         raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids, peer_raft_keys) }}"
       debug:
          msg: "Getting raft_root_entry for all servers."
@@ -142,7 +142,7 @@
         sync_entry_data_size_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-data-size'] }}"
         sync_entry_crc: "{{ raft_root_entry_all['results'][item]['item']['/0/sync-entry-crc'] }}"
         sync_entry_crc_next: "{{ raft_root_entry_all['results'][item +1]['item']['/0/sync-entry-crc'] }}"
-        follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
+        follower_uuids: "{{ NRunningPeers | difference([rb_during_start_raft_values['/0/leader-uuid']]) }}"
       debug:
         msg: "Compare raft_root_entry values of all started peers."
       failed_when: >
@@ -186,7 +186,7 @@
       debug:
         msg: "Waiting for previous leader to become follower and it's commit-idx should be greater than previous commit-idx by 1."
       no_log: true
-      until: (lookup('niova_ctlrequest', 'lookup', leader_uuid_before, '/raft_root_entry/0/state')['/0/state'] != "follower") and (leader_values_after_election['results'][0]['item']['/0/commit-idx'] - rb_during_start_leader_values_before_election['/0/commit-idx'] == 1)
+      until: (lookup('niova_ctlrequest', 'lookup', leader_uuid_before, '/raft_root_entry/0/state')['/0/state'] == "follower") and (leader_values_after_election['results'][0]['item']['/0/commit-idx'] - rb_during_start_leader_values_before_election['/0/commit-idx'] == 1)
       retries: 10
       delay: 2
 
@@ -277,8 +277,8 @@
         raft_keys:
                - "/raft_root_entry/0/leader-uuid"
                - "/raft_root_entry/0/term"
-        follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
-        raft_values_leader: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids[0], raft_keys, wantlist=True) }}"
+        follower_uuids: "{{ NRunningPeers | difference([rb_during_start_raft_values['/0/leader-uuid']]) }}"
+        raft_values_leader: "{{ lookup('niova_ctlrequest', 'lookup', follower_uuids[0], raft_keys) }}"
       debug:
         msg: "Getting leader_uuid and term value."
       no_log: true
@@ -303,7 +303,7 @@
         cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.read"
         where: "/pumice_db_test_client/input"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where, wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       no_log: true
 
     #7a - Verifications.
@@ -312,7 +312,7 @@
         stage: "get_pmdbrh"
         raft_keys:
              - "/pumice_db_test_client/pmdb-request-history"
-        pmdb_request_history_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys, wantlist=True) }}"
+        pmdb_request_history_values: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys) }}"
       debug:
         msg: "Getting values for pmdb-request-history."
       no_log: true

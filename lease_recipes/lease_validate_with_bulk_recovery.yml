@@ -60,7 +60,7 @@
 
     - name: "{{ recipe_name }}: Kill the Peer 1."
       debug:
-        msg: "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[0], wantlist=True) }}"
+        msg: "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[0]) }}"
 
     - name: "{{ recipe_name }}: Get the running peers list."
       include_role:
@@ -76,7 +76,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'get_lease_all'
                  }
-         multiLeaseApp: "{{ lookup('lease_feature', 'GET_VALIDATE', input_param, wantlist=True) }}"
+         multiLeaseApp: "{{ lookup('lease_feature', 'GET_VALIDATE', input_param) }}"
       debug:
          msg: "Perform GET_VALIDATE operation"
       with_items:
@@ -102,7 +102,7 @@
 
     - name: "{{ recipe_name }}: Restart peer 1 which was killed."
       debug:
-        msg: "{{ lookup('niova_raftprocess', 'start', FollowerUUIDs[0], wantlist=True) }}"
+        msg: "{{ lookup('niova_raftprocess', 'start', FollowerUUIDs[0]) }}"
 
     - name: "Wait for Peer 1 to bootup completely"
       debug:
@@ -124,7 +124,7 @@
          cmd: "net_recv_enabled@false"
          where: "/ctl_svc_nodes/net_recv_enabled@true"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
       no_log: true
 
     - name: "Wait for Disable message receive on all peers"
@@ -149,8 +149,8 @@
          cmd: "net_recv_enabled@true"
          where: "/ctl_svc_nodes/uuid@{{ Peer1 }}"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
-      no_log: true
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
+      no_log: false
 
     - pause: seconds=3
 
@@ -160,8 +160,8 @@
          cmd: "net_recv_enabled@true"
          where: "/ctl_svc_nodes/net_recv_enabled@false"
       debug:
-       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', Peer1, cmd, where, wantlist=True) }}"
-      no_log: true
+       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', Peer1, cmd, where) }}"
+      no_log: false
 
     - name: "Wait for Enable message receive on all peers"
       debug:
@@ -196,7 +196,7 @@
                 'getLeaseOutfile': "{{ getMultiLeases['results'][0]['item']['detailedJsonPath'] }}",
                 'outFileName': "lookup_lease_all"
                  }
-         new_leader_lookup: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
+         new_leader_lookup: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param) }}"
       debug:
          msg: "Multiple LOOKUP lease operation"
       with_items:

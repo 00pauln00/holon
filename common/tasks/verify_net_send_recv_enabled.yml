@@ -1,18 +1,21 @@
 ---
 
+    - name: "{{ recipe_name }}: Initialize net_recv and net_send lists"
+      set_fact:
+        net_rcv_list_en: []
+        net_send_list_en: []
+    
     - name: "{{ recipe_name }}: Gather 'net_recv_enabled' values for peers to be enabled."
       vars:
         uuid: "{{ item['uuid'] }}"
         nre: "{{ item['net_recv_enabled'] }}"
         nse: "{{ item['net_send_enabled'] }}"
-        net_rcv_list_en: []
-        net_send_list_en: []
       set_fact:
          net_rcv_list_en: "{{ net_rcv_list_en + [nre] }}"
          net_send_list_en: "{{ net_send_list_en + [nse] }}"
       loop: "{{  ctl_svc_nodes_arr }}"
-      when: uuid == peer4
-      no_log: True
+      when: uuid == "peer4"
+      no_log: true
 
     - name: "{{ recipe_name }}: Check if net_rcv is enabled."
       debug:
