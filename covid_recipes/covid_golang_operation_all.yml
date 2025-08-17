@@ -48,7 +48,7 @@
        vars:
          stage: "CovidWriteOne"
          cmd: "WriteOne#{{ app_uuid.stdout }}:0:0:0:0#Africa#OWID_AFR#5000#2000#{{ recipe_name }}_{{ stage }}"
-         WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+         WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout) }}"
        debug:
          msg: "write single entry"
        with_items:
@@ -69,7 +69,7 @@
        vars:
          stage: "CovidReadOne"
          cmd: "ReadOne#Africa#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
-         ReadOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+         ReadOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout) }}"
        debug:
          msg: "read single entry"
        with_items:
@@ -105,7 +105,7 @@
        vars:
          stage: "CovidWriteMulti"
          cmd: "WriteMulti#{{ NIOVA_BIN_PATH }}/vaccinations.csv#{{ recipe_name }}_{{ stage }}"
-         WriteMultiValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+         WriteMultiValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout) }}"
        debug:
          msg: "write all entries "
        with_items:
@@ -118,7 +118,7 @@
        vars:
          stage: "CovidReadMulti"
          cmd: "ReadMulti#{{ recipe_name }}_{{ stage }}"
-         ReadMultiValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+         ReadMultiValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout) }}"
        debug:
          msg: "read all entries  {{ ReadMultiValue }}"
        with_items:
@@ -155,7 +155,7 @@
        vars:
          stage: 'getLeader'
          cmd: "GetLeader#{{ recipe_name }}_{{ stage }}"
-         getLeader_values: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+         getLeader_values: "{{ lookup('app_cmd', cmd, client_uuid.stdout) }}"
        debug:
          msg: "Get the Old Leader UUID {{ getLeader_values }}"
        with_items:
@@ -166,7 +166,7 @@
        # pause the leader
      - name: "{{ recipe_name }}: Pause  leader process."
        debug:
-        msg: "Pausing leader process {{ lookup('niova_raftprocess', 'pause', OldLeaderUUID['results'][0]['item']['response'], wantlist=True) }}"
+        msg: "Pausing leader process {{ lookup('niova_raftprocess', 'pause', OldLeaderUUID['results'][0]['item']['response']) }}"
 
      - name: "{{ recipe_name }}: Printing the list of all server"
        include_role:
@@ -190,7 +190,7 @@
        vars:
         stage: "GetLeaderNew"
         cmd: "GetLeader#{{ recipe_name }}_{{ stage }}"
-        getNewLeader_values: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+        getNewLeader_values: "{{ lookup('app_cmd', cmd, client_uuid.stdout) }}"
        debug:
          msg: "Get the Old Leader UUID {{ getNewLeader_values }}"
        with_items:
@@ -207,7 +207,7 @@
 
      - name: "{{ recipe_name }}: Resume previous  leader process."
        debug:
-        msg: "Resuming leader process {{ lookup('niova_raftprocess', 'resume', OldLeaderUUID['results'][0]['item']['response'], wantlist=True) }}"
+        msg: "Resuming leader process {{ lookup('niova_raftprocess', 'resume', OldLeaderUUID['results'][0]['item']['response']) }}"
 
      - name: "{{ recipe_name }}: Printing the list of all server"
        include_role:
@@ -219,7 +219,7 @@
        vars:
          stage: "CovidReadTwo"
          cmd: "ReadOne#Africa#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
-         ReadOneNewValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+         ReadOneNewValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout) }}"
        debug:
          msg: "read single entry"
        with_items:
@@ -250,7 +250,7 @@
        vars:
           stage: "CovidWriteTwo"
           cmd: "WriteOne#{{ app_uuid_new.stdout }}:0:0:0:0#Africa#OWID_AFR#5000#2000#{{ recipe_name }}_{{ stage }}"
-          WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+          WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout) }}"
        debug:
          msg: "write single entry"
        with_items:
@@ -274,7 +274,7 @@
        vars:
           stage: "CovidReadThree"
           cmd: "ReadOne#Africa#{{ app_uuid_new.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
-          ReadOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+          ReadOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout) }}"
        debug:
          msg: "Read single entry"
        with_items:

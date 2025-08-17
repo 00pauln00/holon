@@ -31,18 +31,18 @@
 
         - name: "{{ recipe_name }}: Kill the Peer 1 i.e. any 1 follower."
           debug:
-            msg: "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[0], wantlist=True) }}"
+            msg: "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[0]) }}"
 
         - name: "{{ recipe_name }}: Reboot Peer 1."
           debug:
-            msg: "{{ lookup('niova_raftprocess', 'start', FollowerUUIDs[0], wantlist=True) }}"
+            msg: "{{ lookup('niova_raftprocess', 'start', FollowerUUIDs[0]) }}"
 
         - name: "Wait for Peer 1 to bootup completely"
           debug:
             msg: "Wait till bootup completes for Peer {{ FollowerUUIDs[0] }}."
           vars:
             stage: "restart_peer1"
-          until: (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry', wantlist=True)| dict2items | map(attribute='value') | list | first != "null") and (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry/0/state', wantlist=True)| dict2items | map(attribute='value') | list | first != "booting")
+          until: (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry')| dict2items | map(attribute='value') | list | first != "null") and (lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[0], '/raft_root_entry/0/state')| dict2items | map(attribute='value') | list | first != "booting")
           retries: 60
           delay: 1
 
@@ -57,7 +57,7 @@
             cmd: "net_recv_enabled@false"
             where: "/ctl_svc_nodes/net_recv_enabled@true"
           debug:
-            msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+            msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
           no_log: true
 
         - name: "{{ recipe_name }}: Selected leader-to-be"
@@ -70,7 +70,7 @@
             cmd: "net_recv_enabled@true"
             where: "/ctl_svc_nodes/uuid@{{ Peer1 }}"
           debug:
-            msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+            msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
           no_log: true
 
         - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
@@ -79,7 +79,7 @@
             cmd: "net_recv_enabled@true"
             where: "/ctl_svc_nodes/net_recv_enabled@false"
           debug:
-            msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', Peer1, cmd, where, wantlist=True) }}"
+            msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', Peer1, cmd, where) }}"
           no_log: true
 
         - name: "{{ recipe_name }}: Verify new leader is elected successfully"
@@ -88,7 +88,7 @@
           debug:
             msg:
               - "Waiting for new leader election"
-          until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True) | dict2items | map(attribute='value') | list | first == Peer1
+          until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid') | dict2items | map(attribute='value') | list | first == Peer1
           retries: 10
           delay: 2
           loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -105,7 +105,7 @@
                 "wait_for_outfile": True,
               }
           set_fact:
-            lookup_aftr_new_leader_to_be: "{{ lookup_aftr_new_leader_to_be|default([]) + [lookup('controlplane', 'lease', input_param, wantlist=True)] }}"
+            lookup_aftr_new_leader_to_be: "{{ lookup_aftr_new_leader_to_be|default([]) + [lookup('controlplane', 'lease', input_param)] }}"
           failed_when: >
             (lookup_aftr_new_leader_to_be[item]['outfile_status'] != 0) or
             (lookup_aftr_new_leader_to_be[item]['output_data']['LeaseRes']['Status'] != 0) or
