@@ -58,7 +58,7 @@
             - "/raft_root_entry/0/leader-uuid"
             - "/raft_root_entry/0/term"
             - "/raft_root_entry/0/leader-time"
-         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys) }}"
       debug:
         msg: "Getting stats for all running peers: {{ peers_val }}"
       no_log: true
@@ -122,7 +122,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param) }}"
       debug:
          msg: "lookup lease operation"
       with_items:
@@ -177,7 +177,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'get_lease_{{ resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param) }}"
       debug:
          msg: "GET operation with new client uuid"
       with_items:
