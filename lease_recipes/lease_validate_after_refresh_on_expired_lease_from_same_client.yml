@@ -26,9 +26,9 @@
       failed_when:
          (app_type != "lease")
 
-    - name: "{{ recipe_name }}: Pause for 60 sec so that lease gets expired."
+    - name: "{{ recipe_name }}: Pause for 5 sec so that lease gets expired."
       pause:
-         seconds: 60
+         seconds: 5
 
     - name: "{{ recipe_name }}: Wait untill leaseState of all leases is expired."
       include_role:
