@@ -8,6 +8,9 @@ import signal
 from lookup_plugin.helper import *
 
 class gc_service:
+    FORCE_GC = 1
+    TERMINATE_GC = 2
+    FORCE_TERMINATE_GC = 3
     def __init__(self, cluster_params):
         self.cluster_params = cluster_params
         self.s3_support = cluster_params['s3Support']
@@ -99,13 +102,13 @@ class gc_service:
     def gc_mode(self, input_params):
         mode = None
         if input_params.get("force_gc") in [True, "true"]:
-            mode = 1
+            mode = self.FORCE_GC
 
         if input_params.get("terminate_gc") in [True, "true"]:
-            if mode == 1:   # already set by force_gc
-                mode = 3    # both force_gc and terminate_gc
+            if mode == self.FORCE_GC:   # already set by force_gc
+                mode = self.FORCE_TERMINATE_GC    # both force_gc and terminate_gc
             else:
-                mode = 2    # only terminate_gc
+                mode = self.TERMINATE_GC    # only terminate_gc
         return mode
             
 class gc_tester:
