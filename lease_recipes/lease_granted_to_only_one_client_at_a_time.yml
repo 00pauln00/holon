@@ -177,7 +177,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'cli2_GET_{{ new_resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'GET', input_param  ) }}"
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param) }}"
       debug:
          msg: "get lease operation"
       with_items:

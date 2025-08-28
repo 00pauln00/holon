@@ -33,7 +33,7 @@
                 "Operation": "membership",
                 "OutfileName": "membership_output_firstCluster",
               }
-            ncpclires: "{{ lookup('controlplane', 'ncpc', input_param  ) }}"
+            ncpclires: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "get membership details of running servers."
           with_items:
@@ -68,7 +68,7 @@
             stage: "stage0_get_all"
             raft_keys:
               - "/raft_root_entry/0/leader-uuid"
-            peers_val: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys,  ) }}"
+            peers_val: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
           debug:
             msg: "Getting stats for all running peers"
           no_log: true
@@ -99,11 +99,11 @@
 
         - name: "{{ recipe_name }}: Prepare config for new cluster using same ports as already running cluster."
           set_fact:
-            new_server_cluster: "{{ lookup('niova_raftconfig', 'server',  ) }}"
+            new_server_cluster: "{{ lookup('niova_raftconfig', 'server') }}"
 
         - name: "{{ recipe_name }}: Prepare config for the new client uuids."
           set_fact:
-            new_client_cluster: "{{ lookup('niova_raftconfig', 'client',  ) }}"
+            new_client_cluster: "{{ lookup('niova_raftconfig', 'client') }}"
 
         - name: "{{ recipe_name }}: get the list of non-running servers."
           include_role:
@@ -115,7 +115,7 @@
             New_ClusterInfo: "{{ new_server_cluster }}"
 
         - name: "Prepare gossip node config and proxy.config file"
-          set_fact: gossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", 0,  )}}"
+          set_fact: gossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", 0)}}"
 
         # Start PMDB servers.
         - name: "{{ recipe_name }}: Start pmdb servers in the cluster."
@@ -151,7 +151,7 @@
                 "Operation": "membership",
                 "OutfileName": "membership_output_secondCluster",
               }
-            ncpclires: "{{ lookup('controlplane', 'ncpc', input_param  ) }}"
+            ncpclires: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "get membership details of running servers."
           with_items:
@@ -170,13 +170,13 @@
 
         - name: "{{ recipe_name }}: Kill the pmdb servers from second cluster."
           debug:
-            msg: "{{lookup('niova_raftprocess', 'kill', NonRunningPeers[item],  )}}"
+            msg: "{{lookup('niova_raftprocess', 'kill', NonRunningPeers[item])}}"
           loop: "{{ range(0, NonRunningPeers | length) |list }}"
           no_log: True
 
         - name: "{{ recipe_name }}: Kill the proxy servers from second cluster."
           debug:
-            msg: "{{lookup('niova_raftprocess', 'kill', new_client_cluster[item],  )}}"
+            msg: "{{lookup('niova_raftprocess', 'kill', new_client_cluster[item])}}"
           loop: "{{ range(0, new_client_cluster | length) |list }}"
           no_log: True
 
@@ -195,7 +195,7 @@
             initial_vals: "{{ stage0_peers_vals['results'][0]['item'] }}"
             raft_key:
               - "/raft_root_entry/0/leader-uuid"
-            peers_val: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_key,  ) }}"
+            peers_val: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_key) }}"
           debug:
             msg: "Validate leader-uuid"
           failed_when: >

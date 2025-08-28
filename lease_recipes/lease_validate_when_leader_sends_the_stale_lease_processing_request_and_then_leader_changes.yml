@@ -113,7 +113,7 @@
       debug:
         msg:
           - "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', newList[item], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first != oldLeader
+      until: lookup('niova_ctlrequest', 'lookup', newList[0], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first != oldLeader
       retries: 30
       delay: 1
       loop: "{{ range(0, newList | length) | list }}"

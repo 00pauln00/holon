@@ -29,6 +29,10 @@
           name: common
           tasks_from: get_server_uuid_info
 
+     - name: Wait for 1 second
+       pause:
+          seconds: 1
+
      - name: "{{ recipe_name}}: Wait until pmdb server bootup properly."
        vars:
         input_param: {

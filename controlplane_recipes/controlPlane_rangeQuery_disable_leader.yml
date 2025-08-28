@@ -35,7 +35,7 @@
                 "NoofWrites": "5",
                 "wait_for_outfile": True,
               }
-            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param  ) }}"
+            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "Write key-value from ncpc."
           with_items:
@@ -86,7 +86,7 @@
                 "seqNo": "",
                 "wait_for_outfile": True,
               }
-            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param  ) }}"
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "Read key-value from ncpc."
           with_items:
@@ -151,7 +151,7 @@
                 "seqNo": '{{ seqNo["results"][0]["item"] }}',
                 "wait_for_outfile": False,
               }
-            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param  ) }}"
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "Read key-value from ncpc."
           with_items:
@@ -169,7 +169,7 @@
             stage: "disable_peers_mode"
             cmd: "net_recv_enabled@false"
             where: "/ctl_svc_nodes/uuid@{{ LeaderUUID['/0/leader-uuid'] }}"
-            disable_net_rcv: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where,  ) }}"
+            disable_net_rcv: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where) }}"
           debug:
             msg: "{{ disable_net_rcv }}"
           loop: "{{ range(0, FollowerUUIDs | length) | list }}"
@@ -182,7 +182,7 @@
             stage: "disable_peers_mode"
             cmd: "net_send_enabled@false"
             where: "/ctl_svc_nodes/uuid@{{ LeaderUUID['/0/leader-uuid'] }}"
-            disable_send: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where,  ) }}"
+            disable_send: "{{ lookup('niova_ctlrequest', 'apply_cmd', FollowerUUIDs[item], cmd, where) }}"
           debug:
             msg: "{{ disable_send }}"
           loop: "{{ range(0, FollowerUUIDs | length) | list }}"
@@ -200,7 +200,7 @@
             raft_keys:
               - "/ctl_svc_nodes"
           set_fact:
-            ctl_svc_nodes: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, raft_keys,  ) }}"
+            ctl_svc_nodes: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, raft_keys) }}"
 
         - name: "{{ recipe_name }}: Verify ctl_svc_nodes/net_recv_enabled and ctl_svc_nodes/net_send_enabled on all peers for leader."
           include_role:
@@ -280,7 +280,7 @@
                 "seqNo": '{{ seqNo["results"][0]["item"] }}',
                 "wait_for_outfile": True,
               }
-            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param  ) }}"
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "read the result after removing fault injection with same seq no"
           with_items:
