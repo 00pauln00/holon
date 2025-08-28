@@ -1,0 +1,166 @@
+- import_playbook: lease_basic_operations.yml
+
+- name: "lease_get_lease_on_already_expired_lease"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "lease_get_lease_on_already_expired_lease"
+    parent: "lease_basic_operations"
+  vars_files:
+    - ../leaseStateValue.yml
+
+  tasks:
+  - block:
+
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    # check for the app_type
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+      vars:
+         app_type: "{{ app_type }}"
+      debug:
+         msg: "app_type is: {{ app_type }}"
+      failed_when:
+         (app_type != "lease")
+
+    - name: "{{ recipe_name }}: Pause for 5 sec so that lease gets expired."
+      pause:
+         seconds: 5
+
+    - name: "{{ recipe_name }}: Wait untill leaseState is expired."
+      include_role:
+        name: common
+        tasks_from: wait_until_leaseState_change
+      vars:
+         clientuuid: "{{ clientUUID.stdout }}"
+         resourceuuid: "{{ resourceUUID.stdout }}"
+         leaseState: "{{ EXPIRED }}"
+
+    - name: "{{ recipe_name }}: Perform 'LOOKUP_VALIDATE' operation after lease getting expired."
+      vars:
+         input_param: {
+                'client': '',
+                'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'lookup_lease_after_lease_expired_{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param) }}"
+      debug:
+         msg: "lookup lease operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: lookupLease_after_lease_expired
+
+    - name: "{{ recipe_name }}: Verify outfile status."
+      debug:
+        msg: "Check outfile status: {{ lookupLease_after_lease_expired['results'][0]['item']['outfile_status'] }}"
+      no_log: true
+      failed_when: >
+         (lookupLease_after_lease_expired['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check if 'LOOKUP' after lease expired is successful and should return Expired."
+      vars:
+         rd_response: "{{ lookupLease_after_lease_expired['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
+         pervious_leaderTime: "{{ lookupLease['results'][0]['item']['output_data'][0]['LeaseRes']['TimeStamp']['LeaderTime'] }}"
+      debug:
+         msg: "Check if LOOKUP is successful"
+      failed_when: >
+         (rd_response['Status'] != 0) or
+         (rd_response['TTL'] != 0) or
+         (rd_response['LeaseState'] != EXPIRED) or
+         (rd_response['TimeStamp']['LeaderTime'] == pervious_leaderTime)
+
+    - name: "{{ recipe_name }}: Perform 'GET' operation on an already expired lease using same client uuid and resource uuid from the parent recipe."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'get_lease_already_expired_lease{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param) }}"
+      debug:
+         msg: "GET operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: getLease
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check outfile status: {{ getLease['results'][0]['item']['outfile_status'] }}"
+      no_log: true
+      failed_when: >
+         (getLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check if 'GET' is successful."
+      vars:
+         wr_response: "{{ getLease['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
+      debug:
+         msg: "Check if GET is successful"
+      failed_when: >
+         (wr_response['Status'] != 0) or
+         (wr_response['Client'] != clientUUID.stdout|string) or
+         (wr_response['Resource'] != resourceUUID.stdout|string) or
+         (wr_response['TTL'] <= 0) or
+         (wr_response['LeaseState'] != GRANTED)
+
+    - name: "{{ recipe_name }}: Pause for 5 sec so that lease gets expired."
+      pause:
+         seconds: 5
+
+    - name: "{{ recipe_name }}: Wait untill leaseState is expired."
+      include_role:
+        name: common
+        tasks_from: wait_until_leaseState_change
+      vars:
+         clientuuid: "{{ clientUUID.stdout }}"
+         resourceuuid: "{{ resourceUUID.stdout }}"
+         leaseState: "{{ EXPIRED }}"
+
+    - name: Generate new client
+      shell: "/usr/bin/uuid"
+      register: clientUUID1
+
+    - name: "{{ recipe_name }}: Perform 'GET' operation on an already expired lease using new client uuid."
+      vars:
+         input_param: {
+                'client': '{{ clientUUID1.stdout }}',
+                'resource': '{{ resourceUUID.stdout }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'get_lease_already_expired_lease{{ resourceUUID.stdout }}'
+                 }
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param) }}"
+      debug:
+         msg: "GET operation"
+      with_items:
+          - "{{ leaseApp }}"
+      register: getLease
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check outfile status: {{ getLease['results'][0]['item']['outfile_status'] }}"
+      no_log: true
+      failed_when: >
+         (getLease['results'][0]['item']['outfile_status'] != 0)
+
+    - name: "{{ recipe_name }}: Check if 'GET' is successful."
+      vars:
+         wr_response: "{{ getLease['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
+      debug:
+         msg: "Check if GET is successful"
+      failed_when: >
+         (wr_response['Status'] != 0) or
+         (wr_response['Client'] != clientUUID1.stdout|string) or
+         (wr_response['Resource'] != resourceUUID.stdout|string) or
+         (wr_response['TTL'] <= 0) or
+         (wr_response['LeaseState'] != GRANTED)
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true

@@ -5,7 +5,7 @@
         cmd: "input@{{ pmdb_apps[item] }}:0:0:0:0.write:0.{{ random_num_writes_list[item] | default(constant_number_of_writes) }}"
         where: "/pumice_db_test_client/input"
       set_fact:
-        pmdb_multiple_clients_write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', ClientUUID, cmd, where, wantlist=True) }}"
+        pmdb_multiple_clients_write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', ClientUUID, cmd, where) }}"
         app_data_dict: "{{ app_data_dict | default({}) | combine( {  pmdb_apps[item]: (random_num_writes_list[item] | default(constant_number_of_writes)) } ) }}"
       loop: "{{ range(0, pmdb_apps | length) | list }}"
 

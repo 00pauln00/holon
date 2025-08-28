@@ -1,0 +1,113 @@
+- import_playbook: basic_leader_election2.yml
+
+- name: "prevote_corner_case1"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "prevote_corner_case1"
+     parent: "basic_leader_election2"
+     raft_keys:
+              - "/raft_root_entry/0/peer-uuid"
+              - "/raft_root_entry/0/leader-uuid"
+              - "/raft_root_entry/0/term"
+              - "/raft_root_entry/0/commit-idx"
+              - "/raft_root_entry/0/sync-entry-idx"
+              - "/raft_root_entry/0/sync-entry-term"
+              - "/raft_root_entry/0/sync-entry-crc"
+              - "/raft_root_entry/0/sync-entry-data-size"
+              - "/raft_root_entry/0/state"
+              - "/raft_root_entry/0/last-applied"
+              - "/raft_root_entry/0/last-applied-cumulative-crc"
+  
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    #Steps 1 to 4.
+    - name: "{{ recipe_name }}: Disable net-send recv, apply fault injection, check for term value."
+      include_role:
+         name: common
+         tasks_from: prevote_corner_case
+
+    #Enabling Msg(Recv) net_recv_enabled  from peer4 to the cluster.
+    - name: "{{ recipe_name }}: Enable Msg(Recv) net_recv_enabled from peer4 to the cluster."
+      vars:
+        stage: "enable_recv"
+        cmd: "net_recv_enabled@true"
+        where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
+        enable_net_rcv: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ enable_net_rcv }}"
+      no_log: True
+
+    #Enabling Msg(Send) net_send_enabled from peer4 to the cluster.
+    - name: "{{ recipe_name }}: Enable Msg(Send) net_send_enabled from peer4 to the cluster."
+      vars:
+        stage: "enable_send"
+        cmd: "net_send_enabled@true"
+        where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
+        enable_send: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where, wantlist=True) }}"
+      debug:
+        msg: "{{ enable_send }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Get 'ctl_svc_nodes' list for all peers."
+      vars:
+        stage: "after_enable_all"
+        raft_keys:
+             - "/ctl_svc_nodes"
+      set_fact:
+         ctl_svc_nodes_en: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeersBefore, raft_keys, wantlist=True) }}"
+
+    - name: "{{ recipe_name }}: Verify ctl_svc_nodes/net_recv_enabled and ctl_svc_nodes/net_send_enabled on all peers for peer 4."
+      include_role:
+         name: common
+         tasks_from: verify_net_send_recv_enabled
+      vars:
+        ctl_svc_nodes_arr: "{{ ctl_svc_nodes_en[idx][0]['//ctl_svc_nodes'] }}"
+      loop: "{{ range(0, ctl_svc_nodes_en | length) | list }}"
+      loop_control:
+         loop_var: idx
+
+    - name: "{{ recipe_name }}: Get term value of peer 4 after enabling."
+      vars:
+        stage: "get_term_val_after"
+        raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', peer4, '/raft_root_entry/0/term', wantlist=True) }}"
+      debug:
+         msg: "Getting raft_root_entry for all servers."
+      no_log: true
+      with_items:
+         - "{{ raft_root_entry }}"
+      register: peer4_term_after_en
+
+    - name: "{{ recipe_name }}: Check if term is getting incremented after enabling net_recv on peer4."
+      debug:
+        msg: "Check if term is getting incremented"
+      failed_when: peer4_term_after_en['results'][0]['item']['/0/term'] ==  peer4_term_after_fi['results'][0]['item']['/0/term']
+
+    - name: "{{ recipe_name }}: Wait until leader election happens."
+      vars:
+         stage: "wait_leader_election"
+      debug:
+        msg: "Waiting for leader election"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid'] != "null"
+      retries: 4
+      delay: 1
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+      loop_control:
+        pause: 2
+
+    - name: "{{ recipe_name }}: Remove applied fault injection."
+      include_role:
+        name: common
+        tasks_from: remove_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ peer4 }}"
+        fault_injection_name: "raft_pvc_becomes_candidate"
+        
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true

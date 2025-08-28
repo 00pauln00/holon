@@ -89,9 +89,24 @@ class GenericCmds:
         return data
 
     def recipe_json_dump(self, recipe_dict):
+        def convert_keys(obj):            
+            if isinstance(obj, dict):
+                new_dict = {}
+                for k, v in obj.items():
+                    # Convert tuple keys to string
+                    if isinstance(k, tuple):
+                        k = str(k)
+                    new_dict[k] = convert_keys(v)
+                return new_dict
+            elif isinstance(obj, list):
+                return [convert_keys(i) for i in obj]
+            else:
+                return obj
+        
         recipe_json_fpath = "%s/%s.json" % (recipe_dict['raft_config']['base_dir_path'], recipe_dict['raft_config']['raft_uuid'])
         with open(recipe_json_fpath, "w+", encoding="utf-8") as json_file:
-            json.dump(recipe_dict, json_file, indent = 4)
+            safe_dict = convert_keys(recipe_dict)
+            json.dump(safe_dict, json_file, indent = 4)
 
     def make_dir(self, dirpath):
         if not os.path.exists(dirpath):

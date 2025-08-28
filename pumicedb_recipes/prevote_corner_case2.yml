@@ -1,0 +1,319 @@
+- import_playbook: ../raft_recipes/basic_leader_election2.yml
+- name: "prevote_corner_case2"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "prevote_corner_case2"
+     parent: "basic_leader_election2"
+     num_writes: 5
+     raft_keys:
+              - "/raft_root_entry/0/peer-uuid"
+              - "/raft_root_entry/0/leader-uuid"
+              - "/raft_root_entry/0/term"
+              - "/raft_root_entry/0/commit-idx"
+              - "/raft_root_entry/0/sync-entry-idx"
+              - "/raft_root_entry/0/sync-entry-term"
+              - "/raft_root_entry/0/sync-entry-crc"
+              - "/raft_root_entry/0/sync-entry-data-size"
+              - "/raft_root_entry/0/state"
+              - "/raft_root_entry/0/last-applied"
+              - "/raft_root_entry/0/last-applied-cumulative-crc"
+
+  tasks:
+  - block:
+      - name: "Check if parent recipe failed."
+        debug: msg="Check if parent recipe {{ parent }} failed"
+        failed_when: terminate_recipe == true
+
+      # Steps 1 to 4 of common task.
+      - name: "{{ recipe_name }}: Disable net-send recv, apply fault injection, check for term value."
+        include_role:
+          name: common
+          tasks_from: prevote_corner_case
+
+      - name: "{{ recipe_name }}: Get the updated list of running peers"
+        include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+      - name: "{{ recipe_name }}: Get the leader and follower uuids."
+        include_role:
+          name: common
+          tasks_from: get_follower_stats
+
+      # Check raft values on all the already running peers.
+      - name: "{{ recipe_name }}: Get Commit index value from NRunningPeersBefore servers before single write."
+        vars:
+          stage: "verify_commit_index_before_write"
+          peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeersBefore, raft_keys) }}"
+        debug:
+          msg: "{{ peer_values }} "
+        with_items:
+          - "{{ peer_values }}"
+        register: running_peers_info_before_write
+        no_log: True
+
+      # Check raft values on all the peers running.
+      - name: "{{ recipe_name }}: Get Commit index value from all servers before single write."
+        vars:
+          stage: "verify_commit_index_before_write_all_Peers"
+          peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
+        debug:
+          msg: "{{ peer_values }} "
+        with_items:
+          - "{{ peer_values }}"
+        register: running_peers_info_before_write_all_Peers
+        no_log: True
+
+      # Start the client and perform writes
+      - name: "{{ recipe_name }}: Get unused client uuid for starting the client."
+        include_role:
+          name: common
+          tasks_from: get_new_client_uuid
+        register: client_uuid
+
+      - debug:
+          msg: "Client UUID: {{ client_uuid.stdout }}"
+
+      - name: "{{ recipe_name }}: Generate App UUID."
+        shell: "/usr/bin/uuid"
+        register: app_uuid1
+
+      - name: "{{ recipe_name }}: Start the client."
+        include_role:
+          name: common
+          tasks_from: start_client
+        vars:
+          ClientUUID: "{{ client_uuid.stdout }}"
+
+      # Disable send on client from the peer4
+      - name: "{{ recipe_name }}: Disable send on client from the peer4."
+        vars:
+          stage: "disable_send_peers_mode_client"
+          cmd: "net_send_enabled@false"
+          where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
+          disable_mode_send_client: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
+        debug:
+          msg: "{{ disable_mode_send_client }}"
+        no_log: True
+
+      # Disable recv on client from the peer4
+      - name: "{{ recipe_name }}: Disable recv on all peers from the peer4."
+        vars:
+          stage: "disable_recv_peers_mode_client"
+          cmd: "net_recv_enabled@false"
+          where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
+          disable_mode_send_client: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
+        debug:
+          msg: "{{ disable_mode_send_client }}"
+        no_log: True
+
+      # Get client info
+      - name: "{{ recipe_name}}: Get the parameters for client."
+        vars:
+          stage: "stage1"
+          raft_keys:
+            - "/raft_client_root_entry/0/leader-viable"
+            - "/raft_client_root_entry/0/last-request-sent"
+            - "/raft_client_root_entry/0/last-request-ack"
+            - "/raft_client_root_entry/0/raft-uuid"
+            - "/raft_client_root_entry/0/state"
+            - "/raft_client_root_entry/0/leader-uuid"
+          cli_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys) }}"
+        debug:
+          msg: "Get the values for client"
+        with_items:
+          - "{{ cli_vals }}"
+        register: client_values
+        no_log: True
+
+      - name: "{{ recipe_name }}: Verify leader is viable."
+        include_role:
+           name: common
+           tasks_from: verify_leader_viable
+        vars:
+           ClientUUID: "{{ client_uuid.stdout }}"
+
+      # Perform write.
+      - name: "{{ recipe_name}}: Write at seqno 0 and perform the write."
+        vars:
+          stage: "write"
+          cmd: "input@{{ app_uuid1.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
+          where: "/pumice_db_test_client/input"
+        set_fact:
+          write_ops: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
+        no_log: True
+
+      - name: "{{ recipe_name}}: Wait until all write completes from client"
+        vars:
+          stage: "wait_for_client_write_comp"
+          cli_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+        debug:
+          msg: "Waiting for client to finish writing"
+        until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, cli_key)['/0/pmdb-seqno']  == (num_writes - 1)
+        retries: 20
+        delay: 1
+
+      # Check raft values of already runing peers except peer4
+      - name: "{{ recipe_name }}: Get Commit index value from all servers after single write."
+        vars:
+          stage: "verify_commit_index_after_write"
+          peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeersBefore, raft_keys) }}"
+        debug:
+          msg: "Getting raft_root_entry for all servers after single write."
+        with_items:
+          - "{{ peer_values }}"
+        register: running_peers_info_after_write
+        no_log: True
+
+      # Verify commit index of already runing peers.
+      - name: "{{ recipe_name }}: Verify commit index before and after write operation."
+        vars:
+          term_prev: "{{ running_peers_info_before_write['results'][item]['item']['/0/commit-idx'] }}"
+          term_next: "{{ running_peers_info_after_write['results'][item]['item']['/0/commit-idx'] }}"
+        debug:
+          msg: "Verify values for peer."
+        failed_when: >
+            (term_prev == term_next)
+        loop: "{{ range(0, NRunningPeersBefore | length) | list }}"
+
+      # Enabling Msg(Recv) from peer4 to the cluster.
+      - name: "{{ recipe_name }}: Enable Msg(Recv) from peer4 to the cluster."
+        vars:
+          stage: "enable_msg_recv"
+          cmd: "net_recv_enabled@true"
+          where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
+          enable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where) }}"
+        debug:
+          msg: "{{ enable_mode }}"
+        no_log: True
+
+      # Enabling Msg(send) from peer4 to the cluster.
+      - name: "{{ recipe_name }}: Enable Msg(send) from peer4 to the cluster."
+        vars:
+          stage: "enable_msg_send"
+          cmd: "net_send_enabled@true"
+          where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
+          enable_mode_send: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where) }}"
+        debug:
+          msg: "{{ enable_mode_send }}"
+        no_log: True
+
+      # Wait till leader election happens
+      - name: "{{ recipe_name }}: Wait until leader election happens."
+        vars:
+          stage: "wait_leader_election"
+        debug:
+          msg: "Waiting for leader election"
+        until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid'] != "null"
+        retries: 10
+        delay: 1
+        loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+      - set_fact: LeaderUUID_after="{{ LeaderUUID['/0/leader-uuid'] }}"
+
+      # Verify if new leader is elected.
+      - name: "{{ recipe_name }}: Check if new leader is elected."
+        debug:
+          msg: "Check if new leader is elected."
+        failed_when: >
+          ( peer4 == "leader" )
+
+      # Get raft vales of all peers
+      - name: "{{ recipe_name }}: Get raft_root_entry values of all peers."
+        vars:
+          stage: "stage0"
+          raft_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
+        debug:
+          msg: "Getting raft_root_entry for all servers."
+        no_log: true
+        with_items:
+          - "{{ raft_root_entry }}"
+
+      - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs."
+        include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+      - name: "{{ recipe_name }}: Get the updated list of running peers."
+        include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+      # Check raft values on all the peers
+      - name: "{{ recipe_name }}: Get Commit index value from all servers."
+        vars:
+          stage: "verify_raft_values_servers"
+          peer_values: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
+        debug:
+          msg: "{{ peer_values }} "
+        with_items:
+          - "{{ peer_values }}"
+        register: running_peers_info_all_servers
+        no_log: true
+
+      # Verify the term increases after leader election
+      - name: "{{ recipe_name }}: Verify term increase after leader election."
+        vars:
+          term_prev: "{{ running_peers_info_before_write_all_Peers['results'][item]['item']['/0/term'] }}"
+          term_next: "{{ running_peers_info_all_servers['results'][item]['item']['/0/term'] }}"
+        debug:
+          msg: "Verify values for peer."
+        failed_when: >
+            (term_next < term_prev)
+        loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+      - set_fact:
+          peer_info: []
+
+      # Check if all peers have same commit index
+      - name: "{{ recipe_name }}: Verify commit-idx , term remains same  on all peers."
+        vars:
+          stage: "verify_commit_term"
+          raft_keys:
+                  - "/raft_root_entry/0/commit-idx"
+                  - "/raft_root_entry/0/term"
+        set_fact:
+          peer_info: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
+        failed_when: >
+          (peer_info[itr]['/0/commit-idx'] != peer_info[itr+1]['/0/commit-idx']) or
+          (peer_info[itr]['/0/term'] != peer_info[itr+1]['/0/term'])
+        loop: "{{ range(0, NRunningPeers | length - 1)| list }}"
+        loop_control:
+          loop_var: itr
+
+     # Recipe cleanup
+     #Enable send on client from the peer4
+      - name: "{{ recipe_name }}: Enable send on client from the peer4."
+        vars:
+          stage: "enable_send_peers_mode_client"
+          cmd: "net_send_enabled@true"
+          where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
+          disable_mode_send_client: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
+        debug:
+          msg: "{{ disable_mode_send_client }}"
+        no_log: true
+
+      #Enable Disable recv on client from the peer4
+      - name: "{{ recipe_name }}: Enable recv on all peers from the peer4."
+        vars:
+          stage: "Enable_recv_peers_mode_client"
+          cmd: "net_recv_enabled@true"
+          where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
+          disable_mode_send_client: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
+        debug:
+          msg: "{{ disable_mode_send_client }}"
+        no_log: true
+
+      - name: "{{ recipe_name }}: Remove applied fault injection."
+        include_role:
+          name: common
+          tasks_from: remove_fault_injection_and_verify
+        vars:
+          ServerUUID: "{{ peer4 }}"
+          fault_injection_name: "raft_pvc_becomes_candidate"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed."
+        set_fact:
+          terminate_recipe: true

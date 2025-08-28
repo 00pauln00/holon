@@ -5,7 +5,7 @@
         raft_keys:
            - "/fault_injection_points"
       set_fact:
-         fault_injection_points: "{{ lookup('niova_ctlrequest', 'lookup', ServerUUID, raft_keys, wantlist=True) }}"
+         fault_injection_points: "{{ lookup('niova_ctlrequest', 'lookup', ServerUUID, raft_keys) }}"
    
     - name: "{{ recipe_name }}: Verify fault injected on followers properly."
       set_fact:

@@ -1,0 +1,124 @@
+- name: "controlplane_LookoutInfo_operation"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlplane_LookoutInfo_operation"
+    parent: None
+
+  tasks:
+    - block:
+        # check for the app_type
+        - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+          vars:
+            app_type: "{{ app_type }}"
+          debug:
+            msg: "app_type is: {{ app_type }}"
+          failed_when: (app_type != "controlplane")
+
+        - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+          include_role:
+            name: common
+            tasks_from: pmdb_cluster_init.yml
+          vars:
+            number_of_clients: 1
+            number_of_PMDBServers: 4
+
+        - name: "{{ recipe_name }}: Start niova-lookout process."
+          vars:
+            input_param: { "uport": "{{ (srv_port | int) + 10 + item }}" }
+          set_fact:
+            get_lookout: "{{ get_lookout | default([]) + [lookup('controlplane', 'niova-lookout', input_param, wantlist=true)] }}"
+          loop: "{{ range(0, nlookouts | int) }}"
+
+        - debug:
+            msg: "{{ get_lookout[0] }}"
+
+        - name: "{{ recipe_name }}: Wait until lookout's status gets changed."
+          vars:
+            getLookoutUUID: "{{ get_lookout[0] }}"
+            input_param:
+              { "Operation": "membership", "OutfileName": "lookoutMembership" }
+          debug:
+            msg: "Verifying lookout's Status"
+          until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute='output_data') | map(attribute=getLookoutUUID) | map(attribute='Status') | list | first == "alive"
+          retries: 60
+          delay: 1
+
+        - name: "{{ recipe_name }}: Start niova-block-ctl process."
+          vars:
+            input_param:
+              {
+                "nisd_dev_size": "21474836480",
+                "lookout_uuid": "{{ get_lookout[0] }}",
+                "alt_name": "nisd{{item}}",
+              }
+          set_fact:
+            nisdUUID: "{{ nisdUUID | default([]) + [lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True)] }}"
+          loop: "{{ range(0, nnisds | int) }}"
+
+        - name: "{{ recipe_name }}: Start nisd process."
+          vars:
+            input_param:
+              {
+                "nisd_uuid": "{{ nisdUUID[0] }}",
+                "uport": "1053",
+                "lookout_uuid": "{{ get_lookout[0] }}",
+              }
+          debug:
+            msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
+
+        - pause:
+            seconds: 10
+
+        - name: "{{ recipe_name }}: Wait until Nisd's status gets updated."
+          vars:
+            getNisd: "{{ nisdUUID[0] }}"
+            input_param:
+              {
+                "Operation": "NISDGossip",
+                "OutfileName": "wait_for_nisdGossip",
+              }
+          debug:
+            msg: "Verifying NISD's Status"
+          until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute='output_data') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
+          retries: 60
+          delay: 1
+
+        - name: "{{ recipe_name }}: Do 'LookoutInfo' operation through ncpc."
+          vars:
+            input_param:
+              {
+                "Operation": "LookoutInfo",
+                "lookout_uuid": "{{ get_lookout[0] }}",
+                "nisd_uuid": "{{ nisdUUID[0] }}",
+                "cmd": "GET /.*/.*/.*/.*",
+                "OutfileName": "lookoutInfo",
+              }
+            lookout_info: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+          debug:
+            msg: "Loookout info from ncpc: {{ lookout_info }}"
+          with_items:
+            - "{{ lookout_info }}"
+          register: getLookoutInfo
+          no_log: true
+
+        - name: "{{ recipe_name }}: Get nisd_root_entry info."
+          vars:
+            gossipData: "{{ getLookoutInfo['results'][0]['item']['LookoutInfo']['output_data']['nisd_root_entry'] }}"
+            stage: "get_nisd_root_entry"
+            nisd_keys:
+              - "/nisd_root_entry/0/uuid"
+              - "/nisd_root_entry/0/status"
+            lookout_uuid: "{{ get_lookout[0] }}"
+            nisd_root_entry: "{{ lookup('niova_ctlrequest', 'lookup', nisdUUID[0], nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+          debug:
+            msg: "Verify nisd_root_entry info"
+          no_log: True
+          failed_when: >
+            (nisd_root_entry['/0/uuid'] != gossipData[0]['uuid']) or
+            (nisd_root_entry['/0/status'] != gossipData[0]['status'])
+
+      rescue:
+        - name: "Recipe: {{ recipe_name }} failed"
+          set_fact:
+            terminate_recipe: true

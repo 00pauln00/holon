@@ -1,0 +1,289 @@
+- import_playbook: ../raft_recipes/healthy_raftserver_cluster_type1.yml
+- name: "leader_has_wide_skew_bw_last_applied_and_commit_index"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "leader_skew_bw_last_app_and_commit_idx"
+     parent: "healthy_raftserver_cluster_type1"
+     requirement: "pumicedb"
+     num_writes: 1
+     server_keys:
+              - "/raft_root_entry/0/leader-uuid"
+              - "/raft_root_entry/0/commit-idx"
+              - "/raft_root_entry/0/last-applied"
+     client_read_keys:
+            - "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+            - "/pumice_db_test_client/pmdb-test-apps/0/status"
+            - "/pumice_db_test_client/pmdb-test-apps/0/app-validated-seqno"
+  tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    - name: "{{ recipe_name }}: Verifying recipe compatibility requirements."
+      include_role:
+         name: common
+         tasks_from: recipe_compatibility_requirement
+
+    - name: "{{ recipe_name }}: Get the list of all running peer UUIDs"
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Get leader-uuid and follower-uuids."
+      include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+    - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+      include_role:
+         name: common
+         tasks_from: get_new_client_uuid
+      register: client_uuid
+
+    - name: "{{ recipe_name }}: Create app uuid."
+      shell: "/usr/bin/uuid"
+      register: leader_skew_app_uuid
+
+    - name: "{{ recipe_name }}: Start the client."
+      include_role:
+         name: common
+         tasks_from: start_client
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
+    - name: "{{ recipe_name }}: Perform the write {{ num_writes }} times."
+      vars:
+        stage: "num_writes"
+        cmd: "input@{{ leader_skew_app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
+        where: "/pumice_db_test_client/input"
+        write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
+      debug:
+        msg: "{{ write_cmd }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Wait until all write completes from client."
+      vars:
+        stage: "wait_for_client_write_completes"
+        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+      debug:
+        msg: "Waiting for client to finish writing"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key)['/0/pmdb-seqno'] | int == (num_writes | int - 1)
+      retries: 10
+      delay: 1
+
+    - name: "{{ recipe_name}}: Get the client parameters after successful write."
+      vars:
+        stage: "lookup_write"
+        raft_keys:
+          - "/pumice_db_test_client/pmdb-test-apps/0/status"
+          - "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+          - "/pumice_db_test_client/pmdb-test-apps/0/app-seqno"
+      set_fact:
+        first_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys) }}"
+      failed_when: >
+            (first_write_vals['/0/status'] != "Success") or
+            (first_write_vals['/0/pmdb-seqno'] != (num_writes - 1)) or
+            (first_write_vals['/0/app-seqno'] != num_writes)
+
+    #Get all values from all peers before partitioning.
+    - name: "{{ recipe_name }}: Get the server information for all running servers."
+      include_role:
+         name: common
+         tasks_from: get_all_values_from_all_peers
+
+    #Apply fault injection on all running peers.
+    - name: "{{ recipe_name }}: Ignore writes on all running peers using fault injection."
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ NRunningPeers[item] }}"
+        fault_injection_name: "raft_server_bypass_sm_apply"
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Kill the 1st Leader."
+      debug:
+       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'])}}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Wait until 2nd leader election happens."
+      vars:
+        stage: "wait_leader_election"
+        orig_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        raft_key: "/raft_root_entry/0/leader-uuid"
+      debug:
+        msg: "Wait to until new leader election happens."
+      until: lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[item], raft_key)['/0/leader-uuid'] != (orig_leader)
+      retries: 60
+      delay: 1
+      loop: "{{ range(0, FollowerUUIDs | length) | list }}"
+
+    - name: "{{ recipe_name }} : Modify the request timeout for client."
+      vars:
+         stage: "set_timeout"
+         cmd: "default-request-timeout-sec@1"
+         where: "/raft_client_root_entry/default-request-timeout-sec"
+         set_time: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
+      debug:
+        msg: "{{ set_time }}"
+      no_log: True
+
+    - pause:
+        seconds: 2
+
+    - name: "{{ recipe_name }}: After setting timeout perform the write {{ num_writes }} times."
+      vars:
+        stage: "aftr_timeout_num_writes"
+        cmd: "input@{{ leader_skew_app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
+        where: "/pumice_db_test_client/input"
+        write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
+      debug:
+        msg: "{{ write_cmd }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Wait until all write completes from client."
+      vars:
+        stage: "aftr_timeout_wait_client_write_completes"
+        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+      debug:
+        msg: "Waiting for client to finish writing"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key)['/0/pmdb-seqno'] == (num_writes | int - 1)
+      retries: 10
+      delay: 1
+
+    - name: "{{ recipe_name }}: Wait until client reports status as connection timed out."
+      vars:
+        stage: "wait_cli_timed_out"
+        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/status"
+      debug:
+        msg: "Waiting for client to finish writing"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key)['/0/status'] == "Connection timed out"
+      retries: 10
+      delay: 1
+
+    - name: "{{ recipe_name}}: Get the server information from all followers."
+      vars:
+        stage: "followers_values_aftr_first_election"
+      set_fact:
+        verify_aftr_first_elect: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, server_keys) }}"
+      failed_when: >
+        (verify_aftr_first_elect[item]['/0/commit-idx'] <= get_values_from_all[0][item]['/0/commit-idx']) or
+        (verify_aftr_first_elect[item]['/0/last-applied'] != get_values_from_all[0][item]['/0/last-applied'])
+      loop: "{{ range(0, FollowerUUIDs | length)| list }}"
+
+    #Remove fault injection on all running peers.
+    - name: "{{ recipe_name }}: Remove fault injection."
+      include_role:
+        name: common
+        tasks_from: remove_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ FollowerUUIDs[item] }}"
+        fault_injection_name: "raft_server_bypass_sm_apply"
+      loop: "{{ range(0, FollowerUUIDs| length) | list }}"
+
+    - name: "{{ recipe_name }}: Get the list of all running peer UUIDs"
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Get leader-uuid and follower-uuids."
+      include_role:
+         name: common
+         tasks_from: get_follower_stats
+
+    - name: "{{ recipe_name }}: Kill the 2nd Leader."
+      debug:
+       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'])}}"
+      no_log: True
+
+    #This is temporary. This is workaround though.
+    - name: "{{ recipe_name }}: Wait until 3rd leader election happens"
+      vars:
+         stage: "wait_leader_election"
+         previous_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+      debug:
+        msg: "Waiting for second leader election"
+      until: lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[item], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid'] != (previous_leader)
+      retries: 60
+      delay: 1
+      loop: "{{ range(0, FollowerUUIDs | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get the list of all running peer UUIDs"
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name}}: Verify that last-applied increases its value after removal of fault injection."
+      vars:
+        stage: "last_verification"
+      set_fact:
+       last_verification_aftr_rm_fault_inject: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, server_keys) }}"
+      failed_when: >
+        (last_verification_aftr_rm_fault_inject[0]['/0/commit-idx'] <= verify_aftr_first_elect[0]['/0/commit-idx']) or
+        (last_verification_aftr_rm_fault_inject[0]['/0/last-applied'] <= verify_aftr_first_elect[0]['/0/last-applied']) or
+        (last_verification_aftr_rm_fault_inject[0]['/0/last-applied'] != last_verification_aftr_rm_fault_inject[0]['/0/commit-idx'])
+      loop: "{{ range(0, NRunningPeers | length)| list }}"
+
+    - name: "{{ recipe_name }}: Set the 'default-request-timeout-sec' to its default value (i.e.60)"
+      vars:
+         stage: "recipe_cleanup_stage"
+         cmd: "default-request-timeout-sec@60"
+         where: "/raft_client_root_entry/default-request-timeout-sec"
+         default_timeout: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
+      debug:
+        msg: "{{ default_timeout }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
+    - name: "{{ recipe_name }}: After setting timeout perform the write {{ num_writes }} times."
+      vars:
+        stage: "aftr_rm_fault_inject_num_writes"
+        cmd: "input@{{ leader_skew_app_uuid.stdout }}:0:0:0:0.write:0.{{ num_writes }}"
+        where: "/pumice_db_test_client/input"
+        write_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
+      debug:
+        msg: "{{ write_cmd }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Wait until all write completes from client."
+      vars:
+        stage: "aftr_rm_fault_inject_client_write_completes"
+      debug:
+        msg: "Waiting for client to finish writing"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno')['/0/pmdb-seqno'] == (num_writes - 1)
+      retries: 10
+      delay: 1
+
+    - name: "{{ recipe_name}}: Get the client parameters after successful write."
+      vars:
+        stage: "success_write"
+        raft_keys:
+          - "/pumice_db_test_client/pmdb-test-apps/0/status"
+          - "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+          - "/pumice_db_test_client/pmdb-test-apps/0/app-seqno"
+      set_fact:
+        last_write_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys) }}"
+      failed_when: >
+         (last_write_vals['/0/status'] != "Success") or
+         (last_write_vals['/0/pmdb-seqno'] != (num_writes - 1)) or
+         (last_write_vals['/0/app-seqno'] != num_writes)
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true

@@ -1,24 +1,59 @@
 ---
+- name: "{{ recipe_name }}: After pausing follower(s), get the follower-stats from leader"
+  vars:
+    stage: "after_pause_follower"
+    raft_key:
+      - "/raft_root_entry/0/follower-stats"
+    iter_info:
+      iter: 5
+      sleep_after_cmd: 0.5
+  set_fact:
+    follower_stats_history: >-
+      {{
+        lookup(
+          'niova_ctlrequest',
+          'lookup',
+          LeaderUUID['/0/leader-uuid'],
+          raft_key,
+          iter_info,
+          wantlist=True
+        )
+      }}
+  no_log: true
 
-  - name: "{{ recipe_name }}: After pausing one follower, get the follower-stats from leader"
-    vars:
-      stage: "after_pause_follower"
-      raft_key:
-         - "/raft_root_entry/0/follower-stats"
-      iter_info:
-         iter: 5
-         sleep_after_cmd: 0.5
-    set_fact:
-       get_follower_stats: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key, iter_info, wantlist=True) }}"
+- name: "Initialize ack time map"
+  set_fact:
+    ack_map: {}
 
-  - name: "{{ recipe_name }}: 'ms-since-last-ack' should increment in each iteration"
-    vars:
-      raft_quorum: "{{ get_largest_value['results'][0]['item'] }}"
-      check_time1: "{{ get_follower_stats[item]['/0/follower-stats'][inner_itr]['ms-since-last-ack'] }}"
-      check_time2: "{{ get_follower_stats[item + 1]['/0/follower-stats'][inner_itr]['ms-since-last-ack'] }}"
-    debug:
-      msg: "Compare ms-since-last-ack: {{ check_time1 | int }} with {{ check_time2 | int }}"
-    failed_when: (check_time1 | int) >= (check_time2 | int)
-    loop: "{{ range(0, raft_quorum | int) | list }}"
-    loop_control:
-       loop_var: inner_itr
+- name: "Build ack times per peer UUID"
+  set_fact:
+    ack_map: >-
+      {{
+        ack_map | combine({
+          item_uuid: (
+            ack_map[item_uuid] | default([]) +
+            [
+              (item_data['/0/follower-stats'] |
+               selectattr('peer-uuid', 'equalto', item_uuid) |
+               map(attribute='ms-since-last-ack') |
+               list | first)
+            ]
+          )
+        })
+      }}
+  with_nested:
+    - "{{ peer_uuids }}"
+    - "{{ follower_stats_history }}"
+  when: item_data['/0/follower-stats'] | selectattr('peer-uuid', 'equalto', item_uuid) | list | length > 0
+  loop_control:
+    label: "{{ item_uuid }}"
+  vars:
+    item_uuid: "{{ item[0] }}"
+    item_data: "{{ item[1] }}"
+
+- name: "Check monotonicity for each peer"
+  fail:
+    msg: "Peer {{ item.key }} ack times are not monotonically increasing: {{ item.value }}"
+  when: item.value != (item.value | sort)
+  loop: "{{ ack_map | dict2items }}"
+

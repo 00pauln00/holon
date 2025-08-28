@@ -1,0 +1,195 @@
+- name: "lease_validate_when_leader_sends_the_stale_lease_processing_request_and_then_leader_changes"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "lease_validate_when_leader_sends_the_stale_lease_processing_request_and_then_leader_changes"
+    parent: none
+    no_of_leases: 3
+  vars_files:
+    - ../leaseStateValue.yml
+
+  tasks:
+  - block:
+
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    # check for the app_type
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+      vars:
+         app_type: "{{ app_type }}"
+      debug:
+         msg: "app_type is: {{ app_type }}"
+      failed_when:
+         (app_type != "lease")
+
+    - name: "{{ recipe_name }}: Get the list of non running peers"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "Start 5 peers in the cluster"
+      include_role:
+        name: common
+        tasks_from: start_server
+      vars:
+        ServerUUID: "{{ NonRunningServers[item] }}"
+      loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+    - name: "Get multiple client uuids."
+      include_role:
+        name: common
+        tasks_from: get_multiple_client_uuids
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "Get multiple resource uuids."
+      include_role:
+        name: common
+        tasks_from: get_multiple_resource_uuids
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Perform 'GET' operation for {{ no_of_leases }} client-uuids and resource-uuids."
+      vars:
+         input_param: {
+                'client': '{{ ClientUUIDS[item] }}',
+                'resource': '{{ resourceUUIDS[item] }}',
+                'numOfLeases': '1',
+                'getLeaseOutfile': '',
+                'outFileName': 'get_lease_{{ item }}'
+                 }
+      set_fact:
+        getLeaseOps: "{{ lookup('lease_feature', 'GET', input_param) }}"
+      failed_when: >
+        (getLeaseOps['outfile_status'] != 0) or
+        (getLeaseOps['output_data'][0]['LeaseRes']['Status'] != 0) or
+        (getLeaseOps['output_data'][0]['LeaseRes']['Client'] != ClientUUIDS[item]) or
+        (getLeaseOps['output_data'][0]['LeaseRes']['Resource'] != resourceUUIDS[item]) or
+        (getLeaseOps['output_data'][0]['LeaseRes']['LeaseState'] != GRANTED)
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Get cluster information"
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
+
+    - set_fact:
+        oldLeader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+
+    - name: "{{ recipe_name }}: Apply fault injection on leader and verify."
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ oldLeader }}"
+        fault_injection_name: "raft_leader_ignore_direct_req"
+
+    - name: "{{ recipe_name }}: Wait untill leaseState of all leases is stale in progress."
+      include_role:
+        name: common
+        tasks_from: wait_until_leaseState_change
+      vars:
+         resourceuuid: "{{ resourceUUIDS[item] }}"
+         leaseState: "{{ STALE_INPROGRESS }}"
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    - name: "{{ recipe_name }}: Get the list of peer UUIDs."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - set_fact:
+        newList: "{{ NRunningPeers  | difference(oldLeader) }}"
+
+     #Pause old leader
+    - name: "{{ recipe_name }}: Pause old leader"
+      debug:
+       msg: "{{lookup('niova_raftprocess', 'pause',  oldLeader, wantlist=True)}}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Wait until leader election happens."
+      vars:
+         stage: "wait_leader_election"
+      debug:
+        msg:
+          - "Waiting for leader election"
+      until: lookup('niova_ctlrequest', 'lookup', newList[0], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first != oldLeader
+      retries: 30
+      delay: 1
+      loop: "{{ range(0, newList | length) | list }}"
+
+    - name: "{{ recipe_name }}: New Leader UUID"
+      vars:
+        stage: "getNewLeader"
+      set_fact:
+        newLeaderUUID: "{{ lookup('niova_ctlrequest', 'lookup', newList[0], '/raft_root_entry/0/leader-uuid') }}"
+
+    - name: "{{ recipe_name }}: Wait untill leaseState of all leases is granted."
+      include_role:
+        name: common
+        tasks_from: wait_until_leaseState_change
+      vars:
+         resourceuuid: "{{ resourceUUIDS[item] }}"
+         leaseState: "{{ GRANTED }}"
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    #Resume old leader
+    - name: "{{ recipe_name }}: Unpause old leader"
+      debug:
+       msg: "{{lookup('niova_raftprocess', 'resume',  oldLeader, wantlist=True)}}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Disable message receive on all peers for leader overthrow"
+      vars:
+         stage: "stage1_rcv_false"
+         cmd: "net_recv_enabled@false"
+         where: "/ctl_svc_nodes/net_recv_enabled@true"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
+      no_log: true
+
+    - debug:
+        msg: "Leader to be: {{ oldLeader }}"
+
+    - name: "{{ recipe_name }}: Enable receive on all peers from the leader-to-be."
+      vars:
+         stage: "stage2_set_leader"
+         cmd: "net_recv_enabled@true"
+         where: "/ctl_svc_nodes/uuid@{{ oldLeader }}"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
+      vars:
+         stage: "stage3_rcv_true"
+         cmd: "net_recv_enabled@true"
+         where: "/ctl_svc_nodes/net_recv_enabled@false"
+      debug:
+       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', oldLeader, cmd, where) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Verify previous leader is elected successfully again."
+      vars:
+         stage: "verfiy_old_leader"
+      debug:
+        msg:
+         - "Waiting for old leader to become leader again"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], '/raft_root_entry/0/leader-uuid') | dict2items | map(attribute='value') | list | first == oldLeader
+      retries: 20
+      delay: 2
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Wait untill leaseState of all leases is granted."
+      include_role:
+        name: common
+        tasks_from: wait_until_leaseState_change
+      vars:
+         resourceuuid: "{{ resourceUUIDS[item] }}"
+         leaseState: "{{ GRANTED }}"
+      loop: "{{ range(0, no_of_leases) | list }}"
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true

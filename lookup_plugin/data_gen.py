@@ -20,7 +20,7 @@ class data_generator:
             dgen_args["seqStart"] = str(json_data['SeqEnd'] + 1)
             dgen_args["vdev"] = str(json_data['Vdev'])
             dbicount = str(json_data['TMinDbiFileForForceGC'])
-            is_prev_snapshot = str(json_data['CurIterSnapShot'])
+            is_prev_snapshot = bool(json_data['CurIterSnapShot'])
         else:
             dgen_args["seqStart"] = "0"
             dbicount = "0"
@@ -66,7 +66,7 @@ class data_generator:
                 dgen_args["vdev"] = str(json_data['Vdev'])
                 dgen_args["seqStart"] = str(json_data['SeqEnd'] + 1)
                 dbicount = str(json_data['TMinDbiFileForForceGC'])
-                is_prev_snapshot = str(json_data['CurIterSnapShot'])
+                is_prev_snapshot = bool(json_data['CurIterSnapShot'])
 
         return dgen_args, dbicount, is_prev_snapshot
 
@@ -166,7 +166,7 @@ class data_validator:
         self.s3_config = f'{self.bin_dir}/s3.config.example'
         self.data_validate_log = f"{self.base_path}/dataValidateResult"
 
-    def validate_data(self, chunk):
+    def validate_data(self, chunk, has_snapshot):
         """
         Validates a dbi/dbo data using data validator utility.
 
@@ -179,12 +179,17 @@ class data_validator:
         bin_path = f'{self.bin_dir}/dataValidator'
         dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
         dv_path = f"{self.base_path}/dv-downloaded-obj"
-        
         if dbi_path != None:
             json_data = load_parameters_from_json(f"{dbi_path}/dataVal/{chunk}/dummy_generator.json")
             vdev = str(json_data['Vdev'])
+            
+        commands = [bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', self.s3_config, '-b', S3_BUCKET, '-l', self.data_validate_log, '-ll', '4']
+        
+        if has_snapshot:
+            commands.append("-s=true")
 
-        process = subprocess.Popen([bin_path, '-d', dv_path, '-c', chunk, '-v', vdev, '-s3config', self.s3_config, '-b', S3_BUCKET, '-l', self.data_validate_log, '-ll', '4'])
+        print("cmd: ", commands)
+        process = subprocess.Popen(commands)
 
         # Wait for the process to finish and get the exit code
         exit_code = process.wait()
@@ -235,8 +240,9 @@ class LookupModule(LookupBase):
         
         elif operation == "validator":
             chunk = terms[1]
+            has_snapshot = terms[2] if len(terms) > 2 else False
             dv = data_validator(cluster_params)
-            dv.validate_data(chunk)
+            dv.validate_data(chunk, has_snapshot)
             return []
         
         elif operation == "s3_disk_validator":

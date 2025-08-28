@@ -1,0 +1,77 @@
+- name: "basic_leader_election2"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "basic_leader_election2"
+     parent: None
+
+  tasks:
+  - block:
+    - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "Start 3 peers in the cluster"
+      include_role:
+        name: common
+        tasks_from: start_server
+      vars:
+        ServerUUID: "{{ NonRunningServers[item] }}"
+      loop: "{{ range(0, NonRunningServers | length - 2) | list }}"
+
+    - name: "{{ recipe_name }}: Get the running peers list."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Wait until leader election happens."
+      vars:
+         stage: "wait_leader_election"
+      debug:
+        msg: "Waiting for leader election"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid') != "null"
+      retries: 10
+      delay: 1
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Gather the stats for all running peers"
+      vars:
+         stage: "stage0"
+         raft_keys:
+              - "/raft_root_entry/0/commit-idx"
+              - "/raft_root_entry/0/last-applied"
+              - "/raft_root_entry/0/last-applied-cumulative-crc"
+              - "/raft_root_entry/0/sync-entry-crc"
+              - "/raft_root_entry/0/term"
+              - "/raft_root_entry/0/sync-entry-term"
+         getAllValues: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
+      debug:
+        msg: "Getting stats for all running peers {{ getAllValues }}"
+      no_log: true
+      with_items:
+        - "{{ getAllValues }}"
+      register: allPeersInfo
+
+    - name: "{{ recipe_name }}: Compare the values for successful leader election."
+      vars:
+        verifyPeerVal: "{{ allPeersInfo['results'][item]['item'] }}"
+      debug:
+        msg:
+        - "Validate the raft values for peer: {{ NRunningPeers[item] }}"
+      failed_when: >
+        (verifyPeerVal["/0/commit-idx"] < 0) or
+        (verifyPeerVal["/0/last-applied"] < 0) or
+        (verifyPeerVal["/0/last-applied-cumulative-crc"] != verifyPeerVal["/0/sync-entry-crc"]) or
+        (verifyPeerVal["/0/term"] != verifyPeerVal["/0/sync-entry-term"])
+      loop: "{{ range(0, [NRunningPeers] | length) | list }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true
+
+
+
+
+

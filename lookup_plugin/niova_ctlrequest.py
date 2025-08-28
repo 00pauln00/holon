@@ -21,7 +21,7 @@ def niova_ctlreq_cmd_send(recipe_conf, ctlreq_dict, peer_uuid, get_process_type,
     cmd = ctlreq_dict['cmd']
     where = ctlreq_dict['where']
     recipe_name = ctlreq_dict['recipe_name']
-    stage = ctlreq_dict['stage']
+    stage = ctlreq_dict.get('stage', '')
     peerno = "peer%s" % peer_uuid
     input_base = inotify_input_base.REGULAR
 
@@ -184,7 +184,8 @@ def niova_ctlrequest_get_cmdline_input_dict(global_args, local_args):
     ctlreq_cmd_dict = {}
 	# Get the values from ansibles global cache
     ctlreq_cmd_dict['recipe_name'] = global_args['variables']['recipe_name']
-    ctlreq_cmd_dict['stage'] = global_args['variables']['stage']
+    if 'stage' in global_args.get('variables', {}):
+        ctlreq_cmd_dict['stage'] = global_args['variables']['stage']
 
     # If wait_for_ofile is passed explicitly.
     if 'wait_for_ofile' in global_args['variables']:
@@ -247,9 +248,17 @@ class LookupModule(LookupBase):
         Get the recipe json contents.
         '''
         recipe_conf = niova_get_recipe_json_data(cluster_params)
-
-        logging.warning("Ctlrequest for recipe: %s, stage: %s, operation: %s, peer_uuid_list: %s" % (ctlreq_cmd_dict['recipe_name'], ctlreq_cmd_dict['stage'], ctlreq_cmd_dict['operation'], ctlreq_cmd_dict['peer_uuid_list']))
-
+        
+        logging.warning(
+             "Ctlrequest for recipe: %s, stage: %s, operation: %s, peer_uuid_list: %s" %
+                (
+                    ctlreq_cmd_dict.get('recipe_name', ''),
+                    ctlreq_cmd_dict.get('stage', ''),
+                    ctlreq_cmd_dict.get('operation', ''),
+                    ctlreq_cmd_dict.get('peer_uuid_list', '')
+                )
+            )
+   
         result_array = []
         logging.warning("operation: %s" % ctlreq_cmd_dict['operation'])
         for peer_uuid in ctlreq_cmd_dict['peer_uuid_list']:
@@ -315,4 +324,4 @@ class LookupModule(LookupBase):
             result_array = result_array[0]
 
         logging.warning("Values of ctlreq cmd: %s" % result_array)
-        return result_array
+        return [result_array]

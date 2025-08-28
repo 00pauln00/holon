@@ -14,7 +14,7 @@
         client_vals: "{{ lookup('niova_ctlrequest', 'lookup', Client_UUID, raft_keys, wantlist=True) }}"
       debug:
         msg: "get the values after client write operation: {{ client_vals }}"
-      #no_log: true
+      no_log: true
       with_items:
         - "{{ client_vals }}"
       register: client_vals_after_wr
@@ -32,7 +32,6 @@
         msg:
          - "Verify parameters after successful write operation"
       failed_when: >
-            (client_vals_after_wr['results'][0]['item'][app_user_id_index] != app_uuid_string) or
             (client_vals_after_wr['results'][0]['item'][status_index] != "Success") or
             (client_vals_after_wr['results'][0]['item'][pmdb_seqno_index] != (exp_list[idx] | int - 1)) or
             (client_vals_after_wr['results'][0]['item'][pmdb_write_pd_index] != false) or

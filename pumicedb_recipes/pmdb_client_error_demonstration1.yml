@@ -1,0 +1,243 @@
+- import_playbook: basic_raft_operation_with_client_activity.yml
+  when: ClusterParams['ctype'] == "pumicedb"
+
+- name: "PMDB Client Error Demonstration 1"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "pmdb_client_error_demonstration1"
+     parent: "basic_raft_operation_with_client_activity"
+     requirement: "pumicedb"
+     client_obj: {}
+     raft_keys:
+            - "/pumice_db_test_client/pmdb-test-apps/0/app-user-id"
+            - "/pumice_db_test_client/pmdb-test-apps/0/status"
+            - "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+            - "/pumice_db_test_client/pmdb-test-apps/0/pmdb-write-pending"
+            - "/pumice_db_test_client/pmdb-test-apps/0/app-sync"
+            - "/pumice_db_test_client/pmdb-test-apps/0/app-seqno"
+            - "/pumice_db_test_client/pmdb-test-apps/0/last-request-tag"
+            - "/raft_client_root_entry/0/recent-ops-wr"
+  tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    - name: "{{ recipe_name }}: Verify the holon started with pumicedb cluster"
+      include_role:
+         name: common
+         tasks_from: recipe_compatibility_requirement
+
+    - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+      include_role:
+        name: common
+        tasks_from: get_new_client_uuid
+      register: client_uuid
+
+    - name: "{{ recipe_name }}: Create app uuid"
+      shell: "/usr/bin/uuid"
+      register: app_uuid
+
+    - name: "{{ recipe_name }}: Start the client: {{ client_uuid.stdout }}"
+      include_role:
+         name: common
+         tasks_from: start_client
+      vars:
+         ClientUUID: "{{ client_uuid.stdout }}"
+
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
+    - name: "{{ recipe_name }}: Lookup on non-existing object."
+      vars:
+         stage: "lookup_stage"
+         cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.lookup"
+         where: "/pumice_db_test_client/input"
+         non_existing_obj_lookup: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
+      debug:
+        msg: "{{ non_existing_obj_lookup }}"
+      no_log: True
+
+    - name: "Wait for lookup operation to complete"
+      vars:
+         stage: "client_lookup_inval_obj"
+      debug:
+        msg: "Wait till the lookup operation completes"
+      until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, "/raft_client_root_entry/0/recent-ops-rd/0/status")['/0/status'] != "null")
+      retries: 3
+      delay: 1
+
+    - name: "{{ recipe_name }}: Get the values from client for comparison."
+      vars:
+        stage: "stage0"
+        lookup_stage_keys:
+            - "/raft_client_root_entry/0/recent-ops-rd"
+            - "/pumice_db_test_client/pmdb-test-apps/0/app-user-id"
+            - "/pumice_db_test_client/pmdb-test-apps/0/status"
+            - "/pumice_db_test_client/pmdb-test-apps/0/last-request-tag"
+        demo1_lookup_vals: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, lookup_stage_keys) }}"
+      debug:
+        msg: "Lookup should fail on non-existing object."
+      with_items:
+        - "{{ demo1_lookup_vals }}"
+      register: non_existing_obj
+
+    - name: "{{ recipe_name }}: Verify the parameters after lookup on non-existing object"
+      vars:
+        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
+        invalid_wr_vals: "{{ non_existing_obj['results'][0]['item']}}"
+      debug:
+        msg: "Compare the parameters after lookup."
+      no_log: true
+      failed_when: >
+        (invalid_wr_vals['/0/recent-ops-rd'][0]['sub-app-user-id'] != rncui) or
+        (invalid_wr_vals['/0/recent-ops-rd'][0]['status'] != "Success") or
+        (invalid_wr_vals['/0/app-user-id'] != rncui) or
+        (invalid_wr_vals['/0/status'] != "No such file or directory") or
+        (invalid_wr_vals['/0/last-request-tag'] != invalid_wr_vals['/0/recent-ops-rd'][0]['rpc-user-tag'])
+
+    - name: "{{ recipe_name }}: Apply invalid write sequence nunber."
+      vars:
+         stage: "invalid_seq_stage"
+         cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:1"
+         where: "/pumice_db_test_client/input"
+         invalid_write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
+      debug:
+        msg: "{{ invalid_write_seq }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Verify that write failed for invalid sequence number"
+      vars:
+        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
+        stage: "stage1"
+        invalid_write: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys) }}"
+      debug:
+        msg: "Write will fail with invalid seqno."
+      no_log: true
+      with_items:
+        - "{{ invalid_write }}"
+      register: invalid_seq
+
+    - name: "{{ recipe_name }}: Verify write should fail with invalid seqno 1."
+      vars:
+        stage1_values: "{{ invalid_seq['results'][0]['item'] }}"
+        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
+      debug:
+        msg: "Validate write failed with invalid seqno: 2 {{ stage1_values }}"
+      failed_when: >
+        (stage1_values['/0/app-user-id'] != rncui) or
+        (stage1_values['/0/status'] != "Invalid exchange") or
+        (stage1_values['/0/pmdb-seqno'] != -1) or
+        (stage1_values['/0/pmdb-write-pending'] != False) or
+        (stage1_values['/0/app-sync'] != False) or
+        (stage1_values['/0/app-seqno'] != 2) or
+        (stage1_values['/0/recent-ops-wr'][0]['sub-app-user-id'] != rncui) or
+        (stage1_values['/0/recent-ops-wr'][0]['status'] != "Success")
+
+    - name: "{{ recipe_name }}: Now Apply valid write seqno i.e 0"
+      vars:
+         stage: "valid_seq_stage"
+         cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:0"
+         where: "/pumice_db_test_client/input"
+         valid_write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
+      debug:
+        msg: "{{ valid_write_seq }}"
+      no_log: True
+
+    - name: "{{ recipe_name }}: Wait until valid pmdb-seqno gets updated."
+      vars:
+        stage: "wait_for_pmdb_seqno"
+        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno"
+      debug:
+        msg: "Waiting for the valid pmdb-seqno"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key)['/0/pmdb-seqno'] == 0
+      loop: "{{ range(0, 30) | list }}"
+      loop_control:
+         pause: 1
+
+    - name: "{{ recipe_name }}: Verify the parameters for successful write operation."
+      vars:
+        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
+        stage: "stage2"
+        demo1_wr: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys) }}"
+      debug:
+        msg: "Verify parameters after successful write operation {{ demo1_wr }}"
+      with_items:
+         - "{{ demo1_wr }}"
+      register: valid_write
+
+    - name: "{{ recipe_name }}: Verify write should not fail with valid seqno 0."
+      vars:
+        demo1_valid_wr: "{{ valid_write['results'][0]['item'] }}"
+        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
+      debug:
+        msg: "Validate write failed with invalid seqno: 2 {{ demo1_valid_wr }}"
+      failed_when: >
+        (demo1_valid_wr['/0/app-user-id'] != rncui) or
+        (demo1_valid_wr['/0/status'] != "Success") or
+        (demo1_valid_wr['/0/pmdb-seqno'] != 0) or
+        (demo1_valid_wr['/0/pmdb-write-pending'] != False) or
+        (demo1_valid_wr['/0/app-sync'] != True) or
+        (demo1_valid_wr['/0/app-seqno'] != 1) or
+        (demo1_valid_wr['/0/recent-ops-wr'][0]['sub-app-user-id'] != rncui) or
+        (demo1_valid_wr['/0/recent-ops-wr'][0]['status'] != "Success")
+
+    - name: "{{ recipe_name }}: Apply invalid write seqno again i.e 2 (valid seqno would be 1)"
+      vars:
+         stage: "invalid_seqno2_stage"
+         cmd: "input@{{ app_uuid.stdout }}:0:0:0:0.write:2"
+         where: "/pumice_db_test_client/input"
+         write_seq: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
+      debug:
+        msg: "{{ write_seq }}"
+      no_log: True
+
+    - name: "{{ recipe_name}}: Wait until last-request-tag get changed."
+      vars:
+        stage: "wait_for_last_rqst_tag"
+        raft_key: "/pumice_db_test_client/pmdb-test-apps/0/last-request-tag"
+        demo1_valid_wr: "{{ valid_write['results'][0]['item'] }}"
+      debug:
+        msg: "Waiting for last-rqst-tag to change its value"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_key)['/0/last-request-tag'] != demo1_valid_wr['/0/last-request-tag']
+      loop: "{{ range(0, 10) | list }}"
+      loop_control:
+        pause: 1
+
+    - name: "{{ recipe_name }}: Get parameters to verify invalid seqno 2."
+      vars:
+        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
+        stage: "stage3"
+        invalid_wr: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, raft_keys) }}"
+      debug:
+        msg: "Write should again fail with invalid seqno"
+      no_log: true
+      with_items:
+         - "{{ invalid_wr }}"
+      register: demo1_invalid_wr
+
+    - name: "{{ recipe_name }}: Verify write should again fail with invalid seqno 2."
+      vars:
+        invalid_wr: "{{ demo1_invalid_wr['results'][0]['item'] }}"
+        rncui: "{{ app_uuid.stdout }}:0:0:0:0"
+      debug:
+        msg: "Validate write failed with invalid seqno: 2 {{ invalid_wr }}"
+      failed_when: >
+        (invalid_wr['/0/app-user-id'] != rncui) or
+        (invalid_wr['/0/status'] != "Invalid exchange") or
+        (invalid_wr['/0/pmdb-seqno'] != 0) or
+        (invalid_wr['/0/pmdb-write-pending'] != False) or
+        (invalid_wr['/0/app-sync'] != False) or
+        (invalid_wr['/0/app-seqno'] != 3) or
+        (invalid_wr['/0/recent-ops-wr'][0]['sub-app-user-id'] != rncui) or
+        (invalid_wr['/0/recent-ops-wr'][0]['status'] != "Success")
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+           terminate_recipe: true

@@ -1,7 +1,7 @@
 ---
 
-    - name: "Starting client {{ ClientUUID }}"
-      command:
-        cmd: "{{lookup('niova_raftprocess', 'start', ClientUUID, wantlist=True)}}"
+    - name: "Starting client {{ ClientUUID }}" 
+      debug:
+        msg: "{{lookup('niova_raftprocess', 'start', ClientUUID)}}"
       register: ret
-      failed_when: ret.rc == 2
+      failed_when: ret.failed == true
