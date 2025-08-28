@@ -53,8 +53,6 @@
         name: common
         tasks_from: get_follower_stats
 
-    - pause: seconds=15
-
     - name: "{{ recipe_name }}: Get the raft values for all running peers"
       vars:
          stage: "stage0_get_all"
