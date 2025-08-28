@@ -9,6 +9,6 @@
          - "/raft_net_info/election-timeout-ms"
       debug:
         msg:
-          - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+          - "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
       no_log: true
 

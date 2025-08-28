@@ -6,7 +6,7 @@
         stage: "get_cum_crc"
         raft_key:
           - "/raft_root_entry/0/last-applied-cumulative-crc"
-        get_cum_crc: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_key, wantlist=True) }}"
+        get_cum_crc: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_key) }}"
         last_app_cumulative_crc_has_unique_val: "{{ get_cum_crc | map(attribute='/0/last-applied-cumulative-crc')| list | unique | length == 1 }}"
       debug:
         msg: "Waiting until all running peers show same last-applied-cumulative-crc"

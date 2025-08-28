@@ -12,7 +12,7 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir,  ) }}"
       when: s3Support == "true"
 
     - name: "{{ recipe_name }}: Generate overlapping seq range and unique DBIs."
@@ -34,7 +34,7 @@
           chunk: "{{ chunk['msg'][0] }}"
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
+          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_param)[0] }}"
       register: gc_output
 
     - debug:
@@ -45,7 +45,7 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('data_gen', 'validator', Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator', Chunk,  ) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

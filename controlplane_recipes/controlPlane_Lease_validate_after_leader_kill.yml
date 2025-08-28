@@ -53,7 +53,7 @@
                 "wait_for_outfile": True,
               }
           set_fact:
-            ncpc_getLease: "{{ ncpc_getLease|default([]) + [lookup('controlplane', 'lease', input_param, wantlist=True)] }}"
+            ncpc_getLease: "{{ ncpc_getLease|default([]) + [lookup('controlplane', 'lease', input_param  )] }}"
           failed_when: >
             (ncpc_getLease[item]['output_data']['LeaseRes']['Status'] != 0) or
             (ncpc_getLease[item]['output_data']['LeaseRes']['Client'] != ClientUUIDS[item]) or
@@ -73,7 +73,7 @@
                 "wait_for_outfile": True,
               }
           set_fact:
-            ncpc_lookupLease: "{{ ncpc_lookupLease|default([]) + [lookup('controlplane', 'lease', input_param, wantlist=True)] }}"
+            ncpc_lookupLease: "{{ ncpc_lookupLease|default([]) + [lookup('controlplane', 'lease', input_param  )] }}"
           failed_when: >
             (ncpc_lookupLease[item]['output_data']['LeaseRes']['Status'] != 0) or
             (ncpc_lookupLease[item]['output_data']['LeaseRes']['Client'] != ncpc_getLease[item]['output_data']['LeaseRes']['Client']) or
@@ -83,7 +83,7 @@
 
         - name: "{{ recipe_name }}: Kill the Leader."
           debug:
-            msg: "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True) }}"
+            msg: "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'],  ) }}"
 
         - name: "{{ recipe_name }}: Get the running peers list."
           include_role:
@@ -95,7 +95,7 @@
             stage: "wait_for_new_leader_election"
           debug:
             msg: "Waiting for leader election"
-          until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != LeaderUUID['/0/leader-uuid']
+          until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid',  )| dict2items | map(attribute='value') | list | first != LeaderUUID['/0/leader-uuid']
           retries: 10
           delay: 1
           loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -112,7 +112,7 @@
                 "wait_for_outfile": True,
               }
           set_fact:
-            lookup_aftr_new_leader: "{{ lookup_aftr_new_leader|default([]) + [lookup('controlplane', 'lease', input_param, wantlist=True)] }}"
+            lookup_aftr_new_leader: "{{ lookup_aftr_new_leader|default([]) + [lookup('controlplane', 'lease', input_param  )] }}"
           failed_when: >
             (lookup_aftr_new_leader[item]['outfile_status'] != 0) or
             (lookup_aftr_new_leader[item]['output_data']['LeaseRes']['Status'] != 0) or

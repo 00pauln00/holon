@@ -7,7 +7,7 @@
         iter_info:
            iter: "{{ no_of_iter }}"
            sleep_after_cmd: "{{ sleep_time }}"
-        curr_stamp: "{{ lookup('niova_ctlrequest', 'lookup', leader_UUID, '/raft_root_entry/0/leader-time', iter_info, wantlist=True) }}"
+        curr_stamp: "{{ lookup('niova_ctlrequest', 'lookup', leader_UUID, '/raft_root_entry/0/leader-time', iter_info) }}"
       with_items:
         - "{{ curr_stamp }}"
       register: time_stamp

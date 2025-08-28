@@ -1,7 +1,7 @@
     - name: "{{ recipe_name }}: Get last-applied-cumulative-crc and verify it same on all peers."
       vars:
         stage: "get_cum_crc"
-        get_cum_crc: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/last-applied-cumulative-crc', wantlist=True) }}"
+        get_cum_crc: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/last-applied-cumulative-crc') }}"
         last_app_cumulative_crc_has_unique_val: "{{ get_cum_crc | map(attribute='/0/last-applied-cumulative-crc') | list | unique | length == 1 }}"
       debug:
         msg: "Waiting until all running peers show same last-applied-cumulative-crc"
@@ -12,7 +12,7 @@
     - name: "{{ recipe_name }}: Get sync-entry-crc and verify it same on all peers."
       vars:
         stage: "get_sync_crc"
-        get_sync_crc: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/sync-entry-crc', wantlist=True) }}"
+        get_sync_crc: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, '/raft_root_entry/0/sync-entry-crc') }}"
         sync_crc_has_unique_val: "{{ get_sync_crc | map(attribute='/0/sync-entry-crc') | list | unique | length == 1 }}"
       debug:
         msg: "Waiting until all running peers show same sync-entry-crc"

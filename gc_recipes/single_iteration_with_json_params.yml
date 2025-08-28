@@ -13,7 +13,7 @@
         s3_dir: "/local/minio_data"
       debug:
         msg:
-          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir,  ) }}"
       when: s3Support == "true"
     
     - name: Load seed.json
@@ -41,9 +41,9 @@
       debug:
         msg:
           - "Processing parameters: {{ dgen_args }}"
-          - "Generated output: {{ lookup('data_gen', 'generator', dgen_args, params, wantlist=True) }}"
-          - "GC Output: {{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
-          - "Data Validation Output: {{ lookup('data_gen', 'validator', Chunk, wantlist=True) }}"
+          - "Generated output: {{ lookup('data_gen', 'generator', dgen_args, params,  ) }}"
+          - "GC Output: {{ lookup('garbage_collection', 'single_exec', 'start', input_param) }}"
+          - "Data Validation Output: {{ lookup('data_gen', 'validator', Chunk,  ) }}"
       register: gc_output
     
     rescue:

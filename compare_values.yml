@@ -20,6 +20,6 @@
     loop_var: outer_item
 
 - name: "Verify stage"
-  set_fact: result="{{lookup('recipeverify_plugin', stage, wantlist=True)}}"
+  set_fact: result="{{lookup('recipeverify_plugin', stage)}}"
 
 

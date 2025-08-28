@@ -12,7 +12,7 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir,  ) }}"
       when: s3Support == "true"
 
     - name: "{{ recipe_name }}: Generate random DBI requests."
@@ -28,7 +28,7 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('helper', 'corrupt_last_file', Chunk, wantlist=True) }}"
+         msg: "{{ lookup('helper', 'corrupt_last_file', Chunk,  ) }}"
       register: paths
 
     - name: "{{ recipe_name }}: upload corrupted file"
@@ -38,7 +38,7 @@
                 "path": "{{ paths['msg'][0] }}",
                 }
       debug:
-         msg: "{{ lookup('obj_storage', 'operation', 'upload', formal_params, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'operation', 'upload', formal_params,  ) }}"
 
     - name: "{{ recipe_name }}: Perform GC."
       vars:
@@ -47,7 +47,7 @@
           chunk: "{{ chunk['msg'][0] }}"
           crc_check: "true"
       debug:
-         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_param) }}"
 
     - name: "{{ recipe_name }}: get gc and nisd markers"
       vars:
@@ -55,7 +55,7 @@
                 "chunk" : "{{ chunk['msg'][0] }}",
                 }
       debug:
-         msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True)[0] }}"
+         msg: "{{ lookup('obj_storage', 'get_markers', formal_params,  )[0] }}"
       register: marker_check
 
     - name: "{{ recipe_name }}: compare gc and nisd markers"
@@ -74,7 +74,7 @@
         formal_params:
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True)[0] }}"
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params,  )[0] }}"
       register: list_op
 
     - name: "{{ recipe_name }}: check if failed to upload files are still present or not"
@@ -82,13 +82,13 @@
         Chunk: "{{ chunk['msg'][0] }}"
         corrupt_file: "{{ paths['msg'][0] | basename }}" 
       debug:
-         msg: "{{ lookup('helper', 'check_files', [corrupt_file], list_op['msg'], wantlist=True) }}"
+         msg: "{{ lookup('helper', 'check_files', [corrupt_file], list_op['msg'],  ) }}"
     
     - name: "{{ recipe_name }}: delete gc download folder"
       vars:
         gc_dir: "gc-download"
       debug:
-         msg: "{{ lookup('helper', 'delete_dir', gc_dir, wantlist=True) }}"
+         msg: "{{ lookup('helper', 'delete_dir', gc_dir,  ) }}"
     
     - name: "{{ recipe_name }}: delete corrupted file"
       vars:
@@ -98,7 +98,7 @@
                 }
 
       debug:
-         msg: "{{ lookup('obj_storage', 'operation', 'delete', formal_params, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'operation', 'delete', formal_params,  ) }}"
 
     - name: "{{ recipe_name }}: upload original file"
       vars:
@@ -107,7 +107,7 @@
                  "path": "{{ paths['msg'][1] }}",
                  }
       debug:
-         msg: "{{ lookup('obj_storage', 'operation', 'upload', formal_params, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'operation', 'upload', formal_params,  ) }}"
 
     - name: "{{ recipe_name }}: After uploading the original file, perform GC operation."
       vars:
@@ -116,7 +116,7 @@
           chunk: "{{ chunk['msg'][0] }}"
           crc_check: "true"
       debug:
-         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_param) }}"
 
     - name: "{{ recipe_name }}: get gc and nisd markers"
       vars:
@@ -124,7 +124,7 @@
                 "chunk" : "{{ chunk['msg'][0] }}",
                 }
       debug:
-         msg: "{{ lookup('obj_storage', 'get_markers', formal_params, wantlist=True)[0] }}"
+         msg: "{{ lookup('obj_storage', 'get_markers', formal_params,  )[0] }}"
       register: marker_check
 
     - name: "{{ recipe_name }}: Compare Gc and Nisd EndSeq"
@@ -142,5 +142,5 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('data_gen', 'validator', Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator', Chunk,  ) }}"
 

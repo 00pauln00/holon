@@ -3,5 +3,5 @@
     - name: "Starting client {{ ClientUUID }}"
       debug:
        msg:
-         - "{{lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential, wantlist=True)}}"
+         - "{{lookup('niova_kvclient', Operation, Key, Value, OutfileName, NumRequest, MultiKey, Sequential)}}"
 

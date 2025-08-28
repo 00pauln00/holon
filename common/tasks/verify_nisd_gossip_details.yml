@@ -7,7 +7,7 @@
                   'OutfileName': 'verify_nisd_status_{{ nisdUuidsList[item] }}'
                   }
        set_fact:
-         newlyStartedNisd: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         newlyStartedNisd: "{{ lookup('controlplane', 'ncpc', input_param) }}"
        failed_when: newlyStartedNisd['NISDGossip'][nisdUuidsList[item]]['Status'] != "Alive"
        loop: "{{ range(0, nisdUuidsList | length) | list }}"
        loop_control:

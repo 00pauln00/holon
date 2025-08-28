@@ -30,11 +30,11 @@
 
     - name: "{{ recipe_name }}: Kill the Peer 1 i.e. any 1 follower."
       debug:
-        msg: "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[0], wantlist=True) }}"
+        msg: "{{ lookup('niova_raftprocess', 'kill', FollowerUUIDs[0],  ) }}"
 
     - name: "{{ recipe_name }}: Reboot Peer 1."
       debug:
-        msg: "{{ lookup('niova_raftprocess', 'start', FollowerUUIDs[0], wantlist=True) }}"
+        msg: "{{ lookup('niova_raftprocess', 'start', FollowerUUIDs[0],  ) }}"
 
     - name: "Wait for Peer 1 to bootup completely"
       debug:
@@ -56,7 +56,7 @@
          cmd: "net_recv_enabled@false"
          where: "/ctl_svc_nodes/net_recv_enabled@true"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where,  ) }}"
       no_log: true
 
     - name: "{{ recipe_name }}: Lets sleep for sometime before checking the values"
@@ -76,7 +76,7 @@
          cmd: "net_recv_enabled@true"
          where: "/ctl_svc_nodes/uuid@{{ Peer1 }}"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where, wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where,  ) }}"
       no_log: true
 
     - pause: seconds=3
@@ -87,7 +87,7 @@
          cmd: "net_recv_enabled@true"
          where: "/ctl_svc_nodes/net_recv_enabled@false"
       debug:
-       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', Peer1, cmd, where, wantlist=True) }}"
+       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', Peer1, cmd, where,  ) }}"
       no_log: true
 
     - name: "{{ recipe_name }}: Verify new leader is elected successfully"

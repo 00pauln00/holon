@@ -7,7 +7,7 @@
         where: "/raft_net_info/max-scan-entries"
         key: "/raft_net_info/max-scan-entries"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', Peers, cmd, where, wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', Peers, cmd, where) }}"
       no_log: true
 
     - name: "{{ recipe_name }}: Reset default log-reap-factor on all peers."
@@ -17,6 +17,6 @@
         where: "/raft_net_info/log-reap-factor"
         key: "/raft_net_info/log-reap-factor"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', Peers, cmd, where, wantlist=True) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', Peers, cmd, where) }}"
       no_log: true
 

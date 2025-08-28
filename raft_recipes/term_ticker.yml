@@ -58,7 +58,7 @@
     - name: "{{ recipe_name }}: Get the term value before peer0 reboot"
       vars:
          stage: "stage1_before_reboot"
-         peer0_term: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
+         peer0_term: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term') }}"
       with_items:
          - "{{ peer0_term }}"
       register: before_reboot_term
@@ -68,12 +68,12 @@
 
     - name: "{{ recipe_name }}: Kill the process"
       debug:
-       msg: "{{lookup('niova_raftprocess', 'kill', Server0UUID, wantlist=True)}}"
+       msg: "{{lookup('niova_raftprocess', 'kill', Server0UUID)}}"
       no_log: True
 
     - name: "{{ recipe_name }}: Restart the peer0 process"
       debug:
-       msg: "{{lookup('niova_raftprocess', 'start', Server0UUID, wantlist=True)}}"
+       msg: "{{lookup('niova_raftprocess', 'start', Server0UUID)}}"
       no_log: True
 
     - name: "{{ recipe_name }}: Make sure raft timer thread is activated after starting the peer"
@@ -81,7 +81,7 @@
          stage: "idle_off"
          cmd: "ignore_timer_events@false"
          where: "/raft_net_info/ignore_timer_events"
-         idleoff: "{{ lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, cmd, where, wantlist=True) }}"
+         idleoff: "{{ lookup('niova_ctlrequest', 'apply_cmd', Server0UUID, cmd, where) }}"
       debug:
         msg: "{{ idleoff }}"
       no_log: True
@@ -89,7 +89,7 @@
     - name: "{{ recipe_name }}: Get the term value after reboot"
       vars:
          stage: "stage1_after_reboot"
-         after_reboot: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term', wantlist=True) }}"
+         after_reboot: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/raft_root_entry/0/term') }}"
       debug:
         msg: "Get the peer0 term after reboot"
       with_items:

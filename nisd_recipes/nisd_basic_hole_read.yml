@@ -21,7 +21,7 @@
 
      - name: "{{ recipe_name }}: Kill the nisd process."
        debug:
-         msg:  "{{ lookup('niova_raftprocess', 'kill', get_nisd, wantlist=True) }}"
+         msg:  "{{ lookup('niova_raftprocess', 'kill', get_nisd,  ) }}"
        no_log: True
 
      - name: "{{ recipe_name }}: Restart same nisd process."
@@ -32,7 +32,7 @@
                   'lookout_uuid': '{{ get_lookout[0] }}'
                   }
        debug:
-         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param  ) }}"
        no_log: True
 
      - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
@@ -42,7 +42,7 @@
          lookout_uuid: "{{ get_lookout[0] }}"
        debug:
          msg: "Waiting for nisd to get updated"
-       until: lookup('niova_ctlrequest', 'lookup', get_nisd, "/nisd_root_entry/0/status", 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "running"
+       until: lookup('niova_ctlrequest', 'lookup', get_nisd, "/nisd_root_entry/0/status", 'nisd', lookout_uuid,  ) | dict2items | map(attribute='value') | list | first == "running"
        retries: 10
        delay: 1
 
@@ -50,7 +50,7 @@
        vars:
          stage: "afterRestart_nisd_root_entry"
          lookout_uuid: "{{ get_lookout[0] }}"
-         nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "verify nisd root entry values: {{ nisdRootEntryVal }}"
        no_log: True
@@ -84,7 +84,7 @@
                  'blocking_process' : False,
                  'lookout_uuid': '{{ get_lookout[0] }}'
                  }
-         rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
+         rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param  ) }}"
        debug:
          msg: "get read's return code"
        with_items:
@@ -100,7 +100,7 @@
        vars:
          stage: "afterRead_nisd_root_entry"
          lookout_uuid: "{{ get_lookout[0] }}"
-         nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "verify nisd root entry values: {{ nisdRootEntryVal }}"
        no_log: True
@@ -115,7 +115,7 @@
          nisd_keys:
               - "/nisd_chunks/*/vdev-uuid"
          lookout_uuid: "{{ get_lookout[0] }}"
-         nisdChunk: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         nisdChunk: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "verify nisd root entry values: {{ nisdChunk }}"
        no_log: True

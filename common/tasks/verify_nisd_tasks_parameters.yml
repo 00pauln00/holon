@@ -7,7 +7,7 @@
         process_type: "nisd"
         lookout_uuid: "{{ LookoutUUID }}"
       set_fact:
-        GetTasksList: "{{ lookup('niova_ctlrequest', 'lookup', NisdUUID, tasks_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+        GetTasksList: "{{ lookup('niova_ctlrequest', 'lookup', NisdUUID, tasks_keys, 'nisd', lookout_uuid) }}"
       no_log: True
 
     - name: "{{ recipe_name }}: Gather 'tasks' items in the list."

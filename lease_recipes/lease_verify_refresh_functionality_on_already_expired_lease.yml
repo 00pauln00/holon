@@ -38,7 +38,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'refresh_lease_on_expired_lease_{{ resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'REFRESH', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'REFRESH', input_param  ) }}"
       debug:
          msg: "refresh lease from new client and resource uuid from parent recipe."
       with_items:
@@ -74,7 +74,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'refresh_lease_on_expired_lease_Old_client_{{ resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'REFRESH', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'REFRESH', input_param  ) }}"
       debug:
          msg: "refresh lease from old client and resource uuid."
       with_items:

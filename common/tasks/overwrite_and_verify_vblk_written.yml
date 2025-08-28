@@ -16,7 +16,7 @@
                  'blocking_process' : False
                  }
        debug:
-         msg: "{{ lookup('controlplane', 'niova-block-test', input_param, wantlist=True) }}"
+         msg: "{{ lookup('controlplane', 'niova-block-test', input_param) }}"
        no_log: True
 
      - name: "{{ recipe_name }}: Get vblks-written."
@@ -26,7 +26,7 @@
          vblks_key:
            - "/nisd_root_entry/0/vblks-written"
        set_fact:
-          getVblkAftrItr: "{{ lookup('niova_ctlrequest', 'lookup', NisdUUID, vblks_key, 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') }}"
+          getVblkAftrItr: "{{ lookup('niova_ctlrequest', 'lookup', NisdUUID, vblks_key, 'nisd', lookout_uuid) | dict2items | map(attribute='value') }}"
 
      - name: "{{ recipe_name }}: Verifying the VBLKs after Each Iteration."
        vars:
@@ -34,7 +34,7 @@
          nisd_key:
               - "/nisd_root_entry/0/vblks-written"
          lookout_uuid: "{{ LookoutUUID }}"
-         getVblkWritten: "{{ lookup('niova_ctlrequest', 'lookup', NisdUUID, nisd_key, 'nisd', lookout_uuid, wantlist=True) }}"
+         getVblkWritten: "{{ lookup('niova_ctlrequest', 'lookup', NisdUUID, nisd_key, 'nisd', lookout_uuid) }}"
        debug:
          msg: "Verify nisd values after writes: {{ getVblkWritten }}, {{ getVblkAftrItr[0] }}"
        no_log: True

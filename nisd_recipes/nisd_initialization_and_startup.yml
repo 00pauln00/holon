@@ -34,7 +34,7 @@
   - block:
 
      - name: "Prepare port range file."
-       set_fact: nisdPortRangeCreation="{{lookup('niova_raftconfig', "{{ app_type }}", 0,  wantlist=True)}}"
+       set_fact: nisdPortRangeCreation="{{lookup('niova_raftconfig', "{{ app_type }}", 0,   )}}"
 
      - name: "{{ recipe_name }}: Start niova-lookout process."
        vars:
@@ -42,7 +42,7 @@
                  'uport' : '{{ (srv_port | int) + 20 + item }}'
                  }
        set_fact:
-         get_lookout: "{{ get_lookout | default([]) + [lookup('controlplane', 'niova-lookout', input_param, wantlist=true)] }}"
+         get_lookout: "{{ get_lookout | default([]) + [lookup('controlplane', 'niova-lookout', input_param  )] }}"
        loop: "{{ range(0, nlookouts | int) }}"
 
      - name: "{{ recipe_name }}: Starting controlplane_client to start prometheus."
@@ -51,7 +51,7 @@
                   'Hport': ''
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'prometheus', input_param, wantlist=True) }}"
+         msg: "{{ lookup('controlplane', 'prometheus', input_param  ) }}"
 
      - name: "{{ recipe_name }}: Start niova-block-ctl process."
        vars:
@@ -61,7 +61,7 @@
              'alt_name': 'nisd{{item}}'
               }
        set_fact:
-         get_nisd: "{{ lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True) }}"
+         get_nisd: "{{ lookup('nisd_handler', 'niova-block-ctl', input_param  ) }}"
        loop: "{{ range(0, nnisds | int) }}"
        no_log: True
 
@@ -73,7 +73,7 @@
               'lookout_uuid': '{{ get_lookout[0] }}'
               }
        debug:
-         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param  ) }}"
        no_log: True
 
      - pause:
@@ -85,7 +85,7 @@
          lookout_uuid: "{{ get_lookout[0] }}"
        debug:
          msg: "Waiting for nisd to get updated"
-       until: lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_root_entry/0/status', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "running"
+       until: lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_root_entry/0/status', 'nisd', lookout_uuid,  ) | dict2items | map(attribute='value') | list | first == "running"
        retries: 60
        delay: 1
 
@@ -95,7 +95,7 @@
          cmd: "master_log_level@debug"
          where: "/log_subsystem/master_log_level@warn"
          lookout_uuid: "{{ get_lookout[0] }}"
-         debug_on: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
+         debug_on: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "{{ debug_on }}"
 
@@ -103,7 +103,7 @@
        vars:
          stage: "get_nisd_root_entry"
          lookout_uuid: "{{ get_lookout[0] }}"
-         nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Get nisd root entry values"
        with_items:
@@ -148,7 +148,7 @@
               - "/niorq_mgr_root_entry/0/dev-bytes-read"
               - "/niorq_mgr_root_entry/0/dev-rd-size"
          lookout_uuid: "{{ get_lookout[0] }}"
-         niorq_mgr_entry: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         niorq_mgr_entry: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Verify niorq_mgr_root_entry info: {{ niorq_mgr_entry }}"
        no_log: True
@@ -170,7 +170,7 @@
 
      - name: "{{ recipe_name }}: Kill the nisd process."
        debug:
-         msg:  "{{ lookup('niova_raftprocess', 'kill', get_nisd, wantlist=True) }}"
+         msg:  "{{ lookup('niova_raftprocess', 'kill', get_nisd,  ) }}"
        no_log: True
 
      - name: "{{ recipe_name }}: Restart same nisd process."
@@ -181,7 +181,7 @@
                   'lookout_uuid': '{{ get_lookout[0] }}'
                   }
        debug:
-         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param  ) }}"
        no_log: True
 
        vars:
@@ -189,7 +189,7 @@
          lookout_uuid: "{{ get_lookout[0] }}"
        debug:
          msg: "Waiting for nisd to get updated"
-       until: lookup('niova_ctlrequest', 'lookup', get_nisd, "/nisd_root_entry/0/status", 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "running"
+       until: lookup('niova_ctlrequest', 'lookup', get_nisd, "/nisd_root_entry/0/status", 'nisd', lookout_uuid,  ) | dict2items | map(attribute='value') | list | first == "running"
        retries: 10
        delay: 1
 
@@ -197,7 +197,7 @@
        vars:
          stage: "afterRestart_nisd_root_entry"
          lookout_uuid: "{{ get_lookout[0] }}"
-         nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         nisdRootEntryVal: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Get nisd root entry values"
        no_log: True
@@ -241,7 +241,7 @@
                  'blocking_process' : False,
                  'lookout_uuid': '{{ get_lookout[0] }}'
                  }
-         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
+         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param  ) }}"
        debug:
          msg: "get write's return code"
        #no_log:  True
@@ -260,7 +260,7 @@
        debug:
          msg: "Waiting for nisd to get updated"
        no_log: True
-       until: lookup('niova_ctlrequest', 'lookup', get_nisd, "/nisd_root_entry/0/status", 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "running"
+       until: lookup('niova_ctlrequest', 'lookup', get_nisd, "/nisd_root_entry/0/status", 'nisd', lookout_uuid,  ) | dict2items | map(attribute='value') | list | first == "running"
        retries: 10
        delay: 1
 
@@ -277,7 +277,7 @@
               - "/nisd_chunks/0/num-meta-pblks"
               - "/nisd_chunks/0/num-reserved-meta-pblks"
          lookout_uuid: "{{ get_lookout[0] }}"
-         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Verify nisd values after writes: {{ getNiovaBlockTest }}"
        no_log: True
@@ -294,7 +294,7 @@
        vars:
          stage: "get_metablock_seqno"
          lookout_uuid: "{{ get_lookout[0] }}"
-         getMetablockSeqNo: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/metablock-seqno', 'nisd', lookout_uuid, wantlist=True) }}"
+         getMetablockSeqNo: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/metablock-seqno', 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Get metablock-seqno"
        with_items:
@@ -303,7 +303,7 @@
 
      - name: "{{ recipe_name }}: Kill the nisd process."
        debug:
-         msg:  "{{ lookup('niova_raftprocess', 'kill', get_nisd, wantlist=True) }}"
+         msg:  "{{ lookup('niova_raftprocess', 'kill', get_nisd,  ) }}"
        no_log: True
 
      - name: "{{ recipe_name }}: Restart same nisd process."
@@ -314,7 +314,7 @@
                   'lookout_uuid': '{{ get_lookout[0] }}'
                   }
        debug:
-         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param  ) }}"
        no_log: True
 
      - name: "{{ recipe_name}}: Wait until nisd_root_entry gets updated"
@@ -323,7 +323,7 @@
          lookout_uuid: "{{ get_lookout[0] }}"
        debug:
          msg: "Waiting for nisd to get updated"
-       until: lookup('niova_ctlrequest', 'lookup', get_nisd, "/nisd_root_entry/0/status", 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "running"
+       until: lookup('niova_ctlrequest', 'lookup', get_nisd, "/nisd_root_entry/0/status", 'nisd', lookout_uuid,  ) | dict2items | map(attribute='value') | list | first == "running"
        retries: 10
        delay: 1
 
@@ -332,7 +332,7 @@
          stage: "aftrRestart_nisd_info"
          old_num_block_used: "{{ aftrRestartNisd['results'][0]['item']['/0/num-pblks-used'] }}"
          lookout_uuid: "{{ get_lookout[0] }}"
-         aftrRestart: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         aftrRestart: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Verify nisd_root_entry"
        no_log: True
@@ -348,7 +348,7 @@
          stage: "aftrRestart_nisd_chunks"
          old_metablock: "{{ oldMetablockSeqNo['results'][0]['item']['/0/metablock-seqno'] }}"
          lookout_uuid: "{{ get_lookout[0] }}"
-         aftrRestart: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_chunk_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         aftrRestart: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_chunk_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Verify nisd_chunks Checks: {{ old_metablock }}, {{ aftrRestart }}"
        no_log: True
@@ -380,7 +380,7 @@
                  'blocking_process' : False,
                  'lookout_uuid': '{{ get_lookout[0] }}'
                  }
-         rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
+         rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param  ) }}"
        debug:
          msg: "get read's return code"
        with_items:
@@ -406,7 +406,7 @@
               - "/nisd_root_entry/0/vblks-read"
               - "/nisd_root_entry/0/vblks-hole-read"
          lookout_uuid: "{{ get_lookout[0] }}"
-         aftrRead: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         aftrRead: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Verify nisd_root_entry: {{ aftrRead }}"
        no_log: True
@@ -418,7 +418,7 @@
        vars:
          stage: "aftrRead_nisd_chunk"
          lookout_uuid: "{{ get_lookout[0] }}"
-         aftrRead: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_chunk_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         aftrRead: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_chunk_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Verify nisd_chunks: {{ aftrRead }}"
        no_log: True

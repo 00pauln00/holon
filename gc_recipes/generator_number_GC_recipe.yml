@@ -25,7 +25,7 @@
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
          msg:
-          - "{{ lookup('helper', 'inc_dbi_gen_num', Chunk, wantlist=True) }}"
+          - "{{ lookup('helper', 'inc_dbi_gen_num', Chunk,  ) }}"
       register: file_name
 
     - set_fact:
@@ -34,7 +34,7 @@
     - name: "{{ recipe_name }}: Clone the selected file to Inc generator file"
       debug:
          msg:
-          - "{{ lookup('helper', 'copy_file', file_names[0], file_names[1], wantlist=True) }}"
+          - "{{ lookup('helper', 'copy_file', file_names[0], file_names[1],  ) }}"
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
@@ -42,7 +42,7 @@
           debug_mode: false
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
+         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_param)[0] }}"
       register: gc_output
 
     - debug:
@@ -53,5 +53,5 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('data_gen', 'validator', Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator', Chunk,  ) }}"
 

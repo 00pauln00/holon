@@ -23,7 +23,7 @@
                  'client_uuid' : '{{ nblock_client_uuid["stdout"] }}',
                   }
        set_fact:
-         nblock_wr: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
+         nblock_wr: "{{ lookup('nisd_handler', 'niova-block-test', input_param) }}"
 
      - debug:
          msg: "{{ nblock_wr | dict2items }}"
@@ -49,7 +49,7 @@
        debug:
          msg: "Waiting for nisd to get updated"
        #no_log: True
-       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid, "/nisd_root_entry/0/status", 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "running"
+       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid, "/nisd_root_entry/0/status", 'nisd', lookout_uuid) | dict2items | map(attribute='value') | list | first == "running"
        retries: 10
        delay: 1
 
@@ -74,7 +74,7 @@
           total_wr: "{{ total.results | map(attribute='msg') | map('int') | sum(start=0) }}"
        debug:
          msg: "wait until vblks-written complete"
-       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid, '/nisd_root_entry/0/vblks-written', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first <= (total_wr|int)
+       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid, '/nisd_root_entry/0/vblks-written', 'nisd', lookout_uuid) | dict2items | map(attribute='value') | list | first <= (total_wr|int)
        retries: 10
        delay: 1
 
@@ -85,7 +85,7 @@
           total_wr: "{{ total.results | map(attribute='msg') | map('int') | sum(start=0) }}"
        debug:
          msg: "wait until vblks-read complete"
-       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid, '/nisd_root_entry/0/vblks-read', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first <= (total_wr|int)
+       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid, '/nisd_root_entry/0/vblks-read', 'nisd', lookout_uuid) | dict2items | map(attribute='value') | list | first <= (total_wr|int)
        retries: 10
        delay: 1
 

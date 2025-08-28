@@ -17,4 +17,4 @@
                  }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'generate_dbi', input_param, wantlist=True) }}"
+          - "{{ lookup('s3_handler', 'generate_dbi', input_param) }}"

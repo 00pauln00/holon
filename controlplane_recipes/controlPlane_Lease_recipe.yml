@@ -30,7 +30,7 @@
           vars:
             input_param:
               { "Operation": "membership", "OutfileName": "membership_output" }
-            ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpclires: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "get membership details of running servers."
           with_items:
@@ -47,7 +47,7 @@
                 "NoofWrites": "2",
                 "wait_for_outfile": True,
               }
-            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "Write key-value from ncpc"
           with_items:
@@ -90,7 +90,7 @@
                 "OutfileName": "getLease_{{ resourceUUID.stdout }}",
                 "wait_for_outfile": True,
               }
-            ncpc_get: "{{ lookup('controlplane', 'lease', input_param, wantlist=True) }}"
+            ncpc_get: "{{ lookup('controlplane', 'lease', input_param) }}"
           debug:
             msg: "getLease from ncpc."
           with_items:
@@ -120,7 +120,7 @@
                 "OutfileName": "refreshLease_{{ resourceUUID.stdout }}",
                 "wait_for_outfile": True,
               }
-            ncpc_refresh: "{{ lookup('controlplane', 'lease', input_param, wantlist=True) }}"
+            ncpc_refresh: "{{ lookup('controlplane', 'lease', input_param) }}"
           debug:
             msg: "refreshLease from ncpc."
           with_items:
@@ -150,7 +150,7 @@
                 "OutfileName": "lookupLease_{{ resourceUUID.stdout }}",
                 "wait_for_outfile": True,
               }
-            ncpc_lookup: "{{ lookup('controlplane', 'lease', input_param, wantlist=True) }}"
+            ncpc_lookup: "{{ lookup('controlplane', 'lease', input_param) }}"
           debug:
             msg: "lookupLease from ncpc."
           with_items:

@@ -17,9 +17,9 @@
       vars:
         stage: "stage0"
         wait_for_ofile: False
-        pause_peer0: "{{ lookup('niova_raftprocess', 'pause', Server0UUID, wantlist=True) }}"
-        curr_time_peer0: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/system_info/current_time', wantlist=True) }}"
-        resume_peer0: "{{ lookup('niova_raftprocess', 'resume', Server0UUID, wantlist=True) }}"
+        pause_peer0: "{{ lookup('niova_raftprocess', 'pause', Server0UUID,  ) }}"
+        curr_time_peer0: "{{ lookup('niova_ctlrequest', 'lookup', Server0UUID, '/system_info/current_time',  ) }}"
+        resume_peer0: "{{ lookup('niova_raftprocess', 'resume', Server0UUID,  ) }}"
       debug:
         msg: "Pausing and resuming the peer: {{ Server0UUID }} in a loop"
       loop: "{{ range(0, iterations)| list }}"

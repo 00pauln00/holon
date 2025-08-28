@@ -44,7 +44,7 @@
           - "Waiting for leader election"
           - "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first }}"
       until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first != "null"
-      retries: 30
+      retries: 10
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
@@ -77,8 +77,6 @@
     - name: Generate new client
       shell: "/usr/bin/uuid"
       register: clientUUID
-
-    - pause: seconds=15
 
     - name: "{{ recipe_name }}: Perform 'GET' operation."
       vars:

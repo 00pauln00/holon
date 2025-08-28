@@ -31,7 +31,7 @@
          stage: "wait_leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first != "null"
       retries: 10
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -48,7 +48,7 @@
             - "/raft_root_entry/0/leader-uuid"
             - "/raft_root_entry/0/term"
             - "/raft_root_entry/0/leader-time"
-         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+         peers_val: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys) }}"
       debug:
         msg: "Getting stats for all running peers: {{ peers_val }}"
       #no_log: true
@@ -77,7 +77,7 @@
 
     - name: "{{ recipe_name }}: Kill the Leader."
       debug:
-        msg: "{{ lookup('niova_raftprocess', 'kill', orig_leader['results'][0]['item'], wantlist=True) }}"
+        msg: "{{ lookup('niova_raftprocess', 'kill', orig_leader['results'][0]['item']) }}"
 
     - name: "{{ recipe_name }}: Get the running peers list."
       include_role:
@@ -89,7 +89,7 @@
          stage: "wait_for_new_leader_election"
       debug:
         msg: "Waiting for leader election"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != "null"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first != "null"
       retries: 10
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -106,7 +106,7 @@
             - "/raft_root_entry/0/leader-uuid"
             - "/raft_root_entry/0/term"
             - "/raft_root_entry/0/leader-time"
-         new_leader_val: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+         new_leader_val: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys) }}"
       debug:
         msg: "Getting stats for all running peers: {{ new_leader_val }}"
       #no_log: true
@@ -122,7 +122,7 @@
 
     - name: "Safe Restart the Old Leader"
       debug:
-        msg: "{{lookup('niova_raftprocess', 'start', orig_leader['results'][0]['item'], wantlist=True)}}"
+        msg: "{{lookup('niova_raftprocess', 'start', orig_leader['results'][0]['item'])}}"
 
     - name: "{{ recipe_name }}: Verify leader-time"
       vars:
@@ -131,7 +131,7 @@
             - "/raft_root_entry/0/leader-uuid"
             - "/raft_root_entry/0/term"
             - "/raft_root_entry/0/leader-time"
-         stage2_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys, wantlist=True) }}"
+         stage2_vals: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys) }}"
       debug:
         msg: "Verify leader-time is incremented"
       failed_when: >

@@ -202,7 +202,7 @@
 
     - name: "{{ recipe_name }}:  Kill the peer4 to restart it with StaleDB."
       debug:
-        msg: "{{ lookup('niova_raftprocess', 'kill', newlyStartedPeer4['results'][0]['item'], wantlist=True) }}"
+        msg: "{{ lookup('niova_raftprocess', 'kill', newlyStartedPeer4['results'][0]['item'],  ) }}"
       no_log: true
 
     rescue:

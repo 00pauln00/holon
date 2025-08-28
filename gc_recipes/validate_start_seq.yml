@@ -12,7 +12,7 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir,  ) }}"
       when: s3Support == "true"
 
     - name: "Generate 100000 vblk entries"
@@ -37,7 +37,7 @@
           remove_files: false
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param  )[0] }}"
       register: chunk
 
     - name: "Overwrite with 1000 punch entries"
@@ -64,7 +64,7 @@
           remove_files: false
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param  )[0] }}"
       register: chunk
 
     - name: "{{ recipe_name }}: Start gc algorithm"
@@ -73,7 +73,7 @@
           debug_mode: "false"
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-        msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
+        msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_param)[0] }}"
       register: gc_output
 
     - debug:
@@ -84,7 +84,7 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator',  Chunk,  ) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

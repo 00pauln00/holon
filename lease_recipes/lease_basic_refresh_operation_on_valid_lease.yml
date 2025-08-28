@@ -42,7 +42,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'get_lease_refresh_{{ resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param  ) }}"
       debug:
          msg: "GET operation"
       with_items:
@@ -77,7 +77,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_before_refresh_{{ resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param  ) }}"
       debug:
          msg: "lookup lease operation"
       with_items:
@@ -115,7 +115,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'refresh_lease_{{ resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'REFRESH', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'REFRESH', input_param  ) }}"
       debug:
          msg: "refresh lease"
       with_items:
@@ -150,7 +150,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_after_refresh_{{ resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param  ) }}"
       debug:
          msg: "lookup lease operation"
       with_items:

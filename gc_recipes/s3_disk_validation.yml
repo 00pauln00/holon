@@ -12,7 +12,7 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir) }}"
       when: s3Support == "true"
 
     - name: "{{ recipe_name }}: create nisd device"
@@ -22,7 +22,7 @@
           count: 160
       debug:
          msg:
-          - "{{ lookup('helper', 'create_dd_file', img_dir, bs, count, wantlist=True)[0] }}"
+          - "{{ lookup('helper', 'create_dd_file', img_dir, bs, count)[0] }}"
       register: nisd_dev_path
 
     - name: "{{ recipe_name }}: create bucket on minio"
@@ -30,7 +30,7 @@
         input_params:
           chunk: "0"
       debug:
-         msg: "{{ lookup('obj_storage', 'operation', 'create_bucket' , input_params, wantlist=True)}}"
+         msg: "{{ lookup('obj_storage', 'operation', 'create_bucket' , input_params)}}"
 
     - name: "{{ recipe_name }}: run niova ctl cmd on device"
       vars:
@@ -39,13 +39,13 @@
           }
       debug:
          msg:
-          - "{{ lookup('nisd_handler', 'run-niova-block-ctl', input_param, wantlist=True)[0] }}"
+          - "{{ lookup('nisd_handler', 'run-niova-block-ctl', input_param)[0] }}"
       register: nisd_uuid
     
     - name: "{{ recipe_name }}: Start nisd"
       debug:
          msg:
-          - "{{ lookup('nisd_handler', 'run_nisd', nisd_uuid.msg[0], nisd_dev_path.msg[0], wantlist=True)[0] }}"
+          - "{{ lookup('nisd_handler', 'run_nisd', nisd_uuid.msg[0], nisd_dev_path.msg[0])[0] }}"
 
     - name: "{{ recipe_name }}: wait for 5 seconds"
       pause:
@@ -54,7 +54,7 @@
     - name: "{{ recipe_name }}: Start ublk device"
       debug:
          msg:
-          - "{{ lookup('nisd_handler', 'run_ublk_device', nisd_uuid.msg[0], wantlist=True)[0] }}"
+          - "{{ lookup('nisd_handler', 'run_ublk_device', nisd_uuid.msg[0])[0] }}"
 
       register: ublk_uuid
 
@@ -63,13 +63,13 @@
           mount_dir: "ci_data_btrfs"
       debug:
          msg:
-          - "{{ lookup('helper', 'setup_btrfs', mount_dir, wantlist=True)[0] }}"
+          - "{{ lookup('helper', 'setup_btrfs', mount_dir)[0] }}"
       register: device_paths
 
     - name: "{{ recipe_name }}: run the script"
       debug:
          msg:
-          - "{{ lookup('helper', 'generate_data', device_paths.msg[0][0], wantlist=True) }}"
+          - "{{ lookup('helper', 'generate_data', device_paths.msg[0][0]) }}"
     
     - name: "{{ recipe_name }}: wait for 2 minute"
       pause:
@@ -84,7 +84,7 @@
           total_chunks: 2
           force_gc: "true"
       debug:
-         msg: "{{ lookup('garbage_collection', 'daemon', 'start', input_params, wantlist=True) }}"
+         msg: "{{ lookup('garbage_collection', 'daemon', 'start', input_params) }}"
 
     - name: "{{ recipe_name }}: pause for 3 seconds."
       pause:
@@ -96,7 +96,7 @@
               chunk: "0"
               stage: "wait_for_gc_marker"
               vdev: "{{ ublk_uuid.msg[0] }}"
-        marker_seq: "{{ lookup('obj_storage', 'get_markers', input_params, wantlist=True)[0] }}" 
+        marker_seq: "{{ lookup('obj_storage', 'get_markers', input_param)[0] }}" 
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq }}"
       until: marker_seq[0] is not none
@@ -123,7 +123,7 @@
           ublk_uuid: "{{ ublk_uuid.msg[0] }}"
           device_path: "{{ device_paths.msg[0][1] }}"
       debug:
-         msg: "{{ lookup('data_gen', 's3_disk_validator', input_params, wantlist=True)}}"
+         msg: "{{ lookup('data_gen', 's3_disk_validator', input_param)}}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

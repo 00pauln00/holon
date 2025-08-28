@@ -31,7 +31,7 @@
                 "NoofWrites": "5",
                 "wait_for_outfile": True,
               }
-            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param  ) }}"
           debug:
             msg: "Write key-value from ncpc."
           with_items:
@@ -66,7 +66,7 @@
                 "seqNo": "",
                 "wait_for_outfile": True,
               }
-            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param  ) }}"
           debug:
             msg: "Read key-value from ncpc."
           with_items:
@@ -104,7 +104,7 @@
                 "seqNo": '{{ seqNo["results"][0]["item"] }}',
                 "wait_for_outfile": False,
               }
-            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param  ) }}"
           debug:
             msg: "Read key-value from ncpc."
           with_items:
@@ -123,7 +123,7 @@
                 "seqNo": '{{ seqNo["results"][0]["item"] }}',
                 "wait_for_outfile": False,
               }
-            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param  ) }}"
           debug:
             msg: "Read key-value from ncpc."
           with_items:
