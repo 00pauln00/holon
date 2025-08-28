@@ -8,6 +8,9 @@ import signal
 from lookup_plugin.helper import *
 
 class gc_service:
+    FORCE_GC = 1
+    TERMINATE_GC = 2
+    FORCE_TERMINATE_GC = 3
     def __init__(self, cluster_params):
         self.cluster_params = cluster_params
         self.s3_support = cluster_params['s3Support']
@@ -45,8 +48,9 @@ class gc_service:
             ]
             if input_params.get("dry_run") in [True, "true"]: cmd.append('-dr=true')
             if input_params.get("del_dbo") in [True, "true"]: cmd.append('-dd=true')
-            if input_params.get("force_gc") in [True, "true"]: cmd.append('-f=true')
-            if input_params.get("terminate_gc") in [True, "true"]: cmd.append('-tgc=true')
+            
+            gc_mode = self.gc_mode(input_params)
+            if gc_mode: cmd.append(f"-m={gc_mode}")
 
             with open(self.gc_log, "a+") as fp:
                 print("cmd : ", cmd)
@@ -95,6 +99,18 @@ class gc_service:
             logging.error(f"niova-s3-gcsvc: {e}")
             return -1
 
+    def gc_mode(self, input_params):
+        mode = None
+        if input_params.get("force_gc") in [True, "true"]:
+            mode = self.FORCE_GC
+
+        if input_params.get("terminate_gc") in [True, "true"]:
+            if mode == self.FORCE_GC:   # already set by force_gc
+                mode = self.FORCE_TERMINATE_GC    # both force_gc and terminate_gc
+            else:
+                mode = self.TERMINATE_GC    # only terminate_gc
+        return mode
+            
 class gc_tester:
     def __init__(self, cluster_params):
         self.cluster_params = cluster_params
