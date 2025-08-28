@@ -21,7 +21,7 @@
         - name: "{{ recipe_name }}: Start test application."
           vars:
             input_param: { "Operation": "start" }
-            testres: "{{ lookup('controlplane', 'testApp', input_param, wantlist=True) }}"
+            testres: "{{ lookup('controlplane', 'testApp', input_param) }}"
           debug:
             msg: "start test application."
           with_items:
@@ -35,7 +35,7 @@
           vars:
             input_param:
               { "Operation": "membership", "OutfileName": "membership_output" }
-            ncpclires: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpclires: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "get membership details of running servers."
           with_items:

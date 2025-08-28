@@ -29,7 +29,7 @@
                 "NoofWrites": "5",
                 "wait_for_outfile": True,
               }
-            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpcliwr: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "Write key-value from ncpc."
           with_items:
@@ -80,7 +80,7 @@
                 "seqNo": "",
                 "wait_for_outfile": True,
               }
-            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "Read key-value from ncpc."
           with_items:
@@ -136,7 +136,7 @@
                 "seqNo": '{{ seqNo["results"][0]["item"] }}',
                 "wait_for_outfile": False,
               }
-            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "Read key-value from ncpc."
           with_items:
@@ -146,7 +146,7 @@
 
         - name: "{{ recipe_name }}: Kill the Leader."
           debug:
-            msg: "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True) }}"
+            msg: "{{ lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid']) }}"
           no_log: True
 
         - pause:
@@ -162,7 +162,7 @@
               }
           debug:
             msg: "Verifying pmdb server's status"
-          until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute='output_data') | map(attribute=getPmdbServer) | map(attribute='Status') | list | first == "failed"
+          until: lookup('controlplane', 'ncpc', input_param) | dict2items | map(attribute='value') | map(attribute='output_data') | map(attribute=getPmdbServer) | map(attribute='Status') | list | first == "failed"
           retries: 10
           delay: 1
 
@@ -206,7 +206,7 @@
                 "seqNo": '{{ seqNo["results"][0]["item"] }}',
                 "wait_for_outfile": True,
               }
-            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+            ncpclird: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "read the result after removing fault injection with same seq no"
           with_items:
