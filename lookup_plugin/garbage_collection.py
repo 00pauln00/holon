@@ -45,19 +45,9 @@ class gc_service:
             ]
             if input_params.get("dry_run") in [True, "true"]: cmd.append('-dr=true')
             if input_params.get("del_dbo") in [True, "true"]: cmd.append('-dd=true')
-
-            m = None
-            if input_params.get("force_gc") in [True, "true"]:
-                m = 1
-
-            if input_params.get("terminate_gc") in [True, "true"]:
-                if m == 1:   # already set by force_gc
-                    m = 3    # both force_gc and terminate_gc
-                else:
-                    m = 2    # only terminate_gc
-
-            if m:
-                cmd.append(f"-m={m}")
+            
+            gc_mode = self.gc_mode(input_params)
+            if gc_mode: cmd.append(f"-m={gc_mode}")
 
             with open(self.gc_log, "a+") as fp:
                 print("cmd : ", cmd)
@@ -106,6 +96,18 @@ class gc_service:
             logging.error(f"niova-s3-gcsvc: {e}")
             return -1
 
+    def gc_mode(self, input_params):
+        mode = None
+        if input_params.get("force_gc") in [True, "true"]:
+            mode = 1
+
+        if input_params.get("terminate_gc") in [True, "true"]:
+            if mode == 1:   # already set by force_gc
+                mode = 3    # both force_gc and terminate_gc
+            else:
+                mode = 2    # only terminate_gc
+        return mode
+            
 class gc_tester:
     def __init__(self, cluster_params):
         self.cluster_params = cluster_params
