@@ -38,7 +38,7 @@
                   'OutfileName': 'nisd_config_output'
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         msg: "{{ lookup('controlplane', 'ncpc', input_param) }}"
        #no_log: True
 
      - name: "{{ recipe_name }}: Starting controlplane_client to read the config data"
@@ -52,7 +52,7 @@
                   'OutfileName': 'read_output'
                   }
        debug:
-         msg: "{{ lookup('controlplane','ncpc', input_param, wantlist=True) }}"
+         msg: "{{ lookup('controlplane','ncpc', input_param) }}"
        no_log: True
 
      - name: generate new lookout-uuid
@@ -69,7 +69,7 @@
                  'uport' : '2053',
                  }
        debug:
-         msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
+         msg: "{{ lookup('controlplane', 'niova-lookout', input_param) }}"
 
      - pause:
          seconds: 2
@@ -83,7 +83,7 @@
                   }
        debug:
          msg: "Verifying lookout's Status"
-       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getLookoutUUID) | map(attribute='Status') | list | first == "alive"
+       until: lookup('controlplane', 'ncpc', input_param) | dict2items | map(attribute='value') | map(attribute=getLookoutUUID) | map(attribute='Status') | list | first == "alive"
        retries: 10
        delay: 1
 
@@ -93,7 +93,7 @@
                   'Operation': 'membership',
                   'OutfileName': 'verify_lookout_info'
                   }
-         lookout_membership: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         lookout_membership: "{{ lookup('controlplane', 'ncpc', input_param) }}"
        debug:
          msg: "get lookout's gossip info"
        with_items:
@@ -116,7 +116,7 @@
              'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
               }
        debug:
-         msg: "{{ lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'niova-block-ctl', input_param) }}"
 
      - name: "{{ recipe_name }}: Start nisd process."
        vars:
@@ -126,7 +126,7 @@
                   'lookout_uuid' :  '{{ lookoutUUID["stdout_lines"][0] }}'
                   }
        debug:
-         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param) }}"
 
      - pause:
          seconds: 2
@@ -140,7 +140,7 @@
                   }
        debug:
          msg: "Verifying NISD's Status"
-       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
+       until: lookup('controlplane', 'ncpc', input_param) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
        retries: 10
        delay: 1
 
@@ -150,7 +150,7 @@
                   'Operation': 'NISDGossip',
                   'OutfileName': 'verify_nisd_gossip_info'
                   }
-         nisd_membership: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         nisd_membership: "{{ lookup('controlplane', 'ncpc', input_param) }}"
        debug:
          msg: "get nisd's gossip info"
        with_items:
@@ -189,7 +189,7 @@
          gdb_cmd: |
             break NiovaBlockClientDestroy
        debug:
-         msg: "{{ lookup('write_gdb_script', 'niova_block_test', gdb_cmd, nisdUUID['stdout_lines'][0], input_param, wantlist=True) }}"
+         msg: "{{ lookup('write_gdb_script', 'niova_block_test', gdb_cmd, nisdUUID['stdout_lines'][0], input_param) }}"
 
      - name: "{{ recipe_name}}: Copy input cmd file to nisd's directory"
        vars:
@@ -217,7 +217,7 @@
                end
                run
        debug:
-         msg: "{{ lookup('write_gdb_script', 'niova_block_test', gdb_cmd, nisdUUID['stdout_lines'][0], input_param, wantlist=True) }}"
+         msg: "{{ lookup('write_gdb_script', 'niova_block_test', gdb_cmd, nisdUUID['stdout_lines'][0], input_param) }}"
        no_log: True
 
     rescue:

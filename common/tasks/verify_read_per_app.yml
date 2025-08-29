@@ -5,7 +5,7 @@
         stage: "read_client"
         cmd: "input@{{ pmdb_app }}:0:0:0:0.read"
         where: "/pumice_db_test_client/input"
-        read_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', ClientUUID, cmd, where, wantlist=True) }}"
+        read_cmd: "{{ lookup('niova_ctlrequest', 'apply_cmd', ClientUUID, cmd, where) }}"
       debug:
         msg: "{{ read_cmd }}"
       no_log: True
@@ -18,7 +18,7 @@
             - "/pumice_db_test_client/pmdb-test-apps/0/status"
             - "/pumice_db_test_client/pmdb-test-apps/0/app-seqno"
             - "/pumice_db_test_client/pmdb-request-history"
-        client_read_verification: "{{ lookup('niova_ctlrequest', 'lookup', ClientUUID, raft_keys, wantlist=True) }}"
+        client_read_verification: "{{ lookup('niova_ctlrequest', 'lookup', ClientUUID, raft_keys) }}"
       debug:
         msg: "Getting last-request-tag."
       no_log: True

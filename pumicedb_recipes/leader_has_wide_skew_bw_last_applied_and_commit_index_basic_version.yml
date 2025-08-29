@@ -50,7 +50,7 @@
 
     - name: "{{ recipe_name }}: Kill the Leader."
       debug:
-       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
+       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'])}}"
       no_log: True
 
     - name: "{{ recipe_name }}: Wait until the new leader gets  elected."
@@ -68,10 +68,10 @@
       vars:
         stage: "followers_values_aftr_first_election"
       set_fact:
-        verify_aftr_first_values: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, server_keys, wantlist=True) }}"
+        verify_aftr_first_values: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, server_keys) }}"
       failed_when: >
-        (verify_aftr_first_values[item]['/0/commit-idx'] <= get_values_from_all[item]['/0/commit-idx']) or
-        (verify_aftr_first_values[item]['/0/last-applied'] != get_values_from_all[item]['/0/last-applied'])
+        (verify_aftr_first_values[item]['/0/commit-idx'] <= get_values_from_all[0][item]['/0/commit-idx']) or
+        (verify_aftr_first_values[item]['/0/last-applied'] != get_values_from_all[0][item]['/0/last-applied'])
       loop: "{{ range(0, FollowerUUIDs | length)| list }}"
 
     #Remove fault injection on all running peers.
@@ -96,7 +96,7 @@
 
     - name: "{{ recipe_name }}: Kill the first Leader."
       debug:
-       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
+       msg: "{{lookup('niova_raftprocess', 'kill', LeaderUUID['/0/leader-uuid'])}}"
       no_log: True
 
     #This is temporary. This is workaround though.
@@ -106,7 +106,7 @@
          previous_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
       debug:
         msg: "Waiting for second leader election"
-      until: lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[item], '/raft_root_entry/0/leader-uuid', wantlist=True)| dict2items | map(attribute='value') | list | first != (previous_leader)
+      until: lookup('niova_ctlrequest', 'lookup', FollowerUUIDs[item], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first != (previous_leader)
       retries: 60
       delay: 1
       loop: "{{ range(0, FollowerUUIDs | length) | list }}"
@@ -115,7 +115,7 @@
       vars:
         stage: "last_verification"
       set_fact:
-       last_verification_aftr_rm_fault_inject: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, server_keys, wantlist=True) }}"
+       last_verification_aftr_rm_fault_inject: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, server_keys) }}"
       failed_when: >
         (last_verification_aftr_rm_fault_inject[item]['/0/commit-idx'] <= verify_aftr_first_values[item]['/0/commit-idx']) or
         (last_verification_aftr_rm_fault_inject[item]['/0/last-applied'] <= verify_aftr_first_values[item]['/0/last-applied']) or

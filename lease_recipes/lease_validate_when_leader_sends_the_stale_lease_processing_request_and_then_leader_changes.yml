@@ -99,12 +99,12 @@
         tasks_from: get_server_uuid_info
 
     - set_fact:
-        newList: "{{ NRunningPeers  | difference(oldLeader) }}"
+        newList: "{{ NRunningPeers  | difference([oldLeader]) }}"
 
      #Pause old leader
     - name: "{{ recipe_name }}: Pause old leader"
       debug:
-       msg: "{{lookup('niova_raftprocess', 'pause',  oldLeader, wantlist=True)}}"
+       msg: "{{lookup('niova_raftprocess', 'pause',  oldLeader)}}"
       no_log: True
 
     - name: "{{ recipe_name }}: Wait until leader election happens."
@@ -136,7 +136,7 @@
     #Resume old leader
     - name: "{{ recipe_name }}: Unpause old leader"
       debug:
-       msg: "{{lookup('niova_raftprocess', 'resume',  oldLeader, wantlist=True)}}"
+       msg: "{{lookup('niova_raftprocess', 'resume',  oldLeader)}}"
       no_log: True
 
     - name: "{{ recipe_name }}: Disable message receive on all peers for leader overthrow"
@@ -175,7 +175,7 @@
       debug:
         msg:
          - "Waiting for old leader to become leader again"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], '/raft_root_entry/0/leader-uuid') | dict2items | map(attribute='value') | list | first == oldLeader
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid') | dict2items | map(attribute='value') | list | first == oldLeader
       retries: 20
       delay: 2
       loop: "{{ range(0, NRunningPeers | length) | list }}"

@@ -40,7 +40,9 @@
       vars:
          stage: "wait_leader_election"
       debug:
-        msg: "Waiting for leader election"
+        msg: 
+          - "Waiting for leader election"
+          - "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first }}"
       until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first != "null"
       retries: 10
       delay: 1
@@ -61,7 +63,7 @@
          peers_val: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_keys) }}"
       debug:
         msg: "Getting stats for all running peers: {{ peers_val }}"
-      no_log: true
+      no_log: false
       with_items:
          - "{{ peers_val }}"
       register: stage0_peers_vals
@@ -73,7 +75,7 @@
     - name: Generate new client
       shell: "/usr/bin/uuid"
       register: clientUUID
-    
+
     - name: "{{ recipe_name }}: Perform 'GET' operation."
       vars:
          input_param: {
@@ -96,6 +98,8 @@
       no_log: true
       failed_when: >
          (getLease['results'][0]['item']['outfile_status'] != 0)
+
+    - pause: seconds=5
 
     - name: "{{ recipe_name }}: Check if 'GET' is successful."
       vars:

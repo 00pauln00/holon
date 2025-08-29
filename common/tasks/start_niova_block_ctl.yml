@@ -8,7 +8,7 @@
               }
        debug:
           msg: 
-            - "{{ lookup('nisd_handler', 'niova-block-ctl', input_param, wantlist=True) }}"
+            - "{{ lookup('nisd_handler', 'niova-block-ctl', input_param) }}"
        loop: "{{ range(0, nnisds | int) }}"
        loop_control: 
           loop_var: index

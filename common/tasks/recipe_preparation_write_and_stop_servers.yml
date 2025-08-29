@@ -64,7 +64,7 @@
 
    - name: "{{ recipe_name }}: Get sync-entry-idx values for all followers before write."
      vars:
-       follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
+       follower_uuids: "{{ NRunningPeers | difference([rb_during_start_raft_values['/0/leader-uuid']]) }}"
        stage: "before_write_followers"
        raft_keys:
            - "/raft_root_entry/0/sync-entry-idx"
@@ -86,7 +86,7 @@
        name: common
        tasks_from: set_fault_injection_and_verify
      vars:
-       follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
+       follower_uuids: "{{ NRunningPeers | difference([rb_during_start_raft_values['/0/leader-uuid']]) }}"
        ServerUUID: "{{ follower_uuids[item] }}"
        fault_injection_name: "raft_follower_ignores_non_hb_AE_request"
      loop: "{{ range(0, follower_uuids | length) | list }}"
@@ -125,7 +125,7 @@
 
    - name: "{{ recipe_name }}: Get sync-entry-idx values for all followers after write."
      vars:
-       follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
+       follower_uuids: "{{ NRunningPeers | difference([rb_during_start_raft_values['/0/leader-uuid']]) }}"
        stage: "after_write_followers"
        raft_keys:
            - "/raft_root_entry/0/sync-entry-idx"
@@ -141,12 +141,12 @@
      set_fact:
         rb_during_start_new_entry_idx_leader_after_write: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid_before, raft_keys) }}"
 
-   #2a- Verification for sync-entry-idx.
+    #2a- Verification for sync-entry-idx.
    - name: "{{ recipe_name }}: Verify that sync-entry-idx of all followers remains same."
      vars:
        sync_entry_idx_before: "{{ rb_during_start_new_entry_idx_followers_before_write[item]['/0/sync-entry-idx'] }}"
        sync_entry_idx_after: "{{ rb_during_start_new_entry_idx_followers_after_write[item]['/0/sync-entry-idx'] }}"
-       follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
+       follower_uuids: "{{ NRunningPeers | difference([rb_during_start_raft_values['/0/leader-uuid']]) }}"
      debug:
        msg: "Verifying that sync-entry-idx of all followers is not advanced"
      no_log: true
@@ -174,7 +174,7 @@
      debug:
        msg: "Validating that commit-idx has not advanced on any peer."
      no_log: true
-     failed_when: commit_idx_after > commit_idx_after
+     failed_when: commit_idx_after > commit_idx_before
      loop: "{{ range(0, NRunningPeers | length) | list }}"
 
    #Get commit-idx of leader before leader election.
@@ -190,7 +190,7 @@
    #3- Stop the processes, first all followers and then leader.
    - name: "{{ recipe_name }}: Stop all follower processes."
      vars:
-       follower_uuids: "{{ NRunningPeers | difference(rb_during_start_raft_values['/0/leader-uuid']) }}"
+       follower_uuids: "{{ NRunningPeers | difference([rb_during_start_raft_values['/0/leader-uuid']]) }}"
        ServerUUID: "{{ follower_uuids[item] }}"
      debug:
        msg: "{{ lookup('niova_raftprocess', 'kill', ServerUUID) }}"

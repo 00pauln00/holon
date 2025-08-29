@@ -102,7 +102,7 @@
       when: nisd_process_pid is defined and nisd_process_pid | length > 0 and (nisd_process_status == "sleeping" or nisd_process_status == "disk-sleep" or nisd_process_status == "running")
 
     - name: "Kill the processes after recipe execution"
-      set_fact: kill_peer="{{lookup('niova_raftprocess', 'kill', raft_processes[item]['process_uuid'], wantlist=True)}}"
+      set_fact: kill_peer="{{lookup('niova_raftprocess', 'kill', raft_processes[item]['process_uuid'])}}"
       when: raft_processes[item]['process_status'] == "running" or raft_processes[item]['process_status'] == "paused"
       loop: "{{ range(0, raft_processes | length) | list }}"
 

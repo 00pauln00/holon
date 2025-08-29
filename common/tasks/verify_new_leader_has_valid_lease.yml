@@ -13,7 +13,7 @@
      #Pause old leader
     - name: "{{ recipe_name }}: Pause the leader"
       debug:
-       msg: "{{lookup('niova_raftprocess', 'pause', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
+       msg: "{{lookup('niova_raftprocess', 'pause', LeaderUUID['/0/leader-uuid'])}}"
       no_log: True
 
     - name: "{{ recipe_name }}: Get the running peers list after pausing the leader."
@@ -47,7 +47,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'get_lease_for_client1_{{ resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'GET', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'GET', input_param) }}"
       debug:
          msg: "GET operation"
       with_items:
@@ -86,7 +86,7 @@
                 'getLeaseOutfile': '',
                 'outFileName': 'lookup_lease_{{ resourceUUID.stdout }}'
                  }
-         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param, wantlist=True) }}"
+         leaseApp: "{{ lookup('lease_feature', 'LOOKUP_VALIDATE', input_param) }}"
       debug:
          msg: "lookup lease operation"
       with_items:
@@ -114,5 +114,5 @@
 
     - name: "{{ recipe_name }}: Unpause old leader"
       debug:
-       msg: "{{lookup('niova_raftprocess', 'resume', LeaderUUID['/0/leader-uuid'], wantlist=True)}}"
+       msg: "{{lookup('niova_raftprocess', 'resume', LeaderUUID['/0/leader-uuid'])}}"
       no_log: True

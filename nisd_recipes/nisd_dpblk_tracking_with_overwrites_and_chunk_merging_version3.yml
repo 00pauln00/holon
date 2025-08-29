@@ -39,7 +39,7 @@
        vars:
          stage: "initial_value"
          lookout_uuid: "{{ get_lookout[0] }}"
-         origVal: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         origVal: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Get nisd root entry values: {{ origVal }}"
        no_log: True
@@ -78,7 +78,7 @@
                  'blocking_process' : False,
                  'lookout_uuid': '{{ get_lookout[0] }}'
                  }
-         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
+         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param  ) }}"
        debug:
          msg: "get write's return code"
        no_log:  True
@@ -97,7 +97,7 @@
          lookout_uuid: "{{ get_lookout[0] }}"
        debug:
          msg: "Waiting for nisd to get 'idle'"
-       until: lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/chunk-merge-status', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "idle"
+       until: lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/chunk-merge-status', 'nisd', lookout_uuid,  ) | dict2items | map(attribute='value') | list | first == "idle"
        retries: 10
        delay: 1
 
@@ -105,7 +105,7 @@
        vars:
          stage: "chunk_merge_cnt"
          lookout_uuid: "{{ get_lookout[0] }}"
-         getChunkCnt: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_chunk_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         getChunkCnt: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_chunk_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Get nisd root entry values: {{ getChunkCnt }}"
        no_log: True
@@ -120,7 +120,7 @@
          where: "/nisd_chunks/vdev-uuid@{{ vdev.stdout }}"
          lookout_uuid: "{{ get_lookout[0] }}"
        debug:
-         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid,  ) }}"
        no_log: true
 
      - name: "{{ recipe_name}}: Wait until chunk cnt gets updated."
@@ -130,7 +130,7 @@
          lookout_uuid: "{{ get_lookout[0] }}"
        debug:
          msg: "Waiting for chunk-cnt to get updated"
-       until: lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/chunk-merge-cnt', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == ((orig_merge_cnt | int) + 1)
+       until: lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/chunk-merge-cnt', 'nisd', lookout_uuid,  ) | dict2items | map(attribute='value') | list | first == ((orig_merge_cnt | int) + 1)
        retries: 20
        delay: 1
 
@@ -139,7 +139,7 @@
        vars:
          stage: "get_vblks-written"
          lookout_uuid: "{{ get_lookout[0] }}"
-         getVblksWritten: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/vblks-written', 'nisd', lookout_uuid, wantlist=True) }}"
+         getVblksWritten: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/vblks-written', 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Store num-data-pblks: {{ getVblksWritten }}"
        no_log: True
@@ -153,7 +153,7 @@
          old_VblksWritten: "{{ origVblksWritten['results'][0]['item']['/0/vblks-written'] }}"
          stage: "verify_nisd_chunk"
          lookout_uuid: "{{ get_lookout[0] }}"
-         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_chunk_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_chunk_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Verify nisd values after writes: {{ getNiovaBlockTest }}"
        no_log: True
@@ -170,7 +170,7 @@
        vars:
          stage: "verify_nisd_chunk"
          lookout_uuid: "{{ get_lookout[0] }}"
-         getNumDataPblks: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/num-data-pblks', 'nisd', lookout_uuid, wantlist=True) }}"
+         getNumDataPblks: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/num-data-pblks', 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Store num-data-pblks: {{ getNumDataPblks }}"
        no_log: True
@@ -186,7 +186,7 @@
          old_num_reserved_block_used: "{{ initialValues['results'][0]['item']['/0/num-reserved-pblks-used'] }}"
          get_dpblk: "{{ origNumDataPblk['results'][0]['item']['/0/num-data-pblks'] }}"
          lookout_uuid: "{{ get_lookout[0] }}"
-         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Verify /nisd_root_entry values: {{ getNiovaBlockTest }}, {{ old_num_block_used }}, {{ old_num_reserved_block_used }}"
        no_log: True
@@ -211,7 +211,7 @@
                  'blocking_process' : False,
                  'lookout_uuid': '{{ get_lookout[0] }}'
                  }
-         rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
+         rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param  ) }}"
        debug:
          msg: "get read's return code"
        with_items:
@@ -261,7 +261,7 @@
                  'lookout_uuid': '{{ get_lookout[0] }}'
                  }
        debug:
-         msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param  ) }}"
        with_items:
          - 2
          - 7
@@ -278,7 +278,7 @@
          where: "/nisd_chunks/vdev-uuid@{{ vdev.stdout }}"
          lookout_uuid: "{{ get_lookout[0] }}"
        debug:
-         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid, wantlist=True) }}"
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid,  ) }}"
        no_log: true
 
      - name: "{{ recipe_name }}: Verify num-data-pblks is equal to the original value captured in Step #4."
@@ -286,7 +286,7 @@
          old_value: "{{ origNumDataPblk['results'][0]['item']['/0/num-data-pblks'] }}"
          stage: "verify_numDataPblk"
          lookout_uuid: "{{ get_lookout[0] }}"
-         verifyNumDataPblks: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/num-data-pblks', 'nisd', lookout_uuid, wantlist=True) }}"
+         verifyNumDataPblks: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/num-data-pblks', 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Verify num-data-pblks is equal to the original value: {{ verifyNumDataPblks }}"
        no_log: true
@@ -311,7 +311,7 @@
                  'lookout_uuid': '{{ get_lookout[0] }}'
                  }
        debug:
-         msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param  ) }}"
        with_items:
          - 2
          - 7
@@ -329,7 +329,7 @@
          old_num_reserved_block_used: "{{ initialValues['results'][0]['item']['/0/num-reserved-pblks-used'] }}"
          get_dpblk: "{{ origNumDataPblk['results'][0]['item']['/0/num-data-pblks'] }}"
          lookout_uuid: "{{ get_lookout[0] }}"
-         reVerifyRootEntry: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         reVerifyRootEntry: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_root_keys, 'nisd', lookout_uuid,  ) }}"
        debug:
          msg: "Re-verify /nisd_root_entry values: {{ reVerifyRootEntry }}, {{ old_num_block_used }}, {{ old_num_reserved_block_used }}"
        no_log: True

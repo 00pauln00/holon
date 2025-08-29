@@ -16,7 +16,7 @@
           failed_when: (app_type != "controlplane")
 
         - name: "Prepare gossip node config and proxy.config file"
-          set_fact: gossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", 0,  wantlist=True)}}"
+          set_fact: gossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", 0)}}"
 
         - name: "{{ recipe_name }}: Start test application."
           vars:

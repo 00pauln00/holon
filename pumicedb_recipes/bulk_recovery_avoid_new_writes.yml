@@ -276,7 +276,7 @@
          stage: "getLICPaftr1stWrexceptPeer4"
          aftr1stWrVal: "{{ after1stWr['results'][item]['item'] }}"
          exceptPeer4: "{{ NRunningPeers | difference(newlyStartedPeer4['results'][0]['item']) }}"
-         verifyAftr2ndWr: "{{ lookup('niova_ctlrequest', 'lookup', exceptPeer4[item], raft_root_entry_keys, wantlist=True) }}"
+         verifyAftr2ndWr: "{{ lookup('niova_ctlrequest', 'lookup', exceptPeer4[item], raft_root_entry_keys,  ) }}"
       debug:
         msg: "Verify parameters after 2nd write set"
       failed_when:

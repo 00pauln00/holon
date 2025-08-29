@@ -11,7 +11,7 @@
           - "/pumice_db_test_client/pmdb-test-apps/{{ idx }}/pmdb-write-pending"
           - "/pumice_db_test_client/pmdb-test-apps/{{ idx }}/app-sync"
           - "/pumice_db_test_client/pmdb-test-apps/{{ idx }}/app-seqno"
-        client_vals: "{{ lookup('niova_ctlrequest', 'lookup', Client_UUID, raft_keys, wantlist=True) }}"
+        client_vals: "{{ lookup('niova_ctlrequest', 'lookup', Client_UUID, raft_keys) }}"
       debug:
         msg: "get the values after client write operation: {{ client_vals }}"
       no_log: true

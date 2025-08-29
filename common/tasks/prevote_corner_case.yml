@@ -76,7 +76,7 @@
         stage: "disable_peers_mode"
         cmd: "net_recv_enabled@false"
         where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
-        disable_net_rcv: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where, wantlist=True) }}"
+        disable_net_rcv: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where) }}"
       debug:
         msg: "{{ disable_net_rcv }}"
       no_log: True
@@ -87,7 +87,7 @@
         stage: "disable_peers_mode"
         cmd: "net_send_enabled@false"
         where: "/ctl_svc_nodes/uuid@{{ peer4 }}"
-        disable_send: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where, wantlist=True) }}"
+        disable_send: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeersBefore, cmd, where) }}"
       debug:
         msg: "{{ disable_send }}"
       no_log: True
@@ -129,7 +129,9 @@
         fault_injection_name: "raft_pvc_becomes_candidate"
         where: "/fault_injection_points/name@{{ fault_injection_name }}"
       set_fact:
-         fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4, cmd, where, wantlist=True) }}"
+         fault_injection: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4, cmd, where) }}"
+
+    - pause: seconds=5
 
     - name: "{{ recipe_name }}: Get list of fault-injections."
       vars:
@@ -159,6 +161,8 @@
       with_items:
          - "{{ raft_root_entry }}"
       register: peer4_term_after_fi
+
+    - pause: seconds=5
 
     - name: "{{ recipe_name }}: Check if term is getting incremented after applying fault injection."
       debug:

@@ -31,7 +31,7 @@
                  'uport' : '{{ (srv_port | int) + 10 + item }}'
                  }
        set_fact:
-         get_lookout: "{{ get_lookout | default([]) + [lookup('controlplane', 'niova-lookout', input_param, wantlist=true)] }}"
+         get_lookout: "{{ get_lookout | default([]) + [lookup('controlplane', 'niova-lookout', input_param  )] }}"
        loop: "{{ range(0, nlookouts | int) }}"
 
      - debug:
@@ -48,7 +48,7 @@
                   }
        debug:
          msg: "wait untill lookout status gets updated in gossip"
-       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=get_lookout) | map(attribute='Status') | list| first == "running"
+       until: lookup('controlplane', 'ncpc', input_param  ) | dict2items | map(attribute='value') | map(attribute=get_lookout) | map(attribute='Status') | list| first == "running"
        retries: 20
        delay: 1
 
@@ -58,7 +58,7 @@
                 'Operation': 'membership',
                 'OutfileName': 'membership_details'
                  }
-         GossipDetails: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         GossipDetails: "{{ lookup('controlplane', 'ncpc', input_param  ) }}"
        debug:
          msg: "get membership details of running servers."
        with_items:
@@ -74,7 +74,7 @@
                   'Hport': '{{membershipDetails["results"][0]["item"]["membership"][get_lookout]["Tags"]["Hport"]}}'
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'prometheus', input_param, wantlist=True) }}"
+         msg: "{{ lookup('controlplane', 'prometheus', input_param  ) }}"
 
      - name: "{{ recipe_name }}: Starting multiple niova-block-ctl."
        include_role:

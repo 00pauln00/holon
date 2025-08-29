@@ -12,7 +12,7 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir) }}"
       when: s3Support == "true"
 
     - name: "Generate 500,000 vblk entries"
@@ -37,7 +37,7 @@
           remove_files: false
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param)[0] }}"
       register: chunk
 
     - name: "Generate 2M(2097152) vblk entries"
@@ -62,7 +62,7 @@
           remove_files: false
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param)[0] }}"
       register: chunk
 
     - name: "{{ recipe_name }}: Get dbi file name string."
@@ -70,7 +70,7 @@
         formal_params:
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True)[0] }}"
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params)[0] }}"
       register: list_op
       no_log: true
 
@@ -86,7 +86,7 @@
           debug_mode: "false"
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-        msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
+        msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params)[0] }}"
       register: gc_output
 
     - debug:
@@ -98,7 +98,7 @@
         formal_params:
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True)[0] }}"
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params)[0] }}"
       register: list_op_new
       no_log: true
 
@@ -122,7 +122,7 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator',  Chunk) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

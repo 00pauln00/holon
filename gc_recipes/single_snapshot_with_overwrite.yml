@@ -12,7 +12,7 @@
             s3_dir: "/local/minio_data"
           debug:
             msg:
-              - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+              - "{{ lookup('obj_storage', 'minio', 'start', s3_dir,  ) }}"
           when: s3Support == "true"
 
         - name: "Generate 1000 vblk entries with snapshot"
@@ -40,7 +40,7 @@
               remove_files: false
           debug:
             msg:
-              - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+              - "{{ lookup('data_gen', 'generator', dbi_param, input_param  )[0] }}"
           register: chunk
 
         - name: "Generate 1000 vblk entries without snapshot"
@@ -67,7 +67,7 @@
               remove_files: false
           debug:
             msg:
-              - "{{ lookup('data_gen', 'generator', dbi_param, input_param, wantlist=True)[0] }}"
+              - "{{ lookup('data_gen', 'generator', dbi_param, input_param  )[0] }}"
           register: chunk
 
         - name: "{{ recipe_name }}: Start GCService"
@@ -83,21 +83,21 @@
               }
           debug:
             msg:
-              - "{{ lookup('garbage_collection', 'daemon', 'start', params, wantlist=True) }}"
+              - "{{ lookup('garbage_collection', 'daemon', 'start', params,  ) }}"
 
         - name: "{{ recipe_name }}: Wait until GC marker file present."
           vars:
             params: { "chunk": "1" }
           debug:
             msg: "Waiting for GC Marker File"
-          until: lookup('obj_storage', 'get_markers', params, wantlist=True)[0][0] is not none
+          until: lookup('obj_storage', 'get_markers', params,  )[0][0] is not none
           retries: 50
           delay: 2
 
         - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
           vars:
             params: { "chunk": "1" }
-            Sequence: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True)[0] }}"
+            Sequence: "{{ lookup('obj_storage', 'get_markers', params,  )[0] }}"
             gc_marker: "{{ Sequence[0] }}"
             nisd_marker: "{{ Sequence[1] }}"
           debug:
@@ -111,7 +111,7 @@
             Chunk: "{{ chunk['msg'][0] }}"
             has_snapshot: true
           debug:
-            msg: "{{ lookup('data_gen', 'validator',  Chunk, has_snapshot, wantlist=True) }}"
+            msg: "{{ lookup('data_gen', 'validator',  Chunk, has_snapshot,  ) }}"
 
       rescue:
         - name: "Recipe: {{ recipe_name }} failed"

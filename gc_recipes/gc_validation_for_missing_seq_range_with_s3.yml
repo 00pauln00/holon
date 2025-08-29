@@ -25,14 +25,14 @@
         Chunk: "{{ chunk['msg'][0] }}"
         operation: "delete"
       debug:
-         msg: "{{ lookup('s3_handler', 'performS3Operation', operation, Chunk,  wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'performS3Operation', operation, Chunk,   ) }}"
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
         debugMode: true
       debug:
-         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk,  ) }}"
       register: gc_output
 
     - debug:
@@ -44,14 +44,14 @@
         Chunk: "{{ chunk['msg'][0] }}"
         operation: "upload"
       debug:
-         msg: "{{ lookup('s3_handler', 'performS3Operation', operation, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'performS3Operation', operation, Chunk,  ) }}"
 
     - name: "{{ recipe_name }}: After uploading the deleted file, perform GC operation."
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
         debugMode: false
       debug:
-         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk, wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk,  ) }}"
       register: gc_output
 
     - debug:
@@ -62,4 +62,4 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate', Chunk, wantlist=True) }}"
+         msg: "{{ lookup('s3_handler', 'data_validate', Chunk,  ) }}"

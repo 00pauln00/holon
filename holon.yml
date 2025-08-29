@@ -57,14 +57,14 @@
         srv_port: "{{ srv_port }}"
         client_port: "{{ client_port }}"
     debug:
-       msg: "{{ lookup('holon_startup', config_params, wantlist=True) }}"
+       msg: "{{ lookup('holon_startup', config_params) }}"
 
   #- name: "Install python modules if not installed previously"
   #  vars:
   #    config_params:
   #      startup_check: "python_module_install"
   #  debug:
-  #    msg: "{{ lookup('holon_startup', config_params, wantlist=True) }}"
+  #    msg: "{{ lookup('holon_startup', config_params,) }}"
 
   - name: "Prepare parameter to pass across recipes"
     set_fact:
@@ -88,7 +88,7 @@
            s3Support: "{{ s3Support }}"
 
   - name: "Prepare server configs"
-    set_fact: ClusterInfo="{{lookup('niova_raftconfig', 'server', wantlist=True)[0]}}"
+    set_fact: ClusterInfo="{{lookup('niova_raftconfig', 'server')}}"
 
   - name: "Show the values"
     debug:

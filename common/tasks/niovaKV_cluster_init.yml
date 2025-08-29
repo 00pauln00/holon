@@ -13,7 +13,7 @@
        loop: "{{ range(0, number_of_clients | int) | list }}"
 
      - name: "Prepare gossip node config file"
-       set_fact: niovaKVgossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", 0,  wantlist=True)}}"
+       set_fact: niovaKVgossipCreation="{{lookup('niova_raftconfig', "{{ app_type }}", 0)}}"
 
      # Start PMDB servers.
      - name: "{{ recipe_name }}: Start pmdb servers in the cluster."

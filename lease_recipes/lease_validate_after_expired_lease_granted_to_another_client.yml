@@ -102,7 +102,7 @@
                 'outFileName': 'get_lease_{{ item }}'
                  }
       set_fact:
-        getLeaseOps: "{{ getLeaseOps|default([]) + [lookup('lease_feature', 'GET', input_param, wantlist=True)] }}"
+        getLeaseOps: "{{ getLeaseOps|default([]) + [lookup('lease_feature', 'GET', input_param  )] }}"
       failed_when: >
         (getLeaseOps[item]['outfile_status'] != 0) or
         (getLeaseOps[item]['output_data'][0]['LeaseRes']['Status'] != 0) or
@@ -113,7 +113,7 @@
 
     - name: "{{ recipe_name }}: Kill the whole cluster."
       debug:
-         msg:  "{{ lookup('niova_raftprocess', 'kill', NRunningPeers[item], wantlist=True) }}"
+         msg:  "{{ lookup('niova_raftprocess', 'kill', NRunningPeers[item],  ) }}"
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Pause for 2 seconds."
@@ -122,7 +122,7 @@
 
     - name: "{{ recipe_name }}: Reboot the cluster."
       debug:
-         msg:  "{{ lookup('niova_raftprocess', 'start', NRunningPeers[item], wantlist=True) }}"
+         msg:  "{{ lookup('niova_raftprocess', 'start', NRunningPeers[item],  ) }}"
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Wait untill leaseState of all leases is granted."

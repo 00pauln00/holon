@@ -9,7 +9,7 @@
          process_type: "nisd"
          lookout_uuid: "{{ lookoutUUIDList }}"
        debug:
-         msg: "{{ lookup('niova_ctlrequest', 'lookup', nisdUuidsList[item], raft_keys, 'nisd', lookout_uuid, wantlist=True) }}"
+         msg: "{{ lookup('niova_ctlrequest', 'lookup', nisdUuidsList[item], raft_keys, 'nisd', lookout_uuid) }}"
        loop: "{{ range(0, nisdUuidsList | length) | list }}"
        loop_control:
           pause: 1

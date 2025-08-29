@@ -8,7 +8,7 @@
             - "/pumice_db_test_client/pmdb-test-apps/{{ app_itr }}/pmdb-seqno"
             - "/pumice_db_test_client/pmdb-test-apps/{{ app_itr }}/status"
             - "/pumice_db_test_client/pmdb-test-apps/{{ app_itr }}/app-validated-seqno"
-        client_vals: "{{ lookup('niova_ctlrequest', 'lookup', ClientUUID, read_keys, wantlist=True) }}"
+        client_vals: "{{ lookup('niova_ctlrequest', 'lookup', ClientUUID, read_keys) }}"
       debug:
         msg: "get the values after client write operation: {{ client_vals }}"
       no_log: true

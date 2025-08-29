@@ -11,7 +11,7 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir,  ) }}"
       when: s3Support == "true"
 
     - name: "{{ recipe_name }}: Generate random DBI requests."
@@ -29,7 +29,7 @@
           debug_mode: true
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
+         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_param)[0] }}"
       register: gc_output
 
 
@@ -42,7 +42,7 @@
         formal_params:
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('obj_storage', 'get_list', formal_params, wantlist=True)[0] }}"
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params,  )[0] }}"
       register: list_op
       no_log: true
       
@@ -52,7 +52,7 @@
           chunk: "{{ chunk['msg'][0] }}"
           output: "{{ list_op['msg'] }}"
       debug:
-         msg: "{{ lookup('obj_storage', 'delete_half_files', input_params, wantlist=True) }}"
+         msg: "{{ lookup('obj_storage', 'delete_half_files', input_param) }}"
 
     - name: "{{ recipe_name }}: Generate random DBI requests."
       include_role:
@@ -68,7 +68,7 @@
           debug_mode: false
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params, wantlist=True)[0] }}"
+         msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_param)[0] }}"
       register: gc_output
 
     - debug:
@@ -79,5 +79,5 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('data_gen', 'validator', Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator', Chunk,  ) }}"
 

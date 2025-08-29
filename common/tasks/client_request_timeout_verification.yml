@@ -5,7 +5,7 @@
          stage: "set_diff_time"
          cmd: "default-request-timeout-sec@{{ item }}"
          where: "/raft_client_root_entry/default-request-timeout-sec"
-         set_time: "{{ lookup('niova_ctlrequest', 'apply_cmd', timeout_mod_client_uuid, cmd, where, wantlist=True) }}"
+         set_time: "{{ lookup('niova_ctlrequest', 'apply_cmd', timeout_mod_client_uuid, cmd, where,) }}"
       debug:
         msg: "{{ set_time }}"
       no_log: True
@@ -15,7 +15,7 @@
          stage: "lookup_stage"
          cmd: "input@{{ Demo2Rncui }}.lookup"
          where: "/pumice_db_test_client/input"
-         apply_lookup: "{{ lookup('niova_ctlrequest', 'apply_cmd', timeout_mod_client_uuid, cmd, where, wantlist=True) }}"
+         apply_lookup: "{{ lookup('niova_ctlrequest', 'apply_cmd', timeout_mod_client_uuid, cmd, where) }}"
       debug:
         msg: "{{ apply_lookup }}"
       no_log: True

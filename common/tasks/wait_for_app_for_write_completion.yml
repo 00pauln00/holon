@@ -4,7 +4,7 @@
         stage: "wait_for_client_write_comp"
         seq_key:
             - "/pumice_db_test_client/pmdb-test-apps/{{ index }}/pmdb-seqno"
-        pmdb_test_apps_pmdb_seqno: "{{ lookup('niova_ctlrequest', 'lookup', Client_UUID, seq_key, wantlist=True)}}"
+        pmdb_test_apps_pmdb_seqno: "{{ lookup('niova_ctlrequest', 'lookup', Client_UUID, seq_key)}}"
       debug:
         msg:
           - "Waiting for writes completion"

@@ -12,7 +12,7 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir, wantlist=True) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir,  ) }}"
       when: s3Support == "true"
 
     - name: "Generate DBIs with vblk entry"
@@ -41,7 +41,7 @@
         }
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dgen_args, params, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, params,  ) }}"
 
     - name: "Generate DBIs with vblk entry"
       vars:
@@ -69,7 +69,7 @@
         }
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dgen_args, params, wantlist=True) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, params,  ) }}"
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
@@ -83,7 +83,7 @@
         }
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'daemon', 'start', input_params, wantlist=True) }}"
+          - "{{ lookup('garbage_collection', 'daemon', 'start', input_param) }}"
 
     - name: "{{ recipe_name }}: pause for 3 seconds."
       pause:
@@ -94,7 +94,7 @@
         params: {
           "chunk": "0",
         }
-        marker_seq: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True)[0] }}"
+        marker_seq: "{{ lookup('obj_storage', 'get_markers', params,  )[0] }}"
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq }}"
       until: marker_seq[0] is not none
@@ -106,7 +106,7 @@
         params: {
           "chunk": "0",
         }
-        Sequence: "{{ lookup('obj_storage', 'get_markers', params, wantlist=True)[0] }}"
+        Sequence: "{{ lookup('obj_storage', 'get_markers', params,  )[0] }}"
         gc_marker: "{{ Sequence[0] }}"
         nisd_marker: "{{ Sequence[1] }}"
       debug:
@@ -119,7 +119,7 @@
       vars:
         Chunk: "0"
       debug:
-         msg: "{{ lookup('data_gen', 'validator',  Chunk, wantlist=True) }}"
+         msg: "{{ lookup('data_gen', 'validator',  Chunk,  ) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

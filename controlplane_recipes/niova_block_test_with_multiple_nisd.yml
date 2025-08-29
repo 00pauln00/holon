@@ -50,7 +50,7 @@
                   'OutfileName': 'nisd_config_output_{{ item }}'
                   }
        debug:
-         msg: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         msg: "{{ lookup('controlplane', 'ncpc', input_param  ) }}"
        no_log: True
        loop: "{{ range(0, nisd_uuids | length) | list }}"
        loop_control:
@@ -67,7 +67,7 @@
                   'OutfileName': 'read_output_{{ item }}'
                   }
        debug:
-         msg: "{{ lookup('controlplane','ncpc', input_param, wantlist=True) }}"
+         msg: "{{ lookup('controlplane','ncpc', input_param  ) }}"
        no_log: True
        loop: "{{ range(0, nisd_uuids | length) | list }}"
        loop_control:
@@ -93,7 +93,7 @@
                  'uport' : '106{{ item }}'
                  }
        debug:
-         msg: "{{ lookup('controlplane', 'niova-lookout', input_param, wantlist=true) }}"
+         msg: "{{ lookup('controlplane', 'niova-lookout', input_param  ) }}"
        no_log: True
        loop: "{{ range(0, lookout_uuids | length) | list }}"
        loop_control:
@@ -105,7 +105,7 @@
                   'Operation': 'membership',
                   'OutfileName': 'verify_lookout_status'
                   }
-         getLookout: "{{ lookup('controlplane', 'ncpc', input_param, wantlist=True) }}"
+         getLookout: "{{ lookup('controlplane', 'ncpc', input_param  ) }}"
        debug:
          msg: "Get killed lookout details."
        no_log: True
@@ -151,7 +151,7 @@
                   'lookout_uuid' :  '{{ lookout_uuids[0] }}'
                   }
        debug:
-         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param  ) }}"
        no_log: True
        loop: "{{ range(0, nisd_uuid_list | length) | list }}"
        loop_control:
@@ -166,7 +166,7 @@
                   'lookout_uuid' :  '{{ lookout_uuids[1] }}'
                   }
        debug:
-         msg: "{{ lookup('nisd_handler', 'nisd', input_param, wantlist=True) }}"
+         msg: "{{ lookup('nisd_handler', 'nisd', input_param  ) }}"
        no_log: True
        loop: "{{ range(0, get_nisd_list | length) | list }}"
        loop_control:
@@ -178,7 +178,7 @@
          lookout_uuid: "{{ lookout_uuids[0] }}"
        debug:
          msg: "Waiting for nisd to get updated"
-       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid_list[item], '/nisd_root_entry/0/status', 'nisd', lookout_uuid, wantlist=True) | dict2items | map(attribute='value') | list | first == "running"
+       until: lookup('niova_ctlrequest', 'lookup', nisd_uuid_list[item], '/nisd_root_entry/0/status', 'nisd', lookout_uuid,  ) | dict2items | map(attribute='value') | list | first == "running"
        retries: 30
        delay: 1
        loop: "{{ range(0, nisd_uuid_list | length) | list }}"
@@ -192,7 +192,7 @@
                   }
        debug:
          msg: "Verifying NISD's Status"
-       until: lookup('controlplane', 'ncpc', input_param, wantlist=True) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
+       until: lookup('controlplane', 'ncpc', input_param  ) | dict2items | map(attribute='value') | map(attribute=getNisd) | map(attribute='Status') | list | first == "Alive"
        retries: 20
        delay: 1
        loop: "{{ range(0, nisd_uuids | length) | list }}"

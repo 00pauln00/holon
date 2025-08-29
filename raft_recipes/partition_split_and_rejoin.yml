@@ -145,7 +145,7 @@
         stage: "disable_candidate_mode"
         cmd: "net_recv_enabled@false"
         where: "/ctl_svc_nodes/uuid@{{ bigger_cluster[item] }}"
-        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', smaller_cluster, cmd, where, wantlist=True) }}"
+        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', smaller_cluster, cmd, where) }}"
       debug:
         msg: "{{ disable_mode }}"
       loop: "{{ range(0, bigger_cluster | length) | list }}"
@@ -157,7 +157,7 @@
         stage: "disable_candidate_mode"
         cmd: "net_recv_enabled@false"
         where: "/ctl_svc_nodes/uuid@{{ smaller_cluster[item] }}"
-        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', bigger_cluster, cmd, where, wantlist=True) }}"
+        disable_mode: "{{ lookup('niova_ctlrequest', 'apply_cmd', bigger_cluster, cmd, where) }}"
       debug:
         msg: "{{ disable_mode }}"
       loop: "{{ range(0, smaller_cluster | length) | list }}"
@@ -166,7 +166,7 @@
     - name: "{{ recipe_name}}: Get the server information for bigger cluster."
       vars:
         stage: "bigger_cluster_values"
-        peer_values_for_bigger_cluster: "{{ lookup('niova_ctlrequest', 'lookup', bigger_cluster, server_keys, wantlist=True) }}"
+        peer_values_for_bigger_cluster: "{{ lookup('niova_ctlrequest', 'lookup', bigger_cluster, server_keys) }}"
       debug:
         msg: "Get the values for all running servers {{ peer_values_for_bigger_cluster }}"
       no_log: True
@@ -177,7 +177,7 @@
     - name: "{{ recipe_name}}: Get the server information for smaller cluster."
       vars:
         stage: "smaller_cluster_values"
-        peer_values_for_small_cluster: "{{ lookup('niova_ctlrequest', 'lookup', smaller_cluster, server_keys, wantlist=True) }}"
+        peer_values_for_small_cluster: "{{ lookup('niova_ctlrequest', 'lookup', smaller_cluster, server_keys) }}"
       debug:
         msg: "Get the values for all running servers {{ peer_values_for_small_cluster }}"
       no_log: True
@@ -199,7 +199,7 @@
     - name: "{{ recipe_name}}: Get the server information for smaller cluster."
       vars:
         stage: "smaller_cluster_values"
-        values_for_small_cluster: "{{ lookup('niova_ctlrequest', 'lookup', smaller_cluster, server_keys, wantlist=True) }}"
+        values_for_small_cluster: "{{ lookup('niova_ctlrequest', 'lookup', smaller_cluster, server_keys) }}"
       debug:
         msg: "Get the values for all running servers {{ peer_values_for_small_cluster }}"
       #no_log: True
@@ -228,7 +228,7 @@
         stage: "disable_smaller_cluster"
         cmd: "net_recv_enabled@true"
         where: "/ctl_svc_nodes/uuid@{{ bigger_cluster[item] }}"
-        disable_smaller_cluster: "{{ lookup('niova_ctlrequest', 'apply_cmd', smaller_cluster, cmd, where, wantlist=True) }}"
+        disable_smaller_cluster: "{{ lookup('niova_ctlrequest', 'apply_cmd', smaller_cluster, cmd, where) }}"
       debug:
         msg: "{{ disable_smaller_cluster }}"
       loop: "{{ range(0, bigger_cluster | length) | list }}"
@@ -239,7 +239,7 @@
         stage: "disable_bigger_cluster"
         cmd: "net_recv_enabled@true"
         where: "/ctl_svc_nodes/uuid@{{ smaller_cluster[item] }}"
-        disable_bigger_cluster: "{{ lookup('niova_ctlrequest', 'apply_cmd', bigger_cluster, cmd, where, wantlist=True) }}"
+        disable_bigger_cluster: "{{ lookup('niova_ctlrequest', 'apply_cmd', bigger_cluster, cmd, where) }}"
       debug:
         msg: "{{ disable_bigger_cluster }}"
       loop: "{{ range(0, smaller_cluster | length) | list }}"
@@ -251,7 +251,7 @@
          stage: "get_leader"
          leader_key:
             - "/raft_root_entry/0/leader-uuid"
-         verify_leader: "{{ lookup('niova_ctlrequest', 'lookup', bigger_cluster, leader_key, wantlist=True) }}"
+         verify_leader: "{{ lookup('niova_ctlrequest', 'lookup', bigger_cluster, leader_key) }}"
       debug:
         msg: "Getting orignal values {{ verify_leader }}."
       no_log: True
@@ -266,7 +266,7 @@
         raft_key: "/raft_root_entry/0/leader-uuid"
       debug:
         msg: "Verifying leader-uuid on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_key, wantlist=True) | dict2items | map(attribute='value') | list | first == (part1_leader)
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_key) | dict2items | map(attribute='value') | list | first == (part1_leader)
       retries: 60
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
