@@ -106,7 +106,7 @@
             (wr_response['Status'] != 0) or
             (wr_response['Client'] != clientUUID.stdout | string) or
             (wr_response['Resource'] != resourceUUID.stdout | string) or
-            (wr_response['TTL'] != 5) or
+            (wr_response['TTL'] != 15) or
             (wr_response['LeaseState'] != GRANTED)
 
         - name: "{{ recipe_name }}: Starting controlplane_client to refreshLease."
@@ -136,7 +136,7 @@
             (wr_response['Status'] != 0) or
             (wr_response['Client'] != clientUUID.stdout|string) or
             (wr_response['Resource'] != resourceUUID.stdout|string) or
-            (wr_response['TTL'] != 5) or
+            (wr_response['TTL'] != 15) or
             (wr_response['LeaseState'] != GRANTED)
 
         - name: "{{ recipe_name }}: Starting controlplane_client to lookupLease."

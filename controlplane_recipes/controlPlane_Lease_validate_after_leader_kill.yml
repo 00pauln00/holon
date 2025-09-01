@@ -89,7 +89,7 @@
           include_role:
             name: common
             tasks_from: get_server_uuid_info
-
+        
         - name: "{{ recipe_name }}: Again wait until new leader election happens."
           vars:
             stage: "wait_for_new_leader_election"
