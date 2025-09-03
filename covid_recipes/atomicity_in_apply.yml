@@ -1,0 +1,152 @@
+- name: "atomicity_in_apply"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "atomicity_in_apply"
+    fault_injection_name: "raft_server_atomicity_check"
+    uid: "{{ app_uuid.stdout }}:0:0:0:0"
+
+  tasks:
+  - block:
+      # check for the app_type
+    - name: "{{ recipe_name }}: Check if the app_type is covid"
+      vars:
+        app_type: "{{ app_type }}"
+      debug:
+        msg: "app_type should be covid"
+      failed_when: app_type != "covid"
+
+      # start the servers
+    - name: "{{ recipe_name }}: Print the UUIDs of all the servers"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Start all the servers in the cluster"
+      include_role:
+        name: common
+        tasks_from: start_server_golang
+      vars:
+        ServerUUID: "{{ NonRunningServers[item] }}"
+      loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+      # start the client
+    - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+      include_role:
+        name: common
+        tasks_from: get_new_client_uuid
+      register: client_uuid
+
+      # generate app uuid
+    - name: "{{ recipe_name }}: Generate App UUID"
+      shell: "/usr/bin/uuid"
+      register: app_uuid
+
+      # get the leader uuid
+    - name: "{{ recipe_name }}: Get the leader UUID"
+      include_role:
+        name: common
+        tasks_from: get_leader_uuid
+      register: leader_info
+
+      ####################################################################
+      # 1. NORMAL OPERATIONS: Write and Read (should succeed)
+      ####################################################################
+
+    - name: "{{ recipe_name}}: Normal WriteOne"
+      vars:
+        stage: "CovidWriteOne_Normal"
+        cmd: "WriteOne#{{ app_uuid.stdout }}:0:0:0:0#Africa#OWID_AFR#5000#2000#{{ recipe_name }}_{{ stage }}"
+        WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+      debug:
+        msg: "normal write single entry"
+      with_items:
+        - "{{ WriteOneValue }}"
+      register: WriteOne_Normal
+      no_log: True
+
+    - name: "{{ recipe_name }}: Verify normal write succeeded"
+      debug:
+        msg: "check normal write success"
+      failed_when: >
+        (WriteOne_Normal['results'][0]['item']['status'] != 0) or
+        (WriteOne_Normal['results'][0]['item']['response'][uid]['Status'] != '0')
+
+    - name: "{{ recipe_name}}: Normal ReadOne"
+      vars:
+        stage: "CovidReadOne_Normal"
+        cmd: "ReadOne#Africa#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
+        ReadOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+      debug:
+        msg: "normal read single entry"
+      with_items:
+        - "{{ ReadOneValue }}"
+      register: ReadOne_Normal
+      no_log: True
+
+    - name: "{{ recipe_name }}: Verify normal read succeeded"
+      debug:
+        msg: "check normal read success"
+      failed_when: ReadOne_Normal['results'][0]['item']['status'] != 0
+
+      ####################################################################
+      # 2. FAULT INJECTION
+      ####################################################################
+
+    - name: "{{ recipe_name }}: Apply fault injection on the leader"
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ leader_uuid }}"
+
+      ####################################################################
+      # 3. FAULTY OPERATIONS: Write and Read (should fail)
+      ####################################################################
+
+    - name: "{{ recipe_name}}: Faulty WriteOne"
+      vars:
+        stage: "CovidWriteOne_Faulty"
+        cmd: "WriteOne#{{ app_uuid.stdout }}:0:0:0:0#USA#OWID_AFR#6000#3000#{{ recipe_name }}_{{ stage }}"
+        WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+      debug:
+        msg: "faulty write single entry"
+      with_items:
+        - "{{ WriteOneValue }}"
+      register: WriteOne_Faulty
+      no_log: True
+      ignore_errors: true   # expected to fail
+
+    - name: "{{ recipe_name }}: Verify faulty write failed"
+      debug:
+        msg: >-
+          {% if (WriteOne_Faulty['results'][0]['item']['status'] == 0)
+             and (WriteOne_Faulty['results'][0]['item']['response'][uid]['Status'] == '0') %}
+          ⚠️ Faulty write unexpectedly succeeded
+          {% else %}
+          ✅ Faulty write failed as expected
+          {% endif %}
+      failed_when: false   # never fail
+
+    - name: "{{ recipe_name}}: Faulty ReadOne"
+      vars:
+        stage: "CovidReadOne_Faulty"
+        cmd: "ReadOne#USA#{{ app_uuid.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
+        ReadOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, wantlist=True) }}"
+      debug:
+        msg: "faulty read single entry"
+      with_items:
+        - "{{ ReadOneValue }}"
+      register: ReadOne_Faulty
+      no_log: True
+      ignore_errors: true   # expected to fail
+
+    - name: "{{ recipe_name }}: Verify faulty read failed"
+      debug:
+        msg: >-
+          {% if ReadOne_Faulty['results'][0]['item']['status'] == 0 %}
+          ⚠️ Faulty read unexpectedly succeeded
+          {% else %}
+          ✅ Faulty read failed as expected
+          {% endif %}
+      failed_when: false   # never fail
