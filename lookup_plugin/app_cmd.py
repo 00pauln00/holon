@@ -81,20 +81,20 @@ class LookupModule(LookupBase):
                                 json_file.seek(0)
                                 request = json.load(json_file)
                 except:
-                    return {"status":-1,"msg":"Invalid json format in output file"}
+                    return [{"status":-1,"msg":"Invalid json format in output file"}]
                 break
             else:
                 #Wait, fail at max count
                 counter += 1
                 time.sleep(0.5)
                 if counter == timeout:
-                    return {"status":-1,"msg":"Timeout checking for output file"}
+                    return [{"status":-1,"msg":"Timeout checking for output file"}]
 
         #Output parsing
         try:
             if "Read" in request['Operation']:
-                return {"status":0,"response":request['Data']}
+                return [{"status":0,"response":request['Data']}]
             elif "Write" in request['Operation']:
-                return {"status":0,"response":request['Data']}
+                return [{"status":0,"response":request['Data']}]
         except:
-            return {"status":0,"response":request['LeaderUUID']}
+            return [{"status":0,"response":request['LeaderUUID']}]
