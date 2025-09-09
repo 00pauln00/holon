@@ -97,7 +97,7 @@
 
         - name: "{{ recipe_name }}: Start GCService"
           vars:
-            input_params:
+            input_param:
               dry_run: "false"
               del_dbo: "true"
               partition: "false"
@@ -109,7 +109,7 @@
 
         - name: "{{ recipe_name }}: Wait until GC marker file present."
           vars:
-            input_params:
+            input_param:
               chunk: "0"
               stage: "wait_for_gc_marker"
               vdev: "3668350c-3021-11f0-b108-a792f2090243"
