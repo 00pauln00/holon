@@ -121,6 +121,17 @@
           retries: 50
           delay: 2
 
+        - name: "{{ recipe_name }}: Debug GC and NISD marker types"
+          vars:
+            params: { "chunk": "1" }
+            Sequence: "{{ lookup('obj_storage', 'get_markers', params) }}"
+            gc_marker: "{{ Sequence[0] }}"
+            nisd_marker: "{{ Sequence[1] }}"
+          debug:
+            msg:
+              - "gc_marker={{ gc_marker | int }} type={{ gc_marker | int | type_debug }}"
+              - "nisd_marker={{ nisd_marker | int }} type={{ nisd_marker| int | type_debug }}"
+
         - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
           vars:
             params: { "chunk": "1" }
