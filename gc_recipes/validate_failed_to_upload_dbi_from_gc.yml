@@ -12,7 +12,7 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir,  ) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir) }}"
       when: s3Support == "true"
 
     - name: "Generate DBIs for first iteration."
@@ -41,16 +41,16 @@
                  }
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params,  ) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params) }}"
 
     - name: "{{ recipe_name }}: Perform GC after First iteration"
       vars:
-        input_params:
+        input_param:
           debugMode: True
           chunk: "1"
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_param)[0] }}"
+          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_param) }}"
       register: gc_output
 
     - debug:
@@ -62,15 +62,15 @@
         formal_params:
           chunk: "1"
       debug:
-         msg: "{{ lookup('obj_storage', 'get_list', formal_params,  )[0] }}"
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params) }}"
       register: list_op
 
     - name: "{{ recipe_name }}: delete any dbi set file from s3."
       vars:
-        input_params:
+        input_param:
           chunk: "1"
       debug:
-         msg: "{{ lookup('obj_storage', 'delete_gc_dbi_from_s3', input_params, list_op['msg'],  )[0] }}"
+         msg: "{{ lookup('obj_storage', 'delete_gc_dbi_from_s3', input_param, list_op['msg']) }}"
       register: deleted_file
 
     - name: "Generate DBIs for second iteration."
@@ -98,16 +98,16 @@
                   }  
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params,  ) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params) }}"
 
     - name: "{{ recipe_name }}: Perform GC after second iteration"
       vars:
-        input_params:
+        input_param:
           debugMode: false
           chunk: "1"
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_param)[0] }}"
+          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_param) }}"
       register: gc_output
 
     - debug:
@@ -118,7 +118,7 @@
       vars:
         Chunk: "1"
       debug:
-         msg: "{{ lookup('data_gen', 'validator',  Chunk,  ) }}"
+         msg: "{{ lookup('data_gen', 'validator',  Chunk) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
