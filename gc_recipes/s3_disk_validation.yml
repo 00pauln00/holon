@@ -22,15 +22,15 @@
           count: 160
       debug:
          msg:
-          - "{{ lookup('helper', 'create_dd_file', img_dir, bs, count)[0] }}"
+          - "{{ lookup('helper', 'create_dd_file', img_dir, bs, count) }}"
       register: nisd_dev_path
 
     - name: "{{ recipe_name }}: create bucket on minio"
       vars:
-        input_params:
+        input_param:
           chunk: "0"
       debug:
-         msg: "{{ lookup('obj_storage', 'operation', 'create_bucket' , input_params)}}"
+         msg: "{{ lookup('obj_storage', 'operation', 'create_bucket' , input_param)}}"
 
     - name: "{{ recipe_name }}: run niova ctl cmd on device"
       vars:
@@ -39,13 +39,13 @@
           }
       debug:
          msg:
-          - "{{ lookup('nisd_handler', 'run-niova-block-ctl', input_param)[0] }}"
+          - "{{ lookup('nisd_handler', 'run-niova-block-ctl', input_param) }}"
       register: nisd_uuid
     
     - name: "{{ recipe_name }}: Start nisd"
       debug:
          msg:
-          - "{{ lookup('nisd_handler', 'run_nisd', nisd_uuid.msg[0], nisd_dev_path.msg[0])[0] }}"
+          - "{{ lookup('nisd_handler', 'run_nisd', nisd_uuid.msg[0], nisd_dev_path.msg[0]) }}"
 
     - name: "{{ recipe_name }}: wait for 5 seconds"
       pause:
@@ -54,7 +54,7 @@
     - name: "{{ recipe_name }}: Start ublk device"
       debug:
          msg:
-          - "{{ lookup('nisd_handler', 'run_ublk_device', nisd_uuid.msg[0])[0] }}"
+          - "{{ lookup('nisd_handler', 'run_ublk_device', nisd_uuid.msg[0]) }}"
 
       register: ublk_uuid
 
@@ -63,7 +63,7 @@
           mount_dir: "ci_data_btrfs"
       debug:
          msg:
-          - "{{ lookup('helper', 'setup_btrfs', mount_dir)[0] }}"
+          - "{{ lookup('helper', 'setup_btrfs', mount_dir) }}"
       register: device_paths
 
     - name: "{{ recipe_name }}: run the script"
@@ -77,14 +77,14 @@
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
-        input_params:
+        input_param:
           dry_run: "false"
           del_dbo: "true"
           partition: "false"
           total_chunks: 2
           force_gc: "true"
       debug:
-         msg: "{{ lookup('garbage_collection', 'daemon', 'start', input_params) }}"
+         msg: "{{ lookup('garbage_collection', 'daemon', 'start', input_param) }}"
 
     - name: "{{ recipe_name }}: pause for 3 seconds."
       pause:
@@ -92,11 +92,11 @@
 
     - name: "{{ recipe_name }}: Wait until GC marker file present."
       vars:
-        input_params:
+        input_param:
               chunk: "0"
               stage: "wait_for_gc_marker"
               vdev: "{{ ublk_uuid.msg[0] }}"
-        marker_seq: "{{ lookup('obj_storage', 'get_markers', input_params) }}" 
+        marker_seq: "{{ lookup('obj_storage', 'get_markers', input_param) }}" 
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq }}"
       until: marker_seq[0] is not none
@@ -118,7 +118,7 @@
 
     - name: "{{ recipe_name }}: start the validator utility"
       vars:
-        input_params:
+        input_param:
           nisd_uuid: "{{ nisd_uuid.msg[0] }}"
           ublk_uuid: "{{ ublk_uuid.msg[0] }}"
           device_path: "{{ device_paths.msg[0][1] }}"

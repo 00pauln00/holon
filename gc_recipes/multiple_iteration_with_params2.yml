@@ -44,7 +44,7 @@
 
     - name: "{{ recipe_name }}: Perform GC after first iteration"
       vars:
-        input_params:
+        input_param:
           debugMode: true
           chunk: "2"
       debug:
@@ -85,7 +85,7 @@
 
     - name: "{{ recipe_name }}: Perform GC after second iteration"
       vars:
-        input_params:
+        input_param:
           debugMode: false
           chunk: "2"
       debug:
