@@ -12,7 +12,7 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir,  ) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir) }}"
       when: s3Support == "true"
 
     - name: "Generate DBIs with vblk entry"
@@ -41,7 +41,7 @@
         }
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dgen_args, params,  ) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, params) }}"
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
@@ -54,7 +54,7 @@
         }
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'daemon', 'start', params,  ) }}"
+          - "{{ lookup('garbage_collection', 'daemon', 'start', params) }}"
 
     - name: "{{ recipe_name }}: pause for 1 seconds."
       pause:
@@ -86,7 +86,7 @@
         }
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dgen_args, params,  ) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, params) }}"
 
     - name: "{{ recipe_name }}: Check NISD and GC Marker file End sequence."
       vars:
@@ -94,7 +94,7 @@
           "chunk": "2",
         }
       debug:
-         msg: "{{ lookup('obj_storage', 'get_markers', params,  )[0] }}"
+         msg: "{{ lookup('obj_storage', 'get_markers', params) }}"
       register: marker_check
 
     - name: "{{ recipe_name }}: Validate that NISD and GC Marker file's endSeq doesn't match."

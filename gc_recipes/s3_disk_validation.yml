@@ -96,7 +96,7 @@
               chunk: "0"
               stage: "wait_for_gc_marker"
               vdev: "{{ ublk_uuid.msg[0] }}"
-        marker_seq: "{{ lookup('obj_storage', 'get_markers', input_param)[0] }}" 
+        marker_seq: "{{ lookup('obj_storage', 'get_markers', input_params) }}" 
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq }}"
       until: marker_seq[0] is not none
