@@ -76,18 +76,24 @@
       register: list_op
       no_log: true
 
+    - debug:
+        var: deleted_file
+
     - name: "{{ recipe_name }}: get dbi set files list"
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('helper', 'get_set_file_list', Chunk, deleted_file['msg']) }}"
+         msg: "{{ lookup('helper', 'get_set_file_list', Chunk, deleted_file.msg[0]) }}"
       register: files_list
+
+    - debug:
+        var: files_list
 
     - name: "{{ recipe_name }}: check if failed to upload files are still present or not"
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('helper', 'check_files', files_list['msg'], list_op['msg']) }}"
+         msg: "{{ lookup('helper', 'check_files', files_list.msg, list_op.msg) }}"
 
     - name: "{{ recipe_name }}: delete gc download folder"
       vars:
@@ -97,9 +103,9 @@
 
     - name: Copy file to deleted_file directory and remove the base name
       vars:
-        deleted_basename: "{{ deleted_file['msg'] | basename }}"
-        target_directory: "{{ deleted_file['msg'] | dirname }}"  # Get the directory part of deleted_file
-        source_file_path: "{{ clone_dir['msg'] }}/{{ deleted_basename }}"  # Full source file path
+        deleted_basename: "{{ deleted_file.msg[0] | basename }}"
+        target_directory: "{{ deleted_file.msg[0] | dirname }}"  # Get the directory part of deleted_file
+        source_file_path: "{{ clone_dir.msg[0] }}/{{ deleted_basename }}"  # Full source file path
       copy:
         src: "{{ source_file_path }}"  # Source file path
         dest: "{{ target_directory }}/"  # Destination directory
@@ -111,8 +117,8 @@
       vars:
         deleted_basename: "{{ deleted_file['msg'] | basename }}"
         formal_params: {
-                "chunk" : "{{ chunk['msg'][0] }}",
-                "path": "{{ deleted_file['msg'] }}",
+                "chunk" : "{{ chunk.msg[0] }}",
+                "path": "{{ deleted_file.msg[0] }}",
                 }
       debug:
          msg: "{{ lookup('obj_storage', 'operation', 'upload', formal_params) }}"

@@ -342,7 +342,7 @@ class helper:
             file_names = {os.path.basename(line.strip())  for line in f if line.strip()}
         if deleted_file and os.path.basename(deleted_file.strip()) in file_names:
             file_names.remove(os.path.basename(deleted_file.strip()))
-        return [file_names]
+        return list(file_names)
 
     def compare_files(self, file_names, command_output) -> None:
         output_files = {os.path.basename(line.strip()) for line in command_output.splitlines() if line.strip()}
