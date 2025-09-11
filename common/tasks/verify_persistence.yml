@@ -1,0 +1,15 @@
+- name: "{{ recipe_name }}: Verify if the recent key is persisted"
+  command: >
+    python3 {{ playbook_dir }}/verify_persistence.py
+    {{ recipe_params.base_dir }}/{{ recipe_params.raft_uuid }}/raftdb/{{ leader_uuid }}/db
+    PMDBTS_CF
+    {{ recent_key }}
+  register: key_persistence_result
+  changed_when: false
+  failed_when: key_persistence_result.rc != 0
+
+- name: "Debug persistence check"
+  debug:
+    msg:
+      - "Verification Result: {{ key_persistence_result.stdout }}"
+      - "Exit Code: {{ key_persistence_result.rc }}"

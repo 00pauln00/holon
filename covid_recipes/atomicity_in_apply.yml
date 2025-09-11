@@ -1,0 +1,116 @@
+- name: "atomicity_in_apply"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "atomicity_in_apply"
+    fault_injection_name: "raft_server_atomicity_check"
+    num_writes: 10
+    start_key: 1000
+
+  tasks:
+  - block:
+      ####################################################################
+      # 0. CHECK APP TYPE
+      ####################################################################
+      - name: "{{ recipe_name }}: Check if the app_type is covid"
+        vars:
+          app_type: "{{ app_type }}"
+        debug:
+          msg: "app_type should be covid"
+        failed_when: (app_type != "covid")
+
+      ####################################################################
+      # 1. START SERVERS
+      ####################################################################
+      - name: "{{ recipe_name }}: Print the UUIDs of all the servers"
+        include_role:
+          name: common
+          tasks_from: get_server_uuid_info
+
+      - name: "{{ recipe_name }}: Start all the servers in the cluster"
+        include_role:
+          name: common
+          tasks_from: start_server_golang
+        vars:
+          ServerUUID: "{{ NonRunningServers[item] }}"
+        loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+      ####################################################################
+      # 2. START CLIENT
+      ####################################################################
+      - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+        include_role:
+          name: common
+          tasks_from: get_new_client_uuid
+        register: client_uuid
+
+      ####################################################################
+      # 3. WAIT FOR LEADER
+      ####################################################################
+      - name: "Wait until leader election happens"
+        vars:
+          stage: "wait_leader_election"
+        debug:
+          msg: "Waiting for leader election"
+        until: >
+          lookup('niova_ctlrequest', 'lookup', NonRunningServers[item], '/raft_root_entry/0/leader-uuid') != "null"
+        retries: 10
+        delay: 1
+        loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+      - name: "{{ recipe_name }}: Get the leader UUID"
+        include_role:
+          name: common
+          tasks_from: get_leader_uuid
+        register: leader_info
+
+      ####################################################################
+      # 4. FIRST SET OF MONOTONIC WRITES
+      ####################################################################
+      - name: "Generate App UUID for each write"
+        shell: "/usr/bin/uuid"
+        loop: "{{ range(0, num_writes) | list }}"
+        loop_control:
+          index_var: idx
+        register: app_uuid_1
+
+      - name: "Write key for each UUID"
+        vars:
+          stage: "CovidWriteOne"
+          this_key: "{{ start_key + idx }}"
+          this_value: 2000
+          cmd: "WriteOne#{{ app_uuid_1.results[idx].stdout }}:0:0:0:0#USA#OWID_AFR#{{ this_key }}#{{ this_value }}#{{ recipe_name }}_{{ stage }}"
+          WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout) }}"
+        debug:
+          msg: "Writing {{ this_key }}"
+        with_items:
+          - "{{ WriteOneValue }}"
+        register: WriteOneBatch
+
+      ####################################################################
+      # 5. FAULT INJECTION
+      ####################################################################
+      - name: "{{ recipe_name }}: Apply fault injection on the leader"
+        include_role:
+          name: common
+          tasks_from: set_fault_injection_and_verify
+        vars:
+          ServerUUID: "{{ leader_uuid }}"
+
+      ####################################################################
+      # 6. VERIFY PERSISTENCE
+      ####################################################################
+      - name: "{{ recipe_name }}: Verify if the recent key is persisted"
+        include_role:
+          name: common
+          tasks_from: verify_key_persistence
+        vars:
+          recent_key: "{{ start_key + num_writes - 1 }}"
+          app_uuid: "{{ app_uuid_1.results | last | json_query('stdout') }}"
+          client_uuid: "{{ client_uuid.stdout }}"
+        register: key_persistence_result
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+          terminate_recipe: true
