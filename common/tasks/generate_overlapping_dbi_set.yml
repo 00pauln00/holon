@@ -16,5 +16,5 @@
         }
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dgen_args, params)[0] }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, params) }}"
       register: chunk

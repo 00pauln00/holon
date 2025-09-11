@@ -243,7 +243,7 @@ class LookupModule(LookupBase):
                 minio = Minio(cluster_params, minio_path)
                 minio_pid = minio.start()
                 
-                return minio_pid
+                return [minio_pid]
 
             elif sub_cmd == "stop":
                 minio = Minio(cluster_params, "")
@@ -296,7 +296,7 @@ class LookupModule(LookupBase):
             '''
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
-            return s3.delete_dbi_set_s3(input_param)
+            return [s3.delete_dbi_set_s3(input_param)]
 
         elif command == "get_markers":
             '''
@@ -335,7 +335,7 @@ class LookupModule(LookupBase):
             input_param = terms[1]
             file_list = terms[2] 
             s3 = s3_operations(cluster_params)
-            return s3.delete_gc_dbi_from_s3(input_param, file_list)
+            return [s3.delete_gc_dbi_from_s3(input_param, file_list)]
 
         else:
             raise ValueError(f"Unsupported operation: {command}")

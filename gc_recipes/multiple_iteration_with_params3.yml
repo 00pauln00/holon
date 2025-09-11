@@ -12,7 +12,7 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir,  ) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir) }}"
       when: s3Support == "true"
 
     - name: "Generate DBIs for first iteration."
@@ -40,16 +40,16 @@
                  }
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params,  ) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params) }}"
 
     - name: "{{ recipe_name }}: Perform GC after first iteration"
       vars:
-        input_params:
+        input_param:
           debugMode: true
           chunk: "1"
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_param)[0] }}"
+          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_param) }}"
       register: gc_output
 
     - debug:
@@ -81,16 +81,16 @@
                  }
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params,  ) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, formal_params) }}"
 
     - name: "{{ recipe_name }}: Perform GC after second iteration"
       vars:
-        input_params:
+        input_param:
           debugMode: false
           chunk: "1"
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_param)[0] }}"
+          - "{{ lookup('garbage_collection', 'single_exec', 'start', input_param) }}"
       register: gc_output
 
     - debug:
@@ -101,7 +101,7 @@
       vars:
         Chunk: "1"
       debug:
-         msg: "{{ lookup('data_gen', 'validator',  Chunk,  ) }}"
+         msg: "{{ lookup('data_gen', 'validator',  Chunk) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

@@ -37,7 +37,7 @@
           remove_files: false
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dbi_param, input_param)[0] }}"
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param) }}"
       register: chunk
 
     - name: "Generate 2M(2097152) vblk entries"
@@ -62,7 +62,7 @@
           remove_files: false
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dbi_param, input_param)[0] }}"
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param) }}"
       register: chunk
 
     - name: "{{ recipe_name }}: Get dbi file name string."
@@ -70,7 +70,7 @@
         formal_params:
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('obj_storage', 'get_list', formal_params)[0] }}"
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params) }}"
       register: list_op
       no_log: true
 
@@ -82,11 +82,11 @@
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
-        input_params:
+        input_param:
           debug_mode: "false"
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-        msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_params)[0] }}"
+        msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_param) }}"
       register: gc_output
 
     - debug:
@@ -98,7 +98,7 @@
         formal_params:
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('obj_storage', 'get_list', formal_params)[0] }}"
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params) }}"
       register: list_op_new
       no_log: true
 
@@ -112,7 +112,7 @@
       debug: 
         msg: "{{ lookup('get_stale_file_count', dbis_before_gc['msg'], dbis_after_gc['msg']) }}"
       register: stale_dbi_file_count
-       no_log: true
+      no_log: true
 
     - debug:
         msg: "Total stale dbi files: {{ stale_dbi_file_count['msg']  }}"

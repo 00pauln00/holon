@@ -12,7 +12,7 @@
             s3_dir: "/local/minio_data"
           debug:
             msg:
-              - "{{ lookup('obj_storage', 'minio', 'start', s3_dir,  ) }}"
+              - "{{ lookup('obj_storage', 'minio', 'start', s3_dir) }}"
           when: s3Support == "true"
           register: minio_pid
 
@@ -39,7 +39,7 @@
               remove_files: false
           debug:
             msg:
-              - "{{ lookup('data_gen', 'generator', dbi_param, input_param  )[0] }}"
+              - "{{ lookup('data_gen', 'generator', dbi_param, input_param) }}"
           register: chunk
 
         - name: "{{ recipe_name }}: Pause the minio server"
@@ -47,7 +47,7 @@
             s3_dir: "/local/minio_data"
           debug:
             msg:
-              - "{{ lookup('obj_storage', 'minio', 'pause', s3_dir, minio_pid.msg[0][0],  ) }}"
+              - "{{ lookup('obj_storage', 'minio', 'pause', s3_dir, minio_pid.msg[0][0]) }}"
 
         - name: "{{ recipe_name }}: Start GCService"
           vars:
@@ -61,7 +61,7 @@
               }
           debug:
             msg:
-              - "{{ lookup('garbage_collection', 'daemon', 'start', params,  ) }}"
+              - "{{ lookup('garbage_collection', 'daemon', 'start', params) }}"
 
         - name: Wait for 60 seconds
           pause:
@@ -72,26 +72,26 @@
             s3_dir: "/local/minio_data"
           debug:
             msg:
-              - "{{ lookup('obj_storage', 'minio', 'resume', s3_dir, minio_pid.msg[0][0],  ) }}"
+              - "{{ lookup('obj_storage', 'minio', 'resume', s3_dir, minio_pid.msg[0][0]) }}"
 
         - name: "{{ recipe_name }}: Wait until GC marker file present."
           vars:
             params: { "chunk": "1" }
           debug:
             msg: "Waiting for GC Marker File"
-          until: lookup('obj_storage', 'get_markers', params,  )[0][0] is not none
+          until: lookup('obj_storage', 'get_markers', params) is not none
           retries: 500
           delay: 2
 
         - name: "{{ recipe_name }}: Wait until GC marker and NISD marker gets match."
           vars:
             params: { "chunk": "1" }
-            Sequence: "{{ lookup('obj_storage', 'get_markers', params,  )[0] }}"
+            Sequence: "{{ lookup('obj_storage', 'get_markers', params) }}"
             gc_marker: "{{ Sequence[0] }}"
             nisd_marker: "{{ Sequence[1] }}"
           debug:
             msg: "Wait until marker values gets match"
-          until: gc_marker == nisd_marker
+          until: (gc_marker | int) == (nisd_marker | int)
           retries: 500
           delay: 2
 
@@ -99,7 +99,7 @@
           vars:
             Chunk: "{{ chunk['msg'][0] }}"
           debug:
-            msg: "{{ lookup('data_gen', 'validator',  Chunk,  ) }}"
+            msg: "{{ lookup('data_gen', 'validator',  Chunk) }}"
 
       rescue:
         - name: "Recipe: {{ recipe_name }} failed"

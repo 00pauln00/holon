@@ -12,7 +12,7 @@
             s3_dir: "/local/minio_data"
           debug:
             msg:
-              - "{{ lookup('obj_storage', 'minio', 'start', s3_dir,  ) }}"
+              - "{{ lookup('obj_storage', 'minio', 'start', s3_dir) }}"
           when: s3Support == "true"
 
         - name: "Generate 500,000 vblk entries"
@@ -40,7 +40,7 @@
               remove_files: false
           debug:
             msg:
-              - "{{ lookup('data_gen', 'generator', dbi_param, input_param  )[0] }}"
+              - "{{ lookup('data_gen', 'generator', dbi_param, input_param) }}"
           register: chunk
 
         - name: "Generate 2097000 vblk entries"
@@ -67,7 +67,7 @@
               remove_files: false
           debug:
             msg:
-              - "{{ lookup('data_gen', 'generator', dbi_param, input_param  )[0] }}"
+              - "{{ lookup('data_gen', 'generator', dbi_param, input_param) }}"
 
         - name: "Generate 2097000 vblk entries"
           vars:
@@ -93,7 +93,7 @@
               remove_files: false
           debug:
             msg:
-              - "{{ lookup('data_gen', 'generator', dbi_param, input_param  )[0] }}"
+              - "{{ lookup('data_gen', 'generator', dbi_param, input_param) }}"
 
         - name: "Generate 2M(2097152) vblk entries"
           vars:
@@ -118,11 +118,11 @@
               remove_files: false
           debug:
             msg:
-              - "{{ lookup('data_gen', 'generator', dbi_param, input_param  )[0] }}"
+              - "{{ lookup('data_gen', 'generator', dbi_param, input_param) }}"
 
         - name: "{{ recipe_name }}: Start GCService"
           vars:
-            input_params:
+            input_param:
               dry_run: "false"
               del_dbo: "true"
               partition: "false"
@@ -133,11 +133,11 @@
 
         - name: "{{ recipe_name }}: Wait until GC marker file present."
           vars:
-            input_params:
+            input_param:
               chunk: "0"
               stage: "wait_for_gc_marker"
               vdev: "3668350c-3021-11f0-b108-a792f2090243"
-            marker_seq: "{{ lookup('obj_storage', 'get_markers', input_param)[0] }}"
+            marker_seq: "{{ lookup('obj_storage', 'get_markers', input_param) }}"
           debug:
             msg: "Waiting for GC Marker File {{ marker_seq }}"
           until: marker_seq[0] is not none
@@ -149,7 +149,7 @@
             Chunk: "0"
             has_snapshot: true
           debug:
-            msg: "{{ lookup('data_gen', 'validator',  Chunk, has_snapshot,  ) }}"
+            msg: "{{ lookup('data_gen', 'validator',  Chunk, has_snapshot) }}"
 
       rescue:
         - name: "Recipe: {{ recipe_name }} failed"
