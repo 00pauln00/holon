@@ -445,15 +445,15 @@ class LookupModule(LookupBase):
 
         elif operation == "clone_dbi_set":
             chunk = terms[1]
-            return clone_dbi_files(cluster_params, chunk)
+            return [clone_dbi_files(cluster_params, chunk)]
             
         elif operation == "corrupt_last_file":
             chunk = terms[1]
-            return help.corrupt_last_file(chunk)
+            return [help.corrupt_last_file(chunk)]
 
         elif operation == "inc_dbi_gen_num":
             chunk = terms[1]
-            return help.inc_dbi_gen_num(chunk)
+            return [help.inc_dbi_gen_num(chunk)]
 
         elif operation == "copy_file":
             source_file = terms[1]
@@ -475,7 +475,7 @@ class LookupModule(LookupBase):
         elif operation == "get_set_file_list":
             chunk = terms[1]
             deleted_file = terms[2]
-            return help.get_set_file_list(chunk, deleted_file)
+            return [help.get_set_file_list(chunk, deleted_file)]
 
         elif operation == "check_files":
             file_list = terms[1]
