@@ -80,4 +80,3 @@
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
          msg: "{{ lookup('data_gen', 'validator', Chunk) }}"
-
