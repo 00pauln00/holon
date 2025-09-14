@@ -13,17 +13,32 @@ if __name__ == "__main__":
 
     # Scan the given CF
     cmd = ["ldb", f"--db={db_path}", f"--column_family={cf}", "scan"]
-    output = subprocess.check_output(cmd).decode("utf-8", errors="replace")
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        output = result.stdout
+        if not output.strip():
+            # If stdout is empty, try stderr
+            output = result.stderr
+    except subprocess.CalledProcessError as e:
+        print(f"Error running ldb command: {e}")
+        print(f"stdout: {e.stdout}")
+        print(f"stderr: {e.stderr}")
+        sys.exit(1)
 
+    # Debug: print the raw output
+    print(f"[DEBUG] Raw ldb output: {repr(output)}")
+    
     keys = []
     for line in output.splitlines():
-        if "=>" in line:
-            parts = line.split("=>")
+        if "==>" in line:
+            parts = line.split("==>")
             key = parts[0].strip()
             try:
                 keys.append(int(key))
             except ValueError:
                 continue
+    
+    print(f"[DEBUG] Found keys: {keys}")
 
     if not keys:
         print("NO_KEYS_FOUND")

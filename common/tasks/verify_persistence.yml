@@ -1,7 +1,7 @@
 - name: "{{ recipe_name }}: Verify if the recent key is persisted"
   command: >
-    python3 {{ playbook_dir }}/verify_persistence.py
-    {{ recipe_params.base_dir }}/{{ recipe_params.raft_uuid }}/raftdb/{{ leader_uuid }}/db
+    python3 {{ role_path }}/tasks/verify_persistence.py
+    {{ recipe_params.base_dir }}/{{ recipe_params.raft_uuid }}/raftdb/{{ leader_uuid }}.raftdb/db
     PMDBTS_CF
     {{ recent_key }}
   register: key_persistence_result

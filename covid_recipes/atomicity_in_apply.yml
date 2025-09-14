@@ -64,28 +64,55 @@
           tasks_from: get_leader_uuid
         register: leader_info
 
+      - name: "{{ recipe_name }}: Get leader UUID directly"
+        vars:
+          raft_key: "/raft_root_entry/0/leader-uuid"
+          leader_dict: "{{ lookup('niova_ctlrequest', 'lookup', NonRunningServers, raft_key) | first }}"
+        set_fact:
+          current_leader_uuid: "{{ leader_dict['/0/leader-uuid'] }}"
+
       ####################################################################
       # 4. FIRST SET OF MONOTONIC WRITES
       ####################################################################
-      - name: "Generate App UUID for each write"
+      - name: "{{ recipe_name }}: Generate App UUID for monotonic writes"
         shell: "/usr/bin/uuid"
-        loop: "{{ range(0, num_writes) | list }}"
-        loop_control:
-          index_var: idx
-        register: app_uuid_1
+        register: app_uuid
 
-      - name: "Write key for each UUID"
+      - name: "{{ recipe_name }}: Get the path for csv file"
+        set_fact:
+          NIOVA_BIN_PATH: "{{ lookup('env','NIOVA_BIN_PATH') }}"
+
+      - name: "{{ recipe_name }}: Create monotonic CSV file for writes"
+        copy:
+          content: |
+            location,iso_code,date,total_vaccinations,people_vaccinated,people_fully_vaccinated,daily_vaccinations_raw,daily_vaccinations,total_vaccinations_per_hundred,people_vaccinated_per_hundred,people_fully_vaccinated_per_hundred,daily_vaccinations_per_million,
+            {{ start_key }},AFG,16-03-2021,54000,54000,,,2862,0.14,0.14,,74,
+            {{ start_key + 1 }},OWID_AFR,03-06-2021,34365454,25234549,8914235,278659,668496,2.56,1.88,0.66,499,
+            {{ start_key + 2 }},ALB,18-02-2021,3049,2438,611,1348,254,0.11,0.08,0.02,88,
+            {{ start_key + 3 }},AND,08-03-2021,3611,2439,1172,,108,4.67,3.16,1.52,1398,
+            {{ start_key + 4 }},DZA,19-02-2021,75000,,,,3748,0.17,,,85,
+            {{ start_key + 5 }},AGO,29-03-2021,130750,130750,,,8057,0.4,0.4,,245,
+            {{ start_key + 6 }},ARM,31-03-2021,565,565,,,,0.02,0.02,,,
+            {{ start_key + 7 }},AIA,22-04-2021,6898,6115,783,,106,45.98,40.76,5.22,7066,
+            {{ start_key + 8 }},ABW,10-04-2021,41096,29197,11899,,1278,38.49,27.35,11.14,11970,
+            {{ start_key + 9 }},ATG,31-05-2021,50329,33463,16866,,1278,51.39,34.17,17.22,13050,
+          dest: "{{ NIOVA_BIN_PATH }}/monotonic_writes.csv"
+
+      - name: "{{ recipe_name }}: Write monotonic keys to COVID Application"
         vars:
-          stage: "CovidWriteOne"
-          this_key: "{{ start_key + idx }}"
-          this_value: 2000
-          cmd: "WriteOne#{{ app_uuid_1.results[idx].stdout }}:0:0:0:0#USA#OWID_AFR#{{ this_key }}#{{ this_value }}#{{ recipe_name }}_{{ stage }}"
-          WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout) }}"
+          stage: "CovidWriteMulti"
+          cmd: "WriteMulti#{{ NIOVA_BIN_PATH }}/monotonic_writes.csv#{{ recipe_name }}_{{ stage }}"
+          WriteMultiValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout) }}"
         debug:
-          msg: "Writing {{ this_key }}"
+          msg: "write monotonic entries"
         with_items:
-          - "{{ WriteOneValue }}"
-        register: WriteOneBatch
+          - "{{ WriteMultiValue }}"
+        register: WriteMulti
+        no_log: true
+
+
+
+
 
       ####################################################################
       # 5. FAULT INJECTION
@@ -95,7 +122,7 @@
           name: common
           tasks_from: set_fault_injection_and_verify
         vars:
-          ServerUUID: "{{ leader_uuid }}"
+          ServerUUID: "{{ current_leader_uuid }}"
 
       ####################################################################
       # 6. VERIFY PERSISTENCE
@@ -103,11 +130,10 @@
       - name: "{{ recipe_name }}: Verify if the recent key is persisted"
         include_role:
           name: common
-          tasks_from: verify_key_persistence
+          tasks_from: verify_persistence
         vars:
           recent_key: "{{ start_key + num_writes - 1 }}"
-          app_uuid: "{{ app_uuid_1.results | last | json_query('stdout') }}"
-          client_uuid: "{{ client_uuid.stdout }}"
+          leader_uuid: "{{ current_leader_uuid }}"
         register: key_persistence_result
 
     rescue:
