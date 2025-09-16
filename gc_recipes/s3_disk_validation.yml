@@ -86,9 +86,9 @@
       debug:
          msg: "{{ lookup('garbage_collection', 'daemon', 'start', input_params) }}"
 
-    - name: "{{ recipe_name }}: pause for 3 seconds."
-      pause:
-        seconds: 3
+    # - name: "{{ recipe_name }}: pause for 3 seconds."
+    #   pause:
+    #     seconds: 3
 
     - name: "{{ recipe_name }}: Wait until GC marker file present."
       vars:

@@ -54,7 +54,7 @@
        with_items:
          - "{{ WriteOneValue }}"
        register: WriteOne
-       no_log: True
+       no_log: false
 
        # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"
@@ -245,7 +245,12 @@
        shell: "/usr/bin/uuid"
        register: app_uuid_new
 
-        # write single entry
+      # capture start time
+     - name: "{{ recipe_name }}: Record start time for WriteOne"
+       command: date +%s%3N
+       register: writeone_start 
+
+      # write single entry
      - name: "{{ recipe_name}}: Write single key-value pair to Covid Application"
        vars:
           stage: "CovidWriteTwo"
@@ -257,6 +262,20 @@
          - "{{ WriteOneValue }}"
        register: WriteOne
        no_log: True
+
+     # capture end time
+     - name: "{{ recipe_name }}: Record end time for WriteOne"
+       command: date +%s%3N
+       register: writeone_end
+
+     # calculate duration
+     - name: "{{ recipe_name }}: Calculate WriteOne duration"
+       set_fact:
+         writeone_duration: "{{ (writeone_end.stdout | int) - (writeone_start.stdout | int) }}"
+
+     - name: "{{ recipe_name }}: Show WriteOne latency"
+       debug:
+         msg: "WriteOne operation took {{ writeone_duration }} ms"
 
         # check if write is successful
      - name: "{{ recipe_name }}: Check if write is successful"
