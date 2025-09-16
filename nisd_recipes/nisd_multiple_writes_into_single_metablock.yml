@@ -61,7 +61,7 @@
                  'blocking_process' : False,
                  'lookout_uuid': '{{ get_lookout[0] }}'
                  }
-         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param  ) }}"
+         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param) }}"
        debug:
          msg: "get write's return code"
        no_log:  True
@@ -83,7 +83,7 @@
               - "/nisd_chunks/0/num-data-pblks"
               - "/nisd_chunks/0/num-reserved-meta-pblks"
          lookout_uuid: "{{ get_lookout[0] }}"
-         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid,  ) }}"
+         getNiovaBlockTest: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid) }}"
        debug:
          msg: "Verify nisd values after writes: {{ getNiovaBlockTest }}"
        no_log: True
@@ -99,7 +99,7 @@
         fi_key:
            - "/fault_injection_points"
         lookout_uuid: "{{ get_lookout[0] }}"
-        get_fi: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, fi_key, 'nisd', lookout_uuid,  ) }}"
+        get_fi: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, fi_key, 'nisd', lookout_uuid) }}"
        debug:
         msg: "Getting fault_injection_points array."
        with_items:
