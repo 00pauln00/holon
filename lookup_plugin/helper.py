@@ -188,9 +188,14 @@ class helper:
         self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/"
     
     def create_dd_file(self, filename, bs, count):
-        full_path = os.path.normpath(os.path.join(self.base_path, filename))
+    
+        # Normalize filename to avoid leading /
+        safe_filename = filename.lstrip(os.sep)
+        full_path = os.path.normpath(os.path.join(self.base_path, safe_filename))
+        
         try:
-            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            # os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            dir_path = os.path.dirname(full_path)
             dd_command = f"sudo dd if=/dev/zero of={full_path} bs={bs} count={count}"
             print(f"Running command: {dd_command}")
             result = subprocess.run(
