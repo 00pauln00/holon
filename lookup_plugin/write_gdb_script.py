@@ -87,7 +87,7 @@ def start_niova_block_test(cluster_params, peer_uuid, cmd, nisd_uuid_to_write, v
     #start niova block test process
     bin_path = '%s/niova-block-test' % binary_dir
     process_popen = subprocess.Popen(['gdb', '--batch', cmd, '--args', bin_path, '-d', '-c', nisd_uuid_to_write, '-v',vdev, '-r', read_operation_ratio_percentage,
-                                               '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
+                                               '-a', random_seed, '-u', client_uuid, '-z', request_size_in_bytes,
                                                '-q', queue_depth, '-N', num_ops, '-I'],
                                                      stdout = fp, stderr = fp)
 

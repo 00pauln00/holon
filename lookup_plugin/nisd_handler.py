@@ -309,7 +309,7 @@ def start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values):
     test_device_path = create_nisd_device_and_uuid(nisd_uuid, input_values['nisd_dev_size'])
 
     process_popen = subprocess.Popen([bin_path, '-n', input_values['alt_name'], '-d', nisdPath, '-i', '-u', nisd_uuid,
-                                       '-Z', input_values['nisd_dev_size']], stdout = fp, stderr = fp)
+                                       '-z', input_values['nisd_dev_size']], stdout = fp, stderr = fp)
 
     logger.info("niova-block-ctl args: %s", process_popen.args)
     #Check if niova-block-ctl process exited with error
@@ -343,21 +343,21 @@ def start_nisd_process(cluster_params, input_values, nisdPath):
     recipe_conf = load_recipe_op_config(cluster_params)
 
     nisd_uuid = input_values['nisd_uuid']
-    uport = input_values['uport']
+    # uport = input_values['uport']
 
-    if input_values['lookout_uuid'] != "":
-        if nisd_uuid in recipe_conf['lookout_uuid_dict'][input_values['lookout_uuid']]['nisd_uuid_dict']:
-            recipe_conf['lookout_uuid_dict'][input_values['lookout_uuid']]['nisd_uuid_dict'].update({ nisd_uuid : uport })
-    else:
-        if input_values['nisd_uuid'] in recipe_conf['nisd_uuid_dict'].keys():
-            recipe_conf['nisd_uuid_dict'][nisd_uuid] = uport
+    # if input_values['lookout_uuid'] != "":
+    #     if nisd_uuid in recipe_conf['lookout_uuid_dict'][input_values['lookout_uuid']]['nisd_uuid_dict']:
+    #         recipe_conf['lookout_uuid_dict'][input_values['lookout_uuid']]['nisd_uuid_dict'].update({ nisd_uuid : uport })
+    # else:
+    #     if input_values['nisd_uuid'] in recipe_conf['nisd_uuid_dict'].keys():
+    #         recipe_conf['nisd_uuid_dict'][nisd_uuid] = uport
 
     fp.write("starting nisd process\n")
     fp.write("nisd-uuid: "+nisd_uuid+"\n")
 
     #start nisd process
     bin_path = '%s/nisd' % binary_dir
-    process_popen = subprocess.Popen([bin_path, '-u', nisd_uuid, '-p', uport, '-d', nisdPath],
+    process_popen = subprocess.Popen([bin_path, '-u', nisd_uuid, '-d', nisdPath],
                                       stdout = fp, stderr = fp)
 
     fp.write("nisd args: "+str(process_popen.args)+"\n")
@@ -501,22 +501,22 @@ def start_niova_block_test_with_inputFile(cluster_params, input_values):
 
         if sequential_writes == True and integrity_check == False and blocking_process == False:
             ps = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-                                       '-u', client_uuid, '-Z', request_size_in_bytes,
+                                       '-u', client_uuid, '-z', request_size_in_bytes,
                                        '-q', queue_depth, '-N', num_ops, '-I', '-Q'], stdout=fp, stderr=fp)
 
         elif integrity_check == True and sequential_writes == False and blocking_process == False:
             ps = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-                                       '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
+                                       '-a', random_seed, '-u', client_uuid, '-z', request_size_in_bytes,
                                        '-q', queue_depth, '-N', num_ops, '-I'], stdout=fp, stderr=fp)
 
         elif blocking_process == True and sequential_writes == False and integrity_check == False:
             ps = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-                                       '-u', client_uuid, '-Z', request_size_in_bytes,
+                                       '-u', client_uuid, '-z', request_size_in_bytes,
                                        '-q', queue_depth, '-N', num_ops, '-I', '-Q'], stdout=fp, stderr=fp)
 
         else:
             ps = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-                                       '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
+                                       '-a', random_seed, '-u', client_uuid, '-z', request_size_in_bytes,
                                        '-q', queue_depth, '-N', num_ops], stdout=fp, stderr=fp)
 
         out, err = ps.communicate()
@@ -574,17 +574,17 @@ def start_niova_block_test(cluster_params, input_values):
     
     if sequential_writes == True and integrity_check == False and blocking_process == False:
         ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-                                   '-u', client_uuid, '-Z', request_size_in_bytes,
+                                   '-u', client_uuid, '-z', request_size_in_bytes,
                                    '-q', queue_depth, '-N', num_ops, '-I', '-Q', '-z', file_size_in_bytes), stdout=fp, stderr=fp)
 
     elif integrity_check == True and sequential_writes == False and blocking_process == False:
         ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-                                   '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
+                                   '-a', random_seed, '-u', client_uuid, '-z', request_size_in_bytes,
                                    '-q', queue_depth, '-N', num_ops, '-I', '-z', file_size_in_bytes), stdout=fp, stderr=fp)
 
     elif blocking_process == True and sequential_writes == False and integrity_check == False:
         proc = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-                                   '-u', client_uuid, '-Z', request_size_in_bytes,
+                                   '-u', client_uuid, '', request_size_in_bytes,
                                    '-q', queue_depth, '-N', num_ops, '-I', '-Q', '-z', file_size_in_bytes], stdout=fp, stderr=fp)
 
         poll = proc.poll()  # returns the exit code or None if the process is still running
@@ -594,7 +594,7 @@ def start_niova_block_test(cluster_params, input_values):
 
     else:
         ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-                                   '-a', random_seed, '-u', client_uuid, '-Z', request_size_in_bytes,
+                                   '-a', random_seed, '-u', client_uuid, '-z', request_size_in_bytes,
                                    '-q', queue_depth, '-N', num_ops, '-z', file_size_in_bytes), stdout=fp, stderr=fp)
 
     logger.info("niova-block-test args: %s", ps.args)
@@ -636,19 +636,19 @@ class LookupModule(LookupBase):
         elif process_type == "run_ublk_device":
 
             nisd_uuid = terms[1]
-            return run_niova_ublk(cluster_params, nisd_uuid)
+            return [run_niova_ublk(cluster_params, nisd_uuid)]
 
         elif process_type == "run_nisd":
             nisd_uuid = terms[1]
             device_path = terms[2]
-            return run_nisd_command(cluster_params, nisd_uuid, device_path)
+            return [run_nisd_command(cluster_params, nisd_uuid, device_path)]
 
         elif process_type == "niova-block-ctl":
 
                controlplane_environment_variables(cluster_params, input_values['lookout_uuid'])
                niova_block_ctl_process = start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values)
 
-               return niova_block_ctl_process
+               return [niova_block_ctl_process]
 
         elif process_type == "nisd":
 
@@ -657,7 +657,7 @@ class LookupModule(LookupBase):
                nisdPath = prepare_nisd_device_path(input_values['nisd_uuid'])
                nisd_process = start_nisd_process(cluster_params, input_values, nisdPath)
 
-               return nisd_process
+               return [nisd_process]
 
         elif process_type == "niova-block-test":
 
@@ -670,5 +670,5 @@ class LookupModule(LookupBase):
                     # Start niova-block-test
                     niova_block_test_process = start_niova_block_test(cluster_params, input_values)
 
-               return niova_block_test_process
+               return [niova_block_test_process]
 
