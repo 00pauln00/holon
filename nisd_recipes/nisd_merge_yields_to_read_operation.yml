@@ -124,7 +124,7 @@
                  'lookout_uuid': '{{ get_lookout[0] }}'
                  }
        debug:
-         msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param  ) }}"
+         msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param) }}"
 
      - name: "{{ recipe_name}}: Wait until 'conns' gets updated"
        vars:
