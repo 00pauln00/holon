@@ -65,7 +65,7 @@
         nisd_marker: "{{ marker_check.msg[1] }}"
       debug:
         msg: "GC Marker : {{ gc_marker }} | NISD Marker : {{ nisd_marker }}"
-      failed_when: (gc_marker != nisd_marker) or (gc_marker is none)
+      failed_when: (gc_marker | int != nisd_marker | int) or (gc_marker is none)
 
     - name: "{{ recipe_name }}: Get dbi file names."
       vars:
@@ -146,7 +146,7 @@
         nisd_marker: "{{ marker_check.msg[1] }}"
       debug:
         msg: "GC Marker : {{ gc_marker }} | NISD Marker : {{ nisd_marker }}"
-      failed_when: (gc_marker != nisd_marker) or (gc_marker is none)
+      failed_when: (gc_marker | int != nisd_marker | int) or (gc_marker is none)
     
     - name: "{{ recipe_name }}: Start data validation"
       vars:

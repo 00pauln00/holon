@@ -131,7 +131,7 @@
             nisd_marker: "{{ Sequence[1] }}"
           debug:
             msg: "Wait until marker values gets match"
-          until: (gc_marker | int) == (nisd_marker | int)
+          until: (gc_marker is not none) and (nisd_marker is not none) and ((gc_marker | int) == (nisd_marker | int))
           retries: 50
           delay: 2
 
