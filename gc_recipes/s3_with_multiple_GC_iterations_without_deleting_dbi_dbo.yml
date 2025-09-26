@@ -20,16 +20,16 @@
                  }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'generate_pattern', input_param  ) }}"
+          - "{{ lookup('s3_handler', 'generate_pattern', input_param) }}"
 
     - name: "{{ recipe_name }}: Start gc algorithm."
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc',  ) }}"
+          - "{{ lookup('s3_handler', 'start_gc') }}"
 
     - name: "{{ recipe_name }}: Start data validation"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate',  ) }}"
+         msg: "{{ lookup('s3_handler', 'data_validate') }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

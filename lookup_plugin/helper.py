@@ -188,9 +188,14 @@ class helper:
         self.base_path = f"{cluster_params['base_dir']}/{cluster_params['raft_uuid']}/"
     
     def create_dd_file(self, filename, bs, count):
-        full_path = os.path.normpath(os.path.join(self.base_path, filename))
+    
+        # Normalize filename to avoid leading /
+        safe_filename = filename.lstrip(os.sep)
+        full_path = os.path.normpath(os.path.join(self.base_path, safe_filename))
+        
         try:
-            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            # os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            dir_path = os.path.dirname(full_path)
             dd_command = f"sudo dd if=/dev/zero of={full_path} bs={bs} count={count}"
             print(f"Running command: {dd_command}")
             result = subprocess.run(
@@ -342,7 +347,7 @@ class helper:
             file_names = {os.path.basename(line.strip())  for line in f if line.strip()}
         if deleted_file and os.path.basename(deleted_file.strip()) in file_names:
             file_names.remove(os.path.basename(deleted_file.strip()))
-        return [file_names]
+        return list(file_names)
 
     def compare_files(self, file_names, command_output) -> None:
         output_files = {os.path.basename(line.strip()) for line in command_output.splitlines() if line.strip()}
@@ -445,15 +450,15 @@ class LookupModule(LookupBase):
 
         elif operation == "clone_dbi_set":
             chunk = terms[1]
-            return clone_dbi_files(cluster_params, chunk)
+            return [clone_dbi_files(cluster_params, chunk)]
             
         elif operation == "corrupt_last_file":
             chunk = terms[1]
-            return help.corrupt_last_file(chunk)
+            return [help.corrupt_last_file(chunk)]
 
         elif operation == "inc_dbi_gen_num":
             chunk = terms[1]
-            return help.inc_dbi_gen_num(chunk)
+            return [help.inc_dbi_gen_num(chunk)]
 
         elif operation == "copy_file":
             source_file = terms[1]
@@ -475,7 +480,7 @@ class LookupModule(LookupBase):
         elif operation == "get_set_file_list":
             chunk = terms[1]
             deleted_file = terms[2]
-            return help.get_set_file_list(chunk, deleted_file)
+            return [help.get_set_file_list(chunk, deleted_file)]
 
         elif operation == "check_files":
             file_list = terms[1]

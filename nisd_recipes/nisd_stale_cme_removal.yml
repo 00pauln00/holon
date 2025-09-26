@@ -50,7 +50,7 @@
                  'blocking_process' : False,
                  'lookout_uuid': '{{ get_lookout[0] }}'
                  }
-         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param  ) }}"
+         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param) }}"
        debug:
          msg: "get write's return code"
        no_log:  True
@@ -66,7 +66,7 @@
        vars:
          stage: "verifyAftrWr"
          lookout_uuid: "{{ get_lookout[0] }}"
-         aftrWrNisdChunk: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid,  ) }}"
+         aftrWrNisdChunk: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid) }}"
        debug:
          msg: "Verify nisd values after writes: {{ aftrWrNisdChunk }}"
        no_log: True
@@ -94,7 +94,7 @@
                  'blocking_process' : False,
                  'lookout_uuid': '{{ get_lookout[0] }}'
                  }
-         rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param  ) }}"
+         rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param) }}"
        debug:
          msg: "get read's return code"
        with_items:
@@ -109,7 +109,7 @@
        vars:
          stage: "verfyAftrRd"
          lookout_uuid: "{{ get_lookout[0] }}"
-         aftrRdNisdChunk: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid,  ) }}"
+         aftrRdNisdChunk: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid) }}"
        debug:
          msg: "Verify nisd values after read: {{ aftrRdNisdChunk }}"
        no_log: True
@@ -130,14 +130,14 @@
          where: "/nisd_chunks/vdev-uuid@{{ staleVdev.stdout }}"
          lookout_uuid: "{{ get_lookout[0] }}"
        debug:
-         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid,  ) }}"
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid) }}"
        no_log: true
 
      - name: "{{ recipe_name }}: Verify after pause compaction."
        vars:
          stage: "verifyAftrPause"
          lookout_uuid: "{{ get_lookout[0] }}"
-         aftrPause: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid,  ) }}"
+         aftrPause: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid) }}"
        debug:
          msg: "Verify after pause compaction: {{ aftrPause }}"
        no_log: True
@@ -162,7 +162,7 @@
                  'blocking_process' : False,
                  'lookout_uuid': '{{ get_lookout[0] }}'
                  }
-         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param  ) }}"
+         wr_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param) }}"
        debug:
          msg: "get write's return code"
        no_log:  True
@@ -190,7 +190,7 @@
                  'blocking_process' : False,
                  'lookout_uuid': '{{ get_lookout[0] }}'
                  }
-         rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param  ) }}"
+         rd_success: "{{ lookup('nisd_handler', 'niova-block-test', input_param) }}"
        debug:
          msg: "get read's return code"
        with_items:
@@ -206,7 +206,7 @@
        vars:
          stage: "verfyAftrWrRd"
          lookout_uuid: "{{ get_lookout[0] }}"
-         aftrWrRd: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid,  ) }}"
+         aftrWrRd: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid) }}"
        debug:
          msg: "Verify compaction has NOT occurred: {{ aftrWrRd }}"
        no_log: True
@@ -229,14 +229,14 @@
          where: "/nisd_chunks/vdev-uuid@{{ staleVdev.stdout }}"
          lookout_uuid: "{{ get_lookout[0] }}"
        debug:
-         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid,  ) }}"
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid) }}"
        no_log: true
 
      - name: "{{ recipe_name }}: Verify after unpause compaction."
        vars:
          stage: "verifyAftrResume"
          lookout_uuid: "{{ get_lookout[0] }}"
-         aftrResume: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid,  ) }}"
+         aftrResume: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid) }}"
        debug:
          msg: "Verify after pause compaction: {{ aftrResume }}"
        no_log: True
@@ -257,14 +257,14 @@
          where: "/nisd_chunks/vdev-uuid@{{ staleVdev.stdout }}"
          lookout_uuid: "{{ get_lookout[0] }}"
        debug:
-         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid,  ) }}"
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid) }}"
        no_log: true
 
      - name: "{{ recipe_name }}: Verify after unpause compaction."
        vars:
          stage: "aftrForceCompaction"
          lookout_uuid: "{{ get_lookout[0] }}"
-         aftrForceCompct: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid,  ) }}"
+         aftrForceCompct: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, nisd_keys, 'nisd', lookout_uuid) }}"
        debug:
          msg: "Verify after pause compaction: {{ aftrForceCompct }}"
        no_log: True

@@ -12,7 +12,7 @@
         s3_dir: "minio_data"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_s3', s3_dir,  ) }}"
+          - "{{ lookup('s3_handler', 'start_s3', s3_dir) }}"
 
     - pause:
         seconds: 3
@@ -24,16 +24,16 @@
                  }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'generate_pattern', input_param   ) }}"
+          - "{{ lookup('s3_handler', 'generate_pattern', input_param) }}"
 
     - name: "{{ recipe_name }}: Start gc algorithm and keep the dbi-dbo"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc',  ) }}"
+          - "{{ lookup('s3_handler', 'start_gc') }}"
 
     - name: "{{ recipe_name }}: Start data validation"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate',  ) }}"
+         msg: "{{ lookup('s3_handler', 'data_validate') }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
