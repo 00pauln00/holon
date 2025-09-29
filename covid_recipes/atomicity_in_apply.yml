@@ -172,10 +172,10 @@
         no_log: false
 
       ####################################################################
-      # 7. VERIFY ATOMICITY
+      # 7. VERIFY PERSISTENCE
       ####################################################################
 
-      - name: "{{ recipe_name }}: Validate that the latest application data is consistent with its metadata."
+      - name: "{{ recipe_name }}: Verify if the recent key is persisted."
         include_role:
           name: common
           tasks_from: verify_persistence
