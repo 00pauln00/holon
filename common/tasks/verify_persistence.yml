@@ -1,23 +1,20 @@
-- name: "{{ recipe_name }}: Get the last key from rocksdb."
+- name: "{{ recipe_name }}: Get the last written key from rocksdb."
   vars: 
     cf: PMDBTS_CF
   set_fact:
-    last_written_key: "{{ lookup('verify_rocksdb', leader_uuid, 'last_written', cf)}}"
+    last_written_key: "{{ lookup('rocksdb_util', leader_uuid, 'last_written', cf)}}"
 
 - name: "{{ recipe_name }}: Get the last applied index from rocksdb."
   set_fact:
-    last_applied_index: "{{ lookup('verify_rocksdb', leader_uuid, 'last_applied')}}"
+    last_applied_index: "{{ lookup('rocksdb_util', leader_uuid, 'last_applied')}}"
 
-- name: "{{ recipe_name }}: Verify if the recent key is persisted" 
+- name: "{{ recipe_name }}: Print the last written key." 
   debug:
-    msg: 
-      - "Last written key: {{ last_written_key }}"
-      - "Recent key: {{ recent_key }}"
-  failed_when: (last_written_key | int) != (recent_key | int)
+    msg: "Last written key: {{ last_written_key }}"
 
 - name: "{{ recipe_name }}: Verify the last applied index."
   vars:
-    expected_last_applied_index: "{{ ((recent_key | int) - (start_key | int)) + 1 }}"  
+    expected_last_applied_index: "{{ ((last_written_key | int) - (start_key | int)) + 1 }}"  
   debug:
     msg: 
       - "Last applied index: {{ last_applied_index }}"

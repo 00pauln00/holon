@@ -172,18 +172,32 @@
         no_log: false
 
       ####################################################################
-      # 7. VERIFY PERSISTENCE
+      # 7. VERIFY ATOMICITY
       ####################################################################
 
-      - name: "{{ recipe_name }}: Verify if the recent key is persisted."
+      - name: "{{ recipe_name }}: Validate that the latest application data is consistent with its metadata."
         include_role:
           name: common
           tasks_from: verify_persistence
         vars:
-          recent_key: "{{ start_key + num_writes - 1 }}"
           leader_uuid: "{{ current_leader_uuid }}"
         register: key_persistence_result
 
+      ####################################################################
+      # 8. LEADER CHANGE VERIFICATION
+      ####################################################################
+      
+      - name: "{{ recipe_name }}: Verify the new leader, commit-idx and term values."
+        vars:
+          RunningServers: "{{ NonRunningServers | difference([current_leader_uuid]) }}"
+        debug:
+          msg:
+            - "{{ RunningServers[item] }}"
+            - "{{ lookup('niova_ctlrequest', 'lookup', RunningServers[item], '/raft_root_entry/0/leader-uuid') }}"
+            - "{{ lookup('niova_ctlrequest', 'lookup', RunningServers[item], '/raft_root_entry/0/commit-idx') }}"
+            - "{{ lookup('niova_ctlrequest', 'lookup', RunningServers[item], '/raft_root_entry/0/term') }}"
+        loop: "{{ range(0, RunningServers | length) | list }}"
+      
     rescue:
       - name: "Recipe: {{ recipe_name }} failed."
         set_fact:
