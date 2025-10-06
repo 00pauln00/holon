@@ -55,6 +55,29 @@ def get_last_applied_index(db_path):
     print(f"[DEBUG] Parsed last_applied_index={last_applied_index}")
     return last_applied_index
 
+def get_counter_value(db_path, cf):
+    """
+    Return the value of the static 'counter' key used by the counter app.
+    This verifies RYOW behavior after multiple writes.
+    """
+
+    counter_key = "counter"
+    cmd = ["ldb", f"--db={db_path}", f"--column_family={cf}", "get", "counter", "--value_hex"]
+    output = run_cmd(cmd)
+
+    if output.startswith(("0x", "0X")):
+        output = output[2:]
+
+    if len(output) < 16:
+        print(f"INVALID_LAST_APPLIED_HEX: {output}")
+        sys.exit(3)
+
+    first_8_bytes = output[:16]
+    counter_value = int.from_bytes(bytes.fromhex(first_8_bytes), "little")
+
+    print(f"[DEBUG] Counter key value for {counter_key}: {counter_value}")
+    return counter_value
+
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
         node = terms[0]
@@ -79,6 +102,14 @@ class LookupModule(LookupBase):
             if last_applied_index is None:
                 return []
             return [last_applied_index]
+
+        elif key_type == "counter_key":
+            cf = terms[2] if len(terms) > 2 else "PMDBTS_CF"
+            counter_val = get_counter_value(db_path, cf)
+            if counter_val is None:
+                return []
+            return [counter_val]
+
         else:
             print(f"[ERROR] Unknown key_type: {key_type}")
             return []
