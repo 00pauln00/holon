@@ -71,16 +71,6 @@
         (client_state['/0/state'] != "client") or
         (client_last_req_ack['/0/last-request-ack'] != "Thu Jan 01 00:00:00 UTC 1970")
 
-    - name: "{{ recipe_name }}: Verify the commit-idx before writes are issued."
-      vars:
-        RunningServers: "{{ NRunningPeers }}"
-      debug:
-        msg:
-          - "{{ RunningServers[item] }}"
-          - "{{ lookup('niova_ctlrequest', 'lookup', RunningServers[item], '/raft_root_entry/0/commit-idx') }}"
-      no_log: true
-      loop: "{{ range(0, RunningServers | length) | list }}"
-
     - name: "{{ recipe_name }}: Get pre-write commit index from leader."
       set_fact:
         pre_write_commit_idx: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], '/raft_root_entry/0/commit-idx') }}"
@@ -112,43 +102,31 @@
       failed_when: >
         ((pending_coalesced_writes['/0/coalesce-items-pending'] | int) != num_of_app_uuids)
 
-    #Remove fault injection from leader
-    - name: "{{ recipe_name }}: Apply cmd to remove fault injection from the leader."
+    - name: "{{ recipe_name }}: Remove fault injection from leader and verify."
       vars:
-        stage: "remove_fault_injection"
         cmd: "enabled@false"
         where: "/fault_injection_points/name@coalesced_writes"
-        remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', LeaderUUID['/0/leader-uuid'], cmd, where) }}"
+        leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+        # Step 1: Disable the fault injection
+        remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', leader, cmd, where) }}"
+        # Step 2: Fetch the updated array
+        fault_points: "{{ lookup('niova_ctlrequest', 'lookup', leader, '/fault_injection_points') }}"
+        # Step 3: Safely extract coalesced_writes enabled flag (if exists)
+        coalesced_write_fi_list: >-
+          {{
+            fault_points.get('//fault_injection_points', [])
+            | selectattr('name', 'equalto', 'coalesced_writes')
+            | map(attribute='enabled')
+            | list
+          }}
+        coalesced_write_fi: "{{ coalesced_write_fi_list[0] | default(false) }}"
       debug:
-        msg: "{{ remove_fault_inject }}"
-      no_log: True
-
-    - name: "{{ recipe_name }}: Get fault_injection_points array to remove fault injection."
-      vars:
-        stage: "get_array"
-        raft_key:
-           - "/fault_injection_points"
-        remove_fi: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key) }}"
-      debug:
-        msg: "Getting fault_injection_points array."
-      no_log: True
-      with_items:
-          - "{{ remove_fi }}"
-      register: get_array_value
-
-    - name: "{{ recipe_name }}: Get 'enabled' value for 'coalesced_writes' to remove fault injection."
-      vars:
-        fi_value: "{{ get_array_value['results'][0]['item'] }}"
-      set_fact:
-        Coalesced_write_fault_injection: "{{ fi_value['//fault_injection_points'][item]['enabled'] }}"
-      when: (fi_value['//fault_injection_points'][item]['name'] == "coalesced_writes")
-      loop: "{{  range(0, fi_value['//fault_injection_points'] | length) | list }}"
-
-    - name: "{{ recipe_name }}: Verify fault injection is removed from leader."
-      debug:
-        msg: "{{ Coalesced_write_fault_injection }}"
-      no_log: True
-      failed_when: Coalesced_write_fault_injection != False
+        msg:
+          - "Removed fault injection result: {{ remove_fault_inject }}"
+          - "Coalesced write FI entries found: {{ coalesced_write_fi_list | length }}"
+          - "Coalesced write FI enabled flag: {{ coalesced_write_fi }}"
+      failed_when: coalesced_write_fi | bool == true
+      no_log: false
 
     - name: "{{ recipe_name }}: Wait until write status gets updated from client."
       vars:
@@ -186,8 +164,13 @@
       debug:
         msg:
           - "{{ RunningServers[item] }}"
+          - "{{ pre_write_commit_idx }}"
           - "{{ lookup('niova_ctlrequest', 'lookup', RunningServers[item], '/raft_root_entry/0/commit-idx') }}"
-      no_log: true
+      failed_when: >
+        (lookup('niova_ctlrequest', 'lookup', RunningServers[item], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] | int)
+        !=
+        ((pre_write_commit_idx['/0/commit-idx'] | int)  + 1)
+      no_log: True
       loop: "{{ range(0, RunningServers | length) | list }}"
 
     - name: "{{ recipe_name }}: Get counter value from RocksDB."
