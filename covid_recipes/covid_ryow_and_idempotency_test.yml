@@ -1,0 +1,423 @@
+- name: "covid_ryow_and_idempotency_test"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "covid_ryow_and_idempotency_test"
+    num_of_app_uuids: 2
+
+  tasks:
+  - block:
+
+    # Check the app type
+    - name: "{{ recipe_name }}: Check if the app_type is covid."
+      vars:
+        app_type: "{{ app_type }}"
+      debug:
+        msg: "app_type should be covid"
+      failed_when: (app_type != "covid")
+
+    # start the servers
+    - name: "{{ recipe_name }}: Print the UUIDs of all the servers"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Start all the servers in the cluster"
+      include_role:
+        name: common
+        tasks_from: start_server_golang
+      vars:
+        ServerUUID: "{{ NonRunningServers[item] }}"
+      loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+    - name: "Wait until leader election happens."
+      vars:
+        stage: "wait_leader_election"
+      debug:
+        msg: "Waiting for leader election"
+      until: >
+        lookup('niova_ctlrequest', 'lookup', NonRunningServers[item], '/raft_root_entry/0/leader-uuid') != "null"
+      retries: 10
+      delay: 1
+      loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get leader UUID directly."
+      vars:
+        raft_key: "/raft_root_entry/0/leader-uuid"
+        leader_dict: "{{ lookup('niova_ctlrequest', 'lookup', NonRunningServers, raft_key) | first }}"
+      set_fact:
+        leader_uuid: "{{ leader_dict['/0/leader-uuid'] }}"
+
+    - name: "{{ recipe_name }}: Print the Leader UUID."
+      debug:
+        msg: "{{ leader_uuid }}"
+
+    - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+      include_role:
+        name: common
+        tasks_from: get_new_client_uuid
+      register: client_uuid
+
+    - name: "{{ recipe_name }}: Generate App UUID"
+      shell: "/usr/bin/uuid"
+      register: app_uuid_1
+
+    - name: "{{ recipe_name }}: Generate App UUID"
+      shell: "/usr/bin/uuid"
+      register: app_uuid_2
+
+    - name: "{{ recipe_name }}: Get pre-write commit index from leader."
+      set_fact:
+        pre_write_commit_idx: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, '/raft_root_entry/0/commit-idx') }}"
+
+    - name: "{{ recipe_name }}: Print the pre write commit index."
+      debug: 
+        msg: "{{ pre_write_commit_idx }}"
+
+    # RYOW Test
+
+    - name: "{{ recipe_name }}: Enable fault injection for coalesced writes."
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ leader_uuid }}"
+        fault_injection_name: "coalesced_writes"
+
+    - name: "{{ recipe_name}}: Write the single key-value pair to COVID Application"
+      vars:
+        input_param: {
+          async_mode: True     # run in async mode
+        }
+        stage: "CovidWriteOne"
+        cmd: "WriteOne#{{ app_uuid_1.stdout }}:0:0:0:0#Africa#OWID_AFR#5000#2000#{{ recipe_name }}_{{ stage }}"
+        WriteOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, input_param) }}"
+      debug:
+         msg: "write single entry"
+      with_items:
+        - "{{ WriteOneValue }}"
+      register: WriteOne
+      no_log: False
+   
+    - name: "{{ recipe_name}}: Write the single key-value pair to COVID Application"
+      vars:
+        input_param: {
+          async_mode: True     # run in async mode
+        }
+        stage: "CovidWriteTwo"
+        cmd: "WriteOne#{{ app_uuid_2.stdout }}:0:0:0:0#Africa#OWID_AFR#2000#1000#{{ recipe_name }}_{{ stage }}"
+        WriteTwoValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, input_param) }}"
+      debug:
+        msg: "write single entry"
+      with_items:
+        - "{{ WriteTwoValue }}"
+      register: WriteTwo
+      no_log: False
+
+    - pause:
+        seconds: 10
+
+    - name: "{{ recipe_name }}: Verify the value of coalesced items pending."
+      vars:
+         stage: "coalesced_check1"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, '/raft_root_entry/0/coalesce-items-pending') }}"
+      no_log: False
+      until: (lookup('niova_ctlrequest', 'lookup', leader_uuid, '/raft_root_entry/0/coalesce-items-pending')['/0/coalesce-items-pending'] | int) == num_of_app_uuids
+      retries: 15
+      delay: 1
+    
+    - name: "{{ recipe_name }}: Remove fault injection from leader and verify."
+      vars:
+        cmd: "enabled@false"
+        where: "/fault_injection_points/name@coalesced_writes"
+        leader: "{{ leader_uuid }}"
+        # Step 1: Disable the fault injection
+        remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', leader, cmd, where) }}"
+        # Step 2: Fetch the updated array
+        fault_points: "{{ lookup('niova_ctlrequest', 'lookup', leader, '/fault_injection_points') }}"
+        # Step 3: Safely extract coalesced_writes enabled flag (if exists)
+        coalesced_write_fi_list: >-
+          {{
+            fault_points.get('//fault_injection_points', [])
+            | selectattr('name', 'equalto', 'coalesced_writes')
+            | map(attribute='enabled')
+            | list
+          }}
+        coalesced_write_fi: "{{ coalesced_write_fi_list[0] | default(false) }}"
+      debug:
+        msg:
+          - "Removed fault injection result: {{ remove_fault_inject }}"
+          - "Coalesced write FI entries found: {{ coalesced_write_fi_list | length }}"
+          - "Coalesced write FI enabled flag: {{ coalesced_write_fi }}"
+      failed_when: coalesced_write_fi | bool == true
+      no_log: False
+
+    - name: "{{ recipe_name }}: Get post-write commit index from leader."
+      set_fact:
+        post_write_commit_idx: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, '/raft_root_entry/0/commit-idx') }}"
+
+    - name: "{{ recipe_name }}: Print the post-write commit index."
+      debug: 
+        msg: "{{ post_write_commit_idx }}"
+
+    - name: "{{ recipe_name }}: Generate App UUID"
+      shell: "/usr/bin/uuid"
+      register: app_uuid_3
+
+    - name: "{{ recipe_name}}: Read to the written key."
+      vars:
+        stage: "CovidReadOne"
+        cmd: "ReadOne#Africa#{{ app_uuid_3.stdout }}:0:0:0:0#{{ recipe_name }}_{{ stage }}"
+        ReadOneValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout) }}"
+      debug:
+        msg: "read single entry"
+      with_items:
+        - "{{ ReadOneValue }}"
+      register: ReadOne
+      no_log: False
+
+    - name: "{{ recipe_name }}: Check if read is successful"
+      debug:
+        msg: "check if read is successful"
+      failed_when:
+        ReadOne['results'][0]['item']['status'] != 0
+
+    # compare read and write
+    - name: "{{ recipe_name }}: Verify the results for read-your-own-write guarantee"
+      vars:
+        uid: "{{ app_uuid_3.stdout }}:0:0:0:0"
+        rdrqst: "{{ ReadOne['results'][0]['item']['response'][uid] }}"
+      debug:
+        msg: "compare read and write"
+      failed_when: >
+         (rdrqst['Location'] != "Africa") or
+         (rdrqst['IsoCode'] != "OWID_AFR") or
+         (rdrqst['PeopleVaccinated'] != "3000") or
+         (rdrqst['TotalVaccinations'] != "7000")
+
+    - name: "{{ recipe_name }}: Get follower info."
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
+
+    # Idempotency Test: Scenario 1
+
+    - name: "{{ recipe_name }}: Generate App UUID"
+      shell: "/usr/bin/uuid"
+      register: app_uuid_4
+
+    - name: "{{ recipe_name }}: Enable fault injection for coalesced writes."
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ leader_uuid }}"
+        fault_injection_name: "coalesced_writes"
+
+    - name: "{{ recipe_name}}: Write the single key-value pair to COVID Application"
+      vars:
+        input_param: {
+          async_mode: True     # run in async mode
+        }
+        stage: "CovidWriteThree"
+        cmd: "WriteOne#{{ app_uuid_4.stdout }}:0:0:0:0#India#OWID_IND#5000#2000#{{ recipe_name }}_{{ stage }}"
+        WriteThreeValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, input_param) }}"
+      debug:
+        msg: "write single entry {{ WriteThreeValue }}"
+
+    - name: "{{ recipe_name }}: Apply fault injection on a follower node and verify."
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ FollowerUUIDs[0] }}"
+        fault_injection_name: "raft_server_fail_partial_apply"
+
+    - pause:
+        seconds: 5
+
+    - name: "{{ recipe_name }}: Verify the value of coalesced items pending."
+      vars:
+         stage: "coalesced_check2"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, '/raft_root_entry/0/coalesce-items-pending') }}"
+      no_log: False
+      until: (lookup('niova_ctlrequest', 'lookup', leader_uuid, '/raft_root_entry/0/coalesce-items-pending')['/0/coalesce-items-pending'] | int) == 1
+      retries: 10
+      delay: 1
+
+    - name: "{{ recipe_name }}: Remove fault injection from leader and verify."
+      vars:
+        cmd: "enabled@false"
+        where: "/fault_injection_points/name@coalesced_writes"
+        leader: "{{ leader_uuid }}"
+        # Step 1: Disable the fault injection
+        remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', leader, cmd, where) }}"
+        # Step 2: Fetch the updated array
+        fault_points: "{{ lookup('niova_ctlrequest', 'lookup', leader, '/fault_injection_points') }}"
+        # Step 3: Safely extract coalesced_writes enabled flag (if exists)
+        coalesced_write_fi_list: >-
+          {{
+            fault_points.get('//fault_injection_points', [])
+            | selectattr('name', 'equalto', 'coalesced_writes')
+            | map(attribute='enabled')
+            | list
+          }}
+        coalesced_write_fi: "{{ coalesced_write_fi_list[0] | default(false) }}"
+      debug:
+        msg:
+          - "Removed fault injection result: {{ remove_fault_inject }}"
+          - "Coalesced write FI entries found: {{ coalesced_write_fi_list | length }}"
+          - "Coalesced write FI enabled flag: {{ coalesced_write_fi }}"
+      failed_when: coalesced_write_fi | bool == true
+      no_log: False
+
+    - name: "{{ recipe_name }}: Start the stopped follower server"
+      include_role:
+        name: common
+        tasks_from: start_server_golang
+      vars:
+        ServerUUID: "{{ FollowerUUIDs[0] }}"
+
+    - pause:
+        seconds: 5
+
+    - name: "{{ recipe_name }}: Verify if the recent key is persisted"
+      vars:
+        rdval: "{{ lookup('rocksdb_util', FollowerUUIDs[0], 'lookup_key', 'PMDBTS_CF', 'India') }}"
+      debug:
+        msg: "Value read from follower DB: {{ rdval }}"
+      failed_when: >
+        (rdval is not defined) or
+        (rdval[0] != "OWID_IND") or
+        (rdval[1] != "5000") or
+        (rdval[2] != "2000")
+
+    - name: "{{ recipe_name }}: Get follower info."
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
+
+    # Idempotency test: Scenario 2 
+
+    - name: "{{ recipe_name }}: Generate App UUID"
+      shell: "/usr/bin/uuid"
+      register: app_uuid_5
+
+    - name: "{{ recipe_name }}: Generate App UUID"
+      shell: "/usr/bin/uuid"
+      register: app_uuid_6
+
+    - name: "{{ recipe_name }}: Enable fault injection for coalesced writes."
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ leader_uuid }}"
+        fault_injection_name: "coalesced_writes"
+
+    - name: "{{ recipe_name}}: Write the single key-value pair to COVID Application"
+      vars:
+        input_param: {
+          async_mode: True     # run in async mode
+        }
+        stage: "CovidWriteFour"
+        cmd: "WriteOne#{{ app_uuid_5.stdout }}:0:0:0:0#America#OWID_AM#5000#2000#{{ recipe_name }}_{{ stage }}"
+        WriteFourValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, input_param) }}"
+      debug:
+        msg: "write single entry {{ WriteFourValue }}"
+
+    - name: "{{ recipe_name}}: Write the single key-value pair to COVID Application"
+      vars:
+        input_param: {
+          async_mode: True     # run in async mode
+        }
+        stage: "CovidWriteFive"
+        cmd: "WriteOne#{{ app_uuid_6.stdout }}:0:0:0:0#Australia#OWID_AUS#5000#2000#{{ recipe_name }}_{{ stage }}"
+        WriteFiveValue: "{{ lookup('app_cmd', cmd, client_uuid.stdout, input_param) }}"
+      debug:
+        msg: "write single entry {{ WriteFiveValue }}"
+
+    - name: "{{ recipe_name }}: Apply fault injection on a follower node and verify."
+      include_role:
+        name: common
+        tasks_from: set_fault_injection_and_verify
+      vars:
+        ServerUUID: "{{ FollowerUUIDs[1] }}"
+        fault_injection_name: "raft_server_fail_partial_apply"
+
+    - pause:
+        seconds: 10
+
+    - name: "{{ recipe_name }}: Verify the value of coalesced items pending."
+      vars:
+         stage: "coalesced_check3"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'lookup', leader_uuid, '/raft_root_entry/0/coalesce-items-pending') }}"
+      no_log: False
+      until: (lookup('niova_ctlrequest', 'lookup', leader_uuid, '/raft_root_entry/0/coalesce-items-pending')['/0/coalesce-items-pending'] | int) == num_of_app_uuids
+      retries: 15
+      delay: 1
+
+    - name: "{{ recipe_name }}: Remove fault injection from leader and verify."
+      vars:
+        cmd: "enabled@false"
+        where: "/fault_injection_points/name@coalesced_writes"
+        leader: "{{ leader_uuid }}"
+        # Step 1: Disable the fault injection
+        remove_fault_inject: "{{ lookup('niova_ctlrequest', 'apply_cmd', leader, cmd, where) }}"
+        # Step 2: Fetch the updated array
+        fault_points: "{{ lookup('niova_ctlrequest', 'lookup', leader, '/fault_injection_points') }}"
+        # Step 3: Safely extract coalesced_writes enabled flag (if exists)
+        coalesced_write_fi_list: >-
+          {{
+            fault_points.get('//fault_injection_points', [])
+            | selectattr('name', 'equalto', 'coalesced_writes')
+            | map(attribute='enabled')
+            | list
+          }}
+        coalesced_write_fi: "{{ coalesced_write_fi_list[0] | default(false) }}"
+      debug:
+        msg:
+          - "Removed fault injection result: {{ remove_fault_inject }}"
+          - "Coalesced write FI entries found: {{ coalesced_write_fi_list | length }}"
+          - "Coalesced write FI enabled flag: {{ coalesced_write_fi }}"
+      failed_when: coalesced_write_fi | bool == true
+      no_log: False
+
+    - name: "Sleep for 5 seconds"
+      pause:
+        seconds: 5
+
+    - name: "{{ recipe_name }}: Start the stopped follower server"
+      include_role:
+        name: common
+        tasks_from: start_server_golang
+      vars:
+        ServerUUID: "{{ FollowerUUIDs[1] }}"
+
+    - pause:
+        seconds: 10
+
+    - name: "{{ recipe_name }}: Verify if the recent key is persisted"
+      vars:
+        rdval: "{{ lookup('rocksdb_util', FollowerUUIDs[1], 'lookup_key', 'PMDBTS_CF', 'America') }}"
+      debug:
+        msg: "Value read from follower DB: {{ rdval }}"
+      failed_when: >
+        (rdval is not defined) or
+        (rdval[0] != "OWID_AM") or
+        (rdval[1] != "5000") or
+        (rdval[2] != "2000")
+
+    - name: "{{ recipe_name }}: Verify if the recent key is persisted"
+      vars:
+        rdval: "{{ lookup('rocksdb_util', FollowerUUIDs[1], 'lookup_key', 'PMDBTS_CF', 'Australia') }}"
+      debug:
+        msg: "Value read from follower DB: {{ rdval }}"
+      failed_when: >
+        (rdval is not defined) or
+        (rdval[0] != "OWID_AUS") or
+        (rdval[1] != "5000") or
+        (rdval[2] != "2000")

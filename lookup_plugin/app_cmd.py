@@ -33,9 +33,10 @@ class LookupModule(LookupBase):
         cmd = terms[0]
         client_uuid = terms[1]
         cluster_params = kwargs['variables']['ClusterParams']
-        input_values = terms[2]
+        input_values = terms[2] if len(terms) > 2 else {}
 
-        async_mode =  input_values['async_mode']
+        # Default async_mode to False if not provided
+        async_mode = input_values.get('async_mode', False)
 
         #export NIOVA_THREAD_COUNT
         os.environ['NIOVA_THREAD_COUNT'] = cluster_params['nthreads']

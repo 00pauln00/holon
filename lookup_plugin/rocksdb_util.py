@@ -78,6 +78,17 @@ def get_counter_value(db_path, cf):
     print(f"[DEBUG] Counter key value for {counter_key}: {counter_value}")
     return counter_value
 
+def  get_key_value(db_path, cf, key):
+    # Scan the given CF
+    cmd = ["ldb", f"--db={db_path}", f"--column_family={cf}", "get", key]
+    output = run_cmd(cmd)
+
+    key_value = output.split()
+
+    print(f"[DEBUG] Key value for {key}: {key_value}")
+
+    return key_value
+
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
         node = terms[0]
@@ -97,6 +108,7 @@ class LookupModule(LookupBase):
             if last_key is None:
                 return []
             return [last_key]
+
         elif key_type == "last_applied":
             last_applied_index = get_last_applied_index(db_path)
             if last_applied_index is None:
@@ -109,6 +121,20 @@ class LookupModule(LookupBase):
             if counter_val is None:
                 return []
             return [counter_val]
+
+        elif key_type == "lookup_key":
+            cf = terms[2] 
+            key = terms[3]
+            if not cf:
+                print("[ERROR] column family must be provided for 'lookup_key'")
+                return []
+            if not key:
+                print("[ERROR] key must be provided for 'lookup_key'")
+                return []
+            key_value = get_key_value(db_path, cf, key)
+            if key_value is None:
+                return []
+            return [key_value]
 
         else:
             print(f"[ERROR] Unknown key_type: {key_type}")

@@ -65,7 +65,7 @@
         client_last_req_ack: "{{ lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/raft_client_root_entry/0/last-request-ack') }}"
       debug:
         msg: "Get the values from client for verification."
-      no_log: true
+      no_log: True
       failed_when: >
         (client_leader_uuid['/0/leader-uuid'] != LeaderUUID['/0/leader-uuid']) or
         (client_state['/0/state'] != "client") or
@@ -98,7 +98,7 @@
         pending_coalesced_writes: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], '/raft_root_entry/0/coalesce-items-pending') }}"
       debug:
         msg: "{{ pending_coalesced_writes }}"
-      no_log: true
+      no_log: True
       failed_when: >
         ((pending_coalesced_writes['/0/coalesce-items-pending'] | int) != num_of_app_uuids)
 
@@ -126,7 +126,7 @@
           - "Coalesced write FI entries found: {{ coalesced_write_fi_list | length }}"
           - "Coalesced write FI enabled flag: {{ coalesced_write_fi }}"
       failed_when: coalesced_write_fi | bool == true
-      no_log: false
+      no_log: True
 
     - name: "{{ recipe_name }}: Wait until write status gets updated from client."
       vars:
@@ -183,7 +183,7 @@
     - name: "{{ recipe_name }}: Verify counter value."
       debug:
         msg: "Verifying counter value."
-      no_log: true
+      no_log: True
       failed_when: >
         ((counter_value | int) != num_of_app_uuids)
 
