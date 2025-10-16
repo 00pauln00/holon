@@ -6,12 +6,22 @@ from ansible.plugins.lookup import LookupBase
 def run_cmd(cmd):
     """Run a shell command and return its output."""
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        output = result.stdout.strip()
+        result = subprocess.run(cmd, capture_output=True, check=True)
+        try:
+            output = result.stdout.decode('utf-8', errors='replace').strip()
+        except UnicodeDecodeError:
+            output = result.stdout.decode('latin-1', errors='replace').strip()
+
         if not output:
-            output = result.stderr.strip()
+            try:
+                output = result.stderr.decode('utf-8', errors='replace').strip()
+            except UnicodeDecodeError:
+                output = result.stderr.decode('latin-1', errors='replace').strip()
+
         return output
     except subprocess.CalledProcessError as e:
+        stdout = e.stdout.decode('utf-8', errors='replace') if e.stdout else ''
+        stderr = e.stderr.decode('utf-8', errors='replace') if e.stderr else ''
         print(f"Error running command: {cmd}")
         print(f"stdout: {e.stdout}")
         print(f"stderr: {e.stderr}")
@@ -89,6 +99,24 @@ def  get_key_value(db_path, cf, key):
 
     return key_value
 
+def  get_all_keys(db_path, cf):
+    # Scan the given CF
+    cmd = ["ldb", f"--db={db_path}", f"--column_family={cf}", "scan", "--value_hex"]
+    output = run_cmd(cmd)
+    kv_pairs = []
+    for line in output.splitlines():
+        if "==>" in line:
+            parts = line.split("==>")
+            key = parts[0].strip()
+            value = parts[1].strip()
+            kv_pairs.append((key, value))
+
+    print(f"[DEBUG] Found {len(kv_pairs)} key-value pairs.")
+
+    if not kv_pairs:
+        return None
+    return kv_pairs
+
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
         node = terms[0]
@@ -135,6 +163,16 @@ class LookupModule(LookupBase):
             if key_value is None:
                 return []
             return [key_value]
+
+        elif key_type == "all_keys":
+            cf = terms[2]
+            if not cf:
+                print("[ERROR] column family must be provided for 'lookup_key'")
+                return []
+            keys = get_all_keys(db_path, cf)
+            if keys is None:
+                return []
+            return [keys]
 
         else:
             print(f"[ERROR] Unknown key_type: {key_type}")

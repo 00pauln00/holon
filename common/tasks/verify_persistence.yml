@@ -2,7 +2,7 @@
   vars: 
     cf: PMDBTS_CF
   set_fact:
-    last_written_key: "{{ lookup('rocksdb_util', leader_uuid, 'last_written', cf)}}"
+    last_written_key: "{{ lookup('rocksdb_util', leader_uuid, 'last_written', cf) }}"
 
 - name: "{{ recipe_name }}: Get the last applied index from rocksdb."
   set_fact:

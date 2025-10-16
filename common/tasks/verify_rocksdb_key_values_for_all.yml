@@ -1,0 +1,22 @@
+---
+
+  - name: "Get all RocksDB key-values from all nodes."
+    set_fact:
+      rocksdb_data_all_nodes: "{{ rocksdb_data_all_nodes | default({}) | combine({ item: lookup('rocksdb_util', item, 'all_keys', column_family) }) }}"
+    loop: "{{ NRunningPeers }}"
+
+  - name: "Pick the first node's RocksDB data as reference"
+    set_fact:
+      reference_peer: "{{ NRunningPeers[0] }}"
+      reference_data: "{{ rocksdb_data_all_nodes[NRunningPeers[0]] }}"
+
+  - name: "Compare RocksDB data across all nodes"
+    vars:
+      current_data: "{{ rocksdb_data_all_nodes[item] }}"
+    fail:
+      msg: |
+        RocksDB data mismatch detected on node {{ item }}!
+        Expected (from {{ reference_peer }}): {{ reference_data }}
+        Found: {{ current_data }}
+    when: current_data != reference_data
+    loop: "{{ NRunningPeers }}"
