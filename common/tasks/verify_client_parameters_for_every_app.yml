@@ -29,8 +29,7 @@
         app_sync_index: '/{{ idx }}/app-sync'
         app_seqno_index: '/{{ idx }}/app-seqno'
       debug:
-        msg:
-         - "Verify parameters after successful write operation"
+        msg: "Verify parameters after successful write operation"
       failed_when: >
             (client_vals_after_wr['results'][0]['item'][status_index] != "Success") or
             (client_vals_after_wr['results'][0]['item'][pmdb_seqno_index] != (exp_list[idx] | int - 1)) or
