@@ -55,6 +55,16 @@
       loop_control:
           loop_var: idx
 
+    - name: "{{ recipe_name }}: Verify the value of coalesced items pending."
+      vars:
+        stage: coalesced_pending
+        pending_coalesced_writes: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], '/raft_root_entry/0/coalesce-items-pending') }}"
+      debug:
+        msg: "{{ pending_coalesced_writes }}"
+      no_log: False
+      failed_when: >
+        ((pending_coalesced_writes['/0/coalesce-items-pending'] | int) != num_of_app_uuids)- name: "{{ recipe_name }}: Verify the value of coalesced items pending."
+
     #wait for write operations to complete.
     - name: "{{ recipe_name }}: wait for write completion."
       include_role:
