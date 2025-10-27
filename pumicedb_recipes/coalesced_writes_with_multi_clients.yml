@@ -63,7 +63,7 @@
         msg: "{{ pending_coalesced_writes }}"
       no_log: False
       failed_when: >
-        ((pending_coalesced_writes['/0/coalesce-items-pending'] | int) != num_of_app_uuids)- name: "{{ recipe_name }}: Verify the value of coalesced items pending."
+        ((pending_coalesced_writes['/0/coalesce-items-pending'] | int) != number_of_app_uuids)
 
     #wait for write operations to complete.
     - name: "{{ recipe_name }}: wait for write completion."
