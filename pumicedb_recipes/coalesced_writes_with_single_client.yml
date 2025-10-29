@@ -67,6 +67,7 @@
         ClientUUID: "{{ client_uuid.stdout }}"
 
     - name: "{{ recipe_name }}: Verify the value of coalesced items pending."
+    - name: "{{ recipe_name }}: Verify the value of coalesced items pending."
       vars:
         stage: coalesced_pending
         pending_coalesced_writes: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], '/raft_root_entry/0/coalesce-items-pending') }}"
