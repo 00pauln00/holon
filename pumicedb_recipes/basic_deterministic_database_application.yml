@@ -7,7 +7,7 @@
     recipe_name: "basic_deterministic_db_app"
     parent: "healthy_raftserver_cluster_type2"
     requirement: "pumicedb"
-    num_of_app_uuids: 100
+    num_of_app_uuids: 99
     num_of_writes: 10
     no_of_writes: 1
     column_family: "PMDBTS_CF"
