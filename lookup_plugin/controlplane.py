@@ -516,6 +516,11 @@ class LookupModule(LookupBase):
 
             return [start_test_application]
 
+        elif process_type == "gotest":
+            # Run Go test for controlplane client
+            data = run_go_test(cluster_params, input_values)
+            return [data]
+
         elif process_type == "prometheus":
             hport = input_values['Hport']
 
