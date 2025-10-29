@@ -1,0 +1,64 @@
+- name: "controlPlane_put_get_test.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlPlane_put_get_test"
+    parent: None
+
+  tasks:
+    - block:
+        # check for the app_type
+        - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+          vars:
+            app_type: "{{ app_type }}"
+          debug:
+            msg: "app_type is: {{ app_type }}"
+          failed_when: (app_type != "controlplane")
+
+        - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+          include_role:
+            name: common
+            tasks_from: pmdb_cluster_init.yml
+          vars:
+            number_of_clients: 2
+            number_of_PMDBServers: 4
+
+        - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
+          vars:
+            input_param:
+              { "Operation": "membership", "OutfileName": "membership_output" }
+            ncpclires: "{{ lookup('controlplane', 'ncpc', input_param) }}"
+          debug:
+            msg: "get membership details of running servers."
+          with_items:
+            - "{{ ncpclires }}"
+          register: membership
+          no_log: True
+
+        - name: Run controlplane Go test
+          vars:
+            input_param:
+              test_path: "/home/himani/niova-mdsvc/controlplane/ctlplanefuncs/client"
+          set_fact:
+            gotest_result: "{{ lookup('controlplane', 'gotest', input_param) }}"
+
+        - debug: 
+            msg: "{{ gotest_result }}"
+
+        - name: "{{ recipe_name }}: Verify inserted vs fetched data consistency."
+          vars:
+            log_file_path: "{{ gotest_result.log_file }}"
+          block:
+            - name: "Read Go test log file"
+              slurp:
+                src: "{{ log_file_path }}"
+              register: go_test_log_content
+
+            - name: "Extract log text"
+              set_fact:
+                go_test_output_text: "{{ go_test_log_content['content'] | b64decode }}"
+
+        - name: "{{ recipe_name }}: Comapre and verify inserted and fetched data."
+          debug:
+            msg: "{{ go_test_output_text }}"
+
