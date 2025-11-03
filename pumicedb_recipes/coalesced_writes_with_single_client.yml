@@ -156,6 +156,12 @@
       no_log: True
       failed_when: Coalesced_write_fault_injection != False
 
+    - name: "{{ recipe_name }}: Verify data consistency across all servers."
+      vars: 
+        base_dir: /local/himani/test/"{{ raft_uuid }}"
+      debug:
+        msg: "{{ lookup('verify_database', base_dir) }}"
+
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:

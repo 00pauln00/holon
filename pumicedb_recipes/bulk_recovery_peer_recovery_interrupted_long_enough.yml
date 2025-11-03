@@ -275,6 +275,12 @@
       vars:
         ServerUUID: "{{ prev_leader['results'][0]['item'] }}"
 
+    - name: "{{ recipe_name }}: Verify data consistency across all servers."
+      vars: 
+        base_dir: /local/himani/test/"{{ raft_uuid }}"
+      debug:
+        msg: "{{ lookup('verify_database', base_dir) }}"
+
     rescue:
       - name: "Recipe failed"
         set_fact:

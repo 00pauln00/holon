@@ -7,7 +7,7 @@
     recipe_name: "pmdb_ryow_for_coalesced_wr"
     parent: "healthy_raftserver_cluster_type2"
     requirement: "pumicedb"
-    num_of_app_uuids: 50
+    num_of_app_uuids: 99
     num_of_writes: 1
     column_family: "PMDBTS_CF"
 
@@ -186,6 +186,12 @@
       no_log: True
       failed_when: >
         ((counter_value | int) != num_of_app_uuids)
+
+    - name: "{{ recipe_name }}: Verify data consistency across all servers."
+      vars: 
+        base_dir: /local/himani/test/"{{ raft_uuid }}"
+      debug:
+        msg: "{{ lookup('verify_database', base_dir) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

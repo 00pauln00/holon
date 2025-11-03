@@ -121,7 +121,9 @@
          stage: "verifyCPOnAll"
          getCPOnAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys) }}"
       debug:
-        msg: "Verify checkpoint-idx gets changed on all peers."
+        msg: 
+          - "Verify checkpoint-idx gets changed on all peers."
+          - "{{ getCPOnAll }}"
       failed_when: >
            (getCPOnAll["/0/checkpoint-idx"] == -1) or
            (getCPOnAll["/0/lowest-idx"] == -1)
@@ -263,6 +265,12 @@
       vars:
           Peers: "{{ NRunningPeers[item] }}"
       loop: "{{ range(0, NRunningPeers | length) |list }}"
+
+    - name: "{{ recipe_name }}: Verify data consistency across all servers."
+      vars: 
+        base_dir: /local/himani/test/"{{ raft_uuid }}"
+      debug:
+        msg: "{{ lookup('verify_database', base_dir) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
