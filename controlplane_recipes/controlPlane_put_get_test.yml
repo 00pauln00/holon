@@ -42,5 +42,6 @@
           set_fact:
             gotest_result: "{{ lookup('controlplane', 'gotest', input_param) }}"
 
-        - debug: 
-            msg: "{{ gotest_result }}"
+        - name: "{{ recipe_name }}: Comapre and verify inserted and fetched data."
+          debug:
+            msg: "{{ go_test_output_text }}"
