@@ -44,21 +44,3 @@
 
         - debug: 
             msg: "{{ gotest_result }}"
-
-        - name: "{{ recipe_name }}: Verify inserted vs fetched data consistency."
-          vars:
-            log_file_path: "{{ gotest_result.log_file }}"
-          block:
-            - name: "Read Go test log file"
-              slurp:
-                src: "{{ log_file_path }}"
-              register: go_test_log_content
-
-            - name: "Extract log text"
-              set_fact:
-                go_test_output_text: "{{ go_test_log_content['content'] | b64decode }}"
-
-        - name: "{{ recipe_name }}: Comapre and verify inserted and fetched data."
-          debug:
-            msg: "{{ go_test_output_text }}"
-
