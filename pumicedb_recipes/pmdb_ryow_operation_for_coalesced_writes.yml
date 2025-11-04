@@ -188,10 +188,8 @@
         ((counter_value | int) != num_of_app_uuids)
 
     - name: "{{ recipe_name }}: Verify data consistency across all servers."
-      vars: 
-        base_dir: /local/himani/test/"{{ raft_uuid }}"
       debug:
-        msg: "{{ lookup('verify_database', base_dir) }}"
+        msg: "{{ lookup('rocksdb_util', 'verify_consistency') }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

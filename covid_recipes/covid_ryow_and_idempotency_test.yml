@@ -285,7 +285,7 @@
 
     - name: "{{ recipe_name }}: Verify if the recent key is persisted"
       vars:
-        rdval: "{{ lookup('rocksdb_util', FollowerUUIDs[0], 'lookup_key', 'PMDBTS_CF', 'India') }}"
+        rdval: "{{ lookup('rocksdb_util', 'lookup_key', FollowerUUIDs[0], 'PMDBTS_CF', 'India') }}"
       debug:
         msg: "Value read from follower DB: {{ rdval }}"
       failed_when: >
@@ -402,7 +402,7 @@
 
     - name: "{{ recipe_name }}: Verify if the recent key is persisted"
       vars:
-        rdval: "{{ lookup('rocksdb_util', FollowerUUIDs[1], 'lookup_key', 'PMDBTS_CF', 'America') }}"
+        rdval: "{{ lookup('rocksdb_util', 'lookup_key', FollowerUUIDs[1], 'PMDBTS_CF', 'America') }}"
       debug:
         msg: "Value read from follower DB: {{ rdval }}"
       failed_when: >
@@ -413,7 +413,7 @@
 
     - name: "{{ recipe_name }}: Verify if the recent key is persisted"
       vars:
-        rdval: "{{ lookup('rocksdb_util', FollowerUUIDs[1], 'lookup_key', 'PMDBTS_CF', 'Australia') }}"
+        rdval: "{{ lookup('rocksdb_util', 'lookup_key', FollowerUUIDs[1], 'PMDBTS_CF', 'Australia') }}"
       debug:
         msg: "Value read from follower DB: {{ rdval }}"
       failed_when: >

@@ -2,7 +2,7 @@
 
   - name: "Get all RocksDB key-values from all nodes."
     set_fact:
-      rocksdb_data_all_nodes: "{{ rocksdb_data_all_nodes | default({}) | combine({ item: lookup('rocksdb_util', item, 'all_keys', column_family) }) }}"
+      rocksdb_data_all_nodes: "{{ rocksdb_data_all_nodes | default({}) | combine({ item: lookup('rocksdb_util','all_keys',  item, column_family) }) }}"
     loop: "{{ NRunningPeers }}"
 
   - name: "Pick the first node's RocksDB data as reference"

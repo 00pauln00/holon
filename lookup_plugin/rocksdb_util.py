@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 import subprocess
 import sys
+import hashlib
+import time
+from datetime import datetime
+from pathlib import Path
 from ansible.plugins.lookup import LookupBase
+from ansible.errors import AnsibleError
 
 def run_cmd(cmd):
     """Run a shell command and return its output."""
@@ -26,6 +31,11 @@ def run_cmd(cmd):
         print(f"stdout: {e.stdout}")
         print(f"stderr: {e.stderr}")
         return ""
+
+def files_identical(file1, file2):
+        """Compare two files quickly (binary)."""
+        with open(file1, "rb") as f1, open(file2, "rb") as f2:
+            return f1.read() == f2.read()
 
 def  get_last_written_key(db_path, cf):
     # Scan the given CF
@@ -117,63 +127,178 @@ def  get_all_keys(db_path, cf):
         return None
     return kv_pairs
 
+def verify_consistency(base_dir):
+        base_path = Path(base_dir)
+        config_dir = base_path / "configs"
+        cf = "PMDBTS_CF"
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        result = {
+            "timestamp": ts,
+            "base_dir": str(base_path),
+            "config_dir": str(config_dir),
+            "stores": [],
+            "hash_files": {},
+            "identical": True,
+            "elapsed_seconds": 0,
+            "messages": [],
+        }
+
+        result["messages"].append(f":mag: Reading store paths from peer files in {config_dir}")
+
+        # === Extract store paths ===
+        stores = []
+        store_names = []
+
+        for peer_file in config_dir.glob("*.peer"):
+            try:
+                with peer_file.open() as f:
+                    for line in f:
+                        if line.strip().startswith("STORE"):
+                            parts = line.strip().split()
+                            if len(parts) >= 2:
+                                store_path = Path(parts[1])
+                                store_dir = store_path.parent.name
+                                peer_id = store_path.stem
+                                name = f"{store_dir}_{peer_id}"
+                                db_path = str(store_path / "db")
+                                stores.append(db_path)
+                                store_names.append(name)
+            except Exception as e:
+                result["messages"].append(f":warning: Could not read {peer_file}: {e}")
+
+        if not stores:
+            raise AnsibleError(f":x: No store paths found in {config_dir}")
+
+        result["messages"].append(f":white_check_mark: Found {len(stores)} stores")
+        for name, store in zip(store_names, stores):
+            result["messages"].append(f"  {name}: {store}")
+            result["stores"].append({"name": name, "path": store})
+
+        # === Compute hashes ===
+        start_time = time.time()
+        hash_files = []
+
+        for name, store in zip(store_names, stores):
+            result["messages"].append(f":package: Scanning {name} ...")
+            store_path = Path(store)
+            if not store_path.exists():
+                result["messages"].append(f":warning: Store path {store} not found, skipping")
+                continue
+
+            hash_file = store_path / f"hash_{ts}.sha256"
+            try:
+                ldb_proc = subprocess.Popen(
+                    ["ldb", f"--db={store}", f"--column_family={cf}", "scan", "--hex"],
+                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
+                )
+                sha_proc = subprocess.Popen(
+                    ["sha256sum"],
+                    stdin=ldb_proc.stdout,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+                stdout, stderr = sha_proc.communicate()
+                if sha_proc.returncode != 0:
+                    raise RuntimeError(f"sha256sum failed: {stderr.decode()}")
+
+                hash_str = stdout.decode().strip()
+                result["messages"].append(f":key: Hash for {name}: {hash_str}")  # show hash value
+
+                with hash_file.open("w") as f:
+                    f.write(hash_str + "\n")
+                hash_files.append((name, str(hash_file)))
+                result["hash_files"][name] = str(hash_file)
+
+            except FileNotFoundError:
+                raise AnsibleError(":x: 'ldb' command not found in PATH.")
+            except Exception as e:
+                result["messages"].append(f":x: Failed to hash {store}: {e}")
+
+        # === Compare hashes pairwise ===
+        identical = True
+        for i in range(len(hash_files)):
+            for j in range(i + 1, len(hash_files)):
+                name_i, file_i = hash_files[i]
+                name_j, file_j = hash_files[j]
+                if not files_identical(file_i, file_j):
+                    result["messages"].append(f":x: {name_i} and {name_j} differ!")
+                    identical = False
+
+        result["identical"] = identical
+        if identical:
+            result["messages"].append(":white_check_mark: All stores are identical")
+
+        end_time = time.time()
+        result["elapsed_seconds"] = int(end_time - start_time)
+        result["messages"].append(f":stopwatch: Verification completed in {result['elapsed_seconds']} seconds")
+
+        return result
+
 class LookupModule(LookupBase):
     def run(self, terms, **kwargs):
-        node = terms[0]
-        key_type = terms[1]    # last_written_key or last_applied_index
+        key_type = terms[0]    
         cluster_params = kwargs['variables']['ClusterParams']
-        
+
         base_dir = cluster_params['base_dir']
         raft_uuid = cluster_params['raft_uuid']
-        db_path = "{}/{}/raftdb/{}.raftdb/db".format(base_dir, raft_uuid, node)
+        config_dir = "{}/{}".format(base_dir, raft_uuid)
 
-        if key_type == "last_written":
-            cf = terms[2]
-            if not cf:
-                print("[ERROR] column family must be provided for 'last_key'")
-                return []
-            last_key = get_last_written_key(db_path, cf)
-            if last_key is None:
-                return []
-            return [last_key]
-
-        elif key_type == "last_applied":
-            last_applied_index = get_last_applied_index(db_path)
-            if last_applied_index is None:
-                return []
-            return [last_applied_index]
-
-        elif key_type == "counter_key":
-            cf = terms[2] if len(terms) > 2 else "PMDBTS_CF"
-            counter_val = get_counter_value(db_path, cf)
-            if counter_val is None:
-                return []
-            return [counter_val]
-
-        elif key_type == "lookup_key":
-            cf = terms[2] 
-            key = terms[3]
-            if not cf:
-                print("[ERROR] column family must be provided for 'lookup_key'")
-                return []
-            if not key:
-                print("[ERROR] key must be provided for 'lookup_key'")
-                return []
-            key_value = get_key_value(db_path, cf, key)
-            if key_value is None:
-                return []
-            return [key_value]
-
-        elif key_type == "all_keys":
-            cf = terms[2]
-            if not cf:
-                print("[ERROR] column family must be provided for 'lookup_key'")
-                return []
-            keys = get_all_keys(db_path, cf)
-            if keys is None:
-                return []
-            return [keys]
+        if key_type == "verify_consistency":
+            result = verify_consistency(config_dir)
+            return [result]
 
         else:
-            print(f"[ERROR] Unknown key_type: {key_type}")
-            return []
+            node = terms[1]
+            db_path = "{}/{}/raftdb/{}.raftdb/db".format(base_dir, raft_uuid, node)
+
+            if key_type == "last_written":    
+                cf = terms[2]
+                if not cf:
+                    print("[ERROR] column family must be provided for 'last_key'")
+                    return []
+                last_key = get_last_written_key(db_path, cf)
+                if last_key is None:
+                    return []
+                return [last_key]
+
+            elif key_type == "last_applied":
+                last_applied_index = get_last_applied_index(db_path)
+                if last_applied_index is None:
+                    return []
+                return [last_applied_index]
+
+            elif key_type == "counter_key":
+                cf = terms[2] if len(terms) > 2 else "PMDBTS_CF"
+                counter_val = get_counter_value(db_path, cf)
+                if counter_val is None:
+                    return []
+                return [counter_val]
+
+            elif key_type == "lookup_key":
+                cf = terms[2] 
+                key = terms[3]
+                if not cf:
+                    print("[ERROR] column family must be provided for 'lookup_key'")
+                    return []
+                if not key:
+                    print("[ERROR] key must be provided for 'lookup_key'")
+                    return []
+                key_value = get_key_value(db_path, cf, key)
+                if key_value is None:
+                    return []
+                return [key_value]
+
+            elif key_type == "all_keys":
+                cf = terms[2]
+                if not cf:
+                    print("[ERROR] column family must be provided for 'lookup_key'")
+                    return []
+                keys = get_all_keys(db_path, cf)
+                if keys is None:
+                    return []
+                return [keys]
+
+            else:
+                print(f"[ERROR] Unknown key_type: {key_type}")
+                return []
