@@ -127,12 +127,12 @@
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all peers after write operation."
       vars:
-         origCI: "{{ origValues['results'][0]['item'] }}"
+         origCI: "{{ origValues['results'][item]['item'] }}"
          stage: "getValsFrmAll"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
       # no_log: true
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] >= ((num_writes | int)> * (number_of_app_uuids | int)) + (origCI[item]['/0/commit-idx'] | int)
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI['/0/commit-idx'] | int)
       retries: 60
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"

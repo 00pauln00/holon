@@ -152,7 +152,12 @@
          stage: "verifyCPOnPeer4"
          getCPOnPeer4: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys) }}"
       debug:
-        msg: "Verify checkpoint-idx gets changed on peer 4."
+        msg: |
+          Verify checkpoint-idx gets changed on peer 4.
+          Peer4 UUID: {{ newlyStartedPeer4['results'][0]['item'] }}
+          Full values: {{ getCPOnPeer4 }}
+          checkpoint-idx: {{ getCPOnPeer4["/0/checkpoint-idx"] }}
+          lowest-idx: {{ getCPOnPeer4["/0/lowest-idx"] }}
       failed_when: >
            (getCPOnPeer4["/0/checkpoint-idx"] == -1) or
            (getCPOnPeer4["/0/lowest-idx"] == -1)
@@ -165,8 +170,8 @@
       debug:
         msg: "Verify all values on all peers."
       failed_when: >
-           (getAll["/0/term"] < initial_vals[0]["/0/term"]) or
-           (getAll["/0/commit-idx"] < ((num_writes | int) * (number_of_app_uuids | int)) + initial_vals[0]["/0/commit-idx"])
+           (getAll["/0/term"] < initial_vals["/0/term"]) or
+           (getAll["/0/commit-idx"] < ((num_writes | int) * (number_of_app_uuids | int)) + initial_vals["/0/commit-idx"])
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Apply cmd to remove fault injection from all peers."

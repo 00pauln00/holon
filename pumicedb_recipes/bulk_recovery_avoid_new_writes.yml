@@ -114,7 +114,7 @@
         stage: "wait_for_1st_write_op"
       debug:
         msg: "Waiting for client to finish writing."
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno')['/0/pmdb-seqno'] == (num_writes - 1)
+      until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno')['/0/pmdb-seqno'] | int) == (num_writes - 1)
       retries: 500
       delay: 1
 
@@ -124,7 +124,7 @@
          stage: "getValsFrmAll"
       debug:
         msg: "Verify Commit-Idx get incrementing on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] >= ((num_writes | int)* (number_of_app_uuids | int) + (origCI['/0/commit-idx'] | int))
+      until: (lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] | int) >= ((num_writes | int)* (number_of_app_uuids | int) + (origCI['/0/commit-idx'] | int))
       retries: 500
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
@@ -254,36 +254,77 @@
         stage: "waitToComp2ndWr"
       debug:
         msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno')['/0/pmdb-seqno'] == (num_writes - 1)
+      until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno')['/0/pmdb-seqno'] | int) == (num_writes - 1)
       retries: 500
       delay: 1
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all 3 peers except peer4."
       vars:
          nwrites: 7000
-         origCI: "{{ after1stWr['results'][0]['item']['/0/commit-idx'] }}"
-         exceptPeer4: "{{ NRunningPeers | difference(newlyStartedPeer4['results'][0]['item']) }}"
+         peer4_uuid: "{{ newlyStartedPeer4['results'][0]['item'] }}"
          stage: "getCIaftr1stWrtexceptPeer4"
+         current_peer: "{{ NRunningPeers[item] }}"
+         origCI: "{{ after1stWr['results'][item]['item']['/0/commit-idx'] }}"
+         current_commit_idx: "{{ lookup('niova_ctlrequest', 'lookup', current_peer, '/raft_root_entry/0/commit-idx')['/0/commit-idx'] }}"
+         expected_commit_idx: "{{ ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int) }}"
       debug:
-        msg: "Verify Commit-Idx get incrementing on all peers except peer4."
-      until: lookup('niova_ctlrequest', 'lookup', exceptPeer4[item], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
+        msg: |
+          Verify Commit-Idx get incrementing on all peers except peer4.
+          Peer: {{ current_peer }}
+          Original commit-idx (after 1st write): {{ origCI }}
+          Expected commit-idx (after 2nd write): {{ expected_commit_idx }}
+          Current commit-idx: {{ current_commit_idx }}
+      until: (current_commit_idx | int) >= (expected_commit_idx | int)
       retries: 500
       delay: 1
-      loop: "{{ range(0, exceptPeer4 | length) | list }}"
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+      when: current_peer != peer4_uuid
 
     - name: "{{ recipe_name }}: Verify after disabling send/recv checkpoint-idx and lowest-idx should increment on other peers except peer4."
       vars:
          stage: "getLICPaftr1stWrexceptPeer4"
+         peer4_uuid: "{{ newlyStartedPeer4['results'][0]['item'] }}"
+         current_peer: "{{ NRunningPeers[item] }}"
          aftr1stWrVal: "{{ after1stWr['results'][item]['item'] }}"
-         exceptPeer4: "{{ NRunningPeers | difference(newlyStartedPeer4['results'][0]['item']) }}"
-         verifyAftr2ndWr: "{{ lookup('niova_ctlrequest', 'lookup', exceptPeer4[item], raft_root_entry_keys,  ) }}"
+         verifyAftr2ndWr: "{{ lookup('niova_ctlrequest', 'lookup', current_peer, raft_root_entry_keys) }}"
+         chkpt_idx_old: "{{ (aftr1stWrVal['/0/checkpoint-idx'] | default(-1) | int) }}"
+         chkpt_idx_new: "{{ (verifyAftr2ndWr['/0/checkpoint-idx'] | default(-1) | int) }}"
+         lowest_idx_old: "{{ (aftr1stWrVal['/0/lowest-idx'] | default(-1) | int) }}"
+         lowest_idx_new: "{{ (verifyAftr2ndWr['/0/lowest-idx'] | default(-1) | int) }}"
+         commit_idx_old: "{{ (aftr1stWrVal['/0/commit-idx'] | default(-1) | int) }}"
+         commit_idx_new: "{{ (verifyAftr2ndWr['/0/commit-idx'] | default(-1) | int) }}"
+         chkpt_increased: "{{ (chkpt_idx_new | int) > (chkpt_idx_old | int) }}"
+         lowest_increased: "{{ (lowest_idx_new | int) > (lowest_idx_old | int) }}"
+         commit_increased: "{{ (commit_idx_new | int) > (commit_idx_old | int) }}"
+         chkpt_failed: "{{ (chkpt_idx_new | int) <= (chkpt_idx_old | int) }}"
+         lowest_failed: "{{ (lowest_idx_new | int) <= (lowest_idx_old | int) }}"
+         commit_failed: "{{ (commit_idx_new | int) <= (commit_idx_old | int) }}"
       debug:
-        msg: "Verify parameters after 2nd write set"
-      failed_when:
-        (verifyAftr2ndWr["/0/checkpoint-idx"] <= aftr1stWrVal["/0/checkpoint-idx"]) or
-        (verifyAftr2ndWr["/0/lowest-idx"] <= aftr1stWrVal["/0/lowest-idx"]) or
-        (verifyAftr2ndWr["/0/commit-idx"] <= aftr1stWrVal["/0/commit-idx"])
-      loop: "{{ range(0, exceptPeer4 | length) | list }}"
+        msg: |
+          Verify parameters after 2nd write set
+          Peer: {{ current_peer }}
+          After 1st write values:
+            checkpoint-idx: {{ chkpt_idx_old }}
+            lowest-idx: {{ lowest_idx_old }}
+            commit-idx: {{ commit_idx_old }}
+          After 2nd write values:
+            checkpoint-idx: {{ chkpt_idx_new }}
+            lowest-idx: {{ lowest_idx_new }}
+            commit-idx: {{ commit_idx_new }}
+          Checks:
+            checkpoint-idx increased: {{ chkpt_increased | bool }} (new={{ chkpt_idx_new }} > old={{ chkpt_idx_old }})
+            lowest-idx increased: {{ lowest_increased | bool }} (new={{ lowest_idx_new }} > old={{ lowest_idx_old }})
+            commit-idx increased: {{ commit_increased | bool }} (new={{ commit_idx_new }} > old={{ commit_idx_old }})
+          Failed checks:
+            checkpoint-idx failed: {{ chkpt_failed | bool }}
+            lowest-idx failed: {{ lowest_failed | bool }}
+            commit-idx failed: {{ commit_failed | bool }}
+      failed_when: >
+        ((chkpt_idx_new | int) <= (chkpt_idx_old | int)) or
+        ((lowest_idx_new | int) <= (lowest_idx_old | int)) or
+        ((commit_idx_new | int) <= (commit_idx_old | int))
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+      when: current_peer != peer4_uuid
 
     - name: "{{ recipe_name }}: Verify after disabling send/recv checkpoint-idx and lowest-idx is not incremented on peer4."
       vars:
@@ -292,10 +333,10 @@
          verifyPeer4: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys) }}"
       debug:
         msg: "Verify parameters after 2nd write set"
-      failed_when:
-        (verifyPeer4["/0/checkpoint-idx"] != aftr1stWrVal["/0/checkpoint-idx"]) or
-        (verifyPeer4["/0/lowest-idx"] != aftr1stWrVal["/0/lowest-idx"]) or
-        (verifyPeer4["/0/commit-idx"] != aftr1stWrVal["/0/commit-idx"])
+      failed_when: >
+        ((verifyPeer4["/0/checkpoint-idx"] | int) != (aftr1stWrVal["/0/checkpoint-idx"] | int)) or
+        ((verifyPeer4["/0/lowest-idx"] | int) != (aftr1stWrVal["/0/lowest-idx"] | int)) or
+        ((verifyPeer4["/0/commit-idx"] | int) != (aftr1stWrVal["/0/commit-idx"] | int))
 
     #Enabling Msg(Send) net_send_enabled from peer4 to the leader.
     - name: "{{ recipe_name }}: Enable Msg(Send) net_send_enabled from peer4 to the leader."
@@ -344,7 +385,7 @@
          stage: "getCIfrmPeer4"
       debug:
         msg: "Verify Commit-Idx get incrementing on peer4."
-      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
+      until: (lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] | int) >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
       retries: 500
       delay: 1
 
