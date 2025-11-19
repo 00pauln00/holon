@@ -138,11 +138,17 @@
       vars:
          stage: "verifyCPOnAll"
          getCPOnAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys) }}"
+         chkpt_idx: "{{ (getCPOnAll['/0/checkpoint-idx'] | default(-1) | int) }}"
+         lowest_idx: "{{ (getCPOnAll['/0/lowest-idx'] | default(-1) | int) }}"
       debug:
-        msg: "Verify checkpoint-idx gets changed on all peers."
+        msg: |
+          Verify checkpoint-idx gets changed on all peers.
+          Peer UUID: {{ NRunningPeers[item] }}
+          checkpoint-idx: {{ chkpt_idx }} (raw: {{ getCPOnAll["/0/checkpoint-idx"] }})
+          lowest-idx: {{ lowest_idx }} (raw: {{ getCPOnAll["/0/lowest-idx"] }})
       failed_when: >
-           (getCPOnAll["/0/checkpoint-idx"] == -1) or
-           (getCPOnAll["/0/lowest-idx"] == -1)
+           (chkpt_idx | int) == -1 or
+           (lowest_idx | int) == -1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
     - name: "{{ recipe_name }}: Get all values after 1st set of writes."

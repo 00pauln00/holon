@@ -156,16 +156,18 @@
       vars:
          stage: "verifyCPOnPeer4"
          getCPOnPeer4: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys) }}"
+         chkpt_idx: "{{ (getCPOnPeer4['/0/checkpoint-idx'] | default(-1) | int) }}"
+         lowest_idx: "{{ (getCPOnPeer4['/0/lowest-idx'] | default(-1) | int) }}"
       debug:
         msg: |
           Verify checkpoint-idx gets changed on peer 4.
           Peer4 UUID: {{ newlyStartedPeer4['results'][0]['item'] }}
           Full values: {{ getCPOnPeer4 }}
-          checkpoint-idx: {{ getCPOnPeer4["/0/checkpoint-idx"] }}
-          lowest-idx: {{ getCPOnPeer4["/0/lowest-idx"] }}
+          checkpoint-idx: {{ chkpt_idx }} (raw: {{ getCPOnPeer4["/0/checkpoint-idx"] }})
+          lowest-idx: {{ lowest_idx }} (raw: {{ getCPOnPeer4["/0/lowest-idx"] }})
       failed_when: >
-           (getCPOnPeer4["/0/checkpoint-idx"] == -1) or
-           (getCPOnPeer4["/0/lowest-idx"] == -1)
+           (chkpt_idx | int) == -1 or
+           (lowest_idx | int) == -1
 
     - name: "{{ recipe_name }}: Verify leader-uuid, term and commit-idx on all peers"
       vars:
