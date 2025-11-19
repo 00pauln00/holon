@@ -18,6 +18,11 @@
               - "/raft_net_info/log-reap-factor"
   tasks:
   - block:
+    - name: "{{ recipe_name }}: [CHANGES PRESENT] This recipe includes recent updates and modifications."
+      vars:
+        stage: "changes_present"
+      shell: "echo '{{ recipe_name }}: [CHANGES PRESENT] This recipe includes recent updates and modifications.' >> {{ ClusterParams.base_dir }}/{{ ClusterParams.raft_uuid }}/{{ ClusterParams.raft_uuid }}.log"
+
     - name: "Check if parent recipe failed"
       debug: msg="Check if parent recipe {{ parent }} failed"
       failed_when: terminate_recipe == true
