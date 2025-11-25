@@ -231,6 +231,8 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       no_log: true
 
+    - pause: seconds=5
+
     - name: "{{ recipe_name }}: Get values from peer4 after 1st write set."
       vars:
          stage: "aftr1stWrPeer4"
@@ -337,6 +339,8 @@
       loop: "{{ range(0, NRunningPeers | length) | list }}"
       when: current_peer != peer4_uuid
 
+    - pause: seconds=5
+
     - name: "{{ recipe_name }}: Verify after disabling send/recv checkpoint-idx and lowest-idx is not incremented on peer4."
       vars:
          stage: "aftr1stWrPeer4"
@@ -437,7 +441,9 @@
          stage: "verifyNewLeader"
       debug:
         msg:
-         - "Waiting for new leader election"
+         - "Waiting for new leader election on peer {{ NRunningPeers[item] }}"
+         - "Expected leader: {{ peer4Leader_to_be }}"
+         - "Current leader: {{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid'] }}"
       until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid'] == peer4Leader_to_be
       retries: 10
       delay: 2
