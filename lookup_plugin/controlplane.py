@@ -173,7 +173,7 @@ def extracting_dictionary(cluster_params, input_values):
 def get_the_output(outfilePath):
     outfile = outfilePath + '.json'
     counter = 0
-    timeout = 100
+    timeout = 300
 
     # Wait till the output json file gets created.
     while True:
