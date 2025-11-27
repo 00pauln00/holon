@@ -394,6 +394,8 @@
           msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       no_log: true
 
+    - pause: seconds=5
+
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on peer4 after enabling send/recv."
       vars:
          origCI: "{{ after1stWr['results'][0]['item']['/0/commit-idx'] }}"
@@ -435,6 +437,8 @@
       debug:
        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4Leader_to_be, cmd, where) }}"
       no_log: true
+
+    - pause: seconds=5
 
     - name: "{{ recipe_name }}: Verify new leader is elected successfully"
       vars:
