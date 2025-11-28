@@ -154,6 +154,8 @@
       retries: 60
       delay: 1
 
+    - pause: seconds=5
+
     - name: "{{ recipe_name }}: Verify checkpoint-idx and lowest-idx gets changed on newly started peer after write operation."
       vars:
          stage: "verifyCPOnPeer4"
