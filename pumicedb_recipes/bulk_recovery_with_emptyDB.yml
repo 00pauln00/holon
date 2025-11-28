@@ -179,7 +179,7 @@
          name: common
          tasks_from: get_server_uuid_info
 
-    - pause: seconds=10
+    - pause: seconds=15
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on newly started peer."
       vars:
