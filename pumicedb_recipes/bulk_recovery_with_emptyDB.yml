@@ -179,14 +179,16 @@
          name: common
          tasks_from: get_server_uuid_info
 
-    - pause: seconds=5
+    - pause: seconds=10
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on newly started peer."
       vars:
          origCI: "{{ stage0_values['results'][0]['item']['/0/commit-idx'] }}"
          stage: "getCIFrmPeer4"
       debug:
-        msg: "Verify Commit-Idx get incrementing on newly started peer."
+        msg: 
+          - "Verify Commit-Idx get incrementing on newly started peer."
+          - "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] }}"
       until: (lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] | int) >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
       retries: 60
       delay: 1
