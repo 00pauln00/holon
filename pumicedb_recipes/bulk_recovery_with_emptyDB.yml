@@ -187,7 +187,7 @@
          stage: "getCIFrmPeer4"
       debug:
         msg: "Verify Commit-Idx get incrementing on newly started peer."
-      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
+      until: (lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] | int) >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
       retries: 60
       delay: 1
 
@@ -224,7 +224,7 @@
 
     - name: "{{ recipe_name }}:  Kill the peer4 to restart it with StaleDB."
       debug:
-        msg: "{{ lookup('niova_raftprocess', 'kill', newlyStartedPeer4['results'][0]['item'],  ) }}"
+        msg: "{{ lookup('niova_raftprocess', 'kill', newlyStartedPeer4['results'][0]['item']) }}"
       no_log: true
 
     rescue:
