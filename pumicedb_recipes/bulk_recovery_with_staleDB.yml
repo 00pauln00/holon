@@ -142,7 +142,7 @@
          name: common
          tasks_from: get_server_uuid_info
 
-    - pause: seconds=5
+    - pause: seconds=30
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on newly started peer."
       vars:
@@ -154,7 +154,7 @@
       retries: 60
       delay: 1
 
-    - pause: seconds=5
+    - pause: seconds=30
 
     - name: "{{ recipe_name }}: Verify checkpoint-idx and lowest-idx gets changed on newly started peer after write operation."
       vars:

@@ -187,14 +187,16 @@
         ServerUUID: "{{ newlyStartedPeer4['results'][0]['item'] }}"
         fault_injection_name: "raft_limit_rsync_bw"
 
-    - pause: seconds=5
+    - pause: seconds=30
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on newly started peer."
       vars:
          origCI: "{{ running_peers_info['results'][0]['item']['/0/commit-idx'] }}"
          stage: "getRootValuesFrmPeer4"
       debug:
-        msg: "Verify Commit-Idx get incrementing on peer 4."
+        msg: 
+          - "Verify Commit-Idx get incrementing on peer 4."
+          - "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] }}"
       until: (lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] | int) >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
       retries: 100
       delay: 1
@@ -229,7 +231,7 @@
     - name: "{{ recipe_name }}: Get raft root  values of newlyStartedPeer4."
       vars:
         stage: "get_root_entry_values_after_starting_peer4"
-        peer_values: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys,  ) }}"
+        peer_values: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys) }}"
       debug:
         msg: "{{ peer_values }} "
       with_items:

@@ -231,7 +231,7 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       no_log: true
 
-    - pause: seconds=5
+    - pause: seconds=30
 
     - name: "{{ recipe_name }}: Get values from peer4 after 1st write set."
       vars:
@@ -339,7 +339,7 @@
       loop: "{{ range(0, NRunningPeers | length) | list }}"
       when: current_peer != peer4_uuid
 
-    - pause: seconds=5
+    - pause: seconds=30
 
     - name: "{{ recipe_name }}: Verify after disabling send/recv checkpoint-idx and lowest-idx is not incremented on peer4."
       vars:
@@ -438,7 +438,7 @@
        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4Leader_to_be, cmd, where) }}"
       no_log: true
 
-    - pause: seconds=5
+    - pause: seconds=30
 
     - name: "{{ recipe_name }}: Verify new leader is elected successfully"
       vars:
