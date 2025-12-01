@@ -187,6 +187,8 @@
         ServerUUID: "{{ newlyStartedPeer4['results'][0]['item'] }}"
         fault_injection_name: "raft_limit_rsync_bw"
 
+    - pause: seconds=5
+
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on newly started peer."
       vars:
          origCI: "{{ running_peers_info['results'][0]['item']['/0/commit-idx'] }}"
@@ -202,7 +204,7 @@
         stage: "getRootValuesFrmPeer4"
       debug:
         msg: "Verify Checkpoint-Idx get incrementing on peer 4."
-      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/checkpoint-idx')['/0/checkpoint-idx'] != (-1)
+      until: (lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/checkpoint-idx')['/0/checkpoint-idx'] | int) != (-1)
       retries: 100
       delay: 1
 
@@ -271,7 +273,7 @@
         cmd: "enabled@false"
         where: "/fault_injection_points/name@raft_force_set_max_scan_entries"
       debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where,  ) }}"
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
       no_log: true
 
     - name: "{{ recipe_name }}: Reset max scan entries to 100000 and log reap factor to 5."
