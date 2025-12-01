@@ -193,7 +193,7 @@
          stage: "getRootValuesFrmPeer4"
       debug:
         msg: "Verify Commit-Idx get incrementing on peer 4."
-      until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
+      until: (lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] | int) >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
       retries: 100
       delay: 1
 
