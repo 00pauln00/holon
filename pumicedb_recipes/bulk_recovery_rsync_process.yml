@@ -187,7 +187,7 @@
         ServerUUID: "{{ newlyStartedPeer4['results'][0]['item'] }}"
         fault_injection_name: "raft_limit_rsync_bw"
 
-    - pause: seconds=30
+    - pause: seconds=5
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on newly started peer."
       vars:
