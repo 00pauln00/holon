@@ -1,0 +1,70 @@
+- name: "Apply Handler Versioning"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "apply_handler_versioning"
+
+  tasks:
+  - block:
+
+    - name: "{{ recipe_name }}: Get the list of peer UUIDs"
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
+    - name: "Start 3 peers in the cluster"
+      include_role:
+        name: common
+        tasks_from: start_server
+      vars:
+        ServerUUID: "{{ NonRunningServers[item] }}"
+      loop: "{{ range(0, NonRunningServers | length - 2) | list }}"
+
+    - name: "{{ recipe_name }}: Get the running peers list."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - pause: seconds=2
+
+    - name: "{{ recipe_name }}: Get the list of peer UUIDs"
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
+    - name: "Start 3 peers in the cluster"
+      include_role:
+        name: common
+        tasks_from: start_server
+      vars:
+        ServerUUID: "{{ NonRunningServers[item] }}"
+      loop: "{{ range(0, NonRunningServers | length - 2) | list }}"
+
+    - name: "{{ recipe_name }}: Get the running peers list."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Get unused client uuid for starting the client"
+      include_role:
+        name: common
+        tasks_from: get_new_client_uuid
+      register: client_uuid
+
+    - name: "{{ recipe_name }}: Start client process"
+      include_role:
+        name: common
+        tasks_from: start_client
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
+    - name: "{{ recipe_name }}: Verify leader is viable."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
+
+
+    
