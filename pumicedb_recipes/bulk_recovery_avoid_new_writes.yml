@@ -118,7 +118,7 @@
       vars:
         stage: "wait_for_1st_write_op"
       debug:
-        msg: "Waiting for client to finish writing."
+        msg: "Waiting for client to finish writing (retrying until complete)."
       until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno')['/0/pmdb-seqno'] | int) == (num_writes - 1)
       retries: 500
       delay: 1
@@ -231,8 +231,6 @@
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       no_log: true
 
-    - pause: seconds=5
-
     - name: "{{ recipe_name }}: Get values from peer4 after 1st write set."
       vars:
          stage: "aftr1stWrPeer4"
@@ -266,7 +264,7 @@
       vars:
         stage: "waitToComp2ndWr"
       debug:
-        msg: "Waiting for client to finish writing"
+        msg: "Waiting for client to finish writing (retrying until complete)"
       until: (lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno')['/0/pmdb-seqno'] | int) == (num_writes - 1)
       retries: 500
       delay: 1
@@ -339,8 +337,6 @@
       loop: "{{ range(0, NRunningPeers | length) | list }}"
       when: current_peer != peer4_uuid
 
-    - pause: seconds=5
-
     - name: "{{ recipe_name }}: Verify after disabling send/recv checkpoint-idx and lowest-idx is not incremented on peer4."
       vars:
          stage: "aftr1stWrPeer4"
@@ -394,8 +390,6 @@
           msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', client_uuid.stdout, cmd, where) }}"
       no_log: true
 
-    - pause: seconds=5
-
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on peer4 after enabling send/recv."
       vars:
          origCI: "{{ after1stWr['results'][0]['item']['/0/commit-idx'] }}"
@@ -407,31 +401,24 @@
       delay: 1
 
     #Set peer4 as a leader.
-    - name: "{{ recipe_name }}: Disable message receive on all peers to set peer4 as a leader."
+    - name: "{{ recipe_name }}: Disable message receive on all peers for leader overthrow"
       vars:
-        stage: "disableRecvOnAll"
-        cmd: "net_recv_enabled@false"
-        where: "/ctl_svc_nodes/net_recv_enabled@true"
-        # peer4Leader_to_be: "{{ newlyStartedPeer4['results'][0]['item'] }}"
-        # peers_to_disable: "{{ NRunningPeers | difference([ peer4Leader_to_be ]) }}"
+         stage: "disableRecvOnAll"
+         cmd: "net_recv_enabled@false"
+         where: "/ctl_svc_nodes/net_recv_enabled@true"
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
-      no_log: false
+      no_log: true
+
+    - pause: seconds=3
+
+    - name: "{{ recipe_name }}: Lets sleep for sometime before checking the values"
+      wait_for:
+        timeout: 5
 
     - name: "{{ recipe_name }}: Selected leader-to-be"
       set_fact:
         peer4Leader_to_be: "{{ newlyStartedPeer4['results'][0]['item'] }}"
-
-    - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
-      vars:
-         stage: "enableOnPeer4"
-         cmd: "net_recv_enabled@true"
-         where: "/ctl_svc_nodes/net_recv_enabled@false"
-      debug:
-       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4Leader_to_be, cmd, where) }}"
-      no_log: false
-
-    - pause: seconds=15
 
     - name: "{{ recipe_name }}: Enable receive on all peers from the leader-to-be."
       vars:
@@ -440,18 +427,25 @@
          where: "/ctl_svc_nodes/uuid@{{ peer4Leader_to_be }}"
       debug:
         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
-      no_log: false
+      no_log: true
+
+    - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
+      vars:
+         stage: "enableOnPeer4"
+         cmd: "net_recv_enabled@true"
+         where: "/ctl_svc_nodes/net_recv_enabled@false"
+      debug:
+       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4Leader_to_be, cmd, where) }}"
+      no_log: true
 
     - name: "{{ recipe_name }}: Verify new leader is elected successfully"
       vars:
          stage: "verifyNewLeader"
       debug:
         msg:
-         - "Waiting for new leader election on peer {{ NRunningPeers[item] }}"
-         - "Expected leader: {{ peer4Leader_to_be }}"
-         - "Current leader: {{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid'] }}"
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid'] == peer4Leader_to_be
-      retries: 60
+         - "Waiting for new leader election"
+      until: (lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid') | dict2items | map(attribute='value') | list | first) == peer4Leader_to_be
+      retries: 10
       delay: 2
       loop: "{{ range(0, NRunningPeers | length) | list }}"
 
