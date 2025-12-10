@@ -18,6 +18,8 @@
         tasks_from: start_server
       vars:
         ServerUUID: "{{ NonRunningServers[item] }}"
+        apply_handler_version: "False"
+        version: "0"
       loop: "{{ range(0, NonRunningServers | length - 2) | list }}"
 
     - name: "{{ recipe_name }}: Get the running peers list."
@@ -26,6 +28,15 @@
         tasks_from: get_server_uuid_info
 
     - pause: seconds=2
+
+    - name: "{{ recipe_name }}: Verify no PMDB processes are running (crash expected)"
+      shell: |
+          ps aux | egrep 'pmdb|pumiced|pumice' | egrep -v grep || true
+      register: process_check
+
+    - name: "{{ recipe_name }}: DEBUG Print if the PMDB servers are running."
+      debug:
+        msg: "{{ process_check }}"
 
     - name: "{{ recipe_name }}: Get the list of peer UUIDs"
       include_role:
@@ -38,6 +49,8 @@
         tasks_from: start_server
       vars:
         ServerUUID: "{{ NonRunningServers[item] }}"
+        apply_handler_version: True
+        version: 1
       loop: "{{ range(0, NonRunningServers | length - 2) | list }}"
 
     - name: "{{ recipe_name }}: Get the running peers list."
@@ -64,7 +77,3 @@
         tasks_from: verify_leader_viable
       vars:
         ClientUUID: "{{ client_uuid.stdout }}"
-
-
-
-    
