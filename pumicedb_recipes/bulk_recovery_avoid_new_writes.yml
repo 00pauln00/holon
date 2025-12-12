@@ -400,112 +400,130 @@
       delay: 1
 
     #Set peer4 as a leader.
-    - name: "{{ recipe_name }}: Disable message receive on all peers for leader overthrow"
-      vars:
-         stage: "disableRecvOnAll"
-         cmd: "net_recv_enabled@false"
-         where: "/ctl_svc_nodes/net_recv_enabled@true"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
-      no_log: true
-
-    - pause: seconds=3
-
-    - name: "{{ recipe_name }}: Wait a bit longer for peers to transition to candidate-prevote"
-      pause: seconds=2
-
-    - name: "{{ recipe_name }}: Skip verify step (peers may not respond after disabling recv)"
-      debug:
-        msg: "Skipping verify step - peers may not respond after disabling recv, proceeding to next step"
-      no_log: false
-
-    - name: "{{ recipe_name }}: Lets sleep for sometime before checking the values"
-      wait_for:
-        timeout: 5
-
-    - name: "{{ recipe_name }}: Selected leader-to-be"
-      set_fact:
-        peer4Leader_to_be: "{{ newlyStartedPeer4['results'][0]['item'] }}"
-
-    - name: "{{ recipe_name }}: Enable receive on all peers from the leader-to-be."
-      vars:
-         stage: "enableOnAllFrmLeaderToBe"
-         cmd: "net_recv_enabled@true"
-         where: "/ctl_svc_nodes/uuid@{{ peer4Leader_to_be }}"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
-      no_log: true
-
-    - name: "{{ recipe_name }}: Get the values to verify leader-to-be is not elected yet"
-      vars:
-         stage: "stage2_set_leader"
-         raft_keys:
-            - "/raft_root_entry/0/leader-uuid"
-            - "/raft_root_entry/0/commit-idx"
-            - "/raft_root_entry/0/last-applied"
-            - "/raft_root_entry/0/last-applied-cumulative-crc"
-            - "/raft_root_entry/0/term"
-            - "/raft_root_entry/0/sync-entry-term"
-            - "/raft_root_entry/0/sync-entry-crc"
-            - "/raft_root_entry/0/sync-entry-data-size"
-            - "/raft_root_entry/0/sync-entry-idx"
-            - "/raft_root_entry/0/state"
-            - "/raft_root_entry/0/client-requests"
-            - "/raft_root_entry/0/voted-for-uuid"
-            - "/raft_root_entry/0/peer-uuid"
-         set_leader: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
-      debug:
-        msg: "Verify leader-to-be not elected on peer"
-      no_log: true
-      with_items:
-         - "{{ set_leader }}"
-      register: set_leader_vals
-
-    - name: "{{ recipe_name }}: Verify that leader-to-be is not elected yet"
-      vars:
-        stage2_vals: "{{ set_leader_vals['results'][item]['item'] }}"
-      debug:
-        msg: "Verify value for peer: {{ NRunningPeers[item] }}, stage2_vals: {{ stage2_vals }}"
-      failed_when: >
-        (stage2_vals["/0/leader-uuid"] != "null") or
-        (stage2_vals["/0/state"] != "candidate-prevote") or
-        (stage2_vals["/0/client-requests"] != "deny-leader-not-established")
-      loop: "{{ range(0, NRunningPeers|length) | list }}"
-      no_log: true
-
-    - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
-      vars:
-         stage: "enableOnPeer4"
-         cmd: "net_recv_enabled@true"
-         where: "/ctl_svc_nodes/net_recv_enabled@false"
-      debug:
-       msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4Leader_to_be, cmd, where) }}"
-      no_log: true
-
-    - name: "{{ recipe_name }}: Verify new leader is elected successfully"
-      vars:
-         stage: "verifyNewLeader"
-         current_peer: "{{ NRunningPeers[item] }}"
-         current_leader: "{{ lookup('niova_ctlrequest', 'lookup', current_peer, '/raft_root_entry/0/leader-uuid') | dict2items | map(attribute='value') | list | first | default('unknown') }}"
-      debug:
-        msg:
-         - "Waiting for new leader election on peer {{ current_peer }}"
-         - "Current leader: {{ current_leader }}, Expected: {{ peer4Leader_to_be }}"
-      until: current_leader == peer4Leader_to_be
-      retries: 20
-      delay: 2
-      loop: "{{ range(0, NRunningPeers | length) | list }}"
-      ignore_errors: false
-
-    - name: "{{ recipe_name }}: Make sure enable message receive on all peers for leader overthrow"
-      vars:
-         npeersExceptLeaderToBe: "{{ NRunningPeers | difference([peer4Leader_to_be]) }}"
-         stage: "net_rcv_true_on_all"
-         cmd: "net_recv_enabled@true"
-         where: "/ctl_svc_nodes/net_recv_enabled@false"
-      debug:
-        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', npeersExceptLeaderToBe, cmd, where) }}"
-      no_log: true
+    # COMMENTED OUT FOR DEBUGGING - Leader overthrow section moved to separate recipe: pumice_leader_overthrow_debug.yml
+    # - name: "{{ recipe_name }}: Disable message receive on all peers for leader overthrow"
+    #   vars:
+    #      stage: "disableRecvOnAll"
+    #      cmd: "net_recv_enabled@false"
+    #      where: "/ctl_svc_nodes/net_recv_enabled@true"
+    #   debug:
+    #     msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
+    #   no_log: true
+    #
+    # - pause: seconds=3
+    #
+    # - name: "{{ recipe_name }}: Try to verify and print values after disabling recv (may fail if peers don't respond)"
+    #   vars:
+    #      stage: "stage1_get_all"
+    #      raft_keys:
+    #          - "/ctl_svc_nodes/*/net_recv_enabled"
+    #          - "/raft_root_entry/0/leader-uuid"
+    #          - "/raft_root_entry/0/state"
+    #          - "/raft_root_entry/0/client-requests"
+    #          - "/raft_root_entry/0/term"
+    #      net_rcv: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_keys) | default({}) }}"
+    #   debug:
+    #     msg:
+    #      - "Peer: {{ NRunningPeers[item] }}"
+    #      - "net_recv_enabled: {{ net_rcv.get('/*/net_recv_enabled', 'unknown') }}"
+    #      - "leader-uuid: {{ net_rcv.get('/0/leader-uuid', 'unknown') }}"
+    #      - "state: {{ net_rcv.get('/0/state', 'unknown') }}"
+    #      - "client-requests: {{ net_rcv.get('/0/client-requests', 'unknown') }}"
+    #      - "term: {{ net_rcv.get('/0/term', 'unknown') }}"
+    #   loop: "{{ range(0, NRunningPeers|length) | list }}"
+    #   ignore_errors: true
+    #   no_log: false
+    #
+    # - name: "{{ recipe_name }}: Lets sleep for sometime before checking the values"
+    #   wait_for:
+    #     timeout: 5
+    #
+    # - name: "{{ recipe_name }}: Selected leader-to-be"
+    #   set_fact:
+    #     peer4Leader_to_be: "{{ newlyStartedPeer4['results'][0]['item'] }}"
+    #
+    # - name: "{{ recipe_name }}: Print selected leader-to-be"
+    #   debug:
+    #     msg:
+    #      - "Selected leader-to-be UUID: {{ peer4Leader_to_be }}"
+    #      - "This peer will be elected as the new leader"
+    #   no_log: false
+    #
+    # - name: "{{ recipe_name }}: Enable receive on all peers from the leader-to-be."
+    #   vars:
+    #      stage: "enableOnAllFrmLeaderToBe"
+    #      cmd: "net_recv_enabled@true"
+    #      where: "/ctl_svc_nodes/uuid@{{ peer4Leader_to_be }}"
+    #   debug:
+    #     msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
+    #   no_log: true
+    #
+    # - name: "{{ recipe_name }}: Get the values to verify leader-to-be is not elected yet"
+    #   vars:
+    #      stage: "stage2_set_leader"
+    #      raft_keys:
+    #         - "/raft_root_entry/0/leader-uuid"
+    #         - "/raft_root_entry/0/commit-idx"
+    #         - "/raft_root_entry/0/last-applied"
+    #         - "/raft_root_entry/0/last-applied-cumulative-crc"
+    #         - "/raft_root_entry/0/term"
+    #         - "/raft_root_entry/0/sync-entry-term"
+    #         - "/raft_root_entry/0/sync-entry-crc"
+    #         - "/raft_root_entry/0/sync-entry-data-size"
+    #         - "/raft_root_entry/0/sync-entry-idx"
+    #         - "/raft_root_entry/0/state"
+    #         - "/raft_root_entry/0/client-requests"
+    #         - "/raft_root_entry/0/voted-for-uuid"
+    #         - "/raft_root_entry/0/peer-uuid"
+    #      set_leader: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_keys) }}"
+    #   debug:
+    #     msg: "Verify leader-to-be not elected on peer"
+    #   no_log: true
+    #   with_items:
+    #      - "{{ set_leader }}"
+    #   register: set_leader_vals
+    #
+    # - name: "{{ recipe_name }}: Verify that leader-to-be is not elected yet"
+    #   vars:
+    #     stage2_vals: "{{ set_leader_vals['results'][item]['item'] }}"
+    #   debug:
+    #     msg: "Verify value for peer: {{ NRunningPeers[item] }}, stage2_vals: {{ stage2_vals }}"
+    #   failed_when: >
+    #     (stage2_vals["/0/leader-uuid"] != "null") or
+    #     (stage2_vals["/0/state"] != "candidate-prevote") or
+    #     (stage2_vals["/0/client-requests"] != "deny-leader-not-established")
+    #   loop: "{{ range(0, NRunningPeers|length) | list }}"
+    #   no_log: true
+    #
+    # - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
+    #   vars:
+    #      stage: "enableOnPeer4"
+    #      cmd: "net_recv_enabled@true"
+    #      where: "/ctl_svc_nodes/net_recv_enabled@false"
+    #   debug:
+    #    msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4Leader_to_be, cmd, where) }}"
+    #   no_log: true
+    #
+    # - name: "{{ recipe_name }}: Verify new leader is elected successfully"
+    #   vars:
+    #      stage: "verifyNewLeader"
+    #   debug:
+    #     msg:
+    #      - "Waiting for new leader election"
+    #   until: (lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid') | dict2items | map(attribute='value') | list | first) == peer4Leader_to_be
+    #   retries: 10
+    #   delay: 2
+    #   loop: "{{ range(0, NRunningPeers | length) | list }}"
+    #
+    # - name: "{{ recipe_name }}: Make sure enable message receive on all peers for leader overthrow"
+    #   vars:
+    #      npeersExceptLeaderToBe: "{{ NRunningPeers | difference([peer4Leader_to_be]) }}"
+    #      stage: "net_rcv_true_on_all"
+    #      cmd: "net_recv_enabled@true"
+    #      where: "/ctl_svc_nodes/net_recv_enabled@false"
+    #   debug:
+    #     msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', npeersExceptLeaderToBe, cmd, where) }}"
+    #   no_log: true
 
     - name: "{{ recipe_name }}: Apply cmd to remove fault injection from all peers."
       vars:
