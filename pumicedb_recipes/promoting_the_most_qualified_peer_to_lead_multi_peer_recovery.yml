@@ -628,7 +628,7 @@
       vars: 
         base_dir: /local/himani/test/"{{ raft_uuid }}"
       debug:
-        msg: "{{ lookup('verify_database', base_dir) }}"
+        msg: "{{ lookup('rocksdb_util', 'verify_consistency') }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
