@@ -228,9 +228,9 @@
       set_fact:
        last_verification_aftr_rm_fault_inject: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, server_keys) }}"
       failed_when: >
-        (last_verification_aftr_rm_fault_inject['/0/commit-idx'] <= verify_aftr_first_elect['/0/commit-idx']) or
-        (last_verification_aftr_rm_fault_inject['/0/last-applied'] <= verify_aftr_first_elect['/0/last-applied']) or
-        (last_verification_aftr_rm_fault_inject['/0/last-applied'] != last_verification_aftr_rm_fault_inject['/0/commit-idx'])
+        (last_verification_aftr_rm_fault_inject[item]['/0/commit-idx'] <= verify_aftr_first_elect[item]['/0/commit-idx']) or
+        (last_verification_aftr_rm_fault_inject[item]['/0/last-applied'] <= verify_aftr_first_elect[item]['/0/last-applied']) or
+        (last_verification_aftr_rm_fault_inject[item]['/0/last-applied'] != last_verification_aftr_rm_fault_inject[item]['/0/commit-idx'])
       loop: "{{ range(0, NRunningPeers | length)| list }}"
 
     - name: "{{ recipe_name }}: Set the 'default-request-timeout-sec' to its default value (i.e.60)"
