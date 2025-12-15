@@ -177,13 +177,15 @@
       vars:
         RunningServers: "{{ NRunningPeers }}"
       set_fact:
-        counter_value: "{{ lookup('rocksdb_util', RunningServers[item], 'counter_key', column_family) }}"
+        counter_value: "{{ lookup('rocksdb_util', 'counter_key', RunningServers[item], column_family) }}"
       loop: "{{ range(0, RunningServers | length) | list }}"
 
     - name: "{{ recipe_name }}: Verify counter value."
       debug:
-        msg: "Verifying counter value."
-      no_log: True
+        msg: 
+          - "Verifying counter value."
+          - "{{ (counter_value | int) }}"
+      no_log: false
       failed_when: >
         ((counter_value | int) != num_of_app_uuids)
 
