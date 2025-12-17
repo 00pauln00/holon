@@ -21,27 +21,13 @@
             msg: "app_type is: {{ app_type }}"
           failed_when: (app_type != "controlplane")
 
-        - name: "{{ recipe_name }}: Get proxy server's status."
-          vars:
-            input_param:
-              { "Operation": "membership", "OutfileName": "get_nodestatus" }
-            getNodeData: "{{ lookup('controlplane', 'ncpc', input_param) }}"
-          debug:
-            msg: "Get node name"
-          with_items:
-            - "{{ getNodeData }}"
-          register: nodeName
-          no_log: true
+        - name: "{{ recipe_name }}: Build proxy node names list"
+          set_fact:
+            proxy_node_names: "{{ ClientUUIDS | map('regex_replace', '^(.*)$', 'Node_\\1') | list }}"
 
-        - name: "{{ recipe_name }}: Check if proxy node status is 'alive'."
-          vars:
-            verifyNodeStatus: "{{ nodeName['results'][0]['item']['membership']['output_data'][nodeList[item]]['Status'] }}"
+        - name: "{{ recipe_name }}: Debug proxy node names"
           debug:
-            msg: 
-              - "Verify proxy server's Status"
-              - "{{ verifyNodeStatus }}"
-          failed_when: verifyNodeStatus != "alive"
-          loop: "{{ range(0, nodeList | length) | list }}"
+            msg: "Killed node names are: {{ proxy_node_names }}"
 
         - name: "{{ recipe_name }}: Kill the Proxy server."
           debug:
@@ -51,34 +37,31 @@
 
         - pause: seconds=10
 
-        - name: "{{ recipe_name }}: Starting controlplane_client to get membership details after killing proxy servers."
+        - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
           vars:
             input_param:
-              { "Operation": "membership", "OutfileName": "membership_output_after_killing_both servers" }
+              { "Operation": "membership", "OutfileName": "membership_output_after_killing_proxy_servers" }
             ncpclires: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "get membership details of running servers."
           with_items:
             - "{{ ncpclires }}"
-          register: membership_after_killing_servers
+          register: membership
 
-        - name: "{{ recipe_name }}: DEBUG Print membership details after killing both proxy servers."
-          debug: 
-            msg: "{{ membership_after_killing_servers }}"
-
-        - name: "{{ recipe_name }}: Wait until proxy node status gets changed."
+        - name: "{{ recipe_name }}: Wait until the proxy servers' status changes after killing them."
           vars:
-            getNodeName: "{{ membership_after_killing_servers['results'][0]['item'] }}"
+            NodeName: "{{ item }}"
             input_param:
               {
                 "Operation": "membership",
-                "OutfileName": "wait_for_proxyStatus2",
+                "OutfileName": "wait_for_proxyStatus_after_killing_proxy_servers",
               }
           debug:
             msg: "Verifying node status"
-          until: lookup('controlplane', 'ncpc', input_param)['membership']['output_data'][getNodeName]['Status'] == "failed"
+          until: lookup('controlplane', 'ncpc', input_param)['membership']['output_data'][NodeName]['Status'] == "failed"
           retries: 10
           delay: 1
+          loop: "{{ proxy_node_names }}"
 
         - name: "{{ recipe_name }}: Starting controlplane_client to do rangeWrite with n as 5."
           vars:
@@ -105,7 +88,12 @@
           failed_when: >
             (writeres5keys['results'][0]['item']['outfile_status'] != 0)
 
-        - pause: seconds=10
+        - name: "{{ recipe_name }}: Verify write status."
+          debug:
+            msg: "Check write response status"
+          no_log: true
+          failed_when: >
+            (writeres5keys['results'][0]['item']['output_data']['Response']['Status'] != -1)
 
         - name: "{{ recipe_name }}: get the list of non-running servers."
           include_role:
@@ -123,6 +111,33 @@
 
         - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
           pause:
+            seconds: 10
+
+        - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
+          vars:
+            input_param:
+              { "Operation": "membership", "OutfileName": "membership_output_after_restarting_killed_proxy_servers" }
+            ncpclires: "{{ lookup('controlplane', 'ncpc', input_param) }}"
+          debug:
+            msg: "get membership details of running servers."
+          with_items:
+            - "{{ ncpclires }}"
+          register: membership_after_restart
+
+        - name: "{{ recipe_name }}: Wait until the proxy servers' status changes after killing them."
+          vars:
+            NodeName: "{{ item }}"
+            input_param:
+              {
+                "Operation": "membership",
+                "OutfileName": "wait_for_proxyStatus_after_restarting_killed_proxy_servers",
+              }
+          debug:
+            msg: "Verifying node status"
+          until: lookup('controlplane', 'ncpc', input_param)['membership']['output_data'][NodeName]['Status'] == "alive"
+          retries: 10
+          delay: 1
+          loop: "{{ proxy_node_names }}"
             seconds: 10
 
         - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
