@@ -193,17 +193,22 @@
          initial_vals: "{{ stage0_values['results'][0]['item']}}"
          stage: "recipeCleanUp"
          getAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys) }}"
+         initial_term: "{{ initial_vals['/0/term'] }}"
+         initial_commit: "{{ initial_vals['/0/commit-idx'] }}"
+         current_term: "{{ getAll['/0/term'] }}"
+         current_commit: "{{ getAll['/0/commit-idx'] }}"
+         total_writes: "{{ num_writes | int * number_of_app_uuids | int }}"
+         min_commit: "{{ total_writes | int + initial_commit | int }}"
       debug:
-        msg: "Verify all values on all peers."
+        msg:
+         - "Verify all values on all peers."
+         - "Peer: {{ NRunningPeers[item] }}"
+         - "Term: current={{ current_term }}, initial={{ initial_term }}"
+         - "Commit-idx: current={{ current_commit }}, expected >= {{ min_commit }} ({{ total_writes }} writes + {{ initial_commit }} initial)"
       failed_when: >
-           (getAll['/0/term'] < initial_vals[0]['/0/term']) or
-           (getAll['/0/commit-idx'] < ((num_writes | int) * (number_of_app_uuids | int)) + initial_vals[0]['/0/commit-idx'])
+           (current_term | int < initial_term | int) or
+           (current_commit | int < min_commit | int)
       loop: "{{ range(0, NRunningPeers | length) | list }}"
-
-    - name: "{{ recipe_name }}:  Kill the peer4 to restart it with StaleDB."
-      debug:
-        msg: "{{ lookup('niova_raftprocess', 'kill', newlyStartedPeer4['results'][0]['item'],  ) }}"
-      no_log: true
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
