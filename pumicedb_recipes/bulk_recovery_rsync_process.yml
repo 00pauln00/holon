@@ -187,12 +187,19 @@
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on newly started peer."
       vars:
          origCI: "{{ running_peers_info['results'][0]['item']['/0/commit-idx'] }}"
+         expectedCI: "{{ (num_writes | int) * (number_of_app_uuids | int) + (origCI | int) }}"
          stage: "getRootValuesFrmPeer4"
+         peer4_uuid: "{{ newlyStartedPeer4['results'][0]['item'] }}"
+         currentCI: "{{ lookup('niova_ctlrequest', 'lookup', peer4_uuid, '/raft_root_entry/0/commit-idx')['/0/commit-idx'] }}"
       debug:
-        msg: 
+        msg:
           - "Verify Commit-Idx get incrementing on peer 4."
-          - "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] }}"
-      until: (lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] | int) >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
+          - "Peer4 UUID: {{ peer4_uuid }}"
+          - "Original commit-idx (from running peers): {{ origCI }}"
+          - "Current commit-idx (on peer4): {{ currentCI }}"
+          - "Expected commit-idx: >= {{ expectedCI }} ({{ num_writes }} writes * {{ number_of_app_uuids }} apps + {{ origCI }} original)"
+          - "Check: {{ currentCI | int }} >= {{ expectedCI | int }} = {{ (currentCI | int) >= (expectedCI | int) }}"
+      until: (lookup('niova_ctlrequest', 'lookup', peer4_uuid, '/raft_root_entry/0/commit-idx')['/0/commit-idx'] | int) >= (expectedCI | int)
       retries: 100
       delay: 1
 
