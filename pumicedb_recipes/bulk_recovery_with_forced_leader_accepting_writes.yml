@@ -1,0 +1,171 @@
+- import_playbook: bulk_recovery_with_emptyDB.yml
+
+- name: "Bulk Recovery With Forced Leader Accepting Writes"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "bulk_recovery_with_forced_leader_accepting_writes"
+     parent: "bulk_recovery_with_emptyDB"
+     num_writes: 1200
+     number_of_app_uuids: 5
+     raft_root_entry_keys:
+              - "/raft_root_entry/0/leader-uuid"
+              - "/raft_root_entry/0/term"
+              - "/raft_root_entry/0/commit-idx"
+              - "/raft_root_entry/0/lowest-idx"
+              - "/raft_root_entry/0/checkpoint-idx"
+              - "/raft_net_info/max-scan-entries"
+              - "/raft_net_info/log-reap-factor"
+  tasks:
+  - block:
+    - name: "Check if parent recipe failed"
+      debug: msg="Check if parent recipe {{ parent }} failed"
+      failed_when: terminate_recipe == true
+
+    - name: "{{ recipe_name }}: Get values after bulk recovery before kill/restart"
+      vars:
+         stage: "afterBulkRecovery"
+         getValAftrBulkRec: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, raft_root_entry_keys) }}"
+      debug:
+        msg: "Get commit-idx from all peers after bulk recovery: {{ getValAftrBulkRec }}"
+      no_log: true
+      with_items:
+        - "{{ getValAftrBulkRec }}"
+      register: afterBulkRecovery
+
+    - name: "{{ recipe_name }}: Kill the bulk recovered peer4 process"
+      debug:
+        msg: "{{ lookup('niova_raftprocess', 'kill', newlyStartedPeer4['results'][0]['item']) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Restart the bulk recovered peer4 process"
+      include_role:
+        name: common
+        tasks_from: start_server
+      vars:
+        ServerUUID: "{{ newlyStartedPeer4['results'][0]['item'] }}"
+
+    - name: "{{ recipe_name }}: Get the latest list of running peer UUIDs"
+      include_role:
+         name: common
+         tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Disable message receive on all peers to set peer4 as a leader."
+      vars:
+         stage: "disableRecvOnAll"
+         cmd: "net_recv_enabled@false"
+         where: "/ctl_svc_nodes/net_recv_enabled@true"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Selected leader-to-be"
+      set_fact:
+        peer4Leader_to_be: "{{ newlyStartedPeer4['results'][0]['item'] }}"
+
+    - name: "{{ recipe_name }}: Enable receive on all peers from the leader-to-be."
+      vars:
+         stage: "enableOnAllFrmLeaderToBe"
+         cmd: "net_recv_enabled@true"
+         where: "/ctl_svc_nodes/uuid@{{ peer4Leader_to_be }}"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', NRunningPeers, cmd, where) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Enable message receive on peer which is leader-to-be"
+      vars:
+         stage: "enableOnPeer4"
+         cmd: "net_recv_enabled@true"
+         where: "/ctl_svc_nodes/net_recv_enabled@false"
+      debug:
+        msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', peer4Leader_to_be, cmd, where) }}"
+      no_log: true
+
+    - name: "{{ recipe_name }}: Verify new leader is elected successfully"
+      vars:
+         stage: "verifyNewLeader"
+      debug:
+        msg:
+         - "Waiting for new leader election"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')['/0/leader-uuid'] == peer4Leader_to_be
+      retries: 10
+      delay: 2
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Verify leader is viable after election."
+      include_role:
+        name: common
+        tasks_from: verify_leader_viable
+      vars:
+        ClientUUID: "{{ client_uuid.stdout }}"
+
+    #Create set of required number of app_uuids for second set of writes.
+    - name: "Get set of required number of app_uuids for second writes."
+      include_role:
+        name: common
+        tasks_from: create_app_uuid_set
+      vars:
+        number_of_apps: "{{number_of_app_uuids}}"
+
+    #Perform second set of write operations.
+    - name: "Perform second set of write operations for multiple clients."
+      include_role:
+         name: common
+         tasks_from: perform_writes
+      vars:
+        pmdb_apps: "{{ pmdb_app_uuids }}"
+        ClientUUID: "{{ client_uuid.stdout }}"
+        constant_number_of_writes: "{{ num_writes }}"
+
+    - name: "{{ recipe_name}}: Wait until second set of writes completes from client"
+      vars:
+        stage: "wait_for_2nd_write_op"
+      debug:
+        msg: "Waiting for client to finish second set of writes"
+      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno')['/0/pmdb-seqno'] == (num_writes - 1)
+      retries: 500
+      delay: 1
+
+    - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all peers after second write operation."
+      vars:
+         afterBulkRecCI: "{{ afterBulkRecovery['results'][0]['item']['/0/commit-idx'] }}"
+         origCI: "{{ afterBulkRecCI | int }}"
+         currentCI: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] }}"
+         expectedCI: "{{ (num_writes | int) * (number_of_app_uuids | int) + origCI }}"
+         stage: "getValsFrmAllAfter2ndWr"
+      debug:
+        msg:
+         - "Verify Commit-Idx get incrementing on all peers after second writes."
+         - "Peer: {{ NRunningPeers[item] }}"
+         - "After bulk recovery commit-idx: {{ origCI }}"
+         - "Current commit-idx: {{ currentCI }}"
+         - "Expected commit-idx: >= {{ expectedCI }} ({{ num_writes }} writes * {{ number_of_app_uuids }} apps + {{ origCI }} after bulk recovery)"
+         - "Check: {{ currentCI | int }} >= {{ expectedCI | int }} = {{ (currentCI | int) >= (expectedCI | int) }}"
+      until: (currentCI | int) >= (expectedCI | int)
+      retries: 60
+      delay: 1
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Verify checkpoint-idx and lowest-idx gets changed on all peers after second write operation."
+      vars:
+         stage: "verifyCPOnAllAfter2ndWr"
+         getCPOnAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys) }}"
+         chkpt_idx: "{{ getCPOnAll['/0/checkpoint-idx'] }}"
+         lowest_idx: "{{ getCPOnAll['/0/lowest-idx'] }}"
+      debug:
+        msg:
+         - "Verify checkpoint-idx gets changed on all peers after second writes."
+         - "Peer: {{ NRunningPeers[item] }}"
+         - "checkpoint-idx: {{ chkpt_idx }} (expected: not -1)"
+         - "lowest-idx: {{ lowest_idx }} (expected: not -1)"
+         - "Checkpoint check: {{ chkpt_idx }} == -1 = {{ chkpt_idx == -1 }}"
+         - "Lowest check: {{ lowest_idx }} == -1 = {{ lowest_idx == -1 }}"
+      failed_when: >
+           (chkpt_idx == -1) or
+           (lowest_idx == -1)
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    rescue:
+      - name: "Recipe: {{ recipe_name }} failed"
+        set_fact:
+          terminate_recipe: true
