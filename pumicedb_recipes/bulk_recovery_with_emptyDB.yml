@@ -119,6 +119,10 @@
       vars:
         Client_UUID: "{{ client_uuid.stdout }}"
 
+    - name: "{{ recipe_name }}: Pause before verifying commit-idx on all peers"
+      pause:
+        seconds: 10
+
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all peers after write operation."
       vars:
          origCI: "{{ stage0_values['results'][item]['item']['/0/commit-idx'] }}"
@@ -129,6 +133,10 @@
       retries: 60
       delay: 1
       loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Pause before verifying checkpoint-idx on all peers"
+      pause:
+        seconds: 10
 
     - name: "{{ recipe_name }}: Verify checkpoint-idx and lowest-idx gets changed on all 3 peers after write operation."
       vars:
@@ -168,6 +176,10 @@
          name: common
          tasks_from: get_server_uuid_info
 
+    - name: "{{ recipe_name }}: Pause before verifying commit-idx on newly started peer"
+      pause:
+        seconds: 10
+
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on newly started peer."
       vars:
          origCI: "{{ stage0_values['results'][0]['item']['/0/commit-idx'] }}"
@@ -177,6 +189,10 @@
       until: lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
       retries: 60
       delay: 1
+
+    - name: "{{ recipe_name }}: Pause before verifying checkpoint-idx on newly started peer"
+      pause:
+        seconds: 10
 
     - name: "{{ recipe_name }}: Verify checkpoint-idx and lowest-idx gets changed on newly started peer after write operation."
       vars:
