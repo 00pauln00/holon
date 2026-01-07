@@ -225,9 +225,6 @@ class LookupModule(LookupBase):
         apply_handler = False
         version = 0
 
-        # Support multiple call signatures:
-        # 1) old: lookup(..., op, uuid, { "sleep_after_cmd": N })
-        # 2) new: lookup(..., op, uuid, apply_handler_bool, version_int)
         if len(terms) == 3:
             third = terms[2]
             if isinstance(third, dict):

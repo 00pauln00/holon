@@ -1,7 +1,7 @@
 ---
 - name: "{{ recipe_name }}: Start the peer"
   debug:
-    msg: "{{lookup('niova_raftprocess', 'start', ServerUUID, apply_handler_version)}}"
+    msg: "{{lookup('niova_raftprocess', 'start', ServerUUID, apply_handler_version, version)}}"
   register: ret
   failed_when: ret.failed == true
   no_log: false
