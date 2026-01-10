@@ -39,7 +39,7 @@
           vars:
             input_param:
               { 
-                test_path: "/home/himani/niova-mdsvc/controlplane/ctlplanefuncs/client",
+                test_path: "controlplane/ctlplanefuncs/client",
                 test_name: "TestCreateVdevParallel"
               }
           set_fact:
@@ -53,7 +53,7 @@
           vars:
             input_param:
               { 
-                test_path: "/home/himani/niova-mdsvc/controlplane/ctlplanefuncs/client",
+                test_path: "controlplane/ctlplanefuncs/client",
                 test_name: "TestCreateVdevParallelFailure"
               }
           set_fact:

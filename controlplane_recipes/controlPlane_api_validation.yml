@@ -1,8 +1,8 @@
-- name: "controlPlane_put_get_test.yml"
+- name: "controlPlane_api_validation.yml"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "controlPlane_put_get_test"
+    recipe_name: "controlPlane_api_validation"
     parent: None
 
   tasks:
@@ -38,7 +38,7 @@
         - name: Run controlplane Go test
           vars:
             input_param:
-              test_path: "/home/himani/niova-mdsvc/controlplane/ctlplanefuncs/client"
+              test_path: "controlplane/ctlplanefuncs/client"
           set_fact:
             gotest_result: "{{ lookup('controlplane', 'gotest', input_param) }}"
 
