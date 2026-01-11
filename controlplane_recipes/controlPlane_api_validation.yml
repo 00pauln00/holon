@@ -1,0 +1,47 @@
+- name: "controlPlane_api_validation.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlPlane_api_validation"
+    parent: None
+
+  tasks:
+    - block:
+        # check for the app_type
+        - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+          vars:
+            app_type: "{{ app_type }}"
+          debug:
+            msg: "app_type is: {{ app_type }}"
+          failed_when: (app_type != "controlplane")
+
+        - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+          include_role:
+            name: common
+            tasks_from: pmdb_cluster_init.yml
+          vars:
+            number_of_clients: 2
+            number_of_PMDBServers: 5
+
+        - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
+          vars:
+            input_param:
+              { "Operation": "membership", "OutfileName": "membership_output" }
+            ncpclires: "{{ lookup('controlplane', 'ncpc', input_param) }}"
+          debug:
+            msg: "get membership details of running servers."
+          with_items:
+            - "{{ ncpclires }}"
+          register: membership
+          no_log: True
+
+        - name: Run controlplane Go test
+          vars:
+            input_param:
+              test_path: "/home/runner/work/niova-mdsvc/niova-mdsvc/controlplane/ctlplanefuncs/client"
+          set_fact:
+            gotest_result: "{{ lookup('controlplane', 'gotest', input_param) }}"
+
+        - name: "{{ recipe_name }}: Comapre and verify inserted and fetched data."
+          debug:
+            msg: "{{ gotest_result }}"

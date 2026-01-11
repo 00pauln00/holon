@@ -89,7 +89,7 @@
       retries: 100
       delay: 2
 
-    - name: "{{ recipe_name}}: Wait until 'app-syc == true'"
+    - name: "{{ recipe_name}}: Wait until 'app-sync == true'"
       vars:
         stage: "wait_for_app_sync"
         cmd_str:

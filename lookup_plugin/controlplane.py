@@ -4,6 +4,8 @@ import sys
 import json
 import termios
 import os
+import re
+import json
 import time
 import shutil
 import subprocess
@@ -171,7 +173,7 @@ def extracting_dictionary(cluster_params, input_values):
 def get_the_output(outfilePath):
     outfile = outfilePath + '.json'
     counter = 0
-    timeout = 100
+    timeout = 300
 
     # Wait till the output json file gets created.
     while True:
@@ -361,6 +363,118 @@ def extracting_dictionary_for_lease(cluster_params, input_values):
     else:
         return outfile
 
+def extracting_values_for_gotest(log_file_path):
+    """
+    Reads the go_test_output.log file and extracts structured test data
+    (e.g. test names, results, info messages). Returns a JSON-compatible dict.
+    """
+    if not os.path.exists(log_file_path):
+        raise FileNotFoundError(f"Log file not found: {log_file_path}")
+
+    with open(log_file_path, "r") as f:
+        log_text = f.read()
+
+    # Extract each Go test block between === RUN and --- PASS/FAIL
+    test_blocks = re.findall(
+        r"=== RUN\s+(.*?)\n(.*?)(?=--- (?:PASS|FAIL):|\Z)",
+        log_text,
+        re.DOTALL
+    )
+
+    results = []
+    for test_name, block in test_blocks:
+        # Extract "msg=" log lines
+        info_msgs = re.findall(r'level=info msg="(.*?)"', block)
+        # Extract Go [ERR] lines
+        err_msgs = re.findall(r'\[ERR\].*', block)
+        # Check test result
+        passed = bool(re.search(rf"--- PASS: {test_name}", log_text))
+        failed = bool(re.search(rf"--- FAIL: {test_name}", log_text))
+
+        # Special parsing for structured key/value lines like "GetNisdCfg: [...]"
+        structured_data = {}
+        for msg in info_msgs:
+            m = re.match(r"([A-Za-z0-9]+):\s*(\[.*\])", msg)
+            if m:
+                structured_data[m.group(1)] = m.group(2)
+
+        results.append({
+            "test_name": test_name.strip(),
+            "passed": passed,
+            "failed": failed,
+            "info_messages": info_msgs,
+            "error_messages": err_msgs,
+            "structured_data": structured_data
+        })
+
+    summary = {
+        "total_tests": len(results),
+        "passed": sum(1 for t in results if t["passed"]),
+        "failed": sum(1 for t in results if t["failed"]),
+        "tests": results
+    }
+
+    # Save structured JSON
+    json_path = log_file_path.replace(".log", ".json")
+    with open(json_path, "w") as jf:
+        json.dump(summary, jf, indent=2)
+
+    return summary
+
+def run_go_test(cluster_params, input_values):
+    """
+    Run Go test for controlplane client with exported RAFT_ID and GOSSIP_NODES_PATH,
+    then parse and return structured test results.
+    """
+    raft_id = cluster_params['raft_uuid']
+    base_dir = cluster_params['base_dir']
+    raft_dir = os.path.join(base_dir, raft_id)
+
+    # Resolve gossipNodes file path
+    gossip_nodes_path = os.path.join(raft_dir, "gossipNodes.json")
+    if not os.path.exists(gossip_nodes_path):
+        gossip_nodes_path = os.path.join(raft_dir, "gossipNodes")
+
+    # Validate Go test path
+    go_test_path = input_values.get('test_path')
+    go_test_name = input_values.get('test_name')
+    if not go_test_path or not os.path.exists(go_test_path):
+        raise FileNotFoundError(f"Go test path does not exist: {go_test_path}")
+
+    log_file = os.path.join(base_dir, raft_id, "go_test_output.log")
+
+    # Run the Go tests
+    with open(log_file, "w") as fp:
+        env = os.environ.copy()
+        env["RAFT_ID"] = raft_id
+        env["GOSSIP_NODES_PATH"] = gossip_nodes_path
+
+        cmd = ["go", "test", "-v"]
+        # If a specific test file or test name is provided
+        if go_test_name:
+            cmd.append("-run")
+            cmd.append(go_test_name)
+
+        process = subprocess.Popen(cmd, cwd=go_test_path, env=env,
+                                   stdout=fp, stderr=subprocess.STDOUT)
+        ret = process.wait(timeout=300)
+
+    # Extract structured test information
+    test_summary = extracting_values_for_gotest(log_file)
+
+    # Combine run metadata + parsed data
+    result = {
+        "raft_id": raft_id,
+        "gossip_nodes_path": gossip_nodes_path,
+        "test_path": go_test_path,
+        "test_file": input_values.get("test_file"),
+        "return_code": ret,
+        "log_file": log_file,
+        "parsed_results": test_summary
+    }
+
+    return result
+
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
@@ -381,7 +495,6 @@ class LookupModule(LookupBase):
 
             return [data]
 
-
         elif process_type == "niova-lookout":
             niova_lookout_path = "%s/%s/niova_lookout" % (cluster_params['base_dir'],
                                                            cluster_params['raft_uuid'])
@@ -398,6 +511,11 @@ class LookupModule(LookupBase):
             start_test_application = start_testApp(cluster_params, input_values)
 
             return [start_test_application]
+
+        elif process_type == "gotest":
+            # Run Go test for controlplane client
+            data = run_go_test(cluster_params, input_values)
+            return [data]
 
         elif process_type == "prometheus":
             hport = input_values['Hport']
