@@ -39,7 +39,7 @@
           vars:
             input_param:
               { 
-                test_path: "../controlplane/ctlplanefuncs/client",
+                test_path: "/home/runner/work/niova-mdsvc/niova-mdsvc/controlplane/ctlplanefuncs/client",
                 test_name: "TestCreateVdevParallel"
               }
           set_fact:
