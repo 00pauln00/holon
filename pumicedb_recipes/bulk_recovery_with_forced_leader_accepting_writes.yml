@@ -118,33 +118,34 @@
         constant_number_of_writes: "{{ num_writes }}"
 
     - name: "{{ recipe_name}}: Wait until second set of writes completes from client"
+      include_role:
+        name: common
+        tasks_from: wait_until_all_client_apps_finish_writing
       vars:
-        stage: "wait_for_2nd_write_op"
-      debug:
-        msg: "Waiting for client to finish second set of writes"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno')['/0/pmdb-seqno'] == (num_writes - 1)
-      retries: 500
-      delay: 1
+        Client_UUID: "{{ client_uuid.stdout }}"
+        expected_num_writes: "{{ num_writes }}"
+
+    #Verify client parameters after successful write operations.
+    - name: "Set expected number of writes list for all apps"
+      set_fact:
+        exp_list: "{{ [num_writes] * number_of_app_uuids }}"
+
+    - name: "{{ recipe_name }}: Verify client parameters."
+      include_role:
+        name: common
+        tasks_from: verify_client_parameters
+      vars:
+        Client_UUID: "{{ client_uuid.stdout }}"
 
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all peers after second write operation."
+      include_role:
+        name: common
+        tasks_from: verify_commit_idx_incremented_after_writes
       vars:
-         afterBulkRecCI: "{{ afterBulkRecovery['results'][0]['item']['/0/commit-idx'] }}"
-         origCI: "{{ afterBulkRecCI | int }}"
-         currentCI: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] }}"
-         expectedCI: "{{ (num_writes | int) * (number_of_app_uuids | int) + origCI }}"
-         stage: "getValsFrmAllAfter2ndWr"
-      debug:
-        msg:
-         - "Verify Commit-Idx get incrementing on all peers after second writes."
-         - "Peer: {{ NRunningPeers[item] }}"
-         - "After bulk recovery commit-idx: {{ origCI }}"
-         - "Current commit-idx: {{ currentCI }}"
-         - "Expected commit-idx: >= {{ expectedCI }} ({{ num_writes }} writes * {{ number_of_app_uuids }} apps + {{ origCI }} after bulk recovery)"
-         - "Check: {{ currentCI | int }} >= {{ expectedCI | int }} = {{ (currentCI | int) >= (expectedCI | int) }}"
-      until: (currentCI | int) >= (expectedCI | int)
-      retries: 60
-      delay: 1
-      loop: "{{ range(0, NRunningPeers | length) | list }}"
+        PeerUUIDs: "{{ NRunningPeers }}"
+        snapshot_before_write: "{{ afterBulkRecovery }}"
+        expected_increment: "{{ (num_writes | int) * (number_of_app_uuids | int) }}"
+        stage: "getValsFrmAllAfter2ndWr"
 
     - name: "{{ recipe_name }}: Verify checkpoint-idx and lowest-idx gets changed on all peers after second write operation."
       vars:

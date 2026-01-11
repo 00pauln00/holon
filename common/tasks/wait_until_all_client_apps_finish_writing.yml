@@ -1,0 +1,11 @@
+---
+  - name: "Wait until all client apps finish writing."
+    include_role:
+      name: common
+      tasks_from: wait_until_client_app_finish_writing
+    vars:
+      app_index: "{{ item }}"
+    loop: "{{ range(0, pmdb_app_uuids | length) | list }}"
+    loop_control:
+        loop_var: app_index
+
