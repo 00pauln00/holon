@@ -38,7 +38,7 @@
         - name: Run controlplane Go test
           vars:
             input_param:
-              test_path: "controlplane/ctlplanefuncs/client"
+              test_path: "../controlplane/ctlplanefuncs/client"
           set_fact:
             gotest_result: "{{ lookup('controlplane', 'gotest', input_param) }}"
 
