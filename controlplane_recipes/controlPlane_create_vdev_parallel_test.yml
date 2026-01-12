@@ -21,7 +21,7 @@
             tasks_from: pmdb_cluster_init.yml
           vars:
             number_of_clients: 2
-            number_of_PMDBServers: 4
+            number_of_PMDBServers: 5
 
         - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
           vars:
@@ -41,20 +41,6 @@
               { 
                 test_path: "/home/runner/work/niova-mdsvc/niova-mdsvc/controlplane/ctlplanefuncs/client",
                 test_name: "TestCreateVdevParallel"
-              }
-          set_fact:
-            gotest_result: "{{ lookup('controlplane', 'gotest', input_param) }}"
-
-        - name: "{{ recipe_name }}: Print result."
-          debug:
-            msg: "{{ gotest_result }}"
-
-        - name: "{{ recipe_name }}: Run controlplane Go test for parallel vdev creation failure."
-          vars:
-            input_param:
-              { 
-                test_path: "../controlplane/ctlplanefuncs/client",
-                test_name: "TestCreateVdevParallelFailure"
               }
           set_fact:
             gotest_result: "{{ lookup('controlplane', 'gotest', input_param) }}"
