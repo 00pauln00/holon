@@ -10,14 +10,14 @@
   - block:
     - name: "{{ recipe_name }}: Create 1.5GB Partition"
       debug:
-        msg: "{{ lookup('helper', 'create_partition', 'gc/gc_download', '27',  ) }}"
+        msg: "{{ lookup('helper', 'create_partition', 'gc/gc_download', '27') }}"
 
     - name: "{{ recipe_name }}: Start minio server"
       vars:
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir,  ) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir) }}"
       when: s3Support == "true"
 
     - name: "{{ recipe_name }}: Start GCService"
@@ -31,7 +31,7 @@
         }
       debug:
          msg:
-          - "{{ lookup('garbage_collection', 'daemon', 'start', params,  ) }}"
+          - "{{ lookup('garbage_collection', 'daemon', 'start', params) }}"
 
     - name: "{{ recipe_name }}: pause for 5 seconds."
       pause:
@@ -62,7 +62,7 @@
           "pid" : "{{ gc_process_pid | int }}"
         }
       debug:
-        msg: "{{ lookup('garbage_collection', 'daemon', 'pause', params,  ) }}"
+        msg: "{{ lookup('garbage_collection', 'daemon', 'pause', params) }}"
 
     - name: "{{ recipe_name }}: Create 1.5GB file"
       vars:
@@ -70,7 +70,7 @@
         bs: "64M"
         count: 25
       debug:
-        msg: "{{ lookup('helper', 'create_dd_file', img_file, bs, count,  ) }}"
+        msg: "{{ lookup('helper', 'create_dd_file', img_file, bs, count) }}"
 
     - name: "{{ recipe_name }}: generate data for 2 chunks parallely"
       vars:
@@ -97,7 +97,7 @@
                   "remove_files": false,
         }
       debug:
-        msg: "{{ lookup('data_gen', 'generator', dgen_args, params,  ) }}"
+        msg: "{{ lookup('data_gen', 'generator', dgen_args, params) }}"
 
     - name: "{{ recipe_name }}: Resume the GC process."
       vars:
@@ -105,13 +105,13 @@
           "pid" : "{{ gc_process_pid | int }}",
         }   
       debug:
-        msg: "{{ lookup('garbage_collection', 'daemon', 'resume', params,  ) }}"
+        msg: "{{ lookup('garbage_collection', 'daemon', 'resume', params) }}"
 
     - name: "{{ recipe_name }}: Delete the file from partition to get available space"
       vars:
         img_file: "gc/gc_download/file.img"
       debug:
-        msg: "{{ lookup('helper', 'delete_dd_file', img_file,  ) }}"
+        msg: "{{ lookup('helper', 'delete_dd_file', img_file) }}"
 
     - name: "{{ recipe_name }}: Wait for GC marker files"
       loop: "{{ chunks }}"
@@ -122,7 +122,7 @@
           "chunk": "{{ item | string }}",
           "stage": "wait_for_gc_marker",
         }
-        marker_seq: "{{ lookup('obj_storage', 'get_markers', params,  )[0] }}"
+        marker_seq: "{{ lookup('obj_storage', 'get_markers', params) }}"
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq }} for chunk {{ chunk_index + 1 }}"
       until: marker_seq[0] is not none
@@ -137,12 +137,12 @@
         params: {
           "chunk": "{{ item | string }}",
         }
-        Sequence: "{{ lookup('obj_storage', 'get_markers', params,  )[0] }}"
+        Sequence: "{{ lookup('obj_storage', 'get_markers', params) }}"
         gc_marker: "{{ Sequence[0] }}"
         nisd_marker: "{{ Sequence[1] }}"
       debug:
         msg: "Wait until marker values gets match {{ gc_marker }} and {{ nisd_marker }} for chunk {{ chunk_index + 1 }}"
-      until: gc_marker == nisd_marker
+      until: (gc_marker is not none) and (nisd_marker is not none) and ((gc_marker | int) == (nisd_marker | int))
       retries: 300
       delay: 2
 
@@ -150,4 +150,4 @@
       vars:
         Chunk: "1"
       debug:
-         msg: "{{ lookup('data_gen', 'validator', Chunk,  ) }}"
+         msg: "{{ lookup('data_gen', 'validator', Chunk) }}"

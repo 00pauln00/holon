@@ -422,6 +422,8 @@ class LookupModule(LookupBase):
                     config_file_path = "%s/prometheus.yml" % binary_dir
                     prometheus_process = subprocess.Popen([prometheus_path, "--config.file=%s" % config_file_path])
 
+                    return [prometheus_process]
+
                 else:
                     with open(prom_targets_path, "r") as f:
                         prom_targets = json.load(f)
@@ -430,3 +432,6 @@ class LookupModule(LookupBase):
                 with open(prom_targets_path, "w") as f:
                     json.dump(prom_targets, f)
 
+                return [prom_targets]
+
+            return ["prometheus_support_disabled"]

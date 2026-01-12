@@ -12,7 +12,7 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir,  ) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir) }}"
       when: s3Support == "true"
 
     - name: "Generate 100,000 vblk entries"
@@ -39,7 +39,7 @@
           remove_files: false
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dbi_param, input_param  )[0] }}"
+          - "{{ lookup('data_gen', 'generator', dbi_param, input_param) }}"
       register: chunk
 
     - name: "{{ recipe_name }}: Get dbi file names."
@@ -47,7 +47,7 @@
         formal_params:
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('obj_storage', 'get_list', formal_params,  )[0] }}"
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params) }}"
       register: list_op
       no_log: true
 
@@ -62,11 +62,11 @@
 
     - name: "{{ recipe_name }}: Start gc algorithm"
       vars:
-        input_params:
+        input_param:
           debug_mode: "false"
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-        msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_param)[0] }}"
+        msg: "{{ lookup('garbage_collection', 'single_exec', 'start', input_param) }}"
       register: gc_output
 
     - debug:
@@ -78,7 +78,7 @@
         formal_params:
           chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('obj_storage', 'get_list', formal_params,  )[0] }}"
+         msg: "{{ lookup('obj_storage', 'get_list', formal_params) }}"
       register: list_op
       no_log: true
 
@@ -95,7 +95,7 @@
       vars:
         Chunk: "{{ chunk['msg'][0] }}"
       debug:
-         msg: "{{ lookup('data_gen', 'validator',  Chunk,  ) }}"
+         msg: "{{ lookup('data_gen', 'validator',  Chunk) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

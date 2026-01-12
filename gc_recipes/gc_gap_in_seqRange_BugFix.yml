@@ -12,7 +12,7 @@
         s3_dir: "minio_data"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_s3', s3_dir,  ) }}"
+          - "{{ lookup('s3_handler', 'start_s3', s3_dir) }}"
       when: s3Support == "true"
 
     - name: "Generate DBIs"
@@ -41,13 +41,13 @@
                  }
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param  ) }}"
+          - "{{ lookup('s3_handler', 'multiple_iteration_params', input_param) }}"
 
     - name: "{{ recipe_name }}: Make a copy of the file and change seq number of the file."
       vars:
         Chunk: "1"
       debug:
-         msg: "{{ lookup('s3_handler', 'copyDBIFile_changeSeqNum', Chunk,  ) }}"
+         msg: "{{ lookup('s3_handler', 'copyDBIFile_changeSeqNum', Chunk) }}"
 
     - name: "{{ recipe_name }}: Perform GC"
       vars:
@@ -55,7 +55,7 @@
         Chunk: "1"
       debug:
          msg:
-          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk,  ) }}"
+          - "{{ lookup('s3_handler', 'start_gc', debugMode, Chunk) }}"
       register: gc_output
 
     - debug:
@@ -66,7 +66,7 @@
       vars:
         Chunk: "1"
       debug:
-         msg: "{{ lookup('s3_handler', 'data_validate',  Chunk,  ) }}"
+         msg: "{{ lookup('s3_handler', 'data_validate',  Chunk) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"

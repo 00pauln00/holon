@@ -12,7 +12,7 @@
         s3_dir: "/local/minio_data"
       debug:
          msg:
-          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir,  ) }}"
+          - "{{ lookup('obj_storage', 'minio', 'start', s3_dir) }}"
       when: s3Support == "true"
 
     - name: "Generate DBIs with vblk entry"
@@ -41,11 +41,11 @@
         }
       debug:
          msg:
-          - "{{ lookup('data_gen', 'generator', dgen_args, params,  ) }}"
+          - "{{ lookup('data_gen', 'generator', dgen_args, params) }}"
 
     - name: "{{ recipe_name }}: Start GCService"
       vars:
-        input_params: {
+        input_param: {
           "dry_run": false,
           "del_dbo": true,
           "partition": false,
@@ -65,7 +65,7 @@
         params: {
           "chunk": "1",
         }
-        marker_seq: "{{ lookup('obj_storage', 'get_markers', params,  )[0] }}"
+        marker_seq: "{{ lookup('obj_storage', 'get_markers', params) }}"
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq }}"
       until: marker_seq[0] is not none
@@ -77,12 +77,12 @@
         params: {
           "chunk": "1",
         }
-        Sequence: "{{ lookup('obj_storage', 'get_markers', params,  )[0] }}"
+        Sequence: "{{ lookup('obj_storage', 'get_markers', params) }}"
         gc_marker: "{{ Sequence[0] }}"
         nisd_marker: "{{ Sequence[1] }}"
       debug:
         msg: "Wait until marker values gets match {{ gc_marker }} and {{ nisd_marker }}"
-      until: gc_marker == nisd_marker
+      until: (gc_marker is not none) and (nisd_marker is not none) and ((gc_marker | int) == (nisd_marker | int))
       retries: 300
       delay: 2
 
@@ -90,7 +90,7 @@
       vars:
         Chunk: "1"
       debug:
-         msg: "{{ lookup('data_gen', 'validator',  Chunk,  ) }}"
+         msg: "{{ lookup('data_gen', 'validator',  Chunk) }}"
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
