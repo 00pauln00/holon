@@ -14,7 +14,7 @@
         client_vals: "{{ lookup('niova_ctlrequest', 'lookup', Client_UUID, raft_keys) }}"
       debug:
         msg: "get the values after client write operation: {{ client_vals }}"
-      no_log: true
+      no_log: True
       with_items:
         - "{{ client_vals }}"
       register: client_vals_after_wr
