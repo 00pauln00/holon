@@ -212,6 +212,8 @@
           debug:
             msg: "{{ lookup('niova_raftprocess', 'start', ClientUUIDS[0]) }}"
 
+        - pause: seconds=5
+
         - name: "{{ recipe_name }}: Start Killed pmdb server."
           debug:
             msg: "{{ lookup('niova_raftprocess', 'start', Peer5['results'][0]['item']) }}"

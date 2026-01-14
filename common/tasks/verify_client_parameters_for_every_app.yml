@@ -12,7 +12,7 @@
         client_vals: "{{ lookup('niova_ctlrequest', 'lookup', Client_UUID, raft_keys) }}"
       debug:
         msg: "get the values after client write operation: {{ client_vals }}"
-      no_log: true
+      no_log: True
       with_items:
         - "{{ client_vals }}"
       register: client_vals_after_wr
@@ -26,12 +26,25 @@
         pmdb_write_pd_index: '/{{ idx }}/pmdb-write-pending'
         app_sync_index: '/{{ idx }}/app-sync'
         app_seqno_index: '/{{ idx }}/app-seqno'
+        actual_status: "{{ client_vals_after_wr['results'][0]['item'][status_index] }}"
+        expected_pmdb_seqno: "{{ (exp_list[idx] | int - 1) }}"
+        actual_pmdb_seqno: "{{ client_vals_after_wr['results'][0]['item'][pmdb_seqno_index] }}"
+        actual_pmdb_write_pd: "{{ client_vals_after_wr['results'][0]['item'][pmdb_write_pd_index] }}"
+        actual_app_sync: "{{ client_vals_after_wr['results'][0]['item'][app_sync_index] }}"
+        expected_app_seqno: "{{ exp_list[idx] | int }}"
+        actual_app_seqno: "{{ client_vals_after_wr['results'][0]['item'][app_seqno_index] }}"
       debug:
         msg:
          - "Verify parameters after successful write operation"
+         - "App index: {{ idx }}"
+         - "Status: actual={{ actual_status }}, expected=Success"
+         - "pmdb-seqno: actual={{ actual_pmdb_seqno }}, expected={{ expected_pmdb_seqno }}"
+         - "pmdb-write-pending: actual={{ actual_pmdb_write_pd }}, expected=false"
+         - "app-sync: actual={{ actual_app_sync }}, expected=true"
+         - "app-seqno: actual={{ actual_app_seqno }}, expected={{ expected_app_seqno }}"
       failed_when: >
-            (client_vals_after_wr['results'][0]['item'][status_index] != "Success") or
-            (client_vals_after_wr['results'][0]['item'][pmdb_seqno_index] != (exp_list[idx] | int - 1)) or
-            (client_vals_after_wr['results'][0]['item'][pmdb_write_pd_index] != false) or
-            (client_vals_after_wr['results'][0]['item'][app_sync_index] != true) or
-            (client_vals_after_wr['results'][0]['item'][app_seqno_index] != (exp_list[idx] | int))
+            (actual_status != "Success") or
+            (actual_pmdb_seqno != expected_pmdb_seqno) or
+            (actual_pmdb_write_pd != false) or
+            (actual_app_sync != true) or
+            (actual_app_seqno != expected_app_seqno)
