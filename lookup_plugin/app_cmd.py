@@ -33,6 +33,10 @@ class LookupModule(LookupBase):
         cmd = terms[0]
         client_uuid = terms[1]
         cluster_params = kwargs['variables']['ClusterParams']
+        input_values = terms[2] if len(terms) > 2 else {}
+
+        # Default async_mode to False if not provided
+        async_mode = input_values.get('async_mode', False)
 
         #export NIOVA_THREAD_COUNT
         os.environ['NIOVA_THREAD_COUNT'] = cluster_params['nthreads']
@@ -68,6 +72,9 @@ class LookupModule(LookupBase):
         #start client process and pass the cmd.
         process_popen = subprocess.Popen([bin_path,'-r', raft_uuid,'-u',client_uuid,'-l', base_dir,'-c',cmd],
                                              stdout = fp, stderr = fp)
+
+        if async_mode:
+            return [{"status":0, "msg":"async process started", "pid": process_popen.pid}]
 
         #Wait till output json file created
         counter = 0

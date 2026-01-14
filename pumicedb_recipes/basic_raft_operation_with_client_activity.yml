@@ -267,6 +267,10 @@
          (curr_itr_vals['/0/sync-entry-crc'] != next_itr_vals['/0/sync-entry-crc'])
       loop: "{{ range(0, NRunningPeers | length - 1)| list }}"
 
+    - name: "{{ recipe_name }}: Verify data consistency across all servers."
+      debug:
+        msg: "{{ lookup('rocksdb_util', 'verify_consistency') }}"
+
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:

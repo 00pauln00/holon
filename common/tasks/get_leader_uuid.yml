@@ -1,0 +1,29 @@
+- name: "Wait until leader election happens"
+  vars:
+    stage: "wait_leader_election"
+  debug:
+    msg: "Waiting for leader election"
+  until: >
+    lookup('niova_ctlrequest', 'lookup', NonRunningServers[item], '/raft_root_entry/0/leader-uuid') != "null"
+  retries: 10
+  delay: 1
+  loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+
+- name: "Debug NonRunningServers"
+  debug:
+    var: NonRunningServers
+
+- name: "Get the leader UUID dict"
+  vars:
+    raft_key: "/raft_root_entry/0/leader-uuid"
+  set_fact:
+    leader_uuid_dict: "{{ lookup('niova_ctlrequest', 'lookup', NonRunningServers, raft_key) | first }}"
+
+- name: "Set leader UUID fact"
+  set_fact:
+    leader_uuid: "{{ leader_uuid_dict['/0/leader-uuid'] }}"
+
+- name: "Debug leader UUID"
+  debug:
+    msg: "Leader UUID is {{ leader_uuid }}"

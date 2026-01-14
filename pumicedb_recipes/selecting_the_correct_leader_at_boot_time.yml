@@ -525,6 +525,12 @@
                (term != term_next)
             loop: "{{ range(0, NRunningPeers | length - 1) | list }}"
 
+          - name: "{{ recipe_name }}: Verify data consistency across all servers."
+            vars: 
+              base_dir: /local/himani/test/"{{ raft_uuid }}"
+            debug:
+              msg: "{{ lookup('rocksdb_util', 'verify_consistency') }}"
+
     rescue:
       - name: "Recipe failed"
         set_fact:

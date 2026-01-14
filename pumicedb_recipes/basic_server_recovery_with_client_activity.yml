@@ -416,6 +416,10 @@
       no_log: True
       failed_when: Basic_Recovery_remove_fi != False
 
+    - name: "{{ recipe_name }}: Verify data consistency across all servers."
+      debug:
+        msg: "{{ lookup('rocksdb_util', 'verify_consistency') }}"
+
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
         set_fact:

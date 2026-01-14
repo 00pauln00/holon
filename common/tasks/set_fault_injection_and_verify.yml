@@ -1,4 +1,12 @@
----
+--- 
+    - name: "Debug fault_injection_name"
+      debug:
+        var: fault_injection_name
+    
+    - name: "Fault injection being applied on the following ServerUUID"
+      debug:
+        var: ServerUUID
+    
     - name: "{{ recipe_name }}: Set fault injection {{ fault_injecition_name }} on leader."
       vars:
         stage: "fault_injection"
