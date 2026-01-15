@@ -441,7 +441,13 @@ def run_go_test(cluster_params, input_values):
     if not go_test_path or not os.path.exists(go_test_path):
         raise FileNotFoundError(f"Go test path does not exist: {go_test_path}")
 
+    if not go_test_name:
+        raise ValueError("test_name must be provided")
+
     log_file = os.path.join(base_dir, raft_id, "go_test_output.log")
+
+    # Build regex exactly like Go expects
+    test_regex = f"^{go_test_name}$"
 
     # Run the Go tests
     with open(log_file, "w") as fp:
@@ -449,11 +455,7 @@ def run_go_test(cluster_params, input_values):
         env["RAFT_ID"] = raft_id
         env["GOSSIP_NODES_PATH"] = gossip_nodes_path
 
-        cmd = ["go", "test", "-v"]
-        # If a specific test file or test name is provided
-        if go_test_name:
-            cmd.append("-run")
-            cmd.append(go_test_name)
+        cmd = ["./ctlplanefuncs_client.test", "-test.run", go_test_name]
 
         process = subprocess.Popen(cmd, cwd=go_test_path, env=env,
                                    stdout=fp, stderr=subprocess.STDOUT)
@@ -467,6 +469,7 @@ def run_go_test(cluster_params, input_values):
         "raft_id": raft_id,
         "gossip_nodes_path": gossip_nodes_path,
         "test_path": go_test_path,
+        "test_name": go_test_name,
         "test_file": input_values.get("test_file"),
         "return_code": ret,
         "log_file": log_file,

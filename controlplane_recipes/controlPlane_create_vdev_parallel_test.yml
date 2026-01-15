@@ -39,8 +39,8 @@
           vars:
             input_param:
               { 
-                test_path: "../ctlplane_test",
-                test_name: "TestCreateVdevParallel"
+                test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test",
+                test_name: "TestCreateVdev"
               }
           set_fact:
             gotest_result: "{{ lookup('controlplane', 'gotest', input_param) }}"

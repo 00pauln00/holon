@@ -35,10 +35,27 @@
           register: membership
           no_log: True
 
-        - name: Run controlplane Go test
+        - name: "{{ recipe_name }}: Run controlplane Go tests to validate entities."
           vars:
             input_param:
-              test_path: "../ctlplane_test"
+              test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
+              test_name: "TestPutAndGet"
+          set_fact:
+            gotest_result: "{{ lookup('controlplane', 'gotest', input_param) }}"
+
+        - name: "{{ recipe_name }}: Run controlplane Go test to validate creating vdevs."
+          vars:
+            input_param:
+              test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
+              test_name: "TestMultiCreateVdev"
+          set_fact:
+            gotest_result: "{{ lookup('controlplane', 'gotest', input_param) }}"
+
+        - name: "{{ recipe_name }}: Run controlplane Go test to validate creating vdevs."
+          vars:
+            input_param:
+              test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
+              test_name: "TestHierarchy"
           set_fact:
             gotest_result: "{{ lookup('controlplane', 'gotest', input_param) }}"
 
