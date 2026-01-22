@@ -40,9 +40,14 @@
             input_param:
               test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
               test_name: "TestPutAndGet"
+              output_file: "go_test_output"
           set_fact:
             gotest_result: "{{ lookup('controlplane', 'gotest', input_param) }}"
 
         - name: "{{ recipe_name }}: Comapre and verify inserted and fetched data."
           debug:
             msg: "{{ gotest_result }}"
+
+        - name: "{{ recipe_name }}: KV CRC verification to see if all the servers have the same data."
+          debug:
+            msg: "{{ lookup('your_lookup_name', 'kv_crc') }}"

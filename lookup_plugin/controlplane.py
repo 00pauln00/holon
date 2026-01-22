@@ -438,13 +438,14 @@ def run_go_test(cluster_params, input_values):
     # Validate Go test path
     go_test_path = input_values.get('test_path')
     go_test_name = input_values.get('test_name')
+    go_test_output_file = input_values.get('output_file')
     if not go_test_path or not os.path.exists(go_test_path):
         raise FileNotFoundError(f"Go test path does not exist: {go_test_path}")
 
     if not go_test_name:
         raise ValueError("test_name must be provided")
 
-    log_file = os.path.join(base_dir, raft_id, "go_test_output.log")
+    log_file = os.path.join(base_dir, raft_id, f"{go_test_output_file}.log")
 
     # Build regex exactly like Go expects
     test_regex = f"^{go_test_name}$"
