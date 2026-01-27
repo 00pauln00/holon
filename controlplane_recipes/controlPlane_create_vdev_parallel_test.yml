@@ -52,4 +52,4 @@
 
         - name: "{{ recipe_name }}: KV CRC verification to see if all the servers have the same data."
           debug:
-            msg: "{{ lookup('your_lookup_name', 'kv_crc') }}"
+            msg: "{{ lookup('kv_crc') }}"
