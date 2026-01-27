@@ -16,7 +16,7 @@ class LookupModule(LookupBase):
         config_dir = f"{base_dir}/{raft_uuid}/configs"
         holon_log = "/home/runner/work/niovad/niovad/holon_log"
 
-        script_path = "./verify_kv_crc.sh"
+        script_path = "/home/runner/work/niovad/niovad/build_dir/verify_kv_crc.sh"
 
         cmd = [script_path, config_dir, holon_log]
 
