@@ -18,22 +18,22 @@ class LookupModule(LookupBase):
 
         script_path = "./verify_kv_crc.sh"
 
-            cmd = [script_path, config_dir, holon_log]
+        cmd = [script_path, config_dir, holon_log]
 
-            result = subprocess.run(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=False
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False
+        )
+
+        if result.returncode != 0:
+            raise AnsibleError(
+                f"verify_kv_crc.sh failed\n"
+                f"STDOUT:\n{result.stdout}\n"
+                f"STDERR:\n{result.stderr}"
             )
 
-            if result.returncode != 0:
-                raise AnsibleError(
-                    f"verify_kv_crc.sh failed\n"
-                    f"STDOUT:\n{result.stdout}\n"
-                    f"STDERR:\n{result.stderr}"
-                )
-
-            # Return stdout so it can be used in Ansible
-            return [result.stdout.strip()]      
+        # Return stdout so it can be used in Ansible
+        return [result.stdout.strip()]      
