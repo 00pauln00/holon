@@ -18,7 +18,7 @@ class LookupModule(LookupBase):
 
         script_path = "/home/runner/work/niovad/niovad/build_dir/verify_kv_crc.sh"
 
-        cmd = [script_path, config_dir, holon_log]
+        cmd = [script_path, config_dir]
 
         result = subprocess.run(
             cmd,
