@@ -1,0 +1,16 @@
+---
+  - name: "{{ recipe_name}}: Wait until client app {{ app_index }} finishes writing"
+    vars:
+      stage: "wait_for_write_op_app{{ app_index | string }}"
+      expected_seqno: "{{ (expected_num_writes | int - 1) }}"
+      seqno_keys:
+        - "/pumice_db_test_client/pmdb-test-apps/{{ app_index }}/pmdb-seqno"
+      seqno_key: "/{{ app_index }}/pmdb-seqno"
+    debug:
+      msg:
+        - "Waiting for client app {{ app_index }} to finish writing"
+        - "Expected pmdb-seqno: {{ expected_seqno }}"
+    until: (lookup('niova_ctlrequest', 'lookup', Client_UUID, seqno_keys)[seqno_key] | int) >= (expected_seqno | int)
+    retries: 500
+    delay: 1
+

@@ -1,0 +1,28 @@
+---
+  - name: "{{ recipe_name }}: Get the server information for all running servers after writes."
+    vars:
+      stage: "{{ stage | default('server_verify') }}"
+      commit_idx_key: "/raft_root_entry/0/commit-idx"
+      peer_raft_keys:
+        - "{{ commit_idx_key }}"
+      peer_uuids: "{{ PeerUUIDs | default(NRunningPeers) }}"
+      peer_values_all: "{{ lookup('niova_ctlrequest', 'lookup', peer_uuids, peer_raft_keys) }}"
+    debug:
+      msg: "Get the commit-idx values for all running servers."
+    no_log: true
+    with_items:
+      - "{{ peer_values_all }}"
+    register: running_srv_vals
+
+  - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all peers after write operation."
+    vars:
+      peer_uuids: "{{ PeerUUIDs | default(NRunningPeers) }}"
+      snapshot_values: "{{ snapshot_before_write | default(stage0_values) }}"
+      srv_latest_vals: "{{ running_srv_vals['results'][item]['item'] }}"
+      srv_before_wr_vals: "{{ snapshot_values['results'][item]['item'] }}"
+      expected_commit_idx: "{{ (expected_increment | int) + (srv_before_wr_vals['/0/commit-idx'] | int) }}"
+    debug:
+      msg: "Verify commit-idx on peer {{ item }}: current={{ srv_latest_vals['/0/commit-idx'] }}, expected>={{ expected_commit_idx }} (before={{ srv_before_wr_vals['/0/commit-idx'] }}, increment={{ expected_increment }})"
+    failed_when: (srv_latest_vals['/0/commit-idx'] | int) < (expected_commit_idx | int)
+    loop: "{{ range(0, peer_uuids | length) | list }}"
+

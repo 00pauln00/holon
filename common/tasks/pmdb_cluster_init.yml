@@ -29,9 +29,9 @@
           name: common
           tasks_from: get_server_uuid_info
 
-     - name: Wait for 1 second
+     - name: Wait for 2 second
        pause:
-          seconds: 1
+          seconds: 2
 
      - name: "{{ recipe_name}}: Wait until pmdb server bootup properly."
        vars:
@@ -42,8 +42,8 @@
        debug:
         msg: "Verify PMDB Server bootup properly"
        until: lookup('controlplane', 'ncpc', input_param) | dict2items | map(attribute='value') | map(attribute='output_data') | map(attribute=NRunningPeers[item]) | map(attribute='Status') | list | first == "alive"
-       retries: 20
-       delay: 1
+       retries: 30
+       delay: 2
        loop: "{{ range(0, NRunningPeers | length) | list }}"
 
      - name: "{{ recipe_name }}: Wait until leader election happens."

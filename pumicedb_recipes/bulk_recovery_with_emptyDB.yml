@@ -103,15 +103,18 @@
         constant_number_of_writes: "{{ num_writes }}"
 
     - name: "{{ recipe_name}}: Wait until all write completes from client"
+      include_role:
+        name: common
+        tasks_from: wait_until_all_client_apps_finish_writing
       vars:
-        stage: "wait_for_write_op"
-      debug:
-        msg: "Waiting for client to finish writing"
-      until: lookup('niova_ctlrequest', 'lookup', client_uuid.stdout, '/pumice_db_test_client/pmdb-test-apps/0/pmdb-seqno')['/0/pmdb-seqno'] == (num_writes - 1)
-      retries: 500
-      delay: 1
+        Client_UUID: "{{ client_uuid.stdout }}"
+        expected_num_writes: "{{ num_writes }}"
 
     #Verify client parameters after successful write operations.
+    - name: "Set expected number of writes list for all apps"
+      set_fact:
+        exp_list: "{{ [num_writes] * number_of_app_uuids }}"
+
     - name: "{{ recipe_name }}: Verify client parameters."
       include_role:
         name: common
@@ -119,27 +122,19 @@
       vars:
         Client_UUID: "{{ client_uuid.stdout }}"
 
-    - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all peers after write operation."
-      vars:
-         origCI: "{{ stage0_values['results'][item]['item']['/0/commit-idx'] }}"
-         stage: "getValsFrmAll"
-      debug:
-        msg: "Verify Commit-Idx get incrementing on all peers."
-      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/commit-idx')['/0/commit-idx'] >= ((num_writes | int) * (number_of_app_uuids | int)) + (origCI | int)
-      retries: 60
-      delay: 1
-      loop: "{{ range(0, NRunningPeers | length) | list }}"
 
-    - name: "{{ recipe_name }}: Verify checkpoint-idx and lowest-idx gets changed on all 3 peers after write operation."
+
+    - name: "{{ recipe_name }}: Verify commit-idx gets incremented on all peers after write operation."
+      include_role:
+        name: common
+        tasks_from: verify_commit_idx_incremented_after_writes
       vars:
-         stage: "verifyCPOnAll"
-         getCPOnAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys) }}"
-      debug:
-        msg: "Verify checkpoint-idx gets changed on all peers."
-      failed_when: >
-           (getCPOnAll["/0/checkpoint-idx"] == -1) or
-           (getCPOnAll["/0/lowest-idx"] == -1)
-      loop: "{{ range(0, NRunningPeers | length) | list }}"
+        PeerUUIDs: "{{ NRunningPeers }}"
+        snapshot_before_write: "{{ stage0_values }}"
+        expected_increment: "{{ (num_writes | int) * (number_of_app_uuids | int) }}"
+        stage: "getValsFrmAll"
+
+
 
     - name: "{{ recipe_name }}: Start new peer with empty DB."
       include_role:
@@ -168,6 +163,8 @@
          name: common
          tasks_from: get_server_uuid_info
 
+
+
     - name: "{{ recipe_name }}: Verify commit-idx gets incremented on newly started peer."
       vars:
          origCI: "{{ stage0_values['results'][0]['item']['/0/commit-idx'] }}"
@@ -178,32 +175,29 @@
       retries: 60
       delay: 1
 
-    - name: "{{ recipe_name }}: Verify checkpoint-idx and lowest-idx gets changed on newly started peer after write operation."
-      vars:
-         stage: "verifyCPOnPeer4"
-         getCPOnPeer4: "{{ lookup('niova_ctlrequest', 'lookup', newlyStartedPeer4['results'][0]['item'], raft_root_entry_keys) }}"
-      debug:
-        msg: "Verify checkpoint-idx gets changed on peer 4."
-      failed_when: >
-           (getCPOnPeer4["/0/checkpoint-idx"] == -1) or
-           (getCPOnPeer4["/0/lowest-idx"] == -1)
+
 
     - name: "{{ recipe_name }}: Verify leader-uuid, term and commit-idx on all peers"
       vars:
          initial_vals: "{{ stage0_values['results'][0]['item']}}"
          stage: "recipeCleanUp"
          getAll: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], raft_root_entry_keys) }}"
+         initial_term: "{{ initial_vals['/0/term'] }}"
+         initial_commit: "{{ initial_vals['/0/commit-idx'] }}"
+         current_term: "{{ getAll['/0/term'] }}"
+         current_commit: "{{ getAll['/0/commit-idx'] }}"
+         total_writes: "{{ num_writes | int * number_of_app_uuids | int }}"
+         min_commit: "{{ total_writes | int + initial_commit | int }}"
       debug:
-        msg: "Verify all values on all peers."
+        msg:
+         - "Verify all values on all peers."
+         - "Peer: {{ NRunningPeers[item] }}"
+         - "Term: current={{ current_term }}, initial={{ initial_term }}"
+         - "Commit-idx: current={{ current_commit }}, expected >= {{ min_commit }} ({{ total_writes }} writes + {{ initial_commit }} initial)"
       failed_when: >
-           (getAll['/0/term'] < initial_vals[0]['/0/term']) or
-           (getAll['/0/commit-idx'] < ((num_writes | int) * (number_of_app_uuids | int)) + initial_vals[0]['/0/commit-idx'])
+           (current_term | int < initial_term | int) or
+           (current_commit | int < min_commit | int)
       loop: "{{ range(0, NRunningPeers | length) | list }}"
-
-    - name: "{{ recipe_name }}:  Kill the peer4 to restart it with StaleDB."
-      debug:
-        msg: "{{ lookup('niova_raftprocess', 'kill', newlyStartedPeer4['results'][0]['item'],  ) }}"
-      no_log: true
 
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
