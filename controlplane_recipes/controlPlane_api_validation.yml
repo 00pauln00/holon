@@ -48,6 +48,6 @@
           debug:
             msg: "{{ gotest_result }}"
 
-        - name: "{{ recipe_name }}: KV CRC verification to see if all the servers have the same data."
+        - name: "{{ recipe_name }}: Verify data consistency across all servers."
           debug:
-            msg: "{{ lookup('kv_crc') }}"
+            msg: "{{ lookup('rocksdb_util', 'verify_consistency') }}"
