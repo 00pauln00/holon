@@ -1,8 +1,8 @@
-- name: "controlPlane_vev_data_validation_after_leader_change.yml"
+- name: "controlPlane_vdev_data_validation_after_leader_change.yml"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "controlPlane_vev_data_validation_after_leader_change"
+    recipe_name: "controlPlane_vdev_data_validation_after_leader_change"
     parent: None
 
   tasks:
@@ -55,13 +55,16 @@
 
         - name: "{{ recipe_name }}: Store the leader uuid."
           set_fact:
-            leader_uuid: "{{ LeaderUUID }}"
+            leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
+
+        - debug:
+            msg: "{{ leader_uuid }}"
 
         - name: "{{ recipe_name }}: Kill the leader."
           debug:
             msg: "{{ lookup('niova_raftprocess', 'kill', leader_uuid) }}"
 
-        - pause: seconds=2
+        - pause: seconds=5
 
         - name: "{{ recipe_name }}: Check if killed leader's status gets changed."
           vars:
@@ -71,10 +74,11 @@
                 "Operation": "membership",
                 "OutfileName": "check_killedLeaderStatus",
               }
-            verifyPmdbServerStatus: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
             msg: "Verify killed pmdb server status"
-          failed_when: verifyPmdbServerStatus['membership']['output_data'][killedPmdbServer]['Status'] != "failed"
+          until: lookup('controlplane', 'ncpc', input_param)['membership']['output_data'][killedPmdbServer]['Status'] == "failed"
+          retries: 10
+          delay: 1
 
         - name: "{{ recipe_name }}: Run controlplane Go test to create vdev of seize 200 GB."
           vars:
@@ -124,7 +128,3 @@
         - name: "{{ recipe_name }}: KV CRC verification to see if all the servers have the same data."
           debug:
             msg: "{{ lookup('kv_crc') }}"
-
-        # - name: "{{ recipe_name }}: Verify data consistency across all servers."
-        #   debug:
-        #     msg: "{{ lookup('rocksdb_util', 'verify_consistency') }}"
