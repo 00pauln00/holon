@@ -1,8 +1,8 @@
-- name: "controlPlane_create_vdev_parallel_test.yml"
+- name: "controlPlane_vdev_test.yml"
   hosts: localhost
   connection: local
   vars:
-    recipe_name: "controlPlane_create_vdev_parallel_test"
+    recipe_name: "controlPlane_vdev_test"
     parent: None
 
   tasks:

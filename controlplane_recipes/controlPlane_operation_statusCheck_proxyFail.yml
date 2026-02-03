@@ -84,7 +84,7 @@
           debug:
             msg:
               - "Check write outfile status: {{ writeres5keys['results'][0]['item']['outfile_status'] }}"
-          no_log: false
+          no_log: true
           failed_when: >
             (writeres5keys['results'][0]['item']['outfile_status'] != 0)
 

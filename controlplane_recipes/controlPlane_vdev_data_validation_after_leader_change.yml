@@ -80,7 +80,7 @@
           retries: 10
           delay: 1
 
-        - name: "{{ recipe_name }}: Run controlplane Go test to create vdev of seize 200 GB."
+        - name: "{{ recipe_name }}: Run controlplane Go test to create vdev of size 200 GB."
           vars:
             input_param:
               test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
@@ -105,7 +105,7 @@
             input_param:
               {
                 "Operation": "membership",
-                "OutfileName": "check_restartedLeaderStatus",
+                "OutfileName": "check_restarted_leader_status",
               }
             verifyPmdbServerStatus: "{{ lookup('controlplane', 'ncpc', input_param) }}"
           debug:
