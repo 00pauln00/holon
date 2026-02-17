@@ -1,0 +1,111 @@
+- name: "lease_rebuild_on_peer_reboot"
+  hosts: localhost
+  connection: local
+  vars:
+     recipe_name: "lease_rebuild_on_peer_reboot"
+     no_of_leases: 1000
+     parent: None
+  vars_files:
+    - ../leaseStateValue.yml
+
+  tasks:
+  - block:
+    # check for the app_type
+    - name: "{{ recipe_name }}: Check if the app_type is 'lease'"
+      vars:
+         app_type: "{{ app_type }}"
+      debug:
+         msg: "app_type is: {{ app_type }}"
+      failed_when:
+         (app_type != "lease")
+
+    - name: "{{ recipe_name }}: Get the non-running peers list to select first peer to start"
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "Start 5 peers in the cluster"
+      include_role:
+        name: common
+        tasks_from: start_server
+      vars:
+        ServerUUID: "{{ NonRunningServers[item] }}"
+      loop: "{{ range(0, NonRunningServers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get the running peers list."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Wait until leader election happens."
+      vars:
+         stage: "wait_leader_election"
+      debug:
+        msg: 
+          - "Waiting for leader election"
+          - "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first }}"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first != "null"
+      retries: 10
+      delay: 1
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
+
+    - name: "{{ recipe_name }}: Get cluster information"
+      include_role:
+        name: common
+        tasks_from: get_follower_stats
+
+    - name: Bulk GET lease
+      command: >
+        python3 /home/himani/holon/lease_recipes/get_lease.py
+        --bin {{ lookup('env','NIOVA_BIN_PATH') }}/leaseClient
+        --raft {{ ClusterParams.raft_uuid }}
+        --total {{ no_of_leases }}
+        --output {{ ClusterParams.base_dir }}/{{ ClusterParams.raft_uuid }}
+      register: bulk_get_result
+
+    - name: "{{ recipe_name }}: Verify outfile status"
+      debug:
+        msg: "Check outfile status: {{ bulk_get_result }}"
+
+    - pause: seconds=5
+
+    # - name: "{{ recipe_name }}: Check if 'GET' is successful."
+    #   vars:
+    #      wr_response: "{{ bulk_get_result['results'][0]['item']['output_data'][0]['LeaseRes'] }}"
+    #   debug:
+    #      msg: "Check if GET is successful"
+    #   failed_when: >
+    #      (wr_response['Status'] != 0) or
+    #      (wr_response['Client'] != clientUUID.stdout|string) or
+    #      (wr_response['Resource'] != resourceUUID.stdout|string) or
+    #      (wr_response['TTL'] <= 0) or
+    #      (wr_response['LeaseState'] != GRANTED)
+
+    - name: "{{ recipe_name }}: Store old leader-uuid"
+      vars:
+         old_leader: "{{ LeaderUUID['/0/leader-uuid'] }}"
+      debug:
+        msg: "Old Leader UUID"
+      #no_log: true
+      with_items:
+         - "{{ old_leader }}"
+      register: orig_leader
+
+    - name: "{{ recipe_name }}: Kill the Old Leader."
+      debug:
+        msg: "{{ lookup('niova_raftprocess', 'kill', orig_leader['results'][0]['item']) }}"
+
+    - name: "{{ recipe_name }}: Get the running peers list."
+      include_role:
+        name: common
+        tasks_from: get_server_uuid_info
+
+    - name: "{{ recipe_name }}: Again wait until new leader election happens."
+      vars:
+         stage: "wait_for_new_leader_election"
+      debug:
+        msg: "Waiting for leader election"
+      until: lookup('niova_ctlrequest', 'lookup', NRunningPeers[item], '/raft_root_entry/0/leader-uuid')| dict2items | map(attribute='value') | list | first != orig_leader['results'][0]['item']
+      retries: 10
+      delay: 1
+      loop: "{{ range(0, NRunningPeers | length) | list }}"
