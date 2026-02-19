@@ -20,6 +20,9 @@ def generate_uuid_pairs(count):
 
 
 def run_get(bin_path, raft_uuid, client, resource, base_dir, index):
+    # Prepare path for executables.
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '%s/leaseClient' % binary_dir
     outfile = f"{base_dir}/lease_{index}_{uuid.uuid4()}"
     logfile = f"{base_dir}/lease_{index}.log"
 
@@ -29,7 +32,7 @@ def run_get(bin_path, raft_uuid, client, resource, base_dir, index):
         "-u", client,
         "-v", resource,
         "-ru", raft_uuid,
-        "-n", "100",
+        "-n", "1",
         "-j", outfile,
         "-l", logfile
     ]
@@ -57,7 +60,6 @@ def bulk_get(args):
     for i in range(args.total):
         try:
             data = run_get(
-                args.bin,
                 args.raft,
                 clients[i],
                 resources[i],
@@ -88,10 +90,8 @@ def bulk_get(args):
 
     return summary
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--bin", required=True)
     parser.add_argument("--raft", required=True)
     parser.add_argument("--total", type=int, required=True)
     parser.add_argument("--output", required=True)
