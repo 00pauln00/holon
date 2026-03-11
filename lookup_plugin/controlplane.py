@@ -361,6 +361,244 @@ def extracting_dictionary_for_lease(cluster_params, input_values):
     else:
         return outfile
 
+def extracting_values_for_gotest(log_file_path):
+    """
+    Reads the go_test_output.log file and extracts structured test data
+    (e.g. test names, results, info messages). Returns a JSON-compatible dict.
+    """
+    if not os.path.exists(log_file_path):
+        raise FileNotFoundError(f"Log file not found: {log_file_path}")
+
+    with open(log_file_path, "r") as f:
+        log_text = f.read()
+
+    # Extract each Go test block between === RUN and --- PASS/FAIL
+    test_blocks = re.findall(
+        r"=== RUN\s+(.*?)\n(.*?)(?=--- (?:PASS|FAIL):|\Z)",
+        log_text,
+        re.DOTALL
+    )
+
+    results = []
+    for test_name, block in test_blocks:
+        # Extract "msg=" log lines
+        info_msgs = re.findall(r'level=info msg="(.*?)"', block)
+        # Extract Go [ERR] lines
+        err_msgs = re.findall(r'\[ERR\].*', block)
+        # Check test result
+        passed = bool(re.search(rf"--- PASS: {test_name}", log_text))
+        failed = bool(re.search(rf"--- FAIL: {test_name}", log_text))
+
+        # Special parsing for structured key/value lines like "GetNisdCfg: [...]"
+        structured_data = {}
+        for msg in info_msgs:
+            m = re.match(r"([A-Za-z0-9]+):\s*(\[.*\])", msg)
+            if m:
+                structured_data[m.group(1)] = m.group(2)
+
+        results.append({
+            "test_name": test_name.strip(),
+            "passed": passed,
+            "failed": failed,
+            "info_messages": info_msgs,
+            "error_messages": err_msgs,
+            "structured_data": structured_data
+        })
+
+    summary = {
+        "total_tests": len(results),
+        "passed": sum(1 for t in results if t["passed"]),
+        "failed": sum(1 for t in results if t["failed"]),
+        "tests": results
+    }
+
+    # Save structured JSON
+    json_path = log_file_path.replace(".log", ".json")
+    with open(json_path, "w") as jf:
+        json.dump(summary, jf, indent=2)
+
+    return summary
+
+def run_go_test(cluster_params, input_values):
+    """
+    Run Go test for controlplane client with exported RAFT_ID and GOSSIP_NODES_PATH,
+    then parse and return structured test results.
+    """
+    raft_id = cluster_params['raft_uuid']
+    base_dir = cluster_params['base_dir']
+    raft_dir = os.path.join(base_dir, raft_id)
+
+    # Resolve gossipNodes file path
+    gossip_nodes_path = os.path.join(raft_dir, "gossipNodes.json")
+    if not os.path.exists(gossip_nodes_path):
+        gossip_nodes_path = os.path.join(raft_dir, "gossipNodes")
+
+    # Validate Go test path
+    go_test_path = input_values.get('test_path')
+    go_test_name = input_values.get('test_name')
+    go_test_output_file = input_values.get('output_file')
+    if not go_test_path or not os.path.exists(go_test_path):
+        raise FileNotFoundError(f"Go test path does not exist: {go_test_path}")
+
+    if not go_test_name:
+        raise ValueError("test_name must be provided")
+
+    log_file = os.path.join(base_dir, raft_id, f"{go_test_output_file}.log")
+
+    # Build regex exactly like Go expects
+    test_regex = f"^{go_test_name}$"
+
+    # Run the Go tests
+    with open(log_file, "w") as fp:
+        env = os.environ.copy()
+        env["RAFT_ID"] = raft_id
+        env["GOSSIP_NODES_PATH"] = gossip_nodes_path
+
+        cmd = ["./client.test", "-test.v", "-test.run", go_test_name]
+
+        process = subprocess.Popen(cmd, cwd=go_test_path, env=env,
+                                   stdout=fp, stderr=subprocess.STDOUT)
+        ret = process.wait(timeout=300)
+
+    # Extract structured test information
+    test_summary = extracting_values_for_gotest(log_file)
+
+    # Combine run metadata + parsed data
+    result = {
+        "raft_id": raft_id,
+        "gossip_nodes_path": gossip_nodes_path,
+        "test_path": go_test_path,
+        "test_name": go_test_name,
+        "test_file": input_values.get("test_file"),
+        "return_code": ret,
+        "log_file": log_file,
+        "parsed_results": test_summary
+    }
+
+    return result
+
+def perform_user_authentication():
+    """
+    Handles user creation and login via controlplane client binary.
+    Returns secret key and/or access token.
+    """
+    
+    base_dir = cluster_params['base_dir']
+    raft_uuid = cluster_params['raft_uuid']
+
+    # Required input fields
+    username = input_values.get("username")
+    operation = input_values.get("operation")  # create / login
+
+    if not username:
+        raise ValueError("username is required")
+
+    # Set environment for Go client
+    os.environ["RAFT_ID"] = raft_uuid
+    gossip_path = os.path.join(base_dir, raft_uuid, "gossipNodes")
+    os.environ["GOSSIP_NODES_PATH"] = gossip_path
+
+    # Path to your compiled Go client binary
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    client_bin = os.path.join(binary_dir, "/authClient")  # binary name
+
+    def run_cmd(cmd):
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=os.environ
+        )
+
+        stdout, stderr = process.communicate(timeout=60)
+
+        if process.returncode != 0:
+            raise subprocess.SubprocessError(stderr.decode())
+
+        try:
+            return json.loads(stdout.decode())
+        except Exception:
+            raise ValueError(f"Failed to parse auth client response: {stdout.decode()}")
+
+    # ------------------------------------------------
+    # SETUP ADMIN (Create + Login)
+    # ------------------------------------------------
+    if operation == "setup_admin":
+
+        admin_secret = input_values.get("admin_secret")
+        if not admin_secret:
+            raise ValueError("admin_secret required for setup_admin")
+
+        # Step 1: Create Admin (ignore failure if already exists)
+        create_cmd = [
+            client_bin,
+            "create-admin",
+            username,
+            admin_secret
+        ]
+
+        try:
+            run_cmd(create_cmd)
+        except Exception:
+            # Admin might already exist — ignore error
+            pass
+
+        # Step 2: Login Admin
+        login_cmd = [
+            client_bin,
+            "login",
+            username,
+            admin_secret
+        ]
+
+        login_resp = run_cmd(login_cmd)
+
+        if not login_resp.get("success"):
+            raise ValueError("Admin login failed")
+
+        return {
+            "admin_token": login_resp.get("accessToken")
+        }
+
+    # ------------------------------------------------
+    # CREATE USER
+    # ------------------------------------------------
+    elif operation == "create":
+
+        admin_token = input_values.get("admin_token")
+        if not admin_token:
+            raise ValueError("admin_token required for user creation")
+
+        cmd = [
+            client_bin,
+            "create-user",
+            username,
+            admin_token
+        ]
+
+        return run_cmd(cmd)
+
+    # ------------------------------------------------
+    # LOGIN USER
+    # ------------------------------------------------
+    elif operation == "login":
+
+        user_secret = input_values.get("user_secret")
+        if not user_secret:
+            raise ValueError("user_secret required for login")
+
+        cmd = [
+            client_bin,
+            "login",
+            username,
+            user_secret
+        ]
+
+        return run_cmd(cmd)
+
+    else:
+        raise ValueError("operation must be setup_admin, create, or login")
+
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
         #Get lookup parameter values
@@ -378,9 +616,7 @@ class LookupModule(LookupBase):
 
         if process_type == "lease":            
             data = extracting_dictionary_for_lease(cluster_params, input_values)
-
             return [data]
-
 
         elif process_type == "niova-lookout":
             niova_lookout_path = "%s/%s/niova_lookout" % (cluster_params['base_dir'],
@@ -398,6 +634,15 @@ class LookupModule(LookupBase):
             start_test_application = start_testApp(cluster_params, input_values)
 
             return [start_test_application]
+
+        elif process_type == "gotest":
+            # Run Go test for controlplane client
+            data = run_go_test(cluster_params, input_values)
+            return [data]
+
+        elif process_type == "user_auth":
+            data = perform_user_authentication(cluster_params, input_values)
+            return [data]
 
         elif process_type == "prometheus":
             hport = input_values['Hport']
