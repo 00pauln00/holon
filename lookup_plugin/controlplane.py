@@ -500,7 +500,7 @@ def perform_user_authentication():
 
     # Path to your compiled Go client binary
     binary_dir = os.getenv('NIOVA_BIN_PATH')
-    client_bin = os.path.join(binary_dir, "authClient")  # binary name
+    client_bin = os.path.join(binary_dir, "/authClient")  # binary name
 
     def run_cmd(cmd):
         process = subprocess.Popen(
