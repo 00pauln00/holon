@@ -39,13 +39,34 @@
           shell: uuidgen
           register: nisdUUID
 
-        - name: Create user
+        # ----------------------------------------------------
+        # Setup admin (Create + Login)
+        # ----------------------------------------------------
+        - name: "{{ recipe_name }}: Setup admin and get admin token."
+          vars:
+            input_param:
+              {
+                'operation': 'setup_admin',
+                'username': 'admin',
+                'admin_secret': 'test-admin-secret'
+              }
+          set_fact:
+            admin_response: "{{ lookup('controlplane', 'auth', input_param) }}"
+
+        - name: "{{ recipe_name }}: Print admin token."
+          debug:
+            msg: "{{ admin_response }}"
+
+        # ----------------------------------------------------
+        # Create user using admin token
+        # ----------------------------------------------------
+        - name: "{{ recipe_name }}: Create user."
           vars:
             input_param:
               {
                 'operation': 'create',
                 'username': 'myuser1',
-                'admin_secret': 'test-admin-secret'
+                'admin_token': admin_response.admin_token
               }
           set_fact:
             user_response: "{{ lookup('controlplane', 'auth', input_param) }}"
@@ -54,16 +75,23 @@
           debug:
             msg: "{{ user_response }}"
 
-        - name: Login user
+        # ----------------------------------------------------
+        # Login user
+        # ----------------------------------------------------
+        - name: "{{ recipe_name }}: Login user."
           vars:
             input_param:
               {
                 'operation': 'login',
                 'username': 'myuser1',
-                'user_secret': user_response.SecretKey
+                'user_secret': user_response.secretKey
               }
           set_fact:
             login_response: "{{ lookup('controlplane', 'auth', input_param) }}"
+
+        - name: "{{ recipe_name }}: Print login response."
+          debug:
+            msg: "{{ login_response }}"
 
         # - name: "{{ recipe_name }}: Starting controlplane_client to write config information of nisd."
         #   vars:

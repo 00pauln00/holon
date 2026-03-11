@@ -488,9 +488,7 @@ def perform_user_authentication():
 
     # Required input fields
     username = input_values.get("username")
-    admin_secret = input_values.get("admin_secret")
     operation = input_values.get("operation")  # create / login
-    secret = input_values.get("secret")
 
     if not username:
         raise ValueError("username is required")
@@ -504,17 +502,87 @@ def perform_user_authentication():
     binary_dir = os.getenv('NIOVA_BIN_PATH')
     client_bin = os.path.join(binary_dir, "authClient")  # binary name
 
-    if operation == "create":
+    def run_cmd(cmd):
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=os.environ
+        )
+
+        stdout, stderr = process.communicate(timeout=60)
+
+        if process.returncode != 0:
+            raise subprocess.SubprocessError(stderr.decode())
+
+        try:
+            return json.loads(stdout.decode())
+        except Exception:
+            raise ValueError(f"Failed to parse auth client response: {stdout.decode()}")
+
+    # ------------------------------------------------
+    # SETUP ADMIN (Create + Login)
+    # ------------------------------------------------
+    if operation == "setup_admin":
+
+        admin_secret = input_values.get("admin_secret")
         if not admin_secret:
-            raise ValueError("admin_secret required for user creation")
+            raise ValueError("admin_secret required for setup_admin")
+
+        # Step 1: Create Admin (ignore failure if already exists)
+        create_cmd = [
+            client_bin,
+            "create-admin",
+            username,
+            admin_secret
+        ]
+
+        try:
+            run_cmd(create_cmd)
+        except Exception:
+            # Admin might already exist — ignore error
+            pass
+
+        # Step 2: Login Admin
+        login_cmd = [
+            client_bin,
+            "login",
+            username,
+            admin_secret
+        ]
+
+        login_resp = run_cmd(login_cmd)
+
+        if not login_resp.get("success"):
+            raise ValueError("Admin login failed")
+
+        return {
+            "admin_token": login_resp.get("accessToken")
+        }
+
+    # ------------------------------------------------
+    # CREATE USER
+    # ------------------------------------------------
+    elif operation == "create":
+
+        admin_token = input_values.get("admin_token")
+        if not admin_token:
+            raise ValueError("admin_token required for user creation")
+
         cmd = [
             client_bin,
             "create-user",
-            "--username", username,
-            "--admin-secret", admin_secret
+            username,
+            admin_token
         ]
 
+        return run_cmd(cmd)
+
+    # ------------------------------------------------
+    # LOGIN USER
+    # ------------------------------------------------
     elif operation == "login":
+
         user_secret = input_values.get("user_secret")
         if not user_secret:
             raise ValueError("user_secret required for login")
@@ -522,25 +590,14 @@ def perform_user_authentication():
         cmd = [
             client_bin,
             "login",
-            "--username", username,
-            "--secret", user_secret
+            username,
+            user_secret
         ]
-        
+
+        return run_cmd(cmd)
+
     else:
-        raise ValueError("operation must be create or login")
-
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate(timeout=60)
-
-    if process.returncode != 0:
-        raise subprocess.SubprocessError(stderr.decode())
-
-    try:
-        response = json.loads(stdout.decode())
-    except Exception:
-        raise ValueError("Failed to parse auth client response")
-
-    return response
+        raise ValueError("operation must be setup_admin, create, or login")
 
 class LookupModule(LookupBase):
     def run(self,terms,**kwargs):
@@ -584,7 +641,7 @@ class LookupModule(LookupBase):
             return [data]
 
         elif process_type == "user_auth":
-            data = handle_auth_operation(cluster_params, input_values)
+            data = perform_user_authentication(cluster_params, input_values)
             return [data]
 
         elif process_type == "prometheus":
