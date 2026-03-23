@@ -456,7 +456,7 @@ def run_go_test(cluster_params, input_values):
         env["RAFT_ID"] = raft_id
         env["GOSSIP_NODES_PATH"] = gossip_nodes_path
 
-        cmd = ["./ctlplanefuncs_client.test", "-test.v", "-test.run", go_test_name]
+        cmd = ["./client.test", "-test.v", "-test.run", go_test_name]
 
         process = subprocess.Popen(cmd, cwd=go_test_path, env=env,
                                    stdout=fp, stderr=subprocess.STDOUT)
