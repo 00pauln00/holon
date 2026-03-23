@@ -1,0 +1,218 @@
+- name: "controlPlane_authentication_mechanism_test.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlPlane_authentication_mechanism_test"
+    nisd_uuid: 7467890a-2299-11f1-9fc3-ebb3b3f1fb90
+    parent: None
+
+  tasks:
+    - block:
+        # check for the app_type
+        - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+          vars:
+            app_type: "{{ app_type }}"
+          debug:
+            msg: "app_type is: {{ app_type }}"
+          failed_when: (app_type != "controlplane")
+
+        - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+          include_role:
+            name: common
+            tasks_from: pmdb_cluster_init.yml
+          vars:
+            number_of_clients: 2
+            number_of_PMDBServers: 4
+
+        - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
+          vars:
+            input_param:
+              { "Operation": "membership", "OutfileName": "membership_output" }
+            ncpclires: "{{ lookup('controlplane', 'ncpc', input_param) }}"
+          debug:
+            msg: "get membership details of running servers."
+          with_items:
+            - "{{ ncpclires }}"
+          register: membership
+          no_log: true
+
+        - name: "{{ recipe_name }}: Run controlplane Go test to create entity hierarchy."
+          vars:
+            input_param:
+              # test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
+              test_path: "/home/himani/niova-mdsvc/controlplane/ctlplanefuncs/client"
+              test_name: "TestCreateHierarchyforUserAuthentication"
+              output_file: "go_test_output"
+          set_fact:
+            gotest_result: "{{ lookup('controlplane', 'gotest', input_param) }}"
+
+        - name: "{{ recipe_name }}: Comapre and verify inserted and fetched data."
+          debug:
+            msg: "{{ gotest_result }}"
+
+        - name: "{{ recipe_name }}: Run controlplane Go test to create entity hierarchy."
+          vars:
+            input_param:
+              # test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
+              test_path: "/home/himani/niova-mdsvc/controlplane/ctlplanefuncs/client"
+              test_name: "TestUserAuthVdevCreation"
+              output_file: "go_test_output_1"
+          set_fact:
+            gotest_result_1: "{{ lookup('controlplane', 'gotest', input_param) }}"
+
+        - name: "{{ recipe_name }}: Comapre and verify inserted and fetched data."
+          debug:
+            msg: "{{ gotest_result_1 }}"
+
+        - name: "{{ recipe_name }}: Extract username"
+          set_fact:
+            user1_name: >-
+              {{
+                (gotest_result_1.parsed_results.tests[0].info_messages
+                | select('search','Created user')
+                | first).split(': ')[1].split(' with')[0]
+              }}
+
+        - name: "{{ recipe_name }}: Print username"
+          debug:
+            msg: "{{ user1_name }}"
+
+        - name: "{{ recipe_name }}: Extract user secret value"
+          set_fact:
+            user1_secret: >-
+              {{
+                (gotest_result_1.parsed_results.tests[0].info_messages
+                | select('search','Secret key')
+                | first).split(': ')[1]
+              }}
+
+        - name: "{{ recipe_name }}: Print user secret"
+          debug:
+            msg: "{{ user1_secret }}"
+
+        - name: "{{ recipe_name }}: Extract vdev id"
+          set_fact:
+            vdev_id: >-
+              {{
+                (gotest_result_1.parsed_results.tests[0].info_messages
+                | select('search','accessed their vdev')
+                | first).split(': ')[1]
+              }}
+
+        - name: "{{ recipe_name }}: Print vdev id"
+          debug:
+            msg: "{{ vdev_id }}"
+
+        - name: "{{ recipe_name }}: Extract username2"
+          set_fact:
+            user2_name: >-
+              {{
+                (gotest_result_1.parsed_results.tests[0].info_messages
+                | select('search','Created user2')
+                | first).split(': ')[1].split(' with')[0]
+              }}
+
+        - name: "{{ recipe_name }}: Print username"
+          debug:
+            msg: "{{ user2_name }}"
+
+        - name: "{{ recipe_name }}: Extract user2 secret value"
+          set_fact:
+            user2_secret: >-
+              {{
+                (gotest_result_1.parsed_results.tests[0].info_messages
+                | select('search','Secret key of user2')
+                | first).split(': ')[1]
+              }}
+
+        - name: "{{ recipe_name }}: Print user2 secret"
+          debug:
+            msg: "{{ user2_secret }}"
+
+        - name: "{{ recipe_name }}: create nisd device"
+          vars:
+            img_dir: "/auth_nisd.device"
+            bs: "1G"
+            count: 24
+          debug:
+            msg:
+              - "{{ lookup('helper', 'create_dd_file', img_dir, bs, count) }}"
+          register: nisd_dev_path
+
+        - name: "{{ recipe_name }}: Print the device path."
+          debug: 
+            msg: "{{ nisd_dev_path.msg[0] }}"
+
+        - name: "{{ recipe_name }}: Start niova-block-ctl process."
+          vars:
+            input_param: {
+              'nisd_device_path': '{{ nisd_dev_path.msg[0] }}',
+              'nisd_uuid': '{{ nisd_uuid }}',
+            }
+          debug:
+            msg: "{{ lookup('nisd_handler', 'run-niova-block-ctl', input_param) }}"
+    
+        - name: "{{ recipe_name }}: Start nisd"
+          vars:
+            input_param: {
+              'nisd_device_path': '{{ nisd_dev_path.msg[0] }}',
+              'nisd_uuid': '{{ nisd_uuid }}',
+            }
+          debug:
+            msg:
+              - "{{ lookup('nisd_handler', 'run_nisd', input_param) }}"
+
+        - name: "{{ recipe_name }}: wait for 5 seconds"
+          pause:
+            seconds: 5
+
+        - name: "{{ recipe_name }}: Start niova-block-test process."
+          vars:
+            input_param: {
+                 'auth_username': '{{ user1_name }}',
+                 'auth_secret': '{{ user1_secret }}',
+                 'nisd_uuid_to_write' : 'unix:{{ nisd_uuid }}',
+                 'vdev' : '{{ vdev_id }}',
+                 'rd_op_ratio': '0',
+                 'num_ops': '100',
+                 'random_seed_pt': '123',
+                 'request_size_in_bytes': '0',
+                #  'integrity_check': 'False',
+                #  'sequential_writes': 'False',
+                #  'blocking_process': 'False'
+            }
+          set_fact:
+            nblock_wr: "{{ lookup('nisd_handler', 'niova-block-test', input_param) }}"
+
+        - debug:
+            msg: "{{ nblock_wr }}"
+
+        - name: "{{ recipe_name }}: wait for 5 seconds"
+          pause:
+            seconds: 5
+
+        - name: "{{ recipe_name }}: Start niova-block-test process with wrong user secret."
+          vars:
+            input_param: {
+                 'auth_username': '{{ user2_name }}',
+                 'auth_secret': '{{ user2_secret }}',
+                 'nisd_uuid_to_write' : 'unix:{{ nisd_uuid }}',
+                 'vdev' : '{{ vdev_id }}',
+                 'rd_op_ratio': '0',
+                 'num_ops': '100',
+                 'random_seed_pt': '123456',
+                 'request_size_in_bytes': '0',
+                #  'integrity_check': 'False',
+                #  'sequential_writes': 'False',
+                #  'blocking_process': 'False'
+            }
+          set_fact:
+            nblock_wr2: "{{ lookup('nisd_handler', 'niova-block-test', input_param) }}"
+
+        - debug:
+            msg: "{{ nblock_wr2 }}"
+
+      rescue:
+        - name: "Recipe: {{ recipe_name }} failed"
+          set_fact:
+            terminate_recipe: true  
