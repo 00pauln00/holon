@@ -1,0 +1,142 @@
+- name: "nisd_scrub_merge_fence"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "nisd_scrub_merge_fence"
+    niova_bin: "{{ lookup('env', 'NIOVA_BIN_PATH') }}"
+    img_file: "/tmp/niova_fence_test.img"
+
+  tasks:
+  - block:
+     - name: "{{ recipe_name }}: Generate NISD UUID"
+       shell: "/usr/bin/uuid"
+       register: nisd_uuid_out
+
+     - name: "{{ recipe_name }}: Set get_nisd"
+       set_fact:
+         get_nisd: "{{ nisd_uuid_out.stdout }}"
+
+     - name: "{{ recipe_name }}: Generate vdev UUID"
+       shell: "/usr/bin/uuid"
+       register: vdev_uuid
+
+     - name: "{{ recipe_name }}: Generate client UUID"
+       shell: "/usr/bin/uuid"
+       register: client_uuid
+
+     - name: "{{ recipe_name }}: Create sparse image file"
+       command: "truncate -s 64G {{ img_file }}"
+
+     - name: "{{ recipe_name }}: Initialize NISD device"
+       command: "{{ niova_bin }}/niova-block-ctl -d {{ img_file }} -f -i -u {{ get_nisd }}"
+
+     - name: "{{ recipe_name }}: Start NISD daemon"
+       shell: "{{ niova_bin }}/nisd -d {{ img_file }} -u {{ get_nisd }}"
+       environment:
+         NIOVA_INOTIFY_BASE_PATH: "{{ ClusterParams.base_dir }}/{{ ClusterParams.raft_uuid }}/nisd-interface"
+         NIOVA_BLOCK_SOCK_PATH: "/tmp/.niova/{{ get_nisd }}"
+       async: 3600
+       poll: 0
+
+     - name: "{{ recipe_name }}: Wait for NISD to report 'running'"
+       vars:
+         lookout_uuid: ""
+       debug:
+         msg: "Polling NISD for running status..."
+       until: lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_root_entry/0/status', 'nisd', lookout_uuid) | dict2items | map(attribute='value') | list | first == "running"
+       retries: 20
+       delay: 2
+
+     - name: "{{ recipe_name }}: Perform initial writes"
+       vars:
+         input_param: {
+                 'nisd_uuid_to_write' : 'unix:{{ get_nisd }}',
+                 'vdev' : '{{ vdev_uuid.stdout }}',
+                 'read_operation_ratio_percentage' : '0',
+                 'random_seed' : '1',
+                 'client_uuid' : '{{ client_uuid.stdout }}',
+                 'request_size_in_bytes' : '64',
+                 'queue_depth' : '1',
+                 'num_ops' : '500',
+                 'integrity_check' : False,
+                 'sequential_writes' : False,
+                 'blocking_process' : False
+                 }
+       debug:
+         msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param) }}"
+       no_log: true
+
+     - name: "{{ recipe_name }}: Activate scrub_yield fault injection"
+       vars:
+         cmd: "enabled@true"
+         where: "/fault_injection_points/name@scrub_yield"
+         lookout_uuid: ""
+       debug:
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid) }}"
+       no_log: true
+
+     - name: "{{ recipe_name }}: Launch scrub"
+       vars:
+         cmd: "scrub-status@start"
+         where: "/nisd_chunks/vdev-uuid@{{ vdev_uuid.stdout }}"
+         lookout_uuid: ""
+       debug:
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid) }}"
+       no_log: true
+
+     - name: "{{ recipe_name }}: Launch merge (triggers fence)"
+       vars:
+         cmd: "merge-shallow-status@start"
+         where: "/nisd_chunks/vdev-uuid@{{ vdev_uuid.stdout }}"
+         lookout_uuid: ""
+       debug:
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid) }}"
+       no_log: true
+
+     - name: "{{ recipe_name }}: Resume scrub"
+       vars:
+         cmd: "submit-scrub-yield@start"
+         where: "/nisd_chunks/vdev-uuid@{{ vdev_uuid.stdout }}"
+         lookout_uuid: ""
+       debug:
+         msg: "{{ lookup('niova_ctlrequest', 'apply_cmd', get_nisd, cmd, where, 'nisd', lookout_uuid) }}"
+       no_log: true
+
+     - name: "{{ recipe_name }}: Poll for scrub completion"
+       vars:
+         lookout_uuid: ""
+       debug:
+         msg: "Waiting for scrub to complete..."
+       until: lookup('niova_ctlrequest', 'lookup', get_nisd, '/nisd_chunks/0/scrub-status', 'nisd', lookout_uuid) | dict2items | map(attribute='value') | list | first == "inactive"
+       retries: 20
+       delay: 2
+
+     - name: "{{ recipe_name }}: Verify fencing logic triggered for full compaction"
+       vars:
+         lookout_uuid: ""
+         merge_root: "{{ lookup('niova_ctlrequest', 'lookup', get_nisd, ['/mb_merge_root_entry'], 'nisd', lookout_uuid) }}"
+         full_comp_fence: >-
+           {{
+             (merge_root['//mb_merge_root_entry']
+             | selectattr('mode', 'equalto', 'full-compaction')
+             | first)['merge-fence'] | default(0)
+           }}
+       assert:
+         that:
+           - full_comp_fence | int > 0
+         fail_msg: "TEST FAILED: Fence logic did not trigger."
+         success_msg: "TEST PASSED: Fence triggered successfully."
+
+    rescue:
+     - name: "Recipe: {{ recipe_name }} failed"
+       set_fact:
+         terminate_recipe: true
+
+    always:
+     - name: "{{ recipe_name }}: Terminate NISD"
+       shell: "pkill -15 -f '[n]isd -d {{ img_file }}' || true"
+
+     - name: "{{ recipe_name }}: Remove image file"
+       file:
+         path: "{{ img_file }}"
+         state: absent
