@@ -63,6 +63,8 @@ def run_nisd_command(cluster_params, input_values):
 
     nisd_uuid = input_values['nisd_uuid']
     device_path = input_values['nisd_device_path']
+    peer_port = input_values["peer_port"]
+    client_port = input_values["client_port"]
 
     # s3config = '/%s/s3.config.example' % binary_dir
     # bin_path = os.path.normpath(bin_path)
@@ -77,8 +79,8 @@ def run_nisd_command(cluster_params, input_values):
     #     test_setup.get("client_port", helper.get_free_port(6001, 9000))
     # )
     env = os.environ.copy()
-    os.environ["NIOVA_BLOCK_TCP_PEER_PORT"] = "13000"
-    os.environ["NIOVA_BLOCK_TCP_CLIENT_PORT"] = "13001"
+    os.environ["NIOVA_BLOCK_TCP_PEER_PORT"] = str(peer_port)
+    os.environ["NIOVA_BLOCK_TCP_CLIENT_PORT"] = str(client_port)
 
     command = ["sudo", "-E", bin_path, "-u", nisd_uuid, "-d", device_path]
 
@@ -593,11 +595,10 @@ def start_niova_block_test(cluster_params, input_values):
     os.environ["NIOVA_GOSSIP_KEY"] = raft_uuid
     os.environ["NIOVA_GOSSIP_PATH"] = gossip_nodes_path
     os.environ["NIOVA_BLOCK_CP_AUTH_USERNAME"] = input_values['auth_username']
-    # os.environ["NIOVA_BLOCK_CP_AUTH_SECRET"] = "test-admin-secret-123"
     os.environ["NIOVA_BLOCK_CP_AUTH_SECRET"] = input_values['auth_secret']
 
     #get input parameters
-    nisd_uuid_to_write = input_values['nisd_uuid_to_write']
+    # nisd_uuid_to_write = input_values['nisd_uuid_to_write']
     vdev = input_values['vdev']
     read_operation_ratio_percentage = input_values['rd_op_ratio']
     random_seed = input_values['random_seed_pt']
@@ -609,10 +610,10 @@ def start_niova_block_test(cluster_params, input_values):
 
     if read_operation_ratio_percentage == '0':
         # prepare path for log file.
-        log_path = "%s/%s/niova-block-test_write_%s.log" % (base_dir, raft_uuid, nisd_uuid_to_write[5:])
+        log_path = "%s/%s/niova-block-test_write_%s.log" % (base_dir, raft_uuid, vdev[5:])
     else:
         # Prepare path for log file.
-        log_path = "%s/%s/niova-block-test_read_%s.log" % (base_dir, raft_uuid, nisd_uuid_to_write[5:])
+        log_path = "%s/%s/niova-block-test_read_%s.log" % (base_dir, raft_uuid, vdev[5:])
 
     # Initialize the logger
     logger = initialize_logger(log_path)
@@ -624,7 +625,7 @@ def start_niova_block_test(cluster_params, input_values):
     bin_path = '/home/himani/test/block/bin/niova-block-test'
 
     logger.debug("Do write/read operation on nisd by starting niova-block-test in controlplane mode")
-    logger.debug("nisd-uuid: %s", nisd_uuid_to_write[5:])
+    # logger.debug("nisd-uuid: %s", nisd_uuid_to_write[5:])
     logger.debug("vdev-uuid: %s", vdev)
     logger.debug("client-uuid: %s", vdev)
     file_size_in_bytes = "8589934592"
