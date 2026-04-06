@@ -113,7 +113,7 @@
               {{
                 lookup('helper', 'create_dd_file', img_dir, bs, 24)
               }}
-          loop: "{{ range(0, 1) | list }}"
+          loop: "{{ range(0, 2) | list }}"
           register: nisd_dev_paths
 
         - name: Extract device paths
@@ -132,7 +132,7 @@
             }
           debug:
             msg: "{{ lookup('nisd_handler', 'run-niova-block-ctl', input_param) }}"
-          loop: "{{ (nisd_devices | zip(nisd_uuids[:1]) | list) }}"
+          loop: "{{ (nisd_devices | zip(nisd_uuids) | list) }}"
           register: niova_block_ctl_results
 
         - name: "{{ recipe_name }}: Print niova-block-ctl result."
@@ -150,7 +150,7 @@
           debug:
             msg:
               - "{{ lookup('nisd_handler', 'run_nisd', input_param) }}"
-          loop: "{{ (nisd_devices | zip(nisd_uuids[:1]) | list) }}"
+          loop: "{{ (nisd_devices | zip(nisd_uuids) | list) }}"
           loop_control:
             index_var: idx
             label: "{{ item.0 }} -> {{ item.1 }} (peer={{ 13000 + (idx * 2) }}, client={{ 13000 + (idx * 2) + 1 }})"
@@ -165,27 +165,9 @@
           until: lookup('niova_ctlrequest', 'lookup', item, "/nisd_root_entry/0/status", 'nisd', lookout_uuid) | dict2items | map(attribute='value') | list | first == "running"
           retries: 10
           delay: 1
-          loop: "{{ nisd_uuids[:1] }}"
+          loop: "{{ nisd_uuids }}"
           loop_control:
             label: "Checking {{ item }}"
-
-        - name: "{{ recipe_name }}: Get nisd's membership details."
-          vars:
-            input_param: {
-                  'Operation': 'NISDGossip',
-                  'OutfileName': 'verify_nisd_gossip_info'
-                  }
-          debug:
-            msg: "{{ lookup('controlplane', 'ncpc', input_param) }}"
-          register: verify_nisd_status
-          until: >
-            (
-              verify_nisd_status.msg is defined and
-              verify_nisd_status.msg[0] is defined and
-              verify_nisd_status.msg[0] != {}
-            )
-          retries: 10
-          delay: 2
 
         - name: "{{ recipe_name }}: Print nisd results."
           debug: 
@@ -208,7 +190,7 @@
             }
           debug:
             msg: "{{ lookup('nisd_handler', 'niova-block-test', input_param) }}"
-          loop: "{{ vdev_uuids[:1] }}"
+          loop: "{{ vdev_uuids }}"
           register: nblock_test_results
 
         - debug:
