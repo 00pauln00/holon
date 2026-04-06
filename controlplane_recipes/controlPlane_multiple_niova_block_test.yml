@@ -5,6 +5,17 @@
     recipe_name: "controlPlane_multiple_niova_block_test"
     user_name: "admin"
     user_secret: "test-admin-secret-123"
+    nisd_root_keys:
+              - "/nisd_root_entry/0/uuid"
+              - "/nisd_root_entry/0/instance-uuid"
+              - "/nisd_root_entry/0/status"
+              - "/nisd_root_entry/0/num-reserved-pblks"
+              - "/nisd_root_entry/0/num-pblks"
+              - "/nisd_root_entry/0/num-pblks-used"
+              - "/nisd_root_entry/0/vblks-written"
+              - "/nisd_root_entry/0/vblks-written"
+              - "/nisd_root_entry/0/num-pblks-used"
+              - "/nisd_root_entry/0/num-reserved-pblks-used"
     parent: None
 
   tasks:
@@ -41,7 +52,7 @@
           vars:
             input_param:
               # test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
-              test_path: "/home/himani/niova-mdsvc/controlplane/ctlplanefuncs/client"
+              test_path: "/home/himani/niova-block/niova-mdsvc/controlplane/ctlplanefuncs/client"
               test_name: "TestCreateHierarchyforMultipleBlockTest"
               output_file: "go_test_output"
           set_fact:
@@ -69,7 +80,7 @@
           vars:
             input_param:
               # test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
-              test_path: "/home/himani/niova-mdsvc/controlplane/ctlplanefuncs/client"
+              test_path: "/home/himani/niova-block/niova-mdsvc/controlplane/ctlplanefuncs/client"
               test_name: "TestUserVdevCreationForMultipleBlockTest"
               output_file: "go_test_output_1"
           set_fact:
@@ -100,7 +111,7 @@
           debug:
             msg: >-
               {{
-                lookup('helper', 'create_dd_file', img_dir, bs, 16)
+                lookup('helper', 'create_dd_file', img_dir, bs, 24)
               }}
           loop: "{{ range(0, 1) | list }}"
           register: nisd_dev_paths
@@ -121,7 +132,7 @@
             }
           debug:
             msg: "{{ lookup('nisd_handler', 'run-niova-block-ctl', input_param) }}"
-          loop: "{{ (nisd_devices | zip(nisd_uuids) | list)[:1] }}"
+          loop: "{{ (nisd_devices | zip(nisd_uuids[:1]) | list) }}"
           register: niova_block_ctl_results
 
         - name: "{{ recipe_name }}: Print niova-block-ctl result."
@@ -133,17 +144,48 @@
             input_param: {
               'nisd_device_path': '{{ item.0 }}',
               'nisd_uuid': '{{ item.1 }}',
-              'peer_port': '{{ 14020 + (idx * 10) }}',
-              'client_port': '{{ 14020 + (idx * 10) + 1 }}'
+              'peer_port': '{{ 13000 + (idx*2) }}',
+              'client_port': '{{ 13000 + (idx*2) + 1 }}'
             }
           debug:
             msg:
               - "{{ lookup('nisd_handler', 'run_nisd', input_param) }}"
-          loop: "{{ (nisd_devices | zip(nisd_uuids) | list)[:1] }}"
+          loop: "{{ (nisd_devices | zip(nisd_uuids[:1]) | list) }}"
           loop_control:
             index_var: idx
-            label: "{{ item.0 }} -> {{ item.1 }} (peer={{ 14000 + (idx * 10) }}, client={{ 14000 + (idx * 10) + 1 }})"
+            label: "{{ item.0 }} -> {{ item.1 }} (peer={{ 13000 + (idx * 2) }}, client={{ 13000 + (idx * 2) + 1 }})"
           register: nisd_start_results
+
+        - name: "{{ recipe_name }}: Wait for nisd to get updated."
+          vars:
+            stage: "wait_for_nisd_root_entry"
+            lookout_uuid: ""
+          debug:
+            msg: "Waiting for nisd to get updated"
+          until: lookup('niova_ctlrequest', 'lookup', item, "/nisd_root_entry/0/status", 'nisd', lookout_uuid) | dict2items | map(attribute='value') | list | first == "running"
+          retries: 10
+          delay: 1
+          loop: "{{ nisd_uuids[:1] }}"
+          loop_control:
+            label: "Checking {{ item }}"
+
+        - name: "{{ recipe_name }}: Get nisd's membership details."
+          vars:
+            input_param: {
+                  'Operation': 'NISDGossip',
+                  'OutfileName': 'verify_nisd_gossip_info'
+                  }
+          debug:
+            msg: "{{ lookup('controlplane', 'ncpc', input_param) }}"
+          register: verify_nisd_status
+          until: >
+            (
+              verify_nisd_status.msg is defined and
+              verify_nisd_status.msg[0] is defined and
+              verify_nisd_status.msg[0] != {}
+            )
+          retries: 10
+          delay: 2
 
         - name: "{{ recipe_name }}: Print nisd results."
           debug: 
