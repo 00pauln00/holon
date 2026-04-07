@@ -4,6 +4,7 @@
   vars:
     recipe_name: "controlPlane_authentication_mechanism_test"
     nisd_uuid: 7467890a-2299-11f1-9fc3-ebb3b3f1fb90
+    vdev_id: 0ae6c92a-329b-11f1-a760-07209036b6f7
     parent: None
 
   tasks:
@@ -39,8 +40,8 @@
         - name: "{{ recipe_name }}: Run controlplane Go test to create entity hierarchy."
           vars:
             input_param:
-              # test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
-              test_path: "/home/himani/niova-mdsvc/controlplane/ctlplanefuncs/client"
+              test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
+              # test_path: "/home/himani/niova-mdsvc/controlplane/ctlplanefuncs/client"
               test_name: "TestCreateHierarchyforUserAuthentication"
               output_file: "go_test_output"
           set_fact:
@@ -53,8 +54,8 @@
         - name: "{{ recipe_name }}: Run controlplane Go test to create entity hierarchy."
           vars:
             input_param:
-              # test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
-              test_path: "/home/himani/niova-mdsvc/controlplane/ctlplanefuncs/client"
+              test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
+              # test_path: "/home/himani/niova-mdsvc/controlplane/ctlplanefuncs/client"
               test_name: "TestUserAuthVdevCreation"
               output_file: "go_test_output_1"
           set_fact:
@@ -133,7 +134,7 @@
           vars:
             img_dir: "/auth_nisd.device"
             bs: "1G"
-            count: 24
+            count: 10
           debug:
             msg:
               - "{{ lookup('helper', 'create_dd_file', img_dir, bs, count) }}"
@@ -191,7 +192,7 @@
           pause:
             seconds: 5
 
-        - name: "{{ recipe_name }}: Start niova-block-test process with wrong user secret."
+        - name: "{{ recipe_name }}: Start niova-block-test process with another user's secret."
           vars:
             input_param: {
                  'auth_username': '{{ user2_name }}',
@@ -202,15 +203,34 @@
                  'num_ops': '100',
                  'random_seed_pt': '123456',
                  'request_size_in_bytes': '0',
-                #  'integrity_check': 'False',
-                #  'sequential_writes': 'False',
-                #  'blocking_process': 'False'
             }
           set_fact:
             nblock_wr2: "{{ lookup('nisd_handler', 'niova-block-test', input_param) }}"
 
         - debug:
             msg: "{{ nblock_wr2 }}"
+
+        - name: "{{ recipe_name }}: wait for 5 seconds"
+          pause:
+            seconds: 5
+
+        - name: "{{ recipe_name }}: Start niova-block-test process with vdev not present in CP."
+          vars:
+            input_param: {
+                 'auth_username': '{{ user2_name }}',
+                 'auth_secret': '{{ user2_secret }}',
+                 'nisd_uuid_to_write' : 'unix:{{ nisd_uuid }}',
+                 'vdev' : '{{ vdev_id }}',
+                 'rd_op_ratio': '0',
+                 'num_ops': '100',
+                 'random_seed_pt': '123456',
+                 'request_size_in_bytes': '0',
+            }
+          set_fact:
+            nblock_wr3: "{{ lookup('nisd_handler', 'niova-block-test', input_param) }}"
+
+        - debug:
+            msg: "{{ nblock_wr3 }}"
 
       rescue:
         - name: "Recipe: {{ recipe_name }} failed"
