@@ -1,0 +1,52 @@
+- name: "controlPlane_go_integration_tests.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlPlane_go_integration_tests"
+    parent: None
+
+  tasks:
+    - block:
+        - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+          vars:
+            app_type: "{{ app_type }}"
+          debug:
+            msg: "app_type is: {{ app_type }}"
+          failed_when: (app_type != "controlplane")
+
+        - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+          include_role:
+            name: common
+            tasks_from: pmdb_cluster_init.yml
+          vars:
+            number_of_clients: 2
+            number_of_PMDBServers: 5
+
+        - name: "{{ recipe_name }}: Run Go integration tests."
+          shell: |
+            go test -v -timeout 300s \
+              ./controlplane/user/client/... \
+              ./controlplane/ctlplanefuncs/client/...
+          args:
+            chdir: "{{ lookup('env', 'NIOVA_MDSVC_DIR') }}"
+          environment:
+            RAFT_ID: "{{ raft_uuid }}"
+            GOSSIP_NODES_PATH: "{{ base_dir }}/gossipNodes"
+            AUTH_ENABLED: "{{ lookup('env', 'AUTH_ENABLED') | default('true', true) }}"
+            USER_ENCRYPTION_KEY: "{{ lookup('env', 'USER_ENCRYPTION_KEY') | default('') }}"
+          register: go_test_result
+
+        - name: "{{ recipe_name }}: Show Go test output."
+          debug:
+            msg: "{{ go_test_result.stdout_lines }}"
+
+        - name: "{{ recipe_name }}: Fail if Go tests failed."
+          fail:
+            msg: "Go integration tests failed. stderr: {{ go_test_result.stderr }}"
+          when: go_test_result.rc != 0
+
+      rescue:
+        - name: "Recipe: {{ recipe_name }} failed"
+          set_fact:
+            terminate_recipe: true
+
