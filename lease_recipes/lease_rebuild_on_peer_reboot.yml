@@ -56,7 +56,7 @@
 
     - name: Bulk GET lease
       command: >
-        python3 /home/himani/holon/lease_recipes/get_lease.py
+        python3 /home/runner/work/niovad/niovad/build_dir/holon/lease_recipes/get_lease.py
         --raft {{ ClusterParams.raft_uuid }}
         --total {{ no_of_leases }}
         --output {{ ClusterParams.base_dir }}/{{ ClusterParams.raft_uuid }}
