@@ -133,8 +133,8 @@
         - name: "{{ recipe_name }}: create nisd device"
           vars:
             img_dir: "/auth_nisd.device"
-            bs: "1G"
-            count: 10
+            bs: "64M"
+            count: 160
           debug:
             msg:
               - "{{ lookup('helper', 'create_dd_file', img_dir, bs, count) }}"
