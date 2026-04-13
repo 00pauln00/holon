@@ -132,7 +132,7 @@
 
         - name: "{{ recipe_name }}: create nisd device"
           vars:
-            img_dir: "/auth_nisd.device"
+            img_dir: "/s3DV_nisd.device"
             bs: "64M"
             count: 160
           debug:
