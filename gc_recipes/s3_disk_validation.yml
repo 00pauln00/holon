@@ -43,9 +43,16 @@
       register: nisd_uuid
     
     - name: "{{ recipe_name }}: Start nisd"
+      vars:
+        input_param: {
+          'nisd_device_path': '{{ nisd_dev_path.msg[0] }}',
+          'nisd_uuid': '{{ nisd_uuid.msg[0] }}',
+          'peer_port': '13000',
+          'client_port': '13001',
+        }
       debug:
          msg:
-          - "{{ lookup('nisd_handler', 'run_nisd', nisd_uuid.msg[0], nisd_dev_path.msg[0]) }}"
+          - "{{ lookup('nisd_handler', 'run_nisd', input_param) }}"
 
     - name: "{{ recipe_name }}: wait for 5 seconds"
       pause:
