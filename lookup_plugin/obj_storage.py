@@ -307,7 +307,7 @@ class LookupModule(LookupBase):
             input_param = terms[1]
             s3 = s3_operations(cluster_params)
             marker_seq = s3.get_markers(input_param)
-            return [marker_seq]
+            return marker_seq
 
         elif command == "get_list":
             '''
