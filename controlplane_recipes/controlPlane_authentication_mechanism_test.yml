@@ -130,6 +130,10 @@
           debug:
             msg: "{{ user2_secret }}"
 
+        - name: "{{ recipe_name }}: Print user3 secret"
+          debug:
+            msg: "{{ user3_secret }}"
+
         # - name: "{{ recipe_name }}: create nisd device"
         #   vars:
         #     img_dir: "/s3DV_nisd.device"
