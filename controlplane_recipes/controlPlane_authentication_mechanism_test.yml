@@ -165,9 +165,9 @@
             msg:
               - "{{ lookup('nisd_handler', 'run_nisd', input_param) }}"
 
-        - name: "{{ recipe_name }}: wait for 5 seconds"
+        - name: "{{ recipe_name }}: wait for 10 seconds"
           pause:
-            seconds: 5
+            seconds: 10
 
         - name: "{{ recipe_name }}: Start niova-block-test process."
           vars:
@@ -186,11 +186,6 @@
             }
           set_fact:
             nblock_wr: "{{ lookup('nisd_handler', 'niova-block-test', input_param) }}"
-
-        - name: Validate niova-block-test return code
-          debug:
-            msg: "Process failed with return code {{ nblock_wr }}"
-          failed_when: nblock_wr | int != 0
 
         - name: "{{ recipe_name }}: wait for 5 seconds"
           pause:
@@ -235,6 +230,11 @@
 
         - debug:
             msg: "{{ nblock_wr3 }}"
+
+        - name: Validate niova-block-test return code
+          debug:
+            msg: "Process failed with return code {{ nblock_wr }}"
+          failed_when: nblock_wr | int != 0
 
       rescue:
         - name: "Recipe: {{ recipe_name }} failed"

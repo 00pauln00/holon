@@ -617,7 +617,7 @@ def start_niova_block_test(cluster_params, input_values):
     os.environ["NIOVA_BLOCK_CP_AUTH_SECRET"] = input_values['auth_secret']
     # os.environ["LD_LIBRARY_PATH"] = "/home/himani/test/niova-block-bin/lib"
     os.environ["LD_LIBRARY_PATH"] = "/home/runner/work/niovad/niovad/build_dir/niova-block-bin/lib"
-    os.environ["NIOVA_LOG_LEVEL"] = "4"
+    os.environ["NIOVA_LOG_LEVEL"] = "6"
 
     #get input parameters
     # nisd_uuid_to_write = input_values['nisd_uuid_to_write']
