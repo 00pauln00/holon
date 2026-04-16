@@ -91,12 +91,12 @@ def run_nisd_command(cluster_params, input_values):
     os.environ["NIOVA_BLOCK_TCP_PEER_PORT"] = str(peer_port)
     os.environ["NIOVA_BLOCK_TCP_CLIENT_PORT"] = str(client_port)
 
-    # command = ["sudo", "-E", bin_path, "-u", nisd_uuid, "-d", device_path]
+    command = ["sudo", "-E", bin_path, "-u", nisd_uuid, "-d", device_path]
     # command = [
     #     "sudo", "-E", "bash", "-c",
     #     f"umask 0002 && {bin_path} -u {nisd_uuid} -d {device_path}"
     # ]
-    command = [bin_path, "-u", nisd_uuid, "-d", device_path]
+    # command = [bin_path, "-u", nisd_uuid, "-d", device_path]
 
     # Prepare nisd log file path
     log_file_path = "%s/%s/nisd_%s.log" % (base_dir, raft_uuid, nisd_uuid)
