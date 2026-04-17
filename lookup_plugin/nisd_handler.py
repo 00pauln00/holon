@@ -91,7 +91,7 @@ def run_nisd_command(cluster_params, input_values):
     os.environ["NIOVA_BLOCK_TCP_PEER_PORT"] = str(peer_port)
     os.environ["NIOVA_BLOCK_TCP_CLIENT_PORT"] = str(client_port)
 
-    command = ["sudo", "-E", bin_path, "-u", nisd_uuid, "-d", device_path]
+    command = [bin_path, "-u", nisd_uuid, "-d", device_path]
     # command = [
     #     "sudo", "-E", "bash", "-c",
     #     f"umask 0002 && {bin_path} -u {nisd_uuid} -d {device_path}"
@@ -197,11 +197,21 @@ def run_niova_ublk(cluster_params, cntl_uuid):
     os.environ["LD_LIBRARY_PATH"] = ld_library_path
     logger.info(f"LD_LIBRARY_PATH set to: {os.environ['LD_LIBRARY_PATH']}")
 
+    # command = [
+    #     "sudo",
+    #     "-E",
+    #     "env", 
+    #     f"LD_LIBRARY_PATH={ld_library_path}",
+    #     bin_path,
+    #     "-s", "8589934592",
+    #     "-t", cntl_uuid,
+    #     "-v", ublk_uuid,
+    #     "-u", ublk_uuid,
+    #     "-q", "128",
+    #     "-b", "1048576"
+    # ]
+
     command = [
-        "sudo",
-        "-E",
-        "env", 
-        f"LD_LIBRARY_PATH={ld_library_path}",
         bin_path,
         "-s", "8589934592",
         "-t", cntl_uuid,
@@ -287,8 +297,7 @@ def run_niova_block_ctl(cluster_params, input_value):
     # src/niova-block-ctl -d <DEV_PATH> -i -f -u $NISD_UUID
     os.environ["LD_LIBRARY_PATH"] = "/home/runner/work/niovad/niovad/build_dir/niova-block-bin/lib"
     process_popen = subprocess.Popen(
-        [   'sudo',
-            "-E",
+        [   
             bin_path,
             "-d", input_value["nisd_device_path"],
             "-i",
