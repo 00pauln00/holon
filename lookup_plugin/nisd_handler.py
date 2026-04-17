@@ -286,7 +286,8 @@ def run_niova_block_ctl(cluster_params, input_value):
     # src/niova-block-ctl -d <DEV_PATH> -i -f -u $NISD_UUID
     os.environ["LD_LIBRARY_PATH"] = "/home/runner/work/niovad/niovad/build_dir/niova-block-bin/lib"
     process_popen = subprocess.Popen(
-        [
+        [   'sudo',
+            "-E",
             bin_path,
             "-d", input_value["nisd_device_path"],
             "-i",
