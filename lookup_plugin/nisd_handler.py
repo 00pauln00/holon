@@ -172,7 +172,7 @@ def run_niova_ublk(cluster_params, cntl_uuid):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
     
     #format and run the niova-block-ctl
-    bin_path = '%s/bin/niova-ublk' % binary_dir
+    bin_path = '%s/niova-block-bin/bin/niova-ublk' % binary_dir
     bin_path = os.path.normpath(bin_path)
     app_name = cluster_params['app_type']
     base_path = "%s/%s" % (base_dir, raft_uuid)
@@ -192,7 +192,8 @@ def run_niova_ublk(cluster_params, cntl_uuid):
 
     niova_lib_path = os.path.normpath(f'{binary_dir}/lib')
     default_lib_path = "/usr/local/lib"
-    ld_library_path = f"{niova_lib_path}:{default_lib_path}:{os.environ.get('LD_LIBRARY_PATH', '')}"
+    # ld_library_path = f"{niova_lib_path}:{default_lib_path}:{os.environ.get('LD_LIBRARY_PATH', '')}"
+    ld_library_path = "/home/runner/work/niovad/niovad/build_dir/niova-block-bin/lib"
     os.environ["LD_LIBRARY_PATH"] = ld_library_path
     logger.info(f"LD_LIBRARY_PATH set to: {os.environ['LD_LIBRARY_PATH']}")
 
