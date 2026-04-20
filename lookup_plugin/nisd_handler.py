@@ -354,7 +354,8 @@ def start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
     #format and run the niova-block-ctl
-    bin_path = '%s/niova-block-ctl' % binary_dir
+    # bin_path = '%s/niova-block-ctl' % binary_dir
+    bin_path = '/home/runner/work/niovad/niovad/build_dir/niova-block-bin/bin/niova-block-ctl'
 
     nisd_dict = { nisd_uuid : 0 }
 
