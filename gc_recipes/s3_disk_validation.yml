@@ -110,7 +110,7 @@
         marker_seq: "{{ lookup('obj_storage', 'get_markers', input_param) }}" 
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq }}"
-      until: marker_seq[0] is not none
+      until: marker_seq is defined and marker_seq | length > 0 and marker_seq[0] is not none
       retries: 300
       delay: 2
 
