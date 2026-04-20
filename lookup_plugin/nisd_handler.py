@@ -81,7 +81,7 @@ def run_nisd_command(cluster_params, input_values):
         os.environ["NIOVA_NISD_DO_TOKEN_VALIDATION"] = '1'
 
     os.environ["NIOVA_INOTIFY_BASE_PATH"] = "%s/%s/nisd-interface" % (base_dir, raft_uuid)
-    # os.environ["NIOVA_BLOCK_SOCK_PATH"] = f"/tmp/.niova/{nisd_uuid}" 
+    os.environ["NIOVA_BLOCK_SOCK_PATH"] = f"/tmp/.niova/{nisd_uuid}" 
     
     os.environ["LD_LIBRARY_PATH"] = "/home/runner/work/niovad/niovad/build_dir/niova-block-bin/lib"
     # os.environ["NIOVA_BLOCK_TCP_PEER_PORT"] = str(
