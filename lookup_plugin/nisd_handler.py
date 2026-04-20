@@ -434,7 +434,8 @@ def start_nisd_process(cluster_params, input_values, nisdPath):
     fp.write("nisd-uuid: "+nisd_uuid+"\n")
 
     #start nisd process
-    bin_path = '%s/nisd' % binary_dir
+    # bin_path = '%s/nisd' % binary_dir
+    bin_path = "/home/runner/work/niovad/niovad/build_dir/niova-block-bin/bin/nisd"
     process_popen = subprocess.Popen([bin_path, '-u', nisd_uuid, '-d', nisdPath],
                                       stdout = fp, stderr = fp)
 
