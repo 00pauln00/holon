@@ -145,7 +145,8 @@
               'nisd_device_path': '{{ item.0 }}',
               'nisd_uuid': '{{ item.1 }}',
               'peer_port': '{{ 13000 + (idx*2) }}',
-              'client_port': '{{ 13000 + (idx*2) + 1 }}'
+              'client_port': '{{ 13000 + (idx*2) + 1 }}',
+              'enable_auth': 1,
             }
           debug:
             msg:

@@ -30,7 +30,7 @@
         input_param:
           chunk: "0"
       debug:
-         msg: "{{ lookup('obj_storage', 'operation', 'create_bucket' , input_param)}}"
+         msg: "{{ lookup('obj_storage', 'operation', 'create_bucket', input_param) }}"
 
     - name: "{{ recipe_name }}: run niova ctl cmd on device"
       vars:
@@ -49,6 +49,7 @@
           'nisd_uuid': '{{ nisd_uuid.msg[0] }}',
           'peer_port': '13000',
           'client_port': '13001',
+          'enable_auth': 0
         }
       debug:
          msg:

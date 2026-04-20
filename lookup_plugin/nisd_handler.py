@@ -67,6 +67,7 @@ def run_nisd_command(cluster_params, input_values):
     device_path = input_values['nisd_device_path']
     peer_port = input_values["peer_port"]
     client_port = input_values["client_port"]
+    enable_authentication = input_values["enable_auth"]
 
     # s3config = '/%s/s3.config.example' % binary_dir
     # bin_path = os.path.normpath(bin_path)
@@ -75,8 +76,10 @@ def run_nisd_command(cluster_params, input_values):
     sock_dir = f"/tmp/.niova/{nisd_uuid}"
     os.makedirs(sock_dir, exist_ok=True)
 
-    os.environ["NIOVA_NISD_SECRET"] = "Nisd-secret"
-    os.environ["NIOVA_NISD_DO_TOKEN_VALIDATION"] = '1'
+    if enable_authentication == 1:
+        os.environ["NIOVA_NISD_SECRET"] = "Nisd-secret"
+        os.environ["NIOVA_NISD_DO_TOKEN_VALIDATION"] = '1'
+
     os.environ["NIOVA_INOTIFY_BASE_PATH"] = "%s/%s/nisd-interface" % (base_dir, raft_uuid)
     os.environ["NIOVA_BLOCK_SOCK_PATH"] = f"/tmp/.niova/{nisd_uuid}" 
     
