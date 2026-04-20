@@ -41,6 +41,9 @@
          msg:
           - "{{ lookup('nisd_handler', 'run-niova-block-ctl', input_param) }}"
       register: nisd_uuid
+
+    - pause:
+        seconds: 5
     
     - name: "{{ recipe_name }}: Start nisd"
       vars:
