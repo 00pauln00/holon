@@ -601,9 +601,9 @@ def start_niova_block_test(cluster_params, input_values):
     random_seed = input_values['random_seed_pt']
     request_size_in_bytes = input_values['request_size_in_bytes']
     num_ops = input_values['num_ops']
-    # integrity_check = input_values['integrity_check']
-    # sequential_writes = input_values['sequential_writes']
-    # blocking_process = input_values['blocking_process']
+    integrity_check = input_values['integrity_check']
+    sequential_writes = input_values['sequential_writes']
+    blocking_process = input_values['blocking_process']
 
     if read_operation_ratio_percentage == '0':
         # prepare path for log file.
