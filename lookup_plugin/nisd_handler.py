@@ -55,7 +55,7 @@ def run_nisd_command(cluster_params, input_values):
     raft_uuid = cluster_params['raft_uuid']
 
     binary_dir = os.getenv('NIOVA_BIN_PATH')
-    bin_path = '/%s/bin/nisd' % binary_dir
+    bin_path = '/%s/nisd' % binary_dir
     app_name = cluster_params['app_type']
 
     base_path = "%s/%s/" % (base_dir, raft_uuid)
@@ -161,7 +161,7 @@ def run_niova_ublk(cluster_params, cntl_uuid):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
     
     #format and run the niova-block-ctl
-    bin_path = '%s/bin/niova-ublk' % binary_dir
+    bin_path = '%s/niova-ublk' % binary_dir
     bin_path = os.path.normpath(bin_path)
     app_name = cluster_params['app_type']
     base_path = "%s/%s" % (base_dir, raft_uuid)
@@ -253,7 +253,7 @@ def run_niova_block_ctl(cluster_params, input_value):
     #format and run the niova-block-ctl
     # TODO check how the bin can be passed
     # bin_path = 'niova-block-bin/bin/niova-block-ctl'
-    bin_path = '%s/bin/niova-block-ctl' % binary_dir
+    bin_path = '%s/niova-block-ctl' % binary_dir
 
     # nisd_dict = { nisd_uuid : 0 }
 
