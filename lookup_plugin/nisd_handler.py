@@ -66,7 +66,7 @@ def run_nisd_command(cluster_params, input_values):
     client_port = input_values["client_port"]
     enable_authentication = input_values["enable_auth"]
 
-    s3config = '/%s/s3.config.example' % binary_dir
+    s3config = '/home/runner/work/niovad/niovad/build_dir/s3.config.example'
     bin_path = os.path.normpath(bin_path)
     set_nisd_environ_variables(s3config)
 
@@ -80,7 +80,7 @@ def run_nisd_command(cluster_params, input_values):
     os.environ["NIOVA_INOTIFY_BASE_PATH"] = "%s/%s/nisd-interface" % (base_dir, raft_uuid)
     os.environ["NIOVA_BLOCK_SOCK_PATH"] = f"/tmp/.niova/{nisd_uuid}" 
     
-    os.environ["LD_LIBRARY_PATH"] = "%s/lib" % (base_dir)
+    os.environ["LD_LIBRARY_PATH"] = "/home/runner/work/niovad/niovad/build_dir/lib"
     env = os.environ.copy()
     os.environ["NIOVA_BLOCK_TCP_PEER_PORT"] = str(peer_port)
     os.environ["NIOVA_BLOCK_TCP_CLIENT_PORT"] = str(client_port)
@@ -591,7 +591,7 @@ def start_niova_block_test(cluster_params, input_values):
     os.environ["NIOVA_GOSSIP_PATH"] = gossip_nodes_path
     os.environ["NIOVA_BLOCK_CP_AUTH_USERNAME"] = input_values['auth_username']
     os.environ["NIOVA_BLOCK_CP_AUTH_SECRET"] = input_values['auth_secret']
-    os.environ["LD_LIBRARY_PATH"] = "%s/lib" % binary_dir
+    os.environ["LD_LIBRARY_PATH"] = "/home/runner/work/niovad/niovad/build_dir/lib"
     os.environ["NIOVA_LOG_LEVEL"] = "4"
 
     #get input parameters
