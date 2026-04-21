@@ -54,11 +54,8 @@ def run_nisd_command(cluster_params, input_values):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
-    # binary_dir = os.getenv('NIOVA_BIN_PATH')
-    # binary_dir = "/home/himani/test/niova-block-bin/libexec/niova"
-    # bin_path = '/home/himani/test/niova-block-bin/bin/nisd'
-    binary_dir = "/home/runner/work/niovad/niovad/build_dir/niova-block-bin/libexec/niova"
-    bin_path = "/home/runner/work/niovad/niovad/build_dir/niova-block-bin/bin/nisd"
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
+    bin_path = '/%s/bin/nisd' % binary_dir
     app_name = cluster_params['app_type']
 
     base_path = "%s/%s/" % (base_dir, raft_uuid)
@@ -69,9 +66,9 @@ def run_nisd_command(cluster_params, input_values):
     client_port = input_values["client_port"]
     enable_authentication = input_values["enable_auth"]
 
-    # s3config = '/%s/s3.config.example' % binary_dir
-    # bin_path = os.path.normpath(bin_path)
-    # set_nisd_environ_variables(s3config)
+    s3config = '/%s/s3.config.example' % binary_dir
+    bin_path = os.path.normpath(bin_path)
+    set_nisd_environ_variables(s3config)
 
     sock_dir = f"/tmp/.niova/{nisd_uuid}"
     os.makedirs(sock_dir, exist_ok=True)
@@ -83,23 +80,12 @@ def run_nisd_command(cluster_params, input_values):
     os.environ["NIOVA_INOTIFY_BASE_PATH"] = "%s/%s/nisd-interface" % (base_dir, raft_uuid)
     os.environ["NIOVA_BLOCK_SOCK_PATH"] = f"/tmp/.niova/{nisd_uuid}" 
     
-    os.environ["LD_LIBRARY_PATH"] = "/home/runner/work/niovad/niovad/build_dir/niova-block-bin/lib"
-    # os.environ["NIOVA_BLOCK_TCP_PEER_PORT"] = str(
-    #     test_setup.get("peer_port", helper.get_free_port(4000, 6000))
-    # )
-    # os.environ["NIOVA_BLOCK_TCP_CLIENT_PORT"] = str(
-    #     test_setup.get("client_port", helper.get_free_port(6001, 9000))
-    # )
+    os.environ["LD_LIBRARY_PATH"] = "%s/lib" % (base_dir)
     env = os.environ.copy()
     os.environ["NIOVA_BLOCK_TCP_PEER_PORT"] = str(peer_port)
     os.environ["NIOVA_BLOCK_TCP_CLIENT_PORT"] = str(client_port)
 
     command = [bin_path, "-u", nisd_uuid, "-d", device_path]
-    # command = [
-    #     "sudo", "-E", "bash", "-c",
-    #     f"umask 0002 && {bin_path} -u {nisd_uuid} -d {device_path}"
-    # ]
-    # command = [bin_path, "-u", nisd_uuid, "-d", device_path]
 
     # Prepare nisd log file path
     log_file_path = "%s/%s/nisd_%s.log" % (base_dir, raft_uuid, nisd_uuid)
@@ -175,7 +161,7 @@ def run_niova_ublk(cluster_params, cntl_uuid):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
     
     #format and run the niova-block-ctl
-    bin_path = '%s/niova-block-bin/bin/niova-ublk' % binary_dir
+    bin_path = '%s/bin/niova-ublk' % binary_dir
     bin_path = os.path.normpath(bin_path)
     app_name = cluster_params['app_type']
     base_path = "%s/%s" % (base_dir, raft_uuid)
@@ -195,24 +181,9 @@ def run_niova_ublk(cluster_params, cntl_uuid):
 
     niova_lib_path = os.path.normpath(f'{binary_dir}/lib')
     default_lib_path = "/usr/local/lib"
-    # ld_library_path = f"{niova_lib_path}:{default_lib_path}:{os.environ.get('LD_LIBRARY_PATH', '')}"
-    ld_library_path = "/home/runner/work/niovad/niovad/build_dir/niova-block-bin/lib"
+    ld_library_path = f"{niova_lib_path}:{default_lib_path}:{os.environ.get('LD_LIBRARY_PATH', '')}"
     os.environ["LD_LIBRARY_PATH"] = ld_library_path
     logger.info(f"LD_LIBRARY_PATH set to: {os.environ['LD_LIBRARY_PATH']}")
-
-    # command = [
-    #     "sudo",
-    #     "-E",
-    #     "env", 
-    #     f"LD_LIBRARY_PATH={ld_library_path}",
-    #     bin_path,
-    #     "-s", "8589934592",
-    #     "-t", cntl_uuid,
-    #     "-v", ublk_uuid,
-    #     "-u", ublk_uuid,
-    #     "-q", "128",
-    #     "-b", "1048576"
-    # ]
 
     command = [
         bin_path,
@@ -277,16 +248,12 @@ def run_niova_block_ctl(cluster_params, input_value):
     fp = open(log_file, "a+")
 
     # Prepare path for executables.
-    # binary_dir = os.getenv('NIOVA_BIN_PATH')
-    # binary_dir = "/home/himani/test/niova-block-bin/libexec/niova"
-    binary_dir = "/home/runner/work/niovad/niovad/build_dir/niova-block-bin/libexec/niova"
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
 
     #format and run the niova-block-ctl
     # TODO check how the bin can be passed
     # bin_path = 'niova-block-bin/bin/niova-block-ctl'
-    bin_path = '/home/runner/work/niovad/niovad/build_dir/niova-block-bin/bin/niova-block-ctl'
-    # os.environ["NIOVA_INOTIFY_BASE_PATH"] = "%s/%s/nisd-interface" % (base_dir, raft_uuid)
-    # os.environ["NIOVA_BLOCK_SOCK_PATH"] = "%s/%s/nisd-interface" % (base_dir, raft_uuid)
+    bin_path = '%s/bin/niova-block-ctl' % binary_dir
 
     # nisd_dict = { nisd_uuid : 0 }
 
@@ -298,7 +265,7 @@ def run_niova_block_ctl(cluster_params, input_value):
 
     # Run command equivalent to:
     # src/niova-block-ctl -d <DEV_PATH> -i -f -u $NISD_UUID
-    os.environ["LD_LIBRARY_PATH"] = "/home/runner/work/niovad/niovad/build_dir/niova-block-bin/lib"
+    os.environ["LD_LIBRARY_PATH"] = "%s/lib" % binary_dir
     process_popen = subprocess.Popen(
         [   
             bin_path,
@@ -318,9 +285,6 @@ def run_niova_block_ctl(cluster_params, input_value):
         input_value["nisd_device_path"],
         nisd_uuid
     )
-
-    # process_popen = subprocess.Popen(['sudo', "-E", bin_path,'-d', input_value["nisd_device_path"], '-f', '-i', '-u', nisd_uuid], stdout = fp, stderr = fp, cwd=base_path)
-    # logger.info("niova-block-ctl args: %s -d %s -f -i -u %s", bin_path, input_value["nisd_device_path"], nisd_uuid)
 
     #Check if niova-block-ctl process exited with error
     if process_popen.poll() is None:
@@ -354,8 +318,7 @@ def start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values):
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
     #format and run the niova-block-ctl
-    # bin_path = '%s/niova-block-ctl' % binary_dir
-    bin_path = '/home/runner/work/niovad/niovad/build_dir/niova-block-bin/bin/niova-block-ctl'
+    bin_path = '%s/niova-block-ctl' % binary_dir
 
     nisd_dict = { nisd_uuid : 0 }
 
@@ -434,8 +397,7 @@ def start_nisd_process(cluster_params, input_values, nisdPath):
     fp.write("nisd-uuid: "+nisd_uuid+"\n")
 
     #start nisd process
-    # bin_path = '%s/nisd' % binary_dir
-    bin_path = "/home/runner/work/niovad/niovad/build_dir/niova-block-bin/bin/nisd"
+    bin_path = '%s/nisd' % binary_dir
     process_popen = subprocess.Popen([bin_path, '-u', nisd_uuid, '-d', nisdPath],
                                       stdout = fp, stderr = fp)
 
@@ -611,9 +573,7 @@ def start_niova_block_test_with_inputFile(cluster_params, input_values):
 
 def start_niova_block_test(cluster_params, input_values):
     # Prepare path for executables.
-    # binary_dir = os.getenv('NIOVA_BIN_PATH')
-    # binary_dir = "/home/himani/test/niova-block-bin/libexec/niova"
-    binary_dir = "/home/runner/work/niovad/niovad/build_dir/niova-block-bin/libexec/niova"
+    binary_dir = os.getenv('NIOVA_BIN_PATH')
 
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -631,9 +591,8 @@ def start_niova_block_test(cluster_params, input_values):
     os.environ["NIOVA_GOSSIP_PATH"] = gossip_nodes_path
     os.environ["NIOVA_BLOCK_CP_AUTH_USERNAME"] = input_values['auth_username']
     os.environ["NIOVA_BLOCK_CP_AUTH_SECRET"] = input_values['auth_secret']
-    # os.environ["LD_LIBRARY_PATH"] = "/home/himani/test/niova-block-bin/lib"
-    os.environ["LD_LIBRARY_PATH"] = "/home/runner/work/niovad/niovad/build_dir/niova-block-bin/lib"
-    os.environ["NIOVA_LOG_LEVEL"] = "6"
+    os.environ["LD_LIBRARY_PATH"] = "%s/lib" % binary_dir
+    os.environ["NIOVA_LOG_LEVEL"] = "4"
 
     #get input parameters
     # nisd_uuid_to_write = input_values['nisd_uuid_to_write']
@@ -661,7 +620,7 @@ def start_niova_block_test(cluster_params, input_values):
 
     #start niova block test process
     # bin_path = '/home/himani/test/niova-block-bin/bin/niova-block-test'
-    bin_path = '/home/runner/work/niovad/niovad/build_dir/niova-block-bin/bin/niova-block-test'
+    bin_path = '%s/niova-block-test' % binary_dir
 
     logger.debug("Do write/read operation on nisd by starting niova-block-test in controlplane mode")
     # logger.debug("nisd-uuid: %s", nisd_uuid_to_write[5:])
@@ -669,28 +628,28 @@ def start_niova_block_test(cluster_params, input_values):
     logger.debug("client-uuid: %s", vdev)
     file_size_in_bytes = "8589934592"
     
-    # if sequential_writes == True and integrity_check == False and blocking_process == False:
-    #     ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-    #                                '-u', client_uuid, '-z', request_size_in_bytes,
-    #                                '-q', queue_depth, '-N', num_ops, '-I', '-Q', '-z', file_size_in_bytes), stdout=fp, stderr=fp)
+    if sequential_writes == True and integrity_check == False and blocking_process == False:
+        ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
+                                   '-u', client_uuid, '-z', request_size_in_bytes,
+                                   '-q', queue_depth, '-N', num_ops, '-I', '-Q', '-z', file_size_in_bytes), stdout=fp, stderr=fp)
 
-    # elif integrity_check == True and sequential_writes == False and blocking_process == False:
-    #     ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-    #                                '-a', random_seed, '-u', client_uuid, '-z', request_size_in_bytes,
-    #                                '-q', queue_depth, '-N', num_ops, '-I', '-z', file_size_in_bytes), stdout=fp, stderr=fp)
+    elif integrity_check == True and sequential_writes == False and blocking_process == False:
+        ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
+                                   '-a', random_seed, '-u', client_uuid, '-z', request_size_in_bytes,
+                                   '-q', queue_depth, '-N', num_ops, '-I', '-z', file_size_in_bytes), stdout=fp, stderr=fp)
 
-    # elif blocking_process == True and sequential_writes == False and integrity_check == False:
-    #     proc = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-    #                                '-u', client_uuid, '', request_size_in_bytes,
-    #                                '-q', queue_depth, '-N', num_ops, '-I', '-Q', '-z', file_size_in_bytes], stdout=fp, stderr=fp)
+    elif blocking_process == True and sequential_writes == False and integrity_check == False:
+        proc = subprocess.Popen([bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
+                                   '-u', client_uuid, '', request_size_in_bytes,
+                                   '-q', queue_depth, '-N', num_ops, '-I', '-Q', '-z', file_size_in_bytes], stdout=fp, stderr=fp)
 
-    #     poll = proc.poll()  # returns the exit code or None if the process is still running
-    #     logger.info("niova-block-test args: %s", proc.args)
-    #     logger.info("return code: %s", proc.returncode)
-    #     return proc.returncode
+        poll = proc.poll()  # returns the exit code or None if the process is still running
+        logger.info("niova-block-test args: %s", proc.args)
+        logger.info("return code: %s", proc.returncode)
+        return proc.returncode
 
-    # else:
-    ps = subprocess.run((bin_path, '-c', 'cp', '-v', vdev, '-u', vdev, '-r', read_operation_ratio_percentage,
+    else:
+        ps = subprocess.run((bin_path, '-c', 'cp', '-v', vdev, '-u', vdev, '-r', read_operation_ratio_percentage,
                          '-Z', request_size_in_bytes, '-N', num_ops, '-a', random_seed), stdout=fp, stderr=fp)
 
     logger.info("niova-block-test args: %s", ps.args)
