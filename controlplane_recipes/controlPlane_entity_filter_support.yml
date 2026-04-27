@@ -19,9 +19,6 @@
           include_role:
             name: common
             tasks_from: start_pmdb_and_get_membership.yml
-          vars:
-            number_of_clients: 2
-            number_of_PMDBServers: 5
 
         - name: "{{ recipe_name }}: Run controlplane Go test to create the test hierarchy."
           vars:
@@ -39,8 +36,10 @@
 
         - name: "{{ recipe_name }}: Verify all Go tests passed."
           vars:
-            failed_tests: "{{ gotest_result_1.parsed_results.failed }}"
-          failed_when: (failed_tests | int > 0)
+            failed_tests: "{{ gotest_result.parsed_results.failed }}"
+          debug:
+            msg: "Number of failed tests: {{ failed_tests }}"
+          failed_when: (failed_tests | int) > 0
 
         - name: "{{ recipe_name }}: Run controlplane Go test to create and validate vdevs with entity filters."
           vars:
@@ -58,8 +57,10 @@
 
         - name: "{{ recipe_name }}: Verify all Go tests passed."
           vars:
-            failed_tests: "{{ gotest_result_2.parsed_results.failed }}"
-          failed_when: (failed_tests | int > 0)
+            failed_tests: "{{ gotest_result.parsed_results.failed }}"
+          debug:
+            msg: "Number of failed tests: {{ failed_tests }}"
+          failed_when: (failed_tests | int) > 0
 
         - name: "{{ recipe_name }}: Run controlplane Go test to create and validate vdevs with invalid entity filters."
           vars:
@@ -77,8 +78,10 @@
 
         - name: "{{ recipe_name }}: Verify all Go tests passed."
           vars:
-            failed_tests: "{{ gotest_result_3.parsed_results.failed }}"
-          failed_when: (failed_tests | int > 0)
+            failed_tests: "{{ gotest_result.parsed_results.failed }}"
+          debug:
+            msg: "Number of failed tests: {{ failed_tests }}"
+          failed_when: (failed_tests | int) > 0
 
         - name: "{{ recipe_name }}: Run KV CRC verification script."
           debug:
