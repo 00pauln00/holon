@@ -15,25 +15,13 @@
             msg: "app_type is: {{ app_type }}"
           failed_when: (app_type != "controlplane")
 
-        - name: "{{ recipe_name }}: Start pmdb and proxy servers."
+        - name: "{{ recipe_name }}: Start PMDB cluster and fetch membership"
           include_role:
             name: common
-            tasks_from: pmdb_cluster_init.yml
+            tasks_from: start_pmdb_and_get_membership.yml
           vars:
             number_of_clients: 2
             number_of_PMDBServers: 5
-
-        - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
-          vars:
-            input_param:
-              { "Operation": "membership", "OutfileName": "membership_output" }
-            ncpclires: "{{ lookup('controlplane', 'ncpc', input_param) }}"
-          debug:
-            msg: "get membership details of running servers."
-          with_items:
-            - "{{ ncpclires }}"
-          register: membership
-          no_log: True
 
         - name: "{{ recipe_name }}: Run controlplane Go test to create vdev in parallel."
           vars:
