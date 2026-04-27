@@ -20,11 +20,15 @@
             name: common
             tasks_from: start_pmdb_and_get_membership.yml
 
+        - name: Get NIOVA_BIN_PATH
+          set_fact:
+            niova_bin_path: "{{ lookup('env', 'NIOVA_BIN_PATH') }}"
+
         - name: "{{ recipe_name }}: Run controlplane Go test to create vdev in parallel."
           vars:
             input_param:
               { 
-                test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test",
+                test_path: "{{ niova_bin_path }}/ctlplane_test",
                 test_name: "TestCreateVdev",
                 output_file: "go_test_output"
               }

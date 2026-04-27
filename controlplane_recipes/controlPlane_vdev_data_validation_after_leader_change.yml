@@ -20,10 +20,14 @@
             name: common
             tasks_from: start_pmdb_and_get_membership.yml
 
+        - name: Get NIOVA_BIN_PATH
+          set_fact:
+            niova_bin_path: "{{ lookup('env', 'NIOVA_BIN_PATH') }}"
+
         - name: "{{ recipe_name }}: Run controlplane Go tests to validate entities."
           vars:
             input_param:
-              test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
+              test_path: "{{ niova_bin_path }}/ctlplane_test"
               test_name: "TestCreateHierarchy"
               output_file: "go_test_output_1"
           set_fact:
@@ -75,7 +79,7 @@
         - name: "{{ recipe_name }}: Run controlplane Go test to create vdev of size 200 GB."
           vars:
             input_param:
-              test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
+              test_path: "{{ niova_bin_path }}/ctlplane_test"
               test_name: "TestCreateVdevAfterLeaderKill"
               output_file: "go_test_output_2"
           set_fact:
@@ -114,7 +118,7 @@
         - name: "{{ recipe_name }}: Run controlplane Go test to create more NISD's and Vdevs."
           vars:
             input_param:
-              test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
+              test_path: "{{ niova_bin_path }}/ctlplane_test"
               test_name: "TestCreateVdevAfterLeaderRestart"
               output_file: "go_test_output_3"
           set_fact:

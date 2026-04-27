@@ -20,11 +20,14 @@
             name: common
             tasks_from: start_pmdb_and_get_membership.yml
 
+        - name: Get NIOVA_BIN_PATH
+          set_fact:
+            niova_bin_path: "{{ lookup('env', 'NIOVA_BIN_PATH') }}"
+
         - name: "{{ recipe_name }}: Run controlplane Go test to create the test hierarchy."
           vars:
             input_param:
-              # test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
-              test_path: "/home/himani/niova-mdsvc/controlplane/ctlplanefuncs/client"
+              test_path: "{{ niova_bin_path }}/ctlplane_test"
               test_name: "TestCreateLargeHierarchyForEntityFilters"
               output_file: "go_test_output_1"
           set_fact:
@@ -44,8 +47,7 @@
         - name: "{{ recipe_name }}: Run controlplane Go test to create and validate vdevs with entity filters."
           vars:
             input_param:
-              # test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
-              test_path: "/home/himani/niova-mdsvc/controlplane/ctlplanefuncs/client"
+              test_path: "{{ niova_bin_path }}/ctlplane_test"
               test_name: "TestCreateVdevWithFilters"
               output_file: "go_test_output_2"
           set_fact:
@@ -65,8 +67,7 @@
         - name: "{{ recipe_name }}: Run controlplane Go test to create and validate vdevs with invalid entity filters."
           vars:
             input_param:
-              # test_path: "/home/runner/work/niovad/niovad/build_dir/ctlplane_test"
-              test_path: "/home/himani/niova-mdsvc/controlplane/ctlplanefuncs/client"
+              test_path: "{{ niova_bin_path }}/ctlplane_test"
               test_name: "TestCreateVdevWithInvalidFilters"
               output_file: "go_test_output_3"
           set_fact:
