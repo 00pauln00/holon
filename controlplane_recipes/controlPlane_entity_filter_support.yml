@@ -45,9 +45,14 @@
           set_fact:
             gotest_result_1: "{{ lookup('controlplane', 'gotest', input_param) }}"
 
-        - name: "{{ recipe_name }}: Comapre and verify inserted and fetched data."
+        - name: "{{ recipe_name }}: Print the go test 1 result."
           debug:
             msg: "{{ gotest_result_1 }}"
+
+        - name: "{{ recipe_name }}: Verify all Go tests passed."
+          vars:
+            failed_tests: "{{ gotest_result_1.parsed_results.failed }}"
+          failed_when: (failed_tests | int > 0)
 
         - name: "{{ recipe_name }}: Run controlplane Go test to create and validate vdevs with entity filters."
           vars:
@@ -59,9 +64,14 @@
           set_fact:
             gotest_result_2: "{{ lookup('controlplane', 'gotest', input_param) }}"
 
-        - name: "{{ recipe_name }}: Comapre and verify inserted and fetched data."
+        - name: "{{ recipe_name }}: Print the go test 2 result."
           debug:
             msg: "{{ gotest_result_2 }}"
+
+        - name: "{{ recipe_name }}: Verify all Go tests passed."
+          vars:
+            failed_tests: "{{ gotest_result_2.parsed_results.failed }}"
+          failed_when: (failed_tests | int > 0)
 
         - name: "{{ recipe_name }}: Run controlplane Go test to create and validate vdevs with invalid entity filters."
           vars:
@@ -73,10 +83,15 @@
           set_fact:
             gotest_result_3: "{{ lookup('controlplane', 'gotest', input_param) }}"
 
-        - name: "{{ recipe_name }}: Comapre and verify inserted and fetched data."
+        - name: "{{ recipe_name }}: Print the go test 3 result."
           debug:
             msg: "{{ gotest_result_3 }}"
 
-        - name: "{{ recipe_name }}: KV CRC verification to see if all the servers have the same data."
+        - name: "{{ recipe_name }}: Verify all Go tests passed."
+          vars:
+            failed_tests: "{{ gotest_result_3.parsed_results.failed }}"
+          failed_when: (failed_tests | int > 0)
+
+        - name: "{{ recipe_name }}: Run KV CRC verification script."
           debug:
             msg: "{{ lookup('kv_crc') }}"
