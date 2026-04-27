@@ -5,8 +5,8 @@
     name: common
     tasks_from: pmdb_cluster_init.yml
   vars:
-    number_of_clients: "{{ number_of_clients }}"
-    number_of_PMDBServers: "{{ number_of_PMDBServers }}"
+    number_of_clients: 2
+    number_of_PMDBServers: 5
 
 - name: Starting controlplane_client to get membership details
   vars:
