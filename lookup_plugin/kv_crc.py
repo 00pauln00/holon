@@ -14,9 +14,9 @@ class LookupModule(LookupBase):
         base_dir = cluster_params['base_dir']
         raft_uuid = cluster_params['raft_uuid']
         config_dir = f"{base_dir}/{raft_uuid}/configs"
-        holon_log = "/home/runner/work/niovad/niovad/holon_log"
+        holon_dir = os.getenv('HOLON_LIBS')
 
-        script_path = "/home/runner/work/niovad/niovad/build_dir/verify_kv_crc.sh"
+        script_path = "%s/verify_kv_crc.sh" % holon_dir
 
         cmd = [script_path, config_dir]
 
