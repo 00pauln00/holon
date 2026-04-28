@@ -66,7 +66,7 @@ def run_nisd_command(cluster_params, input_values):
     client_port = input_values["client_port"]
     enable_authentication = input_values["enable_auth"]
 
-    s3config = '/%s/s3.config.example' %s binary_dir
+    s3config = '/%s/s3.config.example' % binary_dir
     bin_path = os.path.normpath(bin_path)
     set_nisd_environ_variables(s3config)
 
