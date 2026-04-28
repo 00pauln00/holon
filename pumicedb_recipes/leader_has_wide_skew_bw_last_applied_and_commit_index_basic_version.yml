@@ -70,8 +70,8 @@
       set_fact:
         verify_aftr_first_values: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, server_keys) }}"
       failed_when: >
-        (verify_aftr_first_values[item]['/0/commit-idx'] <= get_values_from_all[0][item]['/0/commit-idx']) or
-        (verify_aftr_first_values[item]['/0/last-applied'] != get_values_from_all[0][item]['/0/last-applied'])
+        (verify_aftr_first_values[item]['/0/commit-idx'] <= get_values_from_all[item]['/0/commit-idx']) or
+        (verify_aftr_first_values[item]['/0/last-applied'] != get_values_from_all[item]['/0/last-applied'])
       loop: "{{ range(0, FollowerUUIDs | length)| list }}"
 
     #Remove fault injection on all running peers.

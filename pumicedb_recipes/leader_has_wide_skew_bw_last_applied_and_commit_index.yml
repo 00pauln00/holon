@@ -176,8 +176,8 @@
       set_fact:
         verify_aftr_first_elect: "{{ lookup('niova_ctlrequest', 'lookup', FollowerUUIDs, server_keys) }}"
       failed_when: >
-        (verify_aftr_first_elect[item]['/0/commit-idx'] <= get_values_from_all[0][item]['/0/commit-idx']) or
-        (verify_aftr_first_elect[item]['/0/last-applied'] != get_values_from_all[0][item]['/0/last-applied'])
+        (verify_aftr_first_elect[item]['/0/commit-idx'] <= get_values_from_all[item]['/0/commit-idx']) or
+        (verify_aftr_first_elect[item]['/0/last-applied'] != get_values_from_all[item]['/0/last-applied'])
       loop: "{{ range(0, FollowerUUIDs | length)| list }}"
 
     #Remove fault injection on all running peers.
@@ -228,9 +228,9 @@
       set_fact:
        last_verification_aftr_rm_fault_inject: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers, server_keys) }}"
       failed_when: >
-        (last_verification_aftr_rm_fault_inject[0]['/0/commit-idx'] <= verify_aftr_first_elect[0]['/0/commit-idx']) or
-        (last_verification_aftr_rm_fault_inject[0]['/0/last-applied'] <= verify_aftr_first_elect[0]['/0/last-applied']) or
-        (last_verification_aftr_rm_fault_inject[0]['/0/last-applied'] != last_verification_aftr_rm_fault_inject[0]['/0/commit-idx'])
+        (last_verification_aftr_rm_fault_inject[item]['/0/commit-idx'] <= verify_aftr_first_elect[item]['/0/commit-idx']) or
+        (last_verification_aftr_rm_fault_inject[item]['/0/last-applied'] <= verify_aftr_first_elect[item]['/0/last-applied']) or
+        (last_verification_aftr_rm_fault_inject[item]['/0/last-applied'] != last_verification_aftr_rm_fault_inject[item]['/0/commit-idx'])
       loop: "{{ range(0, NRunningPeers | length)| list }}"
 
     - name: "{{ recipe_name }}: Set the 'default-request-timeout-sec' to its default value (i.e.60)"

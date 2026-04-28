@@ -99,6 +99,10 @@
       loop: "{{ range(0, ClientUUIDS | length) |list }}"
       loop_control:
          loop_var: idx
+
+    - name: "{{ recipe_name }}: Verify data consistency across all servers."
+      debug:
+        msg: "{{ lookup('rocksdb_util', 'verify_consistency') }}"
      
     rescue:
       - name: "Recipe: {{ recipe_name }} failed"
