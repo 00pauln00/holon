@@ -4,7 +4,6 @@
   vars:
     recipe_name: "controlPlane_authentication_mechanism_test"
     nisd_uuid: 7467890a-2299-11f1-9fc3-ebb3b3f1fb90
-    vdev_id: 0ae6c92a-329b-11f1-a760-07209036b6f7
     parent: None
 
   tasks:
@@ -46,7 +45,7 @@
             msg: "Number of failed tests: {{ failed_tests }}"
           failed_when: (failed_tests | int) > 0
 
-        - name: "{{ recipe_name }}: Run controlplane Go test to create entity hierarchy."
+        - name: "{{ recipe_name }}: Run controlplane Go test to create vdev."
           vars:
             input_param:
               test_path: "{{ niova_bin_path }}/ctlplane_test"

@@ -41,7 +41,7 @@
           vars:
             input_param:
               test_path: "{{ niova_bin_path }}/ctlplane_test"
-              test_name: "TestCreateHierarchyforMultipleBlockTest"
+              test_name: "TestCreateHierarchyforUserAuthentication"
               output_file: "go_test_output"
           set_fact:
             gotest_result: "{{ lookup('controlplane', 'gotest', input_param) }}"
@@ -57,9 +57,9 @@
             msg: "Number of failed tests: {{ failed_tests }}"
           failed_when: (failed_tests | int) > 0
 
-        - name: Extract NISD UUIDs
+        - name: Extract NISD UUID
           set_fact:
-            nisd_uuids: >-
+            nisd_uuid: >-
               {{
                 gotest_result.parsed_results.tests[0].info_messages
                 | select('search', 'Nisd ID')
