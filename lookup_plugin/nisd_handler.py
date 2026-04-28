@@ -251,7 +251,6 @@ def run_niova_block_ctl(cluster_params, input_value):
 
     #format and run the niova-block-ctl
     # TODO check how the bin can be passed
-    # bin_path = 'niova-block-bin/bin/niova-block-ctl'
     bin_path = '%s/niova-block-ctl' % binary_dir
 
     # nisd_dict = { nisd_uuid : 0 }
@@ -264,7 +263,6 @@ def run_niova_block_ctl(cluster_params, input_value):
 
     # Run command equivalent to:
     # src/niova-block-ctl -d <DEV_PATH> -i -f -u $NISD_UUID
-    os.environ["LD_LIBRARY_PATH"] = "%s/lib" % binary_dir
     process_popen = subprocess.Popen(
         [   
             bin_path,
