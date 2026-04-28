@@ -59,7 +59,7 @@
 
         - name: Extract NISD UUID
           set_fact:
-            nisd_uuid: >-
+            nisd_uuids: >-
               {{
                 gotest_result.parsed_results.tests[0].info_messages
                 | select('search', 'Nisd ID')
