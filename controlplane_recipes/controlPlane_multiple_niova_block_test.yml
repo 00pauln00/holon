@@ -114,7 +114,7 @@
           debug:
             msg: >-
               {{
-                lookup('helper', 'create_dd_file', img_dir, bs, 18)
+                lookup('helper', 'create_dd_file', img_dir, bs, 16)
               }}
           loop: "{{ range(0, 1) | list }}"
           register: nisd_dev_paths
