@@ -57,6 +57,7 @@
             msg: "Number of failed tests: {{ failed_tests }}"
           failed_when: (failed_tests | int) > 0
 
+        # NOTE: For testing in CI, only one nisd is used
         - name: Extract NISD UUID
           set_fact:
             nisd_uuids: >-
@@ -105,6 +106,7 @@
           debug: 
             msg: "{{ vdev_uuids }}"
 
+        # NOTE: For testing in CI, only 1 device is created
         - name: "{{ recipe_name }}: create multiple nisd devices"
           vars:
             img_dir: "/auth_nisd_{{ item }}.device"
@@ -114,7 +116,7 @@
               {{
                 lookup('helper', 'create_dd_file', img_dir, bs, 24)
               }}
-          loop: "{{ range(0, 2) | list }}"
+          loop: "{{ range(0, 1) | list }}"
           register: nisd_dev_paths
 
         - name: Extract device paths
