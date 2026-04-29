@@ -29,7 +29,7 @@
           vars:
             input_param:
               test_path: "{{ niova_bin_path }}/ctlplane_test"
-              test_name: "TestCreateHierarchyforUserAuthentication"
+              test_name: "TestCreateHierarchyForUserAuthentication"
               output_file: "go_test_output"
           set_fact:
             gotest_result: "{{ lookup('controlplane', 'gotest', input_param) }}"
