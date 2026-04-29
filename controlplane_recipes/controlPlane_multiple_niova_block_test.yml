@@ -160,18 +160,18 @@
             label: "{{ item.0 }} -> {{ item.1 }} (peer={{ 13000 + (idx * 2) }}, client={{ 13000 + (idx * 2) + 1 }})"
           register: nisd_start_results
 
-        - name: "{{ recipe_name }}: Wait for nisd to get updated."
-          vars:
-            stage: "wait_for_nisd_root_entry"
-            lookout_uuid: ""
-          debug:
-            msg: "Waiting for nisd to get updated"
-          until: lookup('niova_ctlrequest', 'lookup', item, "/nisd_root_entry/0/status", 'nisd', lookout_uuid) | dict2items | map(attribute='value') | list | first == "running"
-          retries: 10
-          delay: 1
-          loop: "{{ nisd_uuids }}"
-          loop_control:
-            label: "Checking {{ item }}"
+        # - name: "{{ recipe_name }}: Wait for nisd to get updated."
+        #   vars:
+        #     stage: "wait_for_nisd_root_entry"
+        #     lookout_uuid: ""
+        #   debug:
+        #     msg: "Waiting for nisd to get updated"
+        #   until: lookup('niova_ctlrequest', 'lookup', item, "/nisd_root_entry/0/status", 'nisd', lookout_uuid) | dict2items | map(attribute='value') | list | first == "running"
+        #   retries: 10
+        #   delay: 1
+        #   loop: "{{ nisd_uuids }}"
+        #   loop_control:
+        #     label: "Checking {{ item }}"
 
         - name: "{{ recipe_name }}: Print nisd results."
           debug: 
