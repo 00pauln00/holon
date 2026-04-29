@@ -1,0 +1,22 @@
+---
+
+- name: Start pmdb and proxy servers
+  include_role:
+    name: common
+    tasks_from: pmdb_cluster_init.yml
+  vars:
+    number_of_clients: 2
+    number_of_PMDBServers: 5
+
+- name: Starting controlplane_client to get membership details
+  vars:
+    input_param:
+      Operation: "{{ membership_operation | default('membership') }}"
+      OutfileName: "{{ membership_outfile | default('membership_output') }}"
+    ncpclires: "{{ lookup('controlplane', 'ncpc', input_param) }}"
+  debug:
+    msg: "get membership details of running servers."
+  with_items:
+    - "{{ ncpclires }}"
+  register: membership
+  no_log: true

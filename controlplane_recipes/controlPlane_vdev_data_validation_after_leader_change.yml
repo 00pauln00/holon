@@ -1,0 +1,140 @@
+- name: "controlPlane_vdev_data_validation_after_leader_change.yml"
+  hosts: localhost
+  connection: local
+  vars:
+    recipe_name: "controlPlane_vdev_data_validation_after_leader_change"
+    parent: None
+
+  tasks:
+    - block:
+        # check for the app_type
+        - name: "{{ recipe_name }}: Check if the app_type is 'controlplane'."
+          vars:
+            app_type: "{{ app_type }}"
+          debug:
+            msg: "app_type is: {{ app_type }}"
+          failed_when: (app_type != "controlplane")
+
+        - name: "{{ recipe_name }}: Start PMDB cluster and fetch membership"
+          include_role:
+            name: common
+            tasks_from: start_pmdb_and_get_membership.yml
+
+        - name: Get NIOVA_BIN_PATH
+          set_fact:
+            niova_bin_path: "{{ lookup('env', 'NIOVA_BIN_PATH') }}"
+
+        - name: "{{ recipe_name }}: Run controlplane Go tests to validate entities."
+          vars:
+            input_param:
+              test_path: "{{ niova_bin_path }}/ctlplane_test"
+              test_name: "TestCreateHierarchy"
+              output_file: "go_test_output_1"
+          set_fact:
+            gotest_result_1: "{{ lookup('controlplane', 'gotest', input_param) }}"
+
+        - name: "{{ recipe_name }}: Print go test 1 result."
+          debug:
+            msg: "{{ gotest_result_1 }}"
+
+        - name: "{{ recipe_name }}: Verify all Go tests passed."
+          vars:
+            failed_tests: "{{ gotest_result_1.parsed_results.failed }}"
+          debug:
+            msg: "Number of failed tests: {{ failed_tests }}"
+          failed_when: (failed_tests | int) > 0
+
+        - name: "{{ recipe_name }}: Get the leader of the cluster."
+          include_role:
+            name: common
+            tasks_from: get_follower_stats
+
+        - name: "{{ recipe_name }}: Store the leader uuid."
+          set_fact:
+            leader_uuid: "{{ LeaderUUID['/0/leader-uuid'] }}"
+
+        - debug:
+            msg: "{{ leader_uuid }}"
+
+        - name: "{{ recipe_name }}: Kill the leader."
+          debug:
+            msg: "{{ lookup('niova_raftprocess', 'kill', leader_uuid) }}"
+
+        - pause: seconds=5
+
+        - name: "{{ recipe_name }}: Check if killed leader's status gets changed."
+          vars:
+            killedPmdbServer: "{{ leader_uuid }}"
+            input_param:
+              {
+                "Operation": "membership",
+                "OutfileName": "check_killedLeaderStatus",
+              }
+          debug:
+            msg: "Verify killed pmdb server status"
+          until: lookup('controlplane', 'ncpc', input_param)['membership']['output_data'][killedPmdbServer]['Status'] == "failed"
+          retries: 10
+          delay: 1
+
+        - name: "{{ recipe_name }}: Run controlplane Go test to create vdev of size 200 GB."
+          vars:
+            input_param:
+              test_path: "{{ niova_bin_path }}/ctlplane_test"
+              test_name: "TestCreateVdevAfterLeaderKill"
+              output_file: "go_test_output_2"
+          set_fact:
+            gotest_result_2: "{{ lookup('controlplane', 'gotest', input_param) }}"
+
+        - name: "{{ recipe_name }}: Print go test 2 result."
+          debug:
+            msg: "{{ gotest_result_2 }}"
+
+        - name: "{{ recipe_name }}: Verify all Go tests passed."
+          vars:
+            failed_tests: "{{ gotest_result_2.parsed_results.failed }}"
+          debug:
+            msg: "Number of failed tests: {{ failed_tests }}"
+          failed_when: (failed_tests | int) > 0
+
+        - name: "{{ recipe_name }}: Restart the killed leader."
+          debug:
+            msg: "{{ lookup('niova_raftprocess', 'start', leader_uuid) }}"
+
+        - pause: seconds=5
+
+        - name: "{{ recipe_name }}: Check if the restarted previous leader's status gets changed."
+          vars:
+            restartedPmdbServer: "{{ leader_uuid }}"
+            input_param:
+              {
+                "Operation": "membership",
+                "OutfileName": "check_restarted_leader_status",
+              }
+            verifyPmdbServerStatus: "{{ lookup('controlplane', 'ncpc', input_param) }}"
+          debug:
+            msg: "Verify restarted pmdb server status"
+          failed_when: verifyPmdbServerStatus['membership']['output_data'][restartedPmdbServer]['Status'] != "alive"
+
+        - name: "{{ recipe_name }}: Run controlplane Go test to create more NISD's and Vdevs."
+          vars:
+            input_param:
+              test_path: "{{ niova_bin_path }}/ctlplane_test"
+              test_name: "TestCreateVdevAfterLeaderRestart"
+              output_file: "go_test_output_3"
+          set_fact:
+            gotest_result_3: "{{ lookup('controlplane', 'gotest', input_param) }}"
+
+        - name: "{{ recipe_name }}: Print go test 3 result."
+          debug:
+            msg: "{{ gotest_result_3 }}"
+
+        - name: "{{ recipe_name }}: Verify all Go tests passed."
+          vars:
+            failed_tests: "{{ gotest_result_3.parsed_results.failed }}"
+          debug:
+            msg: "Number of failed tests: {{ failed_tests }}"
+          failed_when: (failed_tests | int) > 0
+
+        - name: "{{ recipe_name }}: Run KV CRC verification script."
+          debug:
+            msg: "{{ lookup('kv_crc') }}"
