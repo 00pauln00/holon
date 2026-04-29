@@ -615,7 +615,6 @@ def start_niova_block_test(cluster_params, input_values):
     fp = open(log_path, "a+")
 
     #start niova block test process
-    # bin_path = '/home/himani/test/niova-block-bin/bin/niova-block-test'
     bin_path = '%s/niova-block-test' % binary_dir
 
     logger.debug("Do write/read operation on nisd by starting niova-block-test in controlplane mode")
