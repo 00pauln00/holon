@@ -203,6 +203,12 @@
         - debug:
             msg: "{{ nblock_test_results }}"
 
+        - name: Validate niova-block-test return codes (detailed)
+          debug:
+            msg: "Block test failed for item {{ item.item }} with rc={{ item.msg }}"
+          failed_when: item.msg | int != 0
+          loop: "{{ nblock_test_results.results }}"
+
       rescue:
         - name: "Recipe: {{ recipe_name }} failed"
           set_fact:
