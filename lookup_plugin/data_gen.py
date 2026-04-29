@@ -179,7 +179,6 @@ class data_validator:
         bin_path = f'{self.bin_dir}/dataValidator'
         dbi_path = get_dir_path(self.cluster_params, DBI_DIR)
         dv_path = f"{self.base_path}/dv-downloaded-obj"
-        print(dv_path)
         if dbi_path != None:
             json_data = load_parameters_from_json(f"{dbi_path}/dataVal/{chunk}/dummy_generator.json")
             vdev = str(json_data['Vdev'])
