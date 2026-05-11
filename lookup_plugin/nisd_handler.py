@@ -55,15 +55,19 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
     raft_uuid = cluster_params['raft_uuid']
 
     binary_dir = os.getenv('NIOVA_BIN_PATH')
-    bin_path = '/%s/bin/nisd' % binary_dir
+    bin_path = '/%s/nisd' % binary_dir
     app_name = cluster_params['app_type']
 
     base_path = "%s/%s/" % (base_dir, raft_uuid)
 
-    s3config = '/%s/s3.config.example' % binary_dir
+    s3config = '%s/s3.config.example' % binary_dir
     bin_path = os.path.normpath(bin_path)
     set_nisd_environ_variables(s3config)
-    command = ["sudo", "-E", bin_path, "-u", nisd_uuid, "-d", device_path, "-s", "curl", "2"]
+
+    os.environ["NIOVA_BLOCK_TCP_PEER_PORT"] = "9000"
+    os.environ["NIOVA_NISD_DO_TOKEN_VALIDATION"] = "0"
+
+    command = [bin_path, "-u", nisd_uuid, "-d", device_path]
 
     # Prepare nisd log file path
     log_file_path = "%s/%s/nisd_%s.log" % (base_dir, raft_uuid, nisd_uuid)
@@ -94,7 +98,10 @@ def run_nisd_command(cluster_params, nisd_uuid, device_path):
     genericcmdobj.recipe_json_dump(recipe_conf)
 
     # Return the process to allow further handling if needed
-    return [process]
+    return {
+        "pid": process.pid,
+        "cmd": command
+    }
 
 def install_linux_modules():
     try:
@@ -231,17 +238,17 @@ def run_niova_block_ctl(cluster_params, input_value):
 
     #format and run the niova-block-ctl
     # TODO check how the bin can be passed
-    bin_path = '%s/bin/niova-block-ctl' % binary_dir
+    bin_path = '%s/niova-block-ctl' % binary_dir
 
-    nisd_dict = { nisd_uuid : 0 }
+    # nisd_dict = { nisd_uuid : 0 }
 
-    nisd_dict[nisd_uuid] = 0
+    # nisd_dict[nisd_uuid] = 0
 
     ## TODO check if we need to write info to the lookout
 
     logger.debug("nisd-uuid: %s", nisd_uuid)
 
-    process_popen = subprocess.Popen(['sudo', "-E", bin_path,'-d', input_value["nisd_device_path"], '-f', '-i', '-u', nisd_uuid], stdout = fp, stderr = fp, cwd=base_path)
+    process_popen = subprocess.Popen([bin_path,'-d', input_value["nisd_device_path"], '-f', '-i', '-u', nisd_uuid], stdout = fp, stderr = fp, cwd=base_path)
     logger.info("niova-block-ctl args: %s -d %s -f -i -u %s", bin_path, input_value["nisd_device_path"], nisd_uuid)
 
     #Check if niova-block-ctl process exited with error

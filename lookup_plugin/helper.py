@@ -196,7 +196,7 @@ class helper:
         try:
             # os.makedirs(os.path.dirname(full_path), exist_ok=True)
             dir_path = os.path.dirname(full_path)
-            dd_command = f"sudo dd if=/dev/zero of={full_path} bs={bs} count={count}"
+            dd_command = f"dd if=/dev/zero of={full_path} bs={bs} count={count}"
             print(f"Running command: {dd_command}")
             result = subprocess.run(
                 dd_command,
