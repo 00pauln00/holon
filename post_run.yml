@@ -36,6 +36,21 @@
       set_fact:
         jsondata: "{{ result.stdout | from_json | default({}) }}"
 
+    - name: Find s3DV_nisd.device file
+      find:
+        paths: /home/runner/work/niovad/niovad/holon_log
+        patterns: "s3DV_nisd.device"
+        file_type: file
+        recurse: yes # To search in all subdirectories
+      register: found_file
+
+    - name: Delete s3DV_nisd.device file if it exists
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ found_file.files }}"
+      when: found_file.matched > 0
+
     - name: "{{ recipe_name }}: Get the GC Service process pid and status."
       set_fact:
         gc_process_pid: "{{ jsondata.gcService_process.process_pid | default('') }}"

@@ -30,7 +30,7 @@
         input_param:
           chunk: "0"
       debug:
-         msg: "{{ lookup('obj_storage', 'operation', 'create_bucket' , input_param)}}"
+         msg: "{{ lookup('obj_storage', 'operation', 'create_bucket', input_param) }}"
 
     - name: "{{ recipe_name }}: run niova ctl cmd on device"
       vars:
@@ -41,11 +41,22 @@
          msg:
           - "{{ lookup('nisd_handler', 'run-niova-block-ctl', input_param) }}"
       register: nisd_uuid
+
+    - pause:
+        seconds: 5
     
     - name: "{{ recipe_name }}: Start nisd"
+      vars:
+        input_param: {
+          'nisd_device_path': '{{ nisd_dev_path.msg[0] }}',
+          'nisd_uuid': '{{ nisd_uuid.msg[0] }}',
+          'peer_port': '13000',
+          'client_port': '13001',
+          'enable_auth': 0
+        }
       debug:
          msg:
-          - "{{ lookup('nisd_handler', 'run_nisd', nisd_uuid.msg[0], nisd_dev_path.msg[0]) }}"
+          - "{{ lookup('nisd_handler', 'run_nisd', input_param) }}"
 
     - name: "{{ recipe_name }}: wait for 5 seconds"
       pause:
@@ -95,11 +106,14 @@
         input_param:
               chunk: "0"
               stage: "wait_for_gc_marker"
-              vdev: "{{ ublk_uuid.msg[0] }}"
+              vdev: "{{ ublk_uuid.msg[0][0] }}"
         marker_seq: "{{ lookup('obj_storage', 'get_markers', input_param) }}" 
       debug:
         msg: "Waiting for GC Marker File {{ marker_seq }}"
-      until: marker_seq[0] is not none
+      until: >
+        marker_seq | length > 0 and
+        marker_seq[0] is not none and
+        marker_seq[1] is not none
       retries: 300
       delay: 2
 
