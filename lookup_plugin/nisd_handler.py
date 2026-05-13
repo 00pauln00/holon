@@ -547,13 +547,13 @@ def start_niova_block_test(cluster_params, input_values):
     raft_uuid = cluster_params['raft_uuid']
 
     #get input parameters
-    nisd_uuid_to_write = input_values['nisd_uuid_to_write']
+    # nisd_uuid_to_write = input_values['nisd_uuid_to_write']
     vdev = input_values['vdev']
     read_operation_ratio_percentage = input_values['read_operation_ratio_percentage']
     random_seed = input_values['random_seed']
     client_uuid = input_values['client_uuid']
     request_size_in_bytes = input_values['request_size_in_bytes']
-    queue_depth = input_values['queue_depth']
+    # queue_depth = input_values['queue_depth']
     num_ops = input_values['num_ops']
     integrity_check = input_values['integrity_check']
     sequential_writes = input_values['sequential_writes']
@@ -576,7 +576,7 @@ def start_niova_block_test(cluster_params, input_values):
     bin_path = '%s/niova-block-test' % binary_dir
 
     logger.debug("Do write/read operation on nisd by starting niova-block-test")
-    logger.debug("nisd-uuid: %s", nisd_uuid_to_write[5:])
+    # logger.debug("nisd-uuid: %s", nisd_uuid_to_write[5:])
     logger.debug("vdev-uuid: %s", vdev)
     logger.debug("client-uuid: %s", client_uuid)
     file_size_in_bytes = "8589934592"
@@ -602,9 +602,8 @@ def start_niova_block_test(cluster_params, input_values):
         return proc.returncode
 
     else:
-        ps = subprocess.run((bin_path, '-d', '-c', nisd_uuid_to_write, '-v', vdev, '-r', read_operation_ratio_percentage,
-                                   '-a', random_seed, '-u', client_uuid, '-z', request_size_in_bytes,
-                                   '-q', queue_depth, '-N', num_ops, '-z', file_size_in_bytes), stdout=fp, stderr=fp)
+        ps = subprocess.run((bin_path, '-c', 'cp', '-v', vdev, '-u', vdev, '-r', read_operation_ratio_percentage,
+                         '-Z', request_size_in_bytes, '-N', num_ops, '-a', random_seed), stdout=fp, stderr=fp)
 
     logger.info("niova-block-test args: %s", ps.args)
     logger.info("return code: %d", ps.returncode)
