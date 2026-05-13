@@ -561,10 +561,10 @@ def start_niova_block_test(cluster_params, input_values):
 
     if read_operation_ratio_percentage == '0':
         # prepare path for log file.
-        log_path = "%s/%s/niova-block-test_write_%s.log" % (base_dir, raft_uuid, nisd_uuid_to_write[5:])
+        log_path = "%s/%s/niova-block-test_write_%s.log" % (base_dir, raft_uuid, vdev[5:])
     else:
         # Prepare path for log file.
-        log_path = "%s/%s/niova-block-test_read_%s.log" % (base_dir, raft_uuid, nisd_uuid_to_write[5:])
+        log_path = "%s/%s/niova-block-test_read_%s.log" % (base_dir, raft_uuid, vdev[5:])
 
     # Initialize the logger
     logger = initialize_logger(log_path)
