@@ -49,7 +49,6 @@ def set_nisd_environ_variables(minio_config_path):
     print("NIOVA_BLOCK_AWS_OPTS =", os.environ["NIOVA_BLOCK_AWS_OPTS"])
     print("NIOVA_BLOCK_AWS_AUTH =", os.environ["NIOVA_BLOCK_AWS_AUTH"])
 
-
 def run_nisd_command(cluster_params, input_values):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -60,14 +59,6 @@ def run_nisd_command(cluster_params, input_values):
 
     base_path = "%s/%s/" % (base_dir, raft_uuid)
 
-<<<<<<< HEAD
-    s3config = '%s/s3.config.example' % binary_dir
-    bin_path = os.path.normpath(bin_path)
-    set_nisd_environ_variables(s3config)
-
-    os.environ["NIOVA_BLOCK_TCP_PEER_PORT"] = "9000"
-    os.environ["NIOVA_NISD_DO_TOKEN_VALIDATION"] = "0"
-=======
     nisd_uuid = input_values['nisd_uuid']
     device_path = input_values['nisd_device_path']
     peer_port = input_values["peer_port"]
@@ -84,6 +75,8 @@ def run_nisd_command(cluster_params, input_values):
     if enable_authentication == 1:
         os.environ["NIOVA_NISD_SECRET"] = "Nisd-secret"
         os.environ["NIOVA_NISD_DO_TOKEN_VALIDATION"] = '1'
+    else:
+        os.environ["NIOVA_NISD_DO_TOKEN_VALIDATION"] = '0'
 
     os.environ["NIOVA_INOTIFY_BASE_PATH"] = "%s/%s/nisd-interface" % (base_dir, raft_uuid)
     os.environ["NIOVA_BLOCK_SOCK_PATH"] = f"/tmp/.niova/{nisd_uuid}" 
@@ -91,7 +84,6 @@ def run_nisd_command(cluster_params, input_values):
     env = os.environ.copy()
     os.environ["NIOVA_BLOCK_TCP_PEER_PORT"] = str(peer_port)
     os.environ["NIOVA_BLOCK_TCP_CLIENT_PORT"] = str(client_port)
->>>>>>> master
 
     command = [bin_path, "-u", nisd_uuid, "-d", device_path]
 
@@ -124,10 +116,7 @@ def run_nisd_command(cluster_params, input_values):
     genericcmdobj.recipe_json_dump(recipe_conf)
 
     # Return the process to allow further handling if needed
-    return {
-        "pid": process.pid,
-        "cmd": command
-    }
+    return [process]
 
 def install_linux_modules():
     try:
@@ -151,7 +140,6 @@ def load_kernel_module(module_name):
         print(f"Failed to load module '{module_name}': {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
-
 
 def replace_last_path_segment(path, old_segment, new_segment):
     # Split the path into head and tail
@@ -241,19 +229,12 @@ def run_niova_block_ctl(cluster_params, input_value):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
-<<<<<<< HEAD
-    # genericcmdobj = GenericCmds()
-    # nisd_uuid = genericcmdobj.generate_uuid()
-
-    nisd_uuid = input_value.get("nisd_uuid")
-=======
     genericcmdobj = GenericCmds()
 
     # Accept nisd_uuid from input, otherwise generate one
     nisd_uuid = input_value.get("nisd_uuid")
     if not nisd_uuid:
         nisd_uuid = genericcmdobj.generate_uuid()
->>>>>>> master
 
     # Prepare path for log file.
     base_path = "%s/%s" % (base_dir, raft_uuid)
@@ -280,10 +261,6 @@ def run_niova_block_ctl(cluster_params, input_value):
 
     logger.debug("nisd-uuid: %s", nisd_uuid)
 
-<<<<<<< HEAD
-    process_popen = subprocess.Popen([bin_path,'-d', input_value["nisd_device_path"], '-f', '-i', '-u', nisd_uuid], stdout = fp, stderr = fp, cwd=base_path)
-    logger.info("niova-block-ctl args: %s -d %s -f -i -u %s", bin_path, input_value["nisd_device_path"], nisd_uuid)
-=======
     # Run command equivalent to:
     # src/niova-block-ctl -d <DEV_PATH> -i -f -u $NISD_UUID
     process_popen = subprocess.Popen(
@@ -305,7 +282,6 @@ def run_niova_block_ctl(cluster_params, input_value):
         input_value["nisd_device_path"],
         nisd_uuid
     )
->>>>>>> master
 
     #Check if niova-block-ctl process exited with error
     if process_popen.poll() is None:
@@ -323,8 +299,8 @@ def start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
-    # genericcmdobj = GenericCmds()
-    # nisd_uuid = genericcmdobj.generate_uuid()
+    genericcmdobj = GenericCmds()
+    nisd_uuid = genericcmdobj.generate_uuid()
 
     # Prepare path for log file.
     log_file = "%s/%s/niovablockctl_%s_log.txt" % (base_dir, raft_uuid, nisd_uuid)
@@ -596,12 +572,6 @@ def start_niova_block_test(cluster_params, input_values):
     # Prepare path for executables.
     binary_dir = os.getenv('NIOVA_BIN_PATH')
 
-    os.environ['NIOVA_BLOCK_AUTH_ENABLED']=false 
-    os.environ['NIOVA_GOSSIP_PATH']=/home/runner/work/niova-block/niova-block/mdsvc-tidb/gossipNodes 
-    os.environ['NIOVA_GOSSIP_KEY']=dummy 
-    os.environ['NIOVA_BLOCK_MDSVC_GET_CHUNKS_LIMIT']=256 
-    os.environ['NIOVA_BLOCK_PROXY_TAG']=mdsvc-tidb 
-
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
 
@@ -614,10 +584,15 @@ def start_niova_block_test(cluster_params, input_values):
 
     # Authentication environment variables
     env = os.environ.copy()
-    os.environ["NIOVA_GOSSIP_KEY"] = raft_uuid
-    os.environ["NIOVA_GOSSIP_PATH"] = gossip_nodes_path
-    os.environ["NIOVA_BLOCK_CP_AUTH_USERNAME"] = input_values['auth_username']
-    os.environ["NIOVA_BLOCK_CP_AUTH_SECRET"] = input_values['auth_secret']
+    # os.environ["NIOVA_GOSSIP_KEY"] = raft_uuid
+    # os.environ["NIOVA_GOSSIP_PATH"] = gossip_nodes_path
+    # os.environ["NIOVA_BLOCK_CP_AUTH_USERNAME"] = input_values['auth_username']
+    # os.environ["NIOVA_BLOCK_CP_AUTH_SECRET"] = input_values['auth_secret']
+    os.environ['NIOVA_BLOCK_AUTH_ENABLED']=false 
+    os.environ['NIOVA_GOSSIP_PATH']=/home/runner/work/niova-block/niova-block/mdsvc-tidb/gossipNodes 
+    os.environ['NIOVA_GOSSIP_KEY']=dummy 
+    os.environ['NIOVA_BLOCK_MDSVC_GET_CHUNKS_LIMIT']=256 os.environ['NIOVA_BLOCK_PROXY_TAG']=mdsvc-tidb 
+
     os.environ["NIOVA_LOG_LEVEL"] = "4"
 
     #get input parameters
@@ -626,10 +601,6 @@ def start_niova_block_test(cluster_params, input_values):
     read_operation_ratio_percentage = input_values['rd_op_ratio']
     random_seed = input_values['random_seed_pt']
     request_size_in_bytes = input_values['request_size_in_bytes']
-<<<<<<< HEAD
-    # queue_depth = input_values['queue_depth']
-=======
->>>>>>> master
     num_ops = input_values['num_ops']
     integrity_check = input_values['integrity_check']
     sequential_writes = input_values['sequential_writes']
@@ -651,11 +622,7 @@ def start_niova_block_test(cluster_params, input_values):
     #start niova block test process
     bin_path = '%s/niova-block-test' % binary_dir
 
-<<<<<<< HEAD
-    logger.debug("Do write/read operation on nisd by starting niova-block-test")
-=======
     logger.debug("Do write/read operation on nisd by starting niova-block-test in controlplane mode")
->>>>>>> master
     # logger.debug("nisd-uuid: %s", nisd_uuid_to_write[5:])
     logger.debug("vdev-uuid: %s", vdev)
     logger.debug("client-uuid: %s", vdev)
@@ -757,3 +724,4 @@ class LookupModule(LookupBase):
                     niova_block_test_process = start_niova_block_test(cluster_params, input_values)
 
                return [niova_block_test_process]
+
