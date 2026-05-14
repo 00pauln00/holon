@@ -47,6 +47,8 @@
           failed_when: >
             (writeres5keys['results'][0]['item']['outfile_status'] != 0)
 
+        - pause: seconds=10
+
         - name: "{{ recipe_name }}: Verify write status"
           debug:
             msg: "Check write response status: {{ item['Response']['Status'] }}"

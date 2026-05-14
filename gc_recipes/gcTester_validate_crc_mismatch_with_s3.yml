@@ -58,6 +58,9 @@
          msg: "{{ lookup('obj_storage', 'get_markers', formal_params) }}"
       register: marker_check
 
+    - debug:
+        msg: "{{ marker_check }}"
+
     - name: "{{ recipe_name }}: compare gc and nisd markers"
       set_fact:
         gc_marker: "{{ marker_check.msg[0] }}"

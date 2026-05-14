@@ -37,7 +37,7 @@
         stage: "get_leader_uuid"
       set_fact:
         LeaderUUID: "{{ lookup('niova_ctlrequest', 'lookup', NRunningPeers[0], '/raft_root_entry/0/leader-uuid') }}"
-      when: NRunningPeers
+      when: NRunningPeers | length > 0
 
     - debug:
         msg: "{{ LeaderUUID }}"
@@ -71,4 +71,3 @@
       set_fact:
         GetFollowerStatsInfo: "{{ lookup('niova_ctlrequest', 'lookup', LeaderUUID['/0/leader-uuid'], raft_key) }}"
       when: LeaderUUID != "" and LeaderUUID['/0/leader-uuid'] != "null" and FollowerUUIDs | length != 0
-

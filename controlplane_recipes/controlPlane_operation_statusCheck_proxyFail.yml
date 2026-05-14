@@ -84,7 +84,7 @@
           debug:
             msg:
               - "Check write outfile status: {{ writeres5keys['results'][0]['item']['outfile_status'] }}"
-          no_log: true
+          no_log: false
           failed_when: >
             (writeres5keys['results'][0]['item']['outfile_status'] != 0)
 
@@ -111,6 +111,33 @@
 
         - name: "{{ recipe_name }}: Pause for 5 seconds to start pmdb and proxy servers properly."
           pause:
+            seconds: 10
+
+        - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
+          vars:
+            input_param:
+              { "Operation": "membership", "OutfileName": "membership_output_after_restarting_killed_proxy_servers" }
+            ncpclires: "{{ lookup('controlplane', 'ncpc', input_param) }}"
+          debug:
+            msg: "get membership details of running servers."
+          with_items:
+            - "{{ ncpclires }}"
+          register: membership_after_restart
+
+        - name: "{{ recipe_name }}: Wait until the proxy servers' status changes after killing them."
+          vars:
+            NodeName: "{{ item }}"
+            input_param:
+              {
+                "Operation": "membership",
+                "OutfileName": "wait_for_proxyStatus_after_restarting_killed_proxy_servers",
+              }
+          debug:
+            msg: "Verifying node status"
+          until: lookup('controlplane', 'ncpc', input_param)['membership']['output_data'][NodeName]['Status'] == "alive"
+          retries: 10
+          delay: 1
+          loop: "{{ proxy_node_names }}"
             seconds: 10
 
         - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
