@@ -220,22 +220,6 @@ def start_niova_lookout_process(cluster_params, uport):
 
     ctl_interface_path = set_environment_variables(cluster_params, lookout_uuid)
 
-    # Generate gossipNodes file before starting lookout process
-
-    obj = YourClassName()   # replace with actual class name
-
-    ip_address = cluster_params['ip_address']
-    port = cluster_params['port']
-    peeruuids = cluster_params['peeruuids']
-
-    obj.generate_controlplane_gossipNodes(
-        cluster_params,
-        ip_address,
-        port,
-        peeruuids,
-        entriesInFile=0
-    )
-
     # Prepare path for log file.
     log_file = "%s/%s/%s_niova-lookout_%s_log.txt" % (base_dir, raft_uuid, app_name, lookout_uuid)
 
