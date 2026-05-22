@@ -138,7 +138,6 @@
           retries: 10
           delay: 1
           loop: "{{ proxy_node_names }}"
-          seconds: 10
 
         - name: "{{ recipe_name }}: Starting controlplane_client to get membership details."
           vars:
