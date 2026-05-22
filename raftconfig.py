@@ -225,7 +225,6 @@ class RaftConfig:
             Totalrange = str(startRange) + " " + str(endRange)
             basicioobj.write_file(gossip_fd, '\n' + Totalrange)
 
-
     '''
         Method: get_client_uuid_for_clientno
         Purpose: Get the client uuid for the client number from client_uuid_array
@@ -243,4 +242,3 @@ class RaftConfig:
                 f.unlink()
             except OSError as e:
                 print("Error: %s : %s" % (f, e.strerror))
-
