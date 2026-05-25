@@ -49,7 +49,6 @@ def set_nisd_environ_variables(minio_config_path):
     print("NIOVA_BLOCK_AWS_OPTS =", os.environ["NIOVA_BLOCK_AWS_OPTS"])
     print("NIOVA_BLOCK_AWS_AUTH =", os.environ["NIOVA_BLOCK_AWS_AUTH"])
 
-
 def run_nisd_command(cluster_params, input_values):
     base_dir = cluster_params['base_dir']
     raft_uuid = cluster_params['raft_uuid']
@@ -76,6 +75,8 @@ def run_nisd_command(cluster_params, input_values):
     if enable_authentication == 1:
         os.environ["NIOVA_NISD_SECRET"] = "Nisd-secret"
         os.environ["NIOVA_NISD_DO_TOKEN_VALIDATION"] = '1'
+    else:
+        os.environ["NIOVA_NISD_DO_TOKEN_VALIDATION"] = '0'
 
     os.environ["NIOVA_INOTIFY_BASE_PATH"] = "%s/%s/nisd-interface" % (base_dir, raft_uuid)
     os.environ["NIOVA_BLOCK_SOCK_PATH"] = f"/tmp/.niova/{nisd_uuid}" 
@@ -139,7 +140,6 @@ def load_kernel_module(module_name):
         print(f"Failed to load module '{module_name}': {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
-
 
 def replace_last_path_segment(path, old_segment, new_segment):
     # Split the path into head and tail
@@ -304,7 +304,10 @@ def start_niova_block_ctl_process(cluster_params, nisd_uuid, input_values):
 
     # Prepare path for log file.
     log_file = "%s/%s/niovablockctl_%s_log.txt" % (base_dir, raft_uuid, nisd_uuid)
-
+    os.environ["NIOVA_GOSSIP_KEY"] = raft_uuid
+    # os.environ["NIOVA_GOSSIP_PATH"] = gossip_nodes_path
+    # os.environ["NIOVA_BLOCK_CP_AUTH_USERNAME"] = input_values['auth_username']
+    # os.environ["NIOVA_BLOCK_CP_AUTH_SECRET"] = input_values['auth_secret']
     # Initialize the logger
     logger = initialize_logger(log_file)
 
@@ -584,22 +587,35 @@ def start_niova_block_test(cluster_params, input_values):
 
     # Authentication environment variables
     env = os.environ.copy()
-    os.environ["NIOVA_GOSSIP_KEY"] = raft_uuid
-    os.environ["NIOVA_GOSSIP_PATH"] = gossip_nodes_path
-    os.environ["NIOVA_BLOCK_CP_AUTH_USERNAME"] = input_values['auth_username']
-    os.environ["NIOVA_BLOCK_CP_AUTH_SECRET"] = input_values['auth_secret']
+    # os.environ["NIOVA_GOSSIP_KEY"] = raft_uuid
+    # os.environ["NIOVA_GOSSIP_PATH"] = gossip_nodes_path
+    # os.environ["NIOVA_BLOCK_CP_AUTH_USERNAME"] = input_values['auth_username']
+    # os.environ["NIOVA_BLOCK_CP_AUTH_SECRET"] = input_values['auth_secret']
+    os.environ['NIOVA_BLOCK_AUTH_ENABLED']="false" 
+    os.environ['NIOVA_GOSSIP_PATH']="/home/runner/work/niova-block/niova-block/mdsvc-tidb/configs/gossipNodes" 
+    os.environ['NIOVA_GOSSIP_KEY']="dummy" 
+    os.environ['NIOVA_BLOCK_MDSVC_GET_CHUNKS_LIMIT']="256" 
+    os.environ['NIOVA_BLOCK_PROXY_TAG']="mdsvc-tidb" 
+
     os.environ["NIOVA_LOG_LEVEL"] = "4"
 
     #get input parameters
     # nisd_uuid_to_write = input_values['nisd_uuid_to_write']
     vdev = input_values['vdev']
-    read_operation_ratio_percentage = input_values['rd_op_ratio']
-    random_seed = input_values['random_seed_pt']
+    read_operation_ratio_percentage = input_values['read_op_ratio']
+    random_seed = input_values['random_seed']
     request_size_in_bytes = input_values['request_size_in_bytes']
     num_ops = input_values['num_ops']
-    integrity_check = input_values['integrity_check']
-    sequential_writes = input_values['sequential_writes']
-    blocking_process = input_values['blocking_process']
+
+    def to_bool(v):
+        return str(v).lower() == "true"
+
+    integrity_check = to_bool(input_values['integrity_check'])
+    sequential_writes = to_bool(input_values['sequential_writes'])
+    blocking_process = to_bool(input_values['blocking_process'])
+    # integrity_check = input_values['integrity_check']
+    # sequential_writes = input_values['sequential_writes']
+    # blocking_process = input_values['blocking_process']
 
     if read_operation_ratio_percentage == '0':
         # prepare path for log file.
@@ -650,7 +666,10 @@ def start_niova_block_test(cluster_params, input_values):
     logger.info("niova-block-test args: %s", ps.args)
     logger.info("return code: %d", ps.returncode)
     # Sync the log file so all the logs from niova-block-test gets written to log file.
-    os.fsync(fp)
+    fp.flush()
+    os.fsync(fp.fileno())
+    fp.close()
+    # os.fsync(fp)
 
     return ps.returncode
 
